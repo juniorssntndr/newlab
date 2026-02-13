@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import Modal from '../components/Modal.jsx';
+import { API_URL } from '../config.js';
 
 const Clinicas = () => {
     const { getHeaders } = useAuth();
@@ -13,7 +14,7 @@ const Clinicas = () => {
 
     const fetchClinicas = () => {
         const params = search ? `?search=${encodeURIComponent(search)}` : '';
-        fetch(`/api/clinicas${params}`, { headers: getHeaders() })
+        fetch(`${API_URL}/clinicas${params}`, { headers: getHeaders() })
             .then(r => r.json())
             .then(data => { setClinicas(data); setLoading(false); })
             .catch(() => setLoading(false));
@@ -35,7 +36,7 @@ const Clinicas = () => {
 
     const save = async () => {
         const method = editing ? 'PUT' : 'POST';
-        const url = editing ? `/api/clinicas/${editing.id}` : '/api/clinicas';
+        const url = editing ? `${API_URL}/clinicas/${editing.id}` : `${API_URL}/clinicas`;
         await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(form) });
         setModalOpen(false);
         fetchClinicas();

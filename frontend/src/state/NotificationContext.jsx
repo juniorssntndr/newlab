@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useAuth } from './AuthContext.jsx';
+import { API_URL } from '../config.js';
 
 const NotificationContext = createContext(null);
 export const useNotifications = () => useContext(NotificationContext);
@@ -13,7 +12,7 @@ export const NotificationProvider = ({ children }) => {
     const fetchNotifications = useCallback(async () => {
         if (!token) return;
         try {
-            const res = await fetch('/api/notificaciones', {
+            const res = await fetch(`${API_URL}/notificaciones`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
@@ -34,7 +33,7 @@ export const NotificationProvider = ({ children }) => {
 
     const markAsRead = async (id) => {
         try {
-            await fetch(`/api/notificaciones/${id}/leer`, {
+            await fetch(`${API_URL}/notificaciones/${id}/leer`, {
                 method: 'PATCH',
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -44,7 +43,7 @@ export const NotificationProvider = ({ children }) => {
 
     const markAllRead = async () => {
         try {
-            await fetch('/api/notificaciones/leer-todas', {
+            await fetch(`${API_URL}/notificaciones/leer-todas`, {
                 method: 'PATCH',
                 headers: { Authorization: `Bearer ${token}` }
             });

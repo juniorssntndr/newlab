@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config.js';
 
 const NuevoPedido = () => {
     const { getHeaders, user } = useAuth();
@@ -16,9 +17,9 @@ const NuevoPedido = () => {
 
     useEffect(() => {
         Promise.all([
-            fetch('/api/clinicas', { headers: getHeaders() }).then(r => r.json()),
-            fetch('/api/productos', { headers: getHeaders() }).then(r => r.json()),
-            fetch('/api/categorias', { headers: getHeaders() }).then(r => r.json())
+            fetch(`${API_URL}/clinicas`, { headers: getHeaders() }).then(r => r.json()),
+            fetch(`${API_URL}/productos`, { headers: getHeaders() }).then(r => r.json()),
+            fetch(`${API_URL}/categorias`, { headers: getHeaders() }).then(r => r.json())
         ]).then(([c, p, cat]) => {
             setClinicas(c);
             setProductos(p);
@@ -62,7 +63,7 @@ const NuevoPedido = () => {
         setSaving(true);
         setError('');
         try {
-            const res = await fetch('/api/pedidos', {
+            const res = await fetch(`${API_URL}/pedidos`, {
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify({

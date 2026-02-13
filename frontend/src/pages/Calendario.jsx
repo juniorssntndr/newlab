@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config.js';
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Aprobación',
@@ -18,7 +19,7 @@ const Calendario = () => {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     useEffect(() => {
-        fetch('/api/pedidos', { headers: getHeaders() })
+        fetch(`${API_URL}/pedidos`, { headers: getHeaders() })
             .then(r => r.json())
             .then(data => { setPedidos(data); setLoading(false); })
             .catch(() => setLoading(false));

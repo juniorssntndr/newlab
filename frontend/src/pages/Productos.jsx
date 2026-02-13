@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import Modal from '../components/Modal.jsx';
+import { API_URL } from '../config.js';
 
 const tipoLabels = { fija: 'Prótesis Fija', implante: 'Sobre Implantes', removible: 'Removible (PPR)', especialidad: 'Especialidades' };
 const tipoColors = { fija: '#0891B2', implante: '#8B5CF6', removible: '#F59E0B', especialidad: '#10B981' };
@@ -22,8 +23,8 @@ const Productos = () => {
         if (search) params.set('search', search);
 
         Promise.all([
-            fetch(`/api/productos?${params}`, { headers: getHeaders() }).then(r => r.json()),
-            fetch('/api/categorias', { headers: getHeaders() }).then(r => r.json())
+            fetch(`${API_URL}/productos?${params}`, { headers: getHeaders() }).then(r => r.json()),
+            fetch(`${API_URL}/categorias`, { headers: getHeaders() }).then(r => r.json())
         ]).then(([prods, cats]) => {
             setProductos(prods);
             setCategorias(cats);
@@ -47,7 +48,7 @@ const Productos = () => {
 
     const save = async () => {
         const method = editing ? 'PUT' : 'POST';
-        const url = editing ? `/api/productos/${editing.id}` : '/api/productos';
+        const url = editing ? `${API_URL}/productos/${editing.id}` : `${API_URL}/productos`;
         await fetch(url, { method, headers: getHeaders(), body: JSON.stringify({ ...form, precio_base: parseFloat(form.precio_base) || 0 }) });
         setModalOpen(false);
         fetchData();

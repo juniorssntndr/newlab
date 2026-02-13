@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
+import { API_URL } from '../config.js';
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
@@ -17,7 +18,7 @@ const DetallePedido = () => {
     const [updating, setUpdating] = useState(false);
 
     const fetchPedido = () => {
-        fetch(`/api/pedidos/${id}`, { headers: getHeaders() })
+        fetch(`${API_URL}/pedidos/${id}`, { headers: getHeaders() })
             .then(r => r.json())
             .then(data => { setPedido(data); setLoading(false); })
             .catch(() => setLoading(false));
@@ -28,7 +29,7 @@ const DetallePedido = () => {
     const changeStatus = async (newStatus) => {
         setUpdating(true);
         try {
-            await fetch(`/api/pedidos/${id}/estado`, {
+            await fetch(`${API_URL}/pedidos/${id}/estado`, {
                 method: 'PATCH',
                 headers: getHeaders(),
                 body: JSON.stringify({ estado: newStatus })
