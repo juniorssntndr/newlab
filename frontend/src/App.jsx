@@ -11,23 +11,32 @@ import NuevoPedido from './pages/NuevoPedido.jsx';
 import DetallePedido from './pages/DetallePedido.jsx';
 import Calendario from './pages/Calendario.jsx';
 
+const LoadingScreen = () => (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}></div>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>Cargando sistema...</p>
+        </div>
+    </div>
+);
+
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
-    if (loading) return null;
+    if (loading) return <LoadingScreen />;
     if (!user) return <Navigate to="/login" replace />;
     return children;
 };
 
 const LabOnlyRoute = ({ children }) => {
     const { user, loading } = useAuth();
-    if (loading) return null;
+    if (loading) return <LoadingScreen />;
     if (user?.tipo === 'cliente') return <Navigate to="/pedidos" replace />;
     return children;
 };
 
 const HomeRedirect = () => {
     const { user, loading } = useAuth();
-    if (loading) return null;
+    if (loading) return <LoadingScreen />;
     return <Navigate to={user?.tipo === 'cliente' ? '/pedidos' : '/dashboard'} replace />;
 };
 
