@@ -1,0 +1,14 @@
+{
+  "name": "newlab-dental",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "server": "cd backend && npm run server",
+    "dev": "cd frontend && npm run dev",
+    "dev:all": "concurrently \"npm run server\" \"npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
