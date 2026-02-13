@@ -1227,3 +1227,23 @@ h4 { font-size: 1.125rem; }
 
   .notifications-panel { width: 100%; }
 }
+
+/* Spinner */
+.spinner-border {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  vertical-align: text-bottom;
+  border: 0.25em solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinner-border .75s linear infinite;
+  color: var(--color-primary);
+}
+
+@keyframes spinner-border {
+  to { transform: rotate(360deg); }
+}
+
+.text-primary { color: var(--color-primary) !important; }
+
