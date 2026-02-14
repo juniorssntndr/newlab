@@ -10,37 +10,17 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const app = express();
 
-// Allowed origins
-const allowedOrigins = [
-    'https://juniorssntndr-newlab.vercel.app',
-    'http://localhost:5173',
-    'http://localhost:3000'
-];
+// Simplest CORS for debugging - Allow All
+app.use(cors());
 
-app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
-            // Check if it's a Vercel preview deployment
-            if (origin.endsWith('.vercel.app')) {
-                return callback(null, true);
-            }
-            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            return callback(new Error(msg), false);
-        }
-        return callback(null, true);
-    },
-    credentials: true
-}));
-
-app.use(express.json());
-
-// Request logger
+// REQUEST LOGGER - Place BEFORE routes
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`[REQUEST] ${req.method} ${req.url}`);
+    console.log('Origin:', req.headers.origin);
     next();
 });
+
+app.use(express.json());
 
 // Make pool available to routes
 app.locals.pool = pool;
