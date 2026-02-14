@@ -1,3 +1,5 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext.jsx';
 import { API_URL } from '../config.js';
 
 const NotificationContext = createContext(null);
