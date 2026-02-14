@@ -10,13 +10,22 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const app = express();
 
-// Simplest CORS for debugging - Allow All
-app.use(cors());
-
-// REQUEST LOGGER - Place BEFORE routes
+// 1. REQUEST LOGGER - MUST BE FIRST
 app.use((req, res, next) => {
     console.log(`[REQUEST] ${req.method} ${req.url}`);
-    console.log('Origin:', req.headers.origin);
+    console.log('Headers:', JSON.stringify(req.headers));
+    next();
+});
+
+// 2. MANUAL CORS - FORCE HEADERS
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
     next();
 });
 
