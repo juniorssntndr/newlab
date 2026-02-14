@@ -63,6 +63,7 @@ app.use('/api/notificaciones', notificacionesRoutes);
 app.use('/api/categorias', categoriasRoutes);
 
 // Health check
+app.get('/', (req, res) => res.json({ status: 'API Online', version: '1.0.0' }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // Error handler
