@@ -10,6 +10,10 @@ import Pedidos from './pages/Pedidos.jsx';
 import NuevoPedido from './pages/NuevoPedido.jsx';
 import DetallePedido from './pages/DetallePedido.jsx';
 import Calendario from './pages/Calendario.jsx';
+import Cuenta from './pages/Cuenta.jsx';
+import Equipo from './pages/Equipo.jsx';
+
+import Almacen from './pages/Almacen.jsx';
 
 const LoadingScreen = () => (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
@@ -34,6 +38,13 @@ const LabOnlyRoute = ({ children }) => {
     return children;
 };
 
+const AdminOnlyRoute = ({ children }) => {
+    const { user, loading } = useAuth();
+    if (loading) return <LoadingScreen />;
+    if (user?.tipo !== 'admin') return <Navigate to="/dashboard" replace />;
+    return children;
+};
+
 const HomeRedirect = () => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
@@ -49,10 +60,13 @@ const App = () => {
                 <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />
                 <Route path="clinicas" element={<LabOnlyRoute><Clinicas /></LabOnlyRoute>} />
                 <Route path="productos" element={<LabOnlyRoute><Productos /></LabOnlyRoute>} />
+                <Route path="almacen" element={<LabOnlyRoute><Almacen /></LabOnlyRoute>} />
                 <Route path="pedidos" element={<Pedidos />} />
                 <Route path="pedidos/nuevo" element={<NuevoPedido />} />
                 <Route path="pedidos/:id" element={<DetallePedido />} />
                 <Route path="calendario" element={<LabOnlyRoute><Calendario /></LabOnlyRoute>} />
+                <Route path="cuenta" element={<Cuenta />} />
+                <Route path="equipo" element={<AdminOnlyRoute><Equipo /></AdminOnlyRoute>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

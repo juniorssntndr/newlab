@@ -36,6 +36,11 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const refreshUser = async () => {
+        if (!token) return;
+        await fetchUser();
+    };
+
     const login = async (email, password) => {
         const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
@@ -63,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout, getHeaders }}>
+        <AuthContext.Provider value={{ user, token, loading, login, logout, getHeaders, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

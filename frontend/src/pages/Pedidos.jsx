@@ -28,6 +28,13 @@ const Pedidos = () => {
 
     const estados = ['', 'pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
 
+    const formatDateShort = (value) => {
+        if (!value) return '—';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+    };
+
     return (
         <div className="animate-fade-in">
             <div className="page-header">
@@ -88,9 +95,9 @@ const Pedidos = () => {
                                         <td>{p.paciente_nombre}</td>
                                         <td>{p.clinica_nombre}</td>
                                         <td><span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span></td>
-                                        <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{p.fecha}</td>
-                                        <td style={{ fontSize: '0.8125rem' }}>{p.fecha_entrega}</td>
-                                        <td><strong>S/. {parseFloat(p.total).toFixed(2)}</strong></td>
+                                        <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{formatDateShort(p.fecha || p.created_at)}</td>
+                                        <td style={{ fontSize: '0.8125rem' }}>{formatDateShort(p.fecha_entrega)}</td>
+                                        <td><strong>S/. {parseFloat(p.subtotal ?? p.total).toFixed(2)}</strong></td>
                                         <td>
                                             <button className="btn btn-ghost btn-sm btn-icon" title="Ver detalle">
                                                 <i className="bi bi-chevron-right"></i>

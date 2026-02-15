@@ -19,6 +19,8 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
             section: 'Gestión', items: [
                 { to: '/clinicas', icon: 'bi-building', label: 'Clientes / CRM' },
                 { to: '/productos', icon: 'bi-box-seam', label: 'Productos' },
+                { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
+                ...(user?.tipo === 'admin' ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : [])
             ]
         },
     ];
@@ -79,7 +81,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                         style={{ marginTop: '0.5rem', color: '#EF4444' }}
                     >
                         <i className="bi bi-box-arrow-left"></i>
-                        {!collapsed && <span>Cerrar sesión</span>}
+                        {!collapsed && <span>Cerrar sesion</span>}
                     </button>
                 </div>
             </aside>

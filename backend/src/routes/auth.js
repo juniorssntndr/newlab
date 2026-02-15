@@ -68,4 +68,52 @@ router.get('/me', authenticateToken, async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// PATCH /api/auth/me
+router.patch('/me', authenticateToken, async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const { nombre, email, telefono, avatar_url } = req.body;
+        const updates = [];
+        const params = [];
+
+        if (nombre) { params.push(nombre); updates.push(`nombre = $${params.length}`); }
+        if (email) { params.push(email); updates.push(`email = $${params.length}`); }
+        if (telefono !== undefined) { params.push(telefono || null); updates.push(`telefono = $${params.length}`); }
+        if (avatar_url !== undefined) { params.push(avatar_url || null); updates.push(`avatar_url = $${params.length}`); }
+
+        if (updates.length === 0) return res.status(400).json({ error: 'Sin cambios' });
+
+        params.push(req.user.id);
+        const result = await pool.query(
+            `UPDATE nl_usuarios SET ${updates.join(', ')} WHERE id = $${params.length}
+       RETURNING id, nombre, email, telefono, tipo, avatar_url`,
+            params
+        );
+
+        res.json(result.rows[0]);
+    } catch (err) { next(err); }
+});
+
+// PATCH /api/auth/password
+router.patch('/password', authenticateToken, async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const { current_password, new_password } = req.body;
+        if (!current_password || !new_password) {
+            return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
+        }
+
+        const result = await pool.query('SELECT password_hash FROM nl_usuarios WHERE id = $1', [req.user.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        const valid = await bcrypt.compare(current_password, result.rows[0].password_hash);
+        if (!valid) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+
+        const newHash = await bcrypt.hash(new_password, 10);
+        await pool.query('UPDATE nl_usuarios SET password_hash = $1 WHERE id = $2', [newHash, req.user.id]);
+
+        res.json({ success: true });
+    } catch (err) { next(err); }
+});
+
 export default router;

@@ -30,8 +30,8 @@ const Dashboard = () => {
         return (
             <div>
                 <div className="page-header"><div className="page-header-left"><h1>Dashboard</h1></div></div>
-                <div className="grid grid-cols-4">
-                    {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 120, borderRadius: 12 }} />)}
+                <div className="grid grid-cols-5">
+                    {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton" style={{ height: 120, borderRadius: 12 }} />)}
                 </div>
             </div>
         );
@@ -44,6 +44,7 @@ const Dashboard = () => {
         { label: 'Pendientes', value: kpis.pendientes, icon: 'bi-hourglass-split', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
         { label: 'En Producción', value: kpis.en_produccion, icon: 'bi-gear', color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)' },
         { label: 'Clínicas Activas', value: kpis.clinicas_activas, icon: 'bi-building', color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
+        { label: 'Retrocesos (Mes)', value: kpis.retrocesos_mes, icon: 'bi-arrow-counterclockwise', color: '#EF4444', bg: 'rgba(239,68,68,0.12)' }
     ];
 
     const doughnutData = {
@@ -68,6 +69,13 @@ const Dashboard = () => {
         }]
     };
 
+    const formatDateShort = (value) => {
+        if (!value) return '—';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+    };
+
     return (
         <div className="animate-fade-in">
             <div className="page-header">
@@ -78,7 +86,7 @@ const Dashboard = () => {
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-4" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className="grid grid-cols-5" style={{ marginBottom: 'var(--space-6)' }}>
                 {kpiCards.map((kpi, i) => (
                     <div key={i} className="card kpi-card animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
                         <div className="kpi-icon" style={{ background: kpi.bg, color: kpi.color }}>
@@ -146,8 +154,8 @@ const Dashboard = () => {
                                         <td>{p.paciente_nombre}</td>
                                         <td>{p.clinica_nombre}</td>
                                         <td><span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span></td>
-                                        <td>{p.fecha_entrega}</td>
-                                        <td><strong>S/. {parseFloat(p.total).toFixed(2)}</strong></td>
+                                        <td>{formatDateShort(p.fecha_entrega)}</td>
+                                        <td><strong>S/. {parseFloat(p.subtotal ?? p.total).toFixed(2)}</strong></td>
                                     </tr>
                                 ))}
                             </tbody>

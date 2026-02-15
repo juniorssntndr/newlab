@@ -42,6 +42,8 @@ import pedidosRoutes from './routes/pedidos.js';
 import dashboardRoutes from './routes/dashboard.js';
 import notificacionesRoutes from './routes/notificaciones.js';
 import categoriasRoutes from './routes/categorias.js';
+import inventoryRoutes from './routes/inventory.js';
+import usuariosRoutes from './routes/usuarios.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/clinicas', clinicasRoutes);
@@ -50,6 +52,15 @@ app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notificaciones', notificacionesRoutes);
 app.use('/api/categorias', categoriasRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/usuarios', usuariosRoutes);
+
+// Static uploads
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check
 app.get('/', (req, res) => res.json({ status: 'API Online', version: '1.0.0' }));

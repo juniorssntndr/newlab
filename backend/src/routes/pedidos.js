@@ -4,6 +4,8 @@ import { authenticateToken } from '../middleware/auth.js';
 const router = Router();
 router.use(authenticateToken);
 
+const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
+
 // GET /api/pedidos
 router.get('/', async (req, res, next) => {
     try {
@@ -90,8 +92,8 @@ router.post('/', async (req, res, next) => {
         if (items && items.length > 0) {
             subtotal = items.reduce((sum, item) => sum + (item.precio_unitario * (item.cantidad || 1)), 0);
         }
-        const igv = subtotal * 0.18;
-        const total = subtotal + igv;
+        const igv = 0;
+        const total = subtotal;
 
         const client = await pool.connect();
         try {
@@ -151,7 +153,7 @@ router.post('/', async (req, res, next) => {
 router.patch('/:id/estado', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { estado, sub_estado, comentario, responsable_id } = req.body;
+        const { estado, sub_estado, comentario, responsable_id, link_exocad, forzar } = req.body;
         if (!estado) return res.status(400).json({ error: 'Estado es requerido' });
 
         const current = await pool.query('SELECT * FROM nl_pedidos WHERE id = $1', [req.params.id]);
@@ -159,7 +161,18 @@ router.patch('/:id/estado', async (req, res, next) => {
 
         const pedido = current.rows[0];
 
-        // Validate state transitions
+        if (!statusFlow.includes(estado)) {
+            return res.status(400).json({ error: `Estado "${estado}" no válido` });
+        }
+
+        const currentIdx = statusFlow.indexOf(pedido.estado);
+        const nextIdx = statusFlow.indexOf(estado);
+
+        const isSameState = nextIdx === currentIdx;
+        if (isSameState && !(estado === 'esperando_aprobacion' && link_exocad)) {
+            return res.status(400).json({ error: 'El pedido ya está en ese estado' });
+        }
+
         const validTransitions = {
             pendiente: ['en_diseno'],
             en_diseno: ['esperando_aprobacion'],
@@ -168,8 +181,21 @@ router.patch('/:id/estado', async (req, res, next) => {
             terminado: ['enviado']
         };
 
-        if (!validTransitions[pedido.estado]?.includes(estado)) {
-            return res.status(400).json({ error: `Transición de "${pedido.estado}" a "${estado}" no permitida` });
+        if (nextIdx > currentIdx) {
+            const isForced = !!forzar && estado === 'en_produccion' && ['en_diseno', 'esperando_aprobacion'].includes(pedido.estado);
+            if (!validTransitions[pedido.estado]?.includes(estado) && !isForced) {
+                return res.status(400).json({ error: `Transición de "${pedido.estado}" a "${estado}" no permitida` });
+            }
+            if (estado === 'esperando_aprobacion' && !link_exocad) {
+                return res.status(400).json({ error: 'Link de Exocad es requerido para aprobación' });
+            }
+            if (isForced && (!comentario || !comentario.trim())) {
+                return res.status(400).json({ error: 'Motivo es requerido para forzar avance' });
+            }
+        } else if (nextIdx < currentIdx) {
+            if (!comentario || !comentario.trim()) {
+                return res.status(400).json({ error: 'Motivo es requerido para retroceder estado' });
+            }
         }
 
         let updateQuery = 'UPDATE nl_pedidos SET estado = $1, updated_at = NOW()';
@@ -183,11 +209,20 @@ router.patch('/:id/estado', async (req, res, next) => {
 
         const result = await pool.query(updateQuery, updateParams);
 
+        if (estado === 'esperando_aprobacion' && link_exocad) {
+            await pool.query(
+                'INSERT INTO nl_pedido_aprobaciones (pedido_id, link_exocad) VALUES ($1, $2)',
+                [req.params.id, link_exocad]
+            );
+        }
+
         // Timeline
+        const timelineComment = comentario || (estado === 'esperando_aprobacion' && link_exocad ? 'Diseno enviado a aprobacion' : null);
+
         await pool.query(
             `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
        VALUES ($1, $2, $3, $4, $5)`,
-            [req.params.id, pedido.estado, estado, req.user.id, comentario]
+            [req.params.id, pedido.estado, estado, req.user.id, timelineComment]
         );
 
         // Notify: if waiting for approval, notify the client
@@ -228,12 +263,85 @@ router.patch('/:id/estado', async (req, res, next) => {
 router.post('/:id/aprobacion', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { link_exocad } = req.body;
+        const { link_exocad, comentario } = req.body;
+        if (!link_exocad) return res.status(400).json({ error: 'Link de Exocad es requerido' });
+
         const result = await pool.query(
             `INSERT INTO nl_pedido_aprobaciones (pedido_id, link_exocad) VALUES ($1, $2) RETURNING *`,
             [req.params.id, link_exocad]
         );
+
+        await pool.query(
+            `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
+       VALUES ($1, 'esperando_aprobacion', 'esperando_aprobacion', $2, $3)`,
+            [req.params.id, req.user.id, comentario || 'Link de diseno actualizado']
+        );
+
         res.status(201).json(result.rows[0]);
+    } catch (err) { next(err); }
+});
+
+// PATCH /api/pedidos/:id/responsable
+router.patch('/:id/responsable', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
+
+        const { responsable_id, comentario } = req.body;
+
+        let responsableNombre = null;
+        if (responsable_id) {
+            const responsable = await pool.query(
+                "SELECT id, nombre FROM nl_usuarios WHERE id = $1 AND tipo IN ('admin','tecnico') AND estado = 'activo'",
+                [responsable_id]
+            );
+            if (responsable.rows.length === 0) {
+                return res.status(400).json({ error: 'Responsable no valido' });
+            }
+            responsableNombre = responsable.rows[0].nombre;
+        }
+
+        const result = await pool.query(
+            'UPDATE nl_pedidos SET responsable_id = $1 WHERE id = $2 RETURNING *',
+            [responsable_id || null, req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+        const timelineComment = comentario
+            || (responsableNombre ? `Responsable asignado: ${responsableNombre}` : 'Responsable liberado');
+
+        await pool.query(
+            `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
+       VALUES ($1, $2, $3, $4, $5)`,
+            [req.params.id, result.rows[0].estado, result.rows[0].estado, req.user.id, timelineComment]
+        );
+
+        res.json(result.rows[0]);
+    } catch (err) { next(err); }
+});
+
+// PATCH /api/pedidos/:id/fecha-entrega
+router.patch('/:id/fecha-entrega', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
+
+        const { fecha_entrega, comentario } = req.body;
+        if (!fecha_entrega) return res.status(400).json({ error: 'Fecha de entrega requerida' });
+
+        const result = await pool.query(
+            'UPDATE nl_pedidos SET fecha_entrega = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+            [fecha_entrega, req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+        await pool.query(
+            `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
+       VALUES ($1, $2, $3, $4, $5)`,
+            [req.params.id, result.rows[0].estado, result.rows[0].estado, req.user.id, comentario || 'Fecha de entrega actualizada']
+        );
+
+        res.json(result.rows[0]);
     } catch (err) { next(err); }
 });
 
