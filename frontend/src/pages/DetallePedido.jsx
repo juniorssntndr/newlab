@@ -250,13 +250,13 @@ const DetallePedido = () => {
 
     return (
         <div className="animate-fade-in">
-            <div className="page-header">
+            <div className="page-header" style={{ flexWrap: 'wrap' }}>
                 <div className="page-header-left">
                     <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/pedidos')}>
                         <i className="bi bi-arrow-left"></i>
                     </button>
                     <div>
-                        <h1 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                        <h1 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                             {pedido.codigo}
                             <span className={`badge badge-dot badge-${pedido.estado}`}>{statusLabels[pedido.estado]}</span>
                         </h1>
@@ -305,43 +305,33 @@ const DetallePedido = () => {
 
             {/* Status timeline */}
             <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-2) 0' }}>
+                <div className="status-timeline">
                     {statusFlow.map((s, i) => (
-                        <React.Fragment key={s}>
-                            <div style={{ textAlign: 'center', flex: 1 }}>
-                                <div style={{
-                                    width: 32, height: 32, borderRadius: '50%', margin: '0 auto var(--space-2)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '0.75rem', fontWeight: 700,
+                        <div key={s} className="status-step">
+                            <div
+                                className="status-step-dot"
+                                style={{
                                     background: i <= currentIdx ? 'var(--color-primary)' : 'var(--color-bg-alt)',
-                                    color: i <= currentIdx ? '#fff' : 'var(--color-text-secondary)',
-                                    transition: 'all 0.3s ease'
-                                }}>
-                                    {i < currentIdx ? <i className="bi bi-check"></i> : i + 1}
-                                </div>
-                                <div style={{ fontSize: '0.6875rem', fontWeight: i === currentIdx ? 700 : 400, color: i === currentIdx ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>
-                                    {statusLabels[s]}
-                                </div>
+                                    color: i <= currentIdx ? '#fff' : 'var(--color-text-secondary)'
+                                }}
+                            >
+                                {i < currentIdx ? <i className="bi bi-check"></i> : i + 1}
                             </div>
-                            {i < statusFlow.length - 1 && (
-                                <div style={{
-                                    flex: 0.5, height: 2, borderRadius: 1,
-                                    background: i < currentIdx ? 'var(--color-primary)' : 'var(--color-border)',
-                                    transition: 'all 0.3s ease'
-                                }} />
-                            )}
-                        </React.Fragment>
+                            <div className="status-step-label" style={{ fontWeight: i === currentIdx ? 700 : 500, color: i === currentIdx ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>
+                                {statusLabels[s]}
+                            </div>
+                        </div>
                     ))}
                 </div>
             </div>
 
-            <div className="grid grid-cols-3" style={{ gap: 'var(--space-6)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-6)' }}>
                 {/* Left: Details */}
-                <div style={{ gridColumn: 'span 2' }}>
+                <div style={{ flex: '1 1 60%', minWidth: 'min(100%, 280px)', maxWidth: '100%' }}>
                     {/* Summary */}
                     <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
                         <div className="card-header"><h3 className="card-title">Resumen</h3></div>
-                        <div className="grid grid-cols-4">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: 'var(--space-4)' }}>
                             <div className="detail-metric">
                                 <span className="detail-label">Fecha pedido</span>
                                 <div className="detail-value">{formatDate(pedido.fecha || pedido.created_at, true)}</div>
@@ -371,17 +361,18 @@ const DetallePedido = () => {
                     {/* Patient Info */}
                     <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
                         <div className="card-header"><h3 className="card-title">Información</h3></div>
-                        <div className="grid grid-cols-2">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))', gap: 'var(--space-4)' }}>
                             <div><span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Paciente</span><br /><strong>{pedido.paciente_nombre}</strong></div>
                             <div><span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Clínica</span><br /><strong>{pedido.clinica_nombre}</strong></div>
                             <div>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Responsable</span><br />
                                 {user?.tipo === 'admin' ? (
-                                    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-2)' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-2)' }}>
                                         <select
                                             className="form-select form-select-sm"
                                             value={responsableId}
                                             onChange={e => setResponsableId(e.target.value)}
+                                            style={{ flex: '1 1 180px' }}
                                         >
                                             <option value="">Sin asignar</option>
                                             {responsables.map(r => (
@@ -400,12 +391,13 @@ const DetallePedido = () => {
                             <div>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Fecha de entrega</span><br />
                                 {user?.tipo !== 'cliente' ? (
-                                    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-2)' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-2)' }}>
                                         <input
                                             className="form-input form-input-sm"
                                             type="date"
                                             value={deliveryDate}
                                             onChange={e => setDeliveryDate(e.target.value)}
+                                            style={{ flex: '1 1 180px' }}
                                         />
                                         <button className="btn btn-ghost btn-sm" onClick={saveDeliveryDate} disabled={savingDelivery}>
                                             {savingDelivery ? 'Guardando...' : 'Guardar'}
@@ -429,8 +421,8 @@ const DetallePedido = () => {
                             <h3 className="card-title">Items del Pedido</h3>
                             <span className="badge badge-enviado">{itemsCount} {itemsPiecesLabel}</span>
                         </div>
-                        <div className="data-table-wrapper" style={{ border: 'none' }}>
-                            <table className="data-table">
+                        <div className="data-table-wrapper table-scroll-dense desktop-only" style={{ border: 'none', overflowX: 'auto' }}>
+                            <table className="data-table" style={{ minWidth: '600px' }}>
                                 <thead><tr><th>Producto</th><th>Pieza</th><th>Color</th><th>Material</th><th>Cant.</th><th>Subtotal</th></tr></thead>
                                 <tbody>
                                     {(pedido.items || []).map((item, i) => (
@@ -446,6 +438,34 @@ const DetallePedido = () => {
                                 </tbody>
                             </table>
                         </div>
+                        <div className="mobile-cards mobile-only" style={{ marginTop: 'var(--space-3)' }}>
+                            {(pedido.items || []).map((item, i) => (
+                                <article className="mobile-card" key={`item-mobile-${i}`}>
+                                    <div className="mobile-card-head">
+                                        <div className="mobile-card-title">{item.producto_nombre || `Producto #${item.producto_id}`}</div>
+                                        <span className="badge badge-enviado">{item.cantidad} {parseFloat(item.cantidad) === 1 ? 'pieza' : 'piezas'}</span>
+                                    </div>
+                                    <div className="mobile-card-grid">
+                                        <div className="mobile-field">
+                                            <span className="mobile-field-label">Pieza</span>
+                                            <span className="mobile-field-value" style={{ fontFamily: 'var(--font-mono)' }}>{item.pieza_dental || '—'}</span>
+                                        </div>
+                                        <div className="mobile-field">
+                                            <span className="mobile-field-label">Color</span>
+                                            <span className="mobile-field-value">{item.color || '—'}</span>
+                                        </div>
+                                        <div className="mobile-field">
+                                            <span className="mobile-field-label">Material</span>
+                                            <span className="mobile-field-value">{item.material || '—'}</span>
+                                        </div>
+                                        <div className="mobile-field">
+                                            <span className="mobile-field-label">Subtotal</span>
+                                            <span className="mobile-field-value"><strong>S/. {(item.cantidad * parseFloat(item.precio_unitario)).toFixed(2)}</strong></span>
+                                        </div>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
                         <div style={{ textAlign: 'right', padding: 'var(--space-4)', fontSize: '1.25rem', fontWeight: 700, borderTop: '2px solid var(--color-border)' }}>
                             Total: S/. {parseFloat(finalTotal).toFixed(2)}
                         </div>
@@ -453,14 +473,14 @@ const DetallePedido = () => {
                 </div>
 
                 {/* Right: Approval + Timeline */}
-                <div style={{ gridColumn: 'span 1' }}>
+                <div style={{ flex: '1 1 30%', minWidth: 'min(100%, 280px)', maxWidth: '100%' }}>
                     {(isApproval || approvalLink) && (
                         <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
                             <div className="card-header"><h3 className="card-title">Diseño 3D</h3></div>
                             <div className="approval-card">
                                 {approvalLink ? (
                                     <div>
-                                        <div className="approval-link" style={{ marginBottom: 'var(--space-3)' }}>
+                                        <div className="approval-link" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
                                             <i className="bi bi-cube"></i>
                                             <a href={approvalLink} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
                                                 Ver diseño 3D
@@ -480,7 +500,7 @@ const DetallePedido = () => {
                                                     value={approvalComment}
                                                     onChange={e => setApprovalComment(e.target.value)}
                                                 />
-                                                <div className="approval-actions-row">
+                                                <div className="approval-actions-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
                                                     <button
                                                         className="btn btn-accent"
                                                         onClick={() => updateApproval('aprobado')}

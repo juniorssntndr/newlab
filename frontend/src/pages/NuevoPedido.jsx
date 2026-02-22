@@ -113,12 +113,12 @@ const NuevoPedido = () => {
             )}
 
             {/* Step indicators */}
-            <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-6)' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-6)', flexWrap: 'wrap' }}>
                 {['Datos del Paciente', 'Productos', 'Resumen'].map((label, i) => (
                     <button key={i}
                         className={`btn ${step === i + 1 ? 'btn-primary' : i + 1 < step ? 'btn-accent' : 'btn-ghost'} btn-sm`}
                         onClick={() => setStep(i + 1)}
-                        style={{ flex: 1 }}>
+                        style={{ flex: '1 1 160px', whiteSpace: 'normal', textAlign: 'left' }}>
                         <span style={{ marginRight: 6, fontWeight: 700 }}>{i + 1}</span> {label}
                     </button>
                 ))}
@@ -270,7 +270,7 @@ const NuevoPedido = () => {
                         </div>}
                     </div>
 
-                    <div className="data-table-wrapper" style={{ marginBottom: 'var(--space-4)' }}>
+                    <div className="data-table-wrapper table-scroll-dense desktop-only" style={{ marginBottom: 'var(--space-4)' }}>
                         <table className="data-table">
                             <thead><tr><th>Producto</th><th>Pieza</th><th>Color</th><th>Cant.</th><th>P.U.</th><th>Subtotal</th></tr></thead>
                             <tbody>
@@ -286,6 +286,34 @@ const NuevoPedido = () => {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                    <div className="mobile-cards mobile-only" style={{ marginBottom: 'var(--space-4)' }}>
+                        {items.map((item, i) => (
+                            <article className="mobile-card" key={`resumen-item-${i}`}>
+                                <div className="mobile-card-head">
+                                    <div className="mobile-card-title">{item.nombre}</div>
+                                    <span className="badge badge-enviado">{item.cantidad}</span>
+                                </div>
+                                <div className="mobile-card-grid">
+                                    <div className="mobile-field">
+                                        <span className="mobile-field-label">Pieza</span>
+                                        <span className="mobile-field-value">{item.pieza_dental || '—'}</span>
+                                    </div>
+                                    <div className="mobile-field">
+                                        <span className="mobile-field-label">Color</span>
+                                        <span className="mobile-field-value">{item.color || '—'}</span>
+                                    </div>
+                                    <div className="mobile-field">
+                                        <span className="mobile-field-label">Precio unitario</span>
+                                        <span className="mobile-field-value">S/. {item.precio_unitario.toFixed(2)}</span>
+                                    </div>
+                                    <div className="mobile-field">
+                                        <span className="mobile-field-label">Subtotal</span>
+                                        <span className="mobile-field-value"><strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong></span>
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
                     </div>
                     <div style={{ textAlign: 'right', fontSize: '1.25rem', fontWeight: 700 }}>
                         Total: S/. {total.toFixed(2)}

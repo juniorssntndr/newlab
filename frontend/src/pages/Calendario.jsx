@@ -137,14 +137,16 @@ const Calendario = () => {
                                 return;
                             }
                             const rect = info.el.getBoundingClientRect();
+                            const popupWidth = Math.min(280, Math.max(220, window.innerWidth - 20));
                             setSelectedEvent({
                                 id: info.event.id,
                                 title: info.event.title,
                                 ...info.event.extendedProps,
                                 position: {
                                     top: rect.bottom + window.scrollY + 10,
-                                    left: Math.max(10, Math.min(rect.left, window.innerWidth - 300))
-                                }
+                                    left: Math.max(10, Math.min(rect.left, window.innerWidth - popupWidth - 10)),
+                                    width: popupWidth
+                                },
                             });
                         }}
                         dayMaxEventRows={isCompact ? 2 : 3}
@@ -199,11 +201,11 @@ const Calendario = () => {
                             background: 'var(--color-bg-elevated, var(--color-bg-card, #1e293b))',
                             padding: '1.25rem',
                             borderRadius: '12px',
-                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
-                            border: '1px solid var(--color-border, #334155)',
-                            width: '280px'
-                        }}
-                    >
+                             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
+                             border: '1px solid var(--color-border, #334155)',
+                             width: selectedEvent.position.width
+                         }}
+                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text, #f8fafc)' }}>{selectedEvent.title}</h3>
                             <button className="btn-icon" onClick={() => setSelectedEvent(null)} style={{ padding: '0.25rem', background: 'transparent', border: 'none', color: 'var(--color-text-muted, #94a3b8)' }}>
