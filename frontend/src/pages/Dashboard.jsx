@@ -86,9 +86,9 @@ const Dashboard = () => {
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-5" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className="grid dashboard-kpi-grid" style={{ marginBottom: 'var(--space-6)' }}>
                 {kpiCards.map((kpi, i) => (
-                    <div key={i} className="card kpi-card animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
+                    <div key={i} className="card kpi-card dashboard-kpi-card animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
                         <div className="kpi-icon" style={{ background: kpi.bg, color: kpi.color }}>
                             <i className={`bi ${kpi.icon}`}></i>
                         </div>
@@ -162,9 +162,9 @@ const Dashboard = () => {
                             </tbody>
                         </table>
                         </div>
-                        <div className="mobile-cards mobile-only">
+                        <div className="mobile-cards mobile-only recent-orders-mobile">
                             {stats.recientes.map(p => (
-                                <div key={p.id} className="mobile-card" onClick={() => navigate(`/pedidos/${p.id}`)} style={{ cursor: 'pointer' }}>
+                                <div key={p.id} className="mobile-card recent-order-card" onClick={() => navigate(`/pedidos/${p.id}`)} style={{ cursor: 'pointer' }}>
                                     <div className="mobile-card-head">
                                         <div className="mobile-card-title">{p.codigo}</div>
                                         <span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span>

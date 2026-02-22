@@ -351,11 +351,21 @@ router.patch('/:id/aprobacion/:aprobacionId', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { estado, comentario_cliente } = req.body;
+        if (!['aprobado', 'ajuste_solicitado'].includes(estado)) {
+            return res.status(400).json({ error: 'Estado de aprobacion no valido' });
+        }
+
+        const comentarioCliente = typeof comentario_cliente === 'string' ? comentario_cliente.trim() : '';
+        if (estado === 'ajuste_solicitado' && !comentarioCliente) {
+            return res.status(400).json({ error: 'Comentario de ajustes requerido' });
+        }
+
         const result = await pool.query(
             `UPDATE nl_pedido_aprobaciones SET estado=$1, comentario_cliente=$2, respondido_at=NOW()
        WHERE id=$3 RETURNING *`,
-            [estado, comentario_cliente, req.params.aprobacionId]
+            [estado, comentarioCliente || null, req.params.aprobacionId]
         );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Aprobacion no encontrada' });
 
         // If approved, auto-transition pedido to en_produccion
         if (estado === 'aprobado') {
@@ -370,7 +380,7 @@ router.patch('/:id/aprobacion/:aprobacionId', async (req, res, next) => {
             await pool.query(
                 `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
          VALUES ($1, 'esperando_aprobacion', 'en_diseno', $2, $3)`,
-                [req.params.id, req.user.id, `Ajuste solicitado: ${comentario_cliente}`]
+                [req.params.id, req.user.id, `Ajuste solicitado: ${comentarioCliente}`]
             );
         }
 

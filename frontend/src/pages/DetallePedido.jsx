@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config.js';
@@ -8,6 +8,13 @@ const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
     en_produccion: 'En Producción', terminado: 'Terminado', enviado: 'Enviado'
 };
+
+const approvalStatusLabels = {
+    pendiente: 'Pendiente',
+    aprobado: 'Aprobado',
+    ajuste_solicitado: 'Ajuste solicitado'
+};
+
 const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
 
 const DetallePedido = () => {
@@ -20,7 +27,8 @@ const DetallePedido = () => {
     const [approvalModalOpen, setApprovalModalOpen] = useState(false);
     const [exocadLink, setExocadLink] = useState('');
     const [approvalNote, setApprovalNote] = useState('');
-    const [approvalComment, setApprovalComment] = useState('');
+    const [adjustComment, setAdjustComment] = useState('');
+    const [adjustPopoverOpen, setAdjustPopoverOpen] = useState(false);
     const [rollbackModalOpen, setRollbackModalOpen] = useState(false);
     const [rollbackState, setRollbackState] = useState('');
     const [rollbackReason, setRollbackReason] = useState('');
@@ -31,6 +39,9 @@ const DetallePedido = () => {
     const [savingResponsable, setSavingResponsable] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState('');
     const [savingDelivery, setSavingDelivery] = useState(false);
+    const adjustPopoverRef = useRef(null);
+    const adjustButtonRef = useRef(null);
+    const adjustTextareaRef = useRef(null);
 
     const fetchPedido = () => {
         fetch(`${API_URL}/pedidos/${id}`, { headers: getHeaders() })
@@ -69,6 +80,36 @@ const DetallePedido = () => {
             setDeliveryDate('');
         }
     }, [pedido?.fecha_entrega]);
+
+    useEffect(() => {
+        if (!adjustPopoverOpen) return;
+        const handleOutsideClick = (event) => {
+            if (!adjustPopoverRef.current?.contains(event.target)) {
+                setAdjustPopoverOpen(false);
+            }
+        };
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                setAdjustPopoverOpen(false);
+                adjustButtonRef.current?.focus();
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [adjustPopoverOpen]);
+
+    useEffect(() => {
+        if (adjustPopoverOpen) {
+            window.setTimeout(() => {
+                adjustTextareaRef.current?.focus();
+            }, 0);
+        }
+    }, [adjustPopoverOpen]);
 
     const changeStatus = async (newStatus, options = {}) => {
         setUpdating(true);
@@ -156,7 +197,7 @@ const DetallePedido = () => {
         if (!pedido?.aprobaciones?.length) return;
         if (estado === 'ajuste_solicitado' && !comentarioCliente.trim()) {
             alert('Escribe el motivo del ajuste');
-            return;
+            return false;
         }
         setUpdating(true);
         try {
@@ -170,13 +211,21 @@ const DetallePedido = () => {
                 const data = await res.json();
                 throw new Error(data.error || 'Error al responder aprobacion');
             }
-            setApprovalComment('');
             fetchPedido();
+            return true;
         } catch (err) {
             alert(err.message);
+            return false;
         } finally {
             setUpdating(false);
         }
+    };
+
+    const submitAdjustmentRequest = async () => {
+        const ok = await updateApproval('ajuste_solicitado', adjustComment);
+        if (!ok) return;
+        setAdjustComment('');
+        setAdjustPopoverOpen(false);
     };
 
     const saveResponsable = async () => {
@@ -246,6 +295,11 @@ const DetallePedido = () => {
     const currentApproval = (pedido.aprobaciones || [])[0];
     const approvalLink = currentApproval?.link_exocad;
     const approvalEstado = currentApproval?.estado || 'pendiente';
+    const approvalBadgeClass = approvalEstado === 'aprobado'
+        ? 'badge-approval-approved'
+        : approvalEstado === 'ajuste_solicitado'
+            ? 'badge-approval-adjust'
+            : 'badge-approval-pending';
     const rollbackOptions = statusFlow.slice(0, Math.max(currentIdx, 0));
 
     return (
@@ -379,7 +433,8 @@ const DetallePedido = () => {
                                                 <option key={r.id} value={r.id}>{r.nombre}</option>
                                             ))}
                                         </select>
-                                        <button className="btn btn-ghost btn-sm" onClick={saveResponsable} disabled={savingResponsable}>
+                                        <button className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
+                                            <i className="bi bi-check2"></i>
                                             {savingResponsable ? 'Guardando...' : 'Guardar'}
                                         </button>
                                     </div>
@@ -399,7 +454,8 @@ const DetallePedido = () => {
                                             onChange={e => setDeliveryDate(e.target.value)}
                                             style={{ flex: '1 1 180px' }}
                                         />
-                                        <button className="btn btn-ghost btn-sm" onClick={saveDeliveryDate} disabled={savingDelivery}>
+                                        <button className="btn btn-primary btn-sm btn-commit" onClick={saveDeliveryDate} disabled={savingDelivery}>
+                                            <i className="bi bi-check2"></i>
                                             {savingDelivery ? 'Guardando...' : 'Guardar'}
                                         </button>
                                     </div>
@@ -480,12 +536,12 @@ const DetallePedido = () => {
                             <div className="approval-card">
                                 {approvalLink ? (
                                     <div>
-                                        <div className="approval-link" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                                        <div className="approval-link approval-link-highlight" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
                                             <i className="bi bi-cube"></i>
-                                            <a href={approvalLink} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                                            <a href={approvalLink} target="_blank" rel="noreferrer" className="btn btn-link-strong btn-sm">
                                                 Ver diseño 3D
                                             </a>
-                                            <span className="badge badge-enviado">{approvalEstado.replace(/_/g, ' ')}</span>
+                                            <span className={`badge ${approvalBadgeClass}`}>{approvalStatusLabels[approvalEstado] || approvalEstado.replace(/_/g, ' ')}</span>
                                         </div>
                                         {isLab && (
                                             <button className="btn btn-primary btn-sm" onClick={() => setApprovalModalOpen(true)}>
@@ -494,12 +550,6 @@ const DetallePedido = () => {
                                         )}
                                         {!isLab && isApproval && (
                                             <div className="approval-actions">
-                                                <textarea
-                                                    className="form-textarea approval-textarea"
-                                                    placeholder="Comentarios para ajustes (si aplica)"
-                                                    value={approvalComment}
-                                                    onChange={e => setApprovalComment(e.target.value)}
-                                                />
                                                 <div className="approval-actions-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
                                                     <button
                                                         className="btn btn-accent"
@@ -508,13 +558,47 @@ const DetallePedido = () => {
                                                     >
                                                         <i className="bi bi-check-lg"></i> Aprobar diseño
                                                     </button>
-                                                    <button
-                                                        className="btn btn-secondary"
-                                                        onClick={() => updateApproval('ajuste_solicitado', approvalComment)}
-                                                        disabled={updating}
-                                                    >
-                                                        <i className="bi bi-chat-left-text"></i> Solicitar ajustes
-                                                    </button>
+                                                    <div className="approval-popover-wrap" ref={adjustPopoverRef}>
+                                                        <button
+                                                            ref={adjustButtonRef}
+                                                            className="btn btn-secondary"
+                                                            onClick={() => setAdjustPopoverOpen(prev => !prev)}
+                                                            disabled={updating}
+                                                        >
+                                                            <i className="bi bi-chat-left-text"></i> Solicitar ajustes
+                                                        </button>
+                                                        {adjustPopoverOpen && (
+                                                            <div className="approval-popover animate-fade-in" role="dialog" aria-label="Solicitar ajustes">
+                                                                <label className="form-label" style={{ marginBottom: 'var(--space-2)' }}>Comentarios de ajustes *</label>
+                                                                <textarea
+                                                                    ref={adjustTextareaRef}
+                                                                    className="form-textarea approval-textarea"
+                                                                    placeholder="Describe los cambios que necesitas"
+                                                                    value={adjustComment}
+                                                                    onChange={e => setAdjustComment(e.target.value)}
+                                                                />
+                                                                <div className="approval-popover-actions">
+                                                                    <button
+                                                                        className="btn btn-ghost btn-sm"
+                                                                        onClick={() => {
+                                                                            setAdjustPopoverOpen(false);
+                                                                            setAdjustComment('');
+                                                                        }}
+                                                                        disabled={updating}
+                                                                    >
+                                                                        Cancelar
+                                                                    </button>
+                                                                    <button
+                                                                        className="btn btn-secondary btn-sm"
+                                                                        onClick={submitAdjustmentRequest}
+                                                                        disabled={updating || !adjustComment.trim()}
+                                                                    >
+                                                                        {updating ? 'Enviando...' : 'Enviar ajustes'}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
