@@ -150,7 +150,7 @@ const Productos = () => {
                         <i className="bi bi-search"></i>
                         <input className="form-input" placeholder="Buscar producto..." value={search} onChange={e => setSearch(e.target.value)} />
                     </div>
-                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                    <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                         <button className={`btn ${!filtroTipo ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                             onClick={() => setFiltroTipo('')}>Todos</button>
                         {Object.entries(tipoLabels).map(([key, label]) => (

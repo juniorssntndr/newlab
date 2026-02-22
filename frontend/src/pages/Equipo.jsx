@@ -102,7 +102,8 @@ const Equipo = () => {
                         <p className="empty-state-text">Agrega tu primer integrante del equipo</p>
                     </div>
                 ) : (
-                    <div className="data-table-wrapper" style={{ border: 'none' }}>
+                    <>
+                        <div className="data-table-wrapper desktop-only" style={{ border: 'none' }}>
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -133,7 +134,28 @@ const Equipo = () => {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                        </div>
+                        <div className="mobile-cards mobile-only">
+                            {usuarios.map(u => (
+                                <div key={u.id} className="mobile-card">
+                                    <div className="mobile-card-head">
+                                        <div className="mobile-card-title">{u.nombre}</div>
+                                        <span className={`badge ${u.estado === 'activo' ? 'badge-terminado' : 'badge-enviado'}`}>{u.estado}</span>
+                                    </div>
+                                    <div className="mobile-card-grid">
+                                        <div className="mobile-field"><span className="mobile-field-label">Email</span><span className="mobile-field-value">{u.email}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Tipo</span><span className="mobile-field-value">{u.tipo}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Ultimo acceso</span><span className="mobile-field-value">{u.ultimo_acceso ? new Date(u.ultimo_acceso).toLocaleString('es-PE') : '—'}</span></div>
+                                    </div>
+                                    <div className="mobile-card-actions">
+                                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(u)}>
+                                            Editar <i className="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 

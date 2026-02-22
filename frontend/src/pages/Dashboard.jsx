@@ -116,7 +116,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Bar chart */}
-                <div className="card" style={{ gridColumn: 'span 2' }}>
+                <div className="card col-span-2">
                     <div className="card-header"><h3 className="card-title">Ingresos Mensuales</h3></div>
                     {(stats?.ingresos_mensuales || []).length > 0 ? (
                         <Bar data={barData} options={{
@@ -140,7 +140,8 @@ const Dashboard = () => {
                     <button className="btn btn-ghost btn-sm" onClick={() => navigate('/pedidos')}>Ver todos →</button>
                 </div>
                 {(stats?.recientes || []).length > 0 ? (
-                    <div className="data-table-wrapper" style={{ border: 'none' }}>
+                    <>
+                        <div className="data-table-wrapper desktop-only" style={{ border: 'none' }}>
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -160,7 +161,24 @@ const Dashboard = () => {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                        </div>
+                        <div className="mobile-cards mobile-only">
+                            {stats.recientes.map(p => (
+                                <div key={p.id} className="mobile-card" onClick={() => navigate(`/pedidos/${p.id}`)} style={{ cursor: 'pointer' }}>
+                                    <div className="mobile-card-head">
+                                        <div className="mobile-card-title">{p.codigo}</div>
+                                        <span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span>
+                                    </div>
+                                    <div className="mobile-card-grid">
+                                        <div className="mobile-field"><span className="mobile-field-label">Paciente</span><span className="mobile-field-value">{p.paciente_nombre}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Clinica</span><span className="mobile-field-value">{p.clinica_nombre}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Entrega</span><span className="mobile-field-value">{formatDateShort(p.fecha_entrega)}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Total</span><span className="mobile-field-value"><strong>S/. {parseFloat(p.subtotal ?? p.total).toFixed(2)}</strong></span></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 ) : (
                     <div className="empty-state">
                         <i className="bi bi-clipboard2 empty-state-icon"></i>

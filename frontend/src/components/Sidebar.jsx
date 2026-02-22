@@ -12,6 +12,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
             section: 'Principal', items: [
                 { to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' },
                 { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Pedidos' },
+                { to: '/finanzas', icon: 'bi-cash-stack', label: 'Finanzas' },
                 { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
             ]
         },
@@ -38,9 +39,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
 
     return (
         <>
-            {mobileOpen && <div className="sidebar-overlay" onClick={onMobileClose} style={{
-                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99
-            }} />}
+            {mobileOpen && <div className="sidebar-overlay" onClick={onMobileClose} />}
             <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-brand">
                     <div className="brand-logo">N</div>

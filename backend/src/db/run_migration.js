@@ -14,12 +14,18 @@ const __dirname = path.dirname(__filename);
 
 async function runMigration() {
     try {
-        const sqlPath = path.join(__dirname, 'migration_materials.sql');
-        const sql = fs.readFileSync(sqlPath, 'utf8');
+        const files = fs.readdirSync(__dirname)
+            .filter((file) => file.startsWith('migration_') && file.endsWith('.sql'))
+            .sort();
 
-        console.log('Running migration...');
-        await pool.query(sql);
-        console.log('Migration completed successfully.');
+        console.log('Running migrations...');
+        for (const file of files) {
+            const sqlPath = path.join(__dirname, file);
+            const sql = fs.readFileSync(sqlPath, 'utf8');
+            console.log(`- ${file}`);
+            await pool.query(sql);
+        }
+        console.log('Migrations completed successfully.');
     } catch (err) {
         console.error('Migration failed:', err);
     } finally {

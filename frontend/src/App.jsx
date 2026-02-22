@@ -9,6 +9,8 @@ import Productos from './pages/Productos.jsx';
 import Pedidos from './pages/Pedidos.jsx';
 import NuevoPedido from './pages/NuevoPedido.jsx';
 import DetallePedido from './pages/DetallePedido.jsx';
+import Finanzas from './pages/Finanzas.jsx';
+import DetalleFinanza from './pages/DetalleFinanza.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Equipo from './pages/Equipo.jsx';
@@ -64,6 +66,8 @@ const App = () => {
                 <Route path="pedidos" element={<Pedidos />} />
                 <Route path="pedidos/nuevo" element={<NuevoPedido />} />
                 <Route path="pedidos/:id" element={<DetallePedido />} />
+                <Route path="finanzas" element={<LabOnlyRoute><Finanzas /></LabOnlyRoute>} />
+                <Route path="finanzas/:id" element={<LabOnlyRoute><DetalleFinanza /></LabOnlyRoute>} />
                 <Route path="calendario" element={<LabOnlyRoute><Calendario /></LabOnlyRoute>} />
                 <Route path="cuenta" element={<Cuenta />} />
                 <Route path="equipo" element={<AdminOnlyRoute><Equipo /></AdminOnlyRoute>} />

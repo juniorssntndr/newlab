@@ -75,7 +75,8 @@ const Clinicas = () => {
                         </button>
                     </div>
                 ) : (
-                    <div className="data-table-wrapper">
+                    <>
+                        <div className="data-table-wrapper desktop-only">
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -106,7 +107,29 @@ const Clinicas = () => {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                        </div>
+                        <div className="mobile-cards mobile-only">
+                            {clinicas.map(c => (
+                                <div key={c.id} className="mobile-card">
+                                    <div className="mobile-card-head">
+                                        <div className="mobile-card-title">{c.nombre}</div>
+                                        <span className={`badge ${c.estado === 'activo' ? 'badge-terminado' : 'badge-enviado'}`}>{c.estado}</span>
+                                    </div>
+                                    <div className="mobile-card-grid">
+                                        <div className="mobile-field"><span className="mobile-field-label">RUC / DNI</span><span className="mobile-field-value">{c.ruc || c.dni || '—'}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Contacto</span><span className="mobile-field-value">{c.contacto_nombre || '—'}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Telefono</span><span className="mobile-field-value">{c.telefono || '—'}</span></div>
+                                        {c.razon_social && <div className="mobile-field"><span className="mobile-field-label">Razon social</span><span className="mobile-field-value">{c.razon_social}</span></div>}
+                                    </div>
+                                    <div className="mobile-card-actions">
+                                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(c)}>
+                                            Editar <i className="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 

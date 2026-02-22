@@ -150,7 +150,7 @@ const Almacen = () => {
                     </div>
                 </div>
 
-                <div className="data-table-wrapper" style={{ border: 'none' }}>
+                <div className="data-table-wrapper desktop-only" style={{ border: 'none' }}>
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -207,6 +207,41 @@ const Almacen = () => {
                             )}
                         </tbody>
                     </table>
+                </div>
+                <div className="mobile-cards mobile-only" style={{ marginTop: 'var(--space-4)' }}>
+                    {loading ? (
+                        [1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 12 }} />)
+                    ) : filteredMateriales.length === 0 ? (
+                        <div className="mobile-card">
+                            <div className="mobile-field-value">No hay materiales registrados</div>
+                        </div>
+                    ) : (
+                        filteredMateriales.map(m => {
+                            const lowStock = parseFloat(m.stock_actual) < parseFloat(m.stock_minimo);
+                            return (
+                                <div key={m.id} className="mobile-card">
+                                    <div className="mobile-card-head">
+                                        <div className="mobile-card-title">{m.nombre}</div>
+                                        {lowStock ? (
+                                            <span className="badge badge-error">Bajo stock</span>
+                                        ) : (
+                                            <span className="badge badge-success">Normal</span>
+                                        )}
+                                    </div>
+                                    <div className="mobile-card-grid">
+                                        <div className="mobile-field"><span className="mobile-field-label">Stock actual</span><span className="mobile-field-value">{m.stock_actual}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Stock minimo</span><span className="mobile-field-value">{m.stock_minimo}</span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Unidad</span><span className="mobile-field-value">{m.unidad}</span></div>
+                                    </div>
+                                    <div className="mobile-card-actions">
+                                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(m)}>
+                                            Editar <i className="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
             </div>
 
