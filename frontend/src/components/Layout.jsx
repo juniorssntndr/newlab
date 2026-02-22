@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Header from './Header.jsx';
 import NotificationsPanel from './NotificationsPanel.jsx';
+import NotificationToasts from './NotificationToasts.jsx';
 import { useNotifications } from '../state/NotificationContext.jsx';
 
 const Layout = () => {
@@ -24,6 +25,7 @@ const Layout = () => {
                     <Outlet />
                 </div>
             </main>
+            <NotificationToasts />
             {panelOpen && <NotificationsPanel />}
         </div>
     );

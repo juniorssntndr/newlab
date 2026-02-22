@@ -301,6 +301,16 @@ const DetallePedido = () => {
             ? 'badge-approval-adjust'
             : 'badge-approval-pending';
     const rollbackOptions = statusFlow.slice(0, Math.max(currentIdx, 0));
+    const timelineSorted = [...(pedido.timeline || [])].sort((a, b) => {
+        const timeA = a?.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b?.created_at ? new Date(b.created_at).getTime() : 0;
+
+        if (timeA !== timeB) return timeB - timeA;
+
+        const idA = Number(a?.id) || 0;
+        const idB = Number(b?.id) || 0;
+        return idB - idA;
+    });
 
     return (
         <div className="animate-fade-in">
@@ -620,20 +630,24 @@ const DetallePedido = () => {
 
                     <div className="card">
                         <div className="card-header"><h3 className="card-title">Historial</h3></div>
-                        {(pedido.timeline || []).length === 0 ? (
+                        {timelineSorted.length === 0 ? (
                             <div className="empty-state" style={{ padding: '2rem' }}>
                                 <p className="empty-state-text">Sin actividad registrada</p>
                             </div>
                         ) : (
                             <div style={{ position: 'relative', paddingLeft: 20 }}>
                                 <div style={{ position: 'absolute', left: 7, top: 0, bottom: 0, width: 2, background: 'var(--color-border)' }} />
-                                {pedido.timeline.map((t, i) => {
+                                {timelineSorted.map((t, i) => {
                                     const accion = t.accion || (t.estado_nuevo ? `Cambio a ${statusLabels[t.estado_nuevo] || t.estado_nuevo}` : 'Actualizacion');
                                     const detalle = t.detalle || t.comentario;
+                                    const isLatest = i === 0;
                                     return (
-                                        <div key={i} style={{ position: 'relative', paddingBottom: 'var(--space-4)', paddingLeft: 'var(--space-4)' }}>
-                                            <div style={{ position: 'absolute', left: -2, top: 4, width: 12, height: 12, borderRadius: '50%', background: i === 0 ? 'var(--color-primary)' : 'var(--color-border)', border: '2px solid var(--color-bg)' }} />
-                                            <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{accion}</div>
+                                        <div key={i} className={`timeline-entry ${isLatest ? 'is-latest' : ''}`}>
+                                            <div className={`timeline-dot ${isLatest ? 'is-latest' : ''}`} />
+                                            <div className="timeline-title-row">
+                                                <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{accion}</div>
+                                                {isLatest && <span className="badge badge-esperando_aprobacion">Ultimo cambio</span>}
+                                            </div>
                                             {detalle && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>{detalle}</div>}
                                             <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
                                                 {new Date(t.created_at).toLocaleString('es-PE')} • {t.usuario_nombre || 'Sistema'}

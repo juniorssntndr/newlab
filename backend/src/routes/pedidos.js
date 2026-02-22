@@ -58,7 +58,7 @@ router.get('/:id', async (req, res, next) => {
         const timeline = await pool.query(
             `SELECT t.*, u.nombre as usuario_nombre FROM nl_pedido_timeline t
        LEFT JOIN nl_usuarios u ON t.usuario_id = u.id
-       WHERE t.pedido_id = $1 ORDER BY t.created_at ASC`, [req.params.id]
+       WHERE t.pedido_id = $1 ORDER BY t.created_at DESC NULLS LAST, t.id DESC`, [req.params.id]
         );
 
         const aprobaciones = await pool.query(
@@ -367,6 +367,11 @@ router.patch('/:id/aprobacion/:aprobacionId', async (req, res, next) => {
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Aprobacion no encontrada' });
 
+        const pedidoResult = await pool.query('SELECT id, codigo FROM nl_pedidos WHERE id = $1', [req.params.id]);
+        if (pedidoResult.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+        const pedido = pedidoResult.rows[0];
+        const labUsers = await pool.query("SELECT id FROM nl_usuarios WHERE tipo IN ('admin','tecnico') AND estado='activo'");
+
         // If approved, auto-transition pedido to en_produccion
         if (estado === 'aprobado') {
             await pool.query("UPDATE nl_pedidos SET estado='en_produccion', updated_at=NOW() WHERE id=$1", [req.params.id]);
@@ -375,6 +380,14 @@ router.patch('/:id/aprobacion/:aprobacionId', async (req, res, next) => {
          VALUES ($1, 'esperando_aprobacion', 'en_produccion', $2, 'Diseño aprobado por el cliente')`,
                 [req.params.id, req.user.id]
             );
+
+            for (const lu of labUsers.rows) {
+                await pool.query(
+                    `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
+             VALUES ($1, 'aprobacion_aprobada', 'Diseño aprobado', $2, $3)`,
+                    [lu.id, `Cliente aprobó el diseño de ${pedido.codigo}`, `/pedidos/${pedido.id}`]
+                );
+            }
         } else if (estado === 'ajuste_solicitado') {
             await pool.query("UPDATE nl_pedidos SET estado='en_diseno', updated_at=NOW() WHERE id=$1", [req.params.id]);
             await pool.query(
@@ -382,6 +395,14 @@ router.patch('/:id/aprobacion/:aprobacionId', async (req, res, next) => {
          VALUES ($1, 'esperando_aprobacion', 'en_diseno', $2, $3)`,
                 [req.params.id, req.user.id, `Ajuste solicitado: ${comentarioCliente}`]
             );
+
+            for (const lu of labUsers.rows) {
+                await pool.query(
+                    `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
+             VALUES ($1, 'ajuste_solicitado', 'Ajustes solicitados', $2, $3)`,
+                    [lu.id, `Cliente solicitó ajustes para ${pedido.codigo}`, `/pedidos/${pedido.id}`]
+                );
+            }
         }
 
         res.json(result.rows[0]);
