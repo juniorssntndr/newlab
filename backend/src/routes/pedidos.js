@@ -11,7 +11,8 @@ router.get('/', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { estado, clinica_id, search, responsable_id } = req.query;
-        let query = `SELECT p.*, c.nombre as clinica_nombre, u.nombre as responsable_nombre
+        let query = `SELECT p.*, c.nombre as clinica_nombre, u.nombre as responsable_nombre,
+                 (SELECT pr.nombre FROM nl_pedido_items pi JOIN nl_productos pr ON pi.producto_id = pr.id WHERE pi.pedido_id = p.id LIMIT 1) as producto_principal
                  FROM nl_pedidos p
                  LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
                  LEFT JOIN nl_usuarios u ON p.responsable_id = u.id
