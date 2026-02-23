@@ -9,6 +9,7 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const showDemoCredentials = import.meta.env.DEV;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -63,23 +64,25 @@ const Login = () => {
                     </button>
                 </form>
 
-                <div className="login-demo">
-                    <p className="login-demo-title">Credenciales de demostración</p>
-                    <div className="demo-credentials">
-                        <div className="demo-cred" onClick={() => fillDemo('admin@newlab.pe', 'admin123')}>
-                            <span className="demo-cred-role">👑 Admin</span>
-                            <span className="demo-cred-email">admin@newlab.pe</span>
-                        </div>
-                        <div className="demo-cred" onClick={() => fillDemo('tecnico@newlab.pe', 'tecnico123')}>
-                            <span className="demo-cred-role">🔧 Técnico</span>
-                            <span className="demo-cred-email">tecnico@newlab.pe</span>
-                        </div>
-                        <div className="demo-cred" onClick={() => fillDemo('roberto@sonrisas.pe', 'cliente123')}>
-                            <span className="demo-cred-role">🦷 Cliente</span>
-                            <span className="demo-cred-email">roberto@sonrisas.pe</span>
+                {showDemoCredentials && (
+                    <div className="login-demo">
+                        <p className="login-demo-title">Credenciales de demostración</p>
+                        <div className="demo-credentials">
+                            <div className="demo-cred" onClick={() => fillDemo('admin@newlab.pe', 'admin123')}>
+                                <span className="demo-cred-role">👑 Admin</span>
+                                <span className="demo-cred-email">admin@newlab.pe</span>
+                            </div>
+                            <div className="demo-cred" onClick={() => fillDemo('tecnico@newlab.pe', 'tecnico123')}>
+                                <span className="demo-cred-role">🔧 Técnico</span>
+                                <span className="demo-cred-email">tecnico@newlab.pe</span>
+                            </div>
+                            <div className="demo-cred" onClick={() => fillDemo('roberto@sonrisas.pe', 'cliente123')}>
+                                <span className="demo-cred-role">🦷 Cliente</span>
+                                <span className="demo-cred-email">roberto@sonrisas.pe</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

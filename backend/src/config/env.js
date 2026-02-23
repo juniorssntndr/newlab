@@ -9,10 +9,7 @@ const requireEnv = (key) => {
 };
 
 export const getJwtSecret = () => {
-    if (isProduction) {
-        return requireEnv('JWT_SECRET');
-    }
-    return process.env.JWT_SECRET || 'newlab-secret';
+    return requireEnv('JWT_SECRET');
 };
 
 export const getDatabaseUrl = () => requireEnv('DATABASE_URL');
