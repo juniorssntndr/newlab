@@ -13,7 +13,7 @@ const seed = async () => {
   try {
     // Clean all tables in reverse dependency order
     await pool.query(`
-      TRUNCATE nl_notificaciones, nl_pedido_timeline, nl_pedido_items, nl_pedidos,
+      TRUNCATE nl_audit_eventos, nl_pagos, nl_notificaciones, nl_pedido_timeline, nl_pedido_items, nl_pedidos,
                nl_precios_producto, nl_productos, nl_categorias_trabajo,
                nl_usuarios, nl_clinicas, nl_roles CASCADE
     `);

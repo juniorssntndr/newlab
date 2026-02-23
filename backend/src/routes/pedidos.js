@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
+import { validateBody } from '../middleware/validate.js';
+import { createPedidoSchema } from '../validation/schemas.js';
+import { writeAuditEvent } from '../services/audit.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -75,7 +78,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // POST /api/pedidos
-router.post('/', async (req, res, next) => {
+router.post('/', validateBody(createPedidoSchema), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls, items } = req.body;
@@ -83,10 +86,10 @@ router.post('/', async (req, res, next) => {
             return res.status(400).json({ error: 'Clínica, paciente y fecha de entrega son requeridos' });
         }
 
-        // Generate unique code
-        const countResult = await pool.query('SELECT COUNT(*) FROM nl_pedidos');
-        const count = parseInt(countResult.rows[0].count) + 1;
-        const codigo = `NL-${String(count).padStart(5, '0')}`;
+        // Generate unique code safely under concurrency
+        const nextIdResult = await pool.query("SELECT nextval(pg_get_serial_sequence('nl_pedidos','id')) as id");
+        const nextPedidoId = parseInt(nextIdResult.rows[0].id, 10);
+        const codigo = `NL-${String(nextPedidoId).padStart(5, '0')}`;
 
         // Calculate totals from items
         let subtotal = 0;
@@ -101,9 +104,9 @@ router.post('/', async (req, res, next) => {
             await client.query('BEGIN');
 
             const pedidoResult = await client.query(
-                `INSERT INTO nl_pedidos (codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls, subtotal, igv, total, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-                [codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls, subtotal, igv, total, req.user.id]
+                `INSERT INTO nl_pedidos (id, codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls, subtotal, igv, total, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+                [nextPedidoId, codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls, subtotal, igv, total, req.user.id]
             );
             const pedido = pedidoResult.rows[0];
 
@@ -140,6 +143,13 @@ router.post('/', async (req, res, next) => {
             }
 
             await client.query('COMMIT');
+            await writeAuditEvent(req, {
+                entidad: 'pedido',
+                entidadId: pedido.id,
+                accion: 'pedido_created',
+                descripcion: `Pedido ${codigo} creado`,
+                metadata: { clinica_id, paciente_nombre, total }
+            });
             res.status(201).json(pedido);
         } catch (err) {
             await client.query('ROLLBACK');
@@ -255,6 +265,19 @@ router.patch('/:id/estado', async (req, res, next) => {
                 );
             }
         }
+
+        await writeAuditEvent(req, {
+            entidad: 'pedido',
+            entidadId: req.params.id,
+            accion: 'pedido_estado_updated',
+            descripcion: `Cambio de estado de ${pedido.estado} a ${estado}`,
+            metadata: {
+                estado_anterior: pedido.estado,
+                estado_nuevo: estado,
+                comentario: comentario || null,
+                forzar: !!forzar
+            }
+        });
 
         res.json(result.rows[0]);
     } catch (err) { next(err); }

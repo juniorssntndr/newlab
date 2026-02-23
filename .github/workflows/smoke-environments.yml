@@ -1,0 +1,59 @@
+name: Smoke Environments
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  smoke-staging:
+    if: ${{ secrets.STAGING_BACKEND_URL != '' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run staging smoke
+        env:
+          SMOKE_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
+          SMOKE_FRONTEND_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+        run: npm run smoke
+
+  smoke-production:
+    if: ${{ secrets.PROD_BACKEND_URL != '' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run production smoke
+        env:
+          SMOKE_BACKEND_URL: ${{ secrets.PROD_BACKEND_URL }}
+          SMOKE_FRONTEND_URL: ${{ secrets.PROD_FRONTEND_URL }}
+        run: npm run smoke

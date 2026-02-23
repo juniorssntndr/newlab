@@ -5,6 +5,11 @@ import { API_URL } from '../config.js';
 
 const tipoLabels = { fija: 'Prótesis Fija', implante: 'Sobre Implantes', removible: 'Removible (PPR)', especialidad: 'Especialidades' };
 const tipoColors = { fija: '#0891B2', implante: '#8B5CF6', removible: '#F59E0B', especialidad: '#10B981' };
+const resolveImageUrl = (imageUrl) => {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+    return `${API_URL}${imageUrl}`;
+};
 
 const Productos = () => {
     const { getHeaders } = useAuth();
@@ -189,7 +194,7 @@ const Productos = () => {
                                     <div style={{ display: 'flex', gap: '1rem' }}>
                                         {p.image_url && (
                                             <div style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-                                                <img src={`${API_URL}${p.image_url}`} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <img src={resolveImageUrl(p.image_url)} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             </div>
                                         )}
                                         <div style={{ flex: 1 }}>

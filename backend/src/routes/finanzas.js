@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
+import { validateBody } from '../middleware/validate.js';
+import { createPagoSchema } from '../validation/schemas.js';
+import { writeAuditEvent } from '../services/audit.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -14,7 +17,8 @@ const buildEstadoPagoCase = (alias = 'p', pagoAlias = 'pg') => {
 
 const normalizePago = (pago) => ({
     ...pago,
-    monto: parseFloat(pago.monto)
+    monto: parseFloat(pago.monto),
+    conciliado: !!pago.conciliado
 });
 
 // GET /api/finanzas
@@ -113,6 +117,7 @@ router.get('/:id', async (req, res, next) => {
         const total = parseFloat(pedido.total || 0);
         const saldo = total - montoPagado;
         const estadoPago = montoPagado >= total ? 'cancelado' : montoPagado > 0 ? 'pago_parcial' : 'por_cancelar';
+        const pagosPendientesConciliacion = pagos.filter((pago) => !pago.conciliado).length;
 
         res.json({
             ...pedido,
@@ -120,13 +125,14 @@ router.get('/:id', async (req, res, next) => {
             pagos,
             monto_pagado: montoPagado,
             saldo,
-            estado_pago: estadoPago
+            estado_pago: estadoPago,
+            pagos_pendientes_conciliacion: pagosPendientesConciliacion
         });
     } catch (err) { next(err); }
 });
 
 // POST /api/finanzas/:id/pagos
-router.post('/:id/pagos', async (req, res, next) => {
+router.post('/:id/pagos', validateBody(createPagoSchema), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
@@ -137,17 +143,114 @@ router.post('/:id/pagos', async (req, res, next) => {
             return res.status(400).json({ error: 'Monto válido es requerido' });
         }
 
-        const pedidoResult = await pool.query('SELECT id FROM nl_pedidos WHERE id = $1', [req.params.id]);
-        if (pedidoResult.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
 
-        const result = await pool.query(
-            `INSERT INTO nl_pagos (pedido_id, monto, metodo, referencia, fecha_pago, notas, creado_por)
-             VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_DATE), $6, $7)
-             RETURNING *`,
-            [req.params.id, montoNumber, metodo || 'transferencia', referencia || null, fecha_pago || null, notas || null, req.user.id]
+            const pedidoResult = await client.query('SELECT id, codigo, total FROM nl_pedidos WHERE id = $1 FOR UPDATE', [req.params.id]);
+            if (pedidoResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'Pedido no encontrado' });
+            }
+
+            const pedido = pedidoResult.rows[0];
+            const totalPedido = parseFloat(pedido.total || 0);
+            const pagosPreviosResult = await client.query(
+                'SELECT COALESCE(SUM(monto), 0) as monto_pagado FROM nl_pagos WHERE pedido_id = $1',
+                [req.params.id]
+            );
+            const montoPagadoActual = parseFloat(pagosPreviosResult.rows[0].monto_pagado || 0);
+            const saldoActual = totalPedido - montoPagadoActual;
+
+            if (montoNumber > saldoActual + 0.01) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error: 'El pago excede el saldo pendiente',
+                    details: {
+                        total_pedido: totalPedido,
+                        monto_pagado_actual: montoPagadoActual,
+                        saldo_actual: Math.max(saldoActual, 0),
+                        monto_intentado: montoNumber
+                    }
+                });
+            }
+
+            const result = await client.query(
+                `INSERT INTO nl_pagos (pedido_id, monto, metodo, referencia, fecha_pago, notas, creado_por)
+                 VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_DATE), $6, $7)
+                 RETURNING *`,
+                [req.params.id, montoNumber, metodo || 'transferencia', referencia || null, fecha_pago || null, notas || null, req.user.id]
+            );
+
+            await client.query('COMMIT');
+
+            await writeAuditEvent(req, {
+                entidad: 'pago',
+                entidadId: result.rows[0].id,
+                accion: 'pago_created',
+                descripcion: `Pago registrado para pedido ${pedido.codigo}`,
+                metadata: {
+                    pedido_id: Number(req.params.id),
+                    monto: montoNumber,
+                    metodo: metodo || 'transferencia'
+                }
+            });
+
+            res.status(201).json(normalizePago(result.rows[0]));
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+
+    } catch (err) { next(err); }
+});
+
+// PATCH /api/finanzas/pagos/:pagoId/conciliar
+router.patch('/pagos/:pagoId/conciliar', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
+
+        const pagoResult = await pool.query(
+            `SELECT pg.*, p.codigo as pedido_codigo
+             FROM nl_pagos pg
+             LEFT JOIN nl_pedidos p ON p.id = pg.pedido_id
+             WHERE pg.id = $1`,
+            [req.params.pagoId]
         );
 
-        res.status(201).json(normalizePago(result.rows[0]));
+        if (pagoResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Pago no encontrado' });
+        }
+
+        if (pagoResult.rows[0].conciliado) {
+            return res.json(normalizePago(pagoResult.rows[0]));
+        }
+
+        const result = await pool.query(
+            `UPDATE nl_pagos
+             SET conciliado = TRUE,
+                 conciliado_at = NOW(),
+                 conciliado_por = $1
+             WHERE id = $2
+             RETURNING *`,
+            [req.user.id, req.params.pagoId]
+        );
+
+        await writeAuditEvent(req, {
+            entidad: 'pago',
+            entidadId: req.params.pagoId,
+            accion: 'pago_conciliado',
+            descripcion: `Pago conciliado para pedido ${pagoResult.rows[0].pedido_codigo || ''}`.trim(),
+            metadata: {
+                pedido_id: pagoResult.rows[0].pedido_id,
+                monto: parseFloat(pagoResult.rows[0].monto || 0)
+            }
+        });
+
+        res.json(normalizePago(result.rows[0]));
     } catch (err) { next(err); }
 });
 

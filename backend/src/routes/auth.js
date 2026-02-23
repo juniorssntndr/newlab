@@ -2,12 +2,16 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middleware/auth.js';
+import { getJwtSecret } from '../config/env.js';
+import { validateBody } from '../middleware/validate.js';
+import { loginSchema } from '../validation/schemas.js';
+import { writeAuditEvent } from '../services/audit.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'newlab-secret';
+const JWT_SECRET = getJwtSecret();
 
 // POST /api/auth/login
-router.post('/login', async (req, res, next) => {
+router.post('/login', validateBody(loginSchema), async (req, res, next) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
@@ -23,12 +27,27 @@ router.post('/login', async (req, res, next) => {
         );
 
         if (result.rows.length === 0) {
+            await writeAuditEvent(req, {
+                entidad: 'auth',
+                accion: 'login_failed',
+                descripcion: 'Intento de login con email no encontrado',
+                metadata: { email }
+            });
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
         const user = result.rows[0];
         const valid = await bcrypt.compare(password, user.password_hash);
-        if (!valid) return res.status(401).json({ error: 'Credenciales inválidas' });
+        if (!valid) {
+            await writeAuditEvent(req, {
+                entidad: 'auth',
+                entidadId: user.id,
+                accion: 'login_failed',
+                descripcion: 'Intento de login con password invalido',
+                metadata: { email }
+            });
+            return res.status(401).json({ error: 'Credenciales inválidas' });
+        }
 
         // Update last access
         await pool.query('UPDATE nl_usuarios SET ultimo_acceso = NOW() WHERE id = $1', [user.id]);
@@ -46,6 +65,13 @@ router.post('/login', async (req, res, next) => {
                 rol: user.rol_nombre, clinica_id: user.clinica_id, clinica_nombre: user.clinica_nombre,
                 avatar_url: user.avatar_url
             }
+        });
+        await writeAuditEvent(req, {
+            entidad: 'auth',
+            entidadId: user.id,
+            accion: 'login_success',
+            descripcion: 'Inicio de sesion exitoso',
+            metadata: { email: user.email, tipo: user.tipo }
         });
     } catch (err) { next(err); }
 });
@@ -111,6 +137,13 @@ router.patch('/password', authenticateToken, async (req, res, next) => {
 
         const newHash = await bcrypt.hash(new_password, 10);
         await pool.query('UPDATE nl_usuarios SET password_hash = $1 WHERE id = $2', [newHash, req.user.id]);
+
+        await writeAuditEvent(req, {
+            entidad: 'usuario',
+            entidadId: req.user.id,
+            accion: 'password_updated',
+            descripcion: 'Usuario actualizo su contraseña'
+        });
 
         res.json({ success: true });
     } catch (err) { next(err); }

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../config/env.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'newlab-secret';
+const JWT_SECRET = getJwtSecret();
 
 export const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];

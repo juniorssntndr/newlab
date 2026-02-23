@@ -1,19 +1,18 @@
 import { Router } from 'express';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import multer from 'multer';
-import path from 'path';
+import { uploadProductImage } from '../services/storage.js';
 
-// Multer config
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'product-' + uniqueSuffix + path.extname(file.originalname));
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+            return cb(new Error('Solo se permiten imagenes'));
+        }
+        cb(null, true);
     }
 });
-const upload = multer({ storage: storage });
 
 const router = Router();
 router.use(authenticateToken);
@@ -51,7 +50,7 @@ router.post('/', requireRole('admin'), upload.single('image'), async (req, res, 
     try {
         const pool = req.app.locals.pool;
         const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible } = req.body;
-        const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+        const image_url = req.file ? await uploadProductImage(req.file) : null;
 
         if (!nombre) return res.status(400).json({ error: 'Nombre es requerido' });
 
@@ -69,7 +68,7 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
     try {
         const pool = req.app.locals.pool;
         const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, activo, visible } = req.body;
-        const image_url = req.file ? `/uploads/${req.file.filename}` : undefined;
+        const image_url = req.file ? await uploadProductImage(req.file) : undefined;
 
         let updateQuery = `UPDATE nl_productos SET 
             nombre=COALESCE($1, nombre), 

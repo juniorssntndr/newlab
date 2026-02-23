@@ -1,0 +1,39 @@
+name: Smoke Post Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: "Backend base URL (without trailing slash)"
+        required: true
+        type: string
+      frontend_url:
+        description: "Frontend URL"
+        required: false
+        type: string
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run smoke checks
+        env:
+          SMOKE_BACKEND_URL: ${{ inputs.backend_url }}
+          SMOKE_FRONTEND_URL: ${{ inputs.frontend_url }}
+        run: npm run smoke

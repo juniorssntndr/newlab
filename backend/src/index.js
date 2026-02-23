@@ -2,32 +2,67 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import * as Sentry from '@sentry/node';
+import { randomUUID } from 'crypto';
+import { getAllowedOrigins, getDatabaseUrl, getPort, getRateLimitConfig, getSentryConfig, isProd } from './config/env.js';
+import { logger } from './lib/logger.js';
 
 dotenv.config();
 
 const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: getDatabaseUrl() });
 
 const app = express();
 
-// 1. REQUEST LOGGER - MUST BE FIRST
+const sentryConfig = getSentryConfig();
+if (sentryConfig.dsn) {
+    Sentry.init({
+        dsn: sentryConfig.dsn,
+        environment: sentryConfig.environment
+    });
+}
+
+// 1. Request logger
 app.use((req, res, next) => {
-    console.log(`[REQUEST] ${req.method} ${req.url}`);
-    console.log('Headers:', JSON.stringify(req.headers));
+    const requestId = randomUUID();
+    req.requestId = requestId;
+    res.setHeader('X-Request-Id', requestId);
+    logger.info('request_received', {
+        request_id: requestId,
+        method: req.method,
+        path: req.url,
+        user_id: req.user?.id || null,
+        ip: req.ip
+    });
     next();
 });
 
-// 2. MANUAL CORS - FORCE HEADERS
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+// 2. CORS
+const allowedOrigins = getAllowedOrigins();
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (!isProd()) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error('Origin no permitido por CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
+const rateConfig = getRateLimitConfig();
+app.use(rateLimit({
+    windowMs: rateConfig.windowMs,
+    max: rateConfig.max,
+    standardHeaders: true,
+    legacyHeaders: false
+}));
 
 app.use(express.json());
 
@@ -45,6 +80,7 @@ import notificacionesRoutes from './routes/notificaciones.js';
 import categoriasRoutes from './routes/categorias.js';
 import inventoryRoutes from './routes/inventory.js';
 import usuariosRoutes from './routes/usuarios.js';
+import auditRoutes from './routes/audit.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/clinicas', clinicasRoutes);
@@ -56,6 +92,7 @@ app.use('/api/notificaciones', notificacionesRoutes);
 app.use('/api/categorias', categoriasRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/audit', auditRoutes);
 
 // Static uploads
 import path from 'path';
@@ -70,11 +107,27 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // Error handler
 app.use((err, req, res, next) => {
-    console.error('[ERROR]', err.message);
+    if (sentryConfig.dsn) {
+        Sentry.captureException(err, {
+            tags: { request_id: req.requestId || 'n/a' },
+            extra: {
+                method: req.method,
+                path: req.url,
+                user_id: req.user?.id || null
+            }
+        });
+    }
+    logger.error('request_failed', {
+        request_id: req.requestId || null,
+        method: req.method,
+        path: req.url,
+        user_id: req.user?.id || null,
+        message: err.message
+    });
     res.status(err.status || 500).json({ error: err.message || 'Error interno del servidor' });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = getPort();
 app.listen(PORT, () => {
-    console.log(`NewLab API running on port ${PORT}`);
+    logger.info('api_started', { port: PORT, env: sentryConfig.environment });
 });
