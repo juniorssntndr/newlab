@@ -14,9 +14,23 @@ const __dirname = path.dirname(__filename);
 
 async function runMigration() {
     try {
+        const getMigrationOrder = (file) => {
+            if (file === 'migration_000_base.sql') return 0;
+            if (file === 'migration_materials.sql') return 100;
+            if (file === 'migration_finanzas.sql') return 110;
+            const numeric = file.match(/^migration_(\d+)_/);
+            if (numeric) return 200 + parseInt(numeric[1], 10);
+            return 1000;
+        };
+
         const files = fs.readdirSync(__dirname)
             .filter((file) => file.startsWith('migration_') && file.endsWith('.sql'))
-            .sort();
+            .sort((a, b) => {
+                const orderA = getMigrationOrder(a);
+                const orderB = getMigrationOrder(b);
+                if (orderA !== orderB) return orderA - orderB;
+                return a.localeCompare(b);
+            });
 
         console.log('Running migrations...');
         for (const file of files) {

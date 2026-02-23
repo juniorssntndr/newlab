@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
 import { API_URL } from '../config.js';
 
@@ -13,6 +14,7 @@ const resolveImageUrl = (imageUrl) => {
 
 const Productos = () => {
     const { getHeaders } = useAuth();
+    const navigate = useNavigate();
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [materiales, setMateriales] = useState([]);
@@ -86,43 +88,37 @@ const Productos = () => {
         setForm((prev) => ({ ...prev, image: file }));
     };
 
-    const createMaterial = async () => {
-        const nombre = window.prompt('Nombre del material (ej. Zirconia HT):');
-        if (!nombre || !nombre.trim()) return;
-        const unidad = window.prompt('Unidad (ej. disco, bloque, kg, unid):', 'unid') || 'unid';
+    const createMaterial = () => {
+        navigate('/almacen?newMaterial=1&flow=digital&returnTo=/productos');
+        setModalOpen(false);
+        setFormError('');
+    };
 
+    const refreshMateriales = async () => {
         try {
-            setSaving(true);
-            const res = await fetch(`${API_URL}/inventory`, {
-                method: 'POST',
-                headers: {
-                    ...getHeaders(),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    nombre: nombre.trim(),
-                    unidad: unidad.trim() || 'unid',
-                    stock_actual: 0,
-                    stock_minimo: 5
-                })
-            });
-
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                setFormError(data.error || 'No se pudo crear el material');
-                return;
-            }
-
-            const material = await res.json();
-            setMateriales((prev) => [...prev, material].sort((a, b) => a.nombre.localeCompare(b.nombre)));
-            setForm((prev) => ({ ...prev, material_id: String(material.id) }));
+            const res = await fetch(`${API_URL}/inventory`, { headers: getHeaders() });
+            const data = await res.json();
+            setMateriales(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error(error);
-            setFormError('Error creando material');
-        } finally {
-            setSaving(false);
         }
     };
+
+    useEffect(() => {
+        if (!modalOpen) return;
+        refreshMateriales();
+    }, [modalOpen]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const createdMaterial = params.get('materialCreated');
+        if (!createdMaterial) return;
+
+        refreshMateriales().then(() => {
+            setForm((prev) => ({ ...prev, material_id: createdMaterial }));
+            window.history.replaceState({}, '', window.location.pathname);
+        });
+    }, []);
 
     const save = async () => {
         if (saving) return;
