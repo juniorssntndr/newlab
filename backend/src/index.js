@@ -124,7 +124,11 @@ app.use((err, req, res, next) => {
         user_id: req.user?.id || null,
         message: err.message
     });
-    res.status(err.status || 500).json({ error: err.message || 'Error interno del servidor' });
+    const status = err.status || 500;
+    const safeMessage = status >= 500 && isProd()
+        ? 'Error interno del servidor'
+        : (err.message || 'Error interno del servidor');
+    res.status(status).json({ error: safeMessage, request_id: req.requestId || null });
 });
 
 const PORT = getPort();

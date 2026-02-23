@@ -9,6 +9,12 @@ router.use(authenticateToken);
 
 const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
 
+const canAccessPedido = (user, pedido) => {
+    if (!user || !pedido) return false;
+    if (user.tipo !== 'cliente') return true;
+    return !!user.clinica_id && Number(user.clinica_id) === Number(pedido.clinica_id);
+};
+
 // GET /api/pedidos
 router.get('/', async (req, res, next) => {
     try {
@@ -51,6 +57,7 @@ router.get('/:id', async (req, res, next) => {
        WHERE p.id = $1`, [req.params.id]
         );
         if (pedido.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+        if (!canAccessPedido(req.user, pedido.rows[0])) return res.status(403).json({ error: 'No autorizado' });
 
         const items = await pool.query(
             `SELECT pi.*, pr.nombre as producto_nombre
@@ -164,6 +171,7 @@ router.post('/', validateBody(createPedidoSchema), async (req, res, next) => {
 router.patch('/:id/estado', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
+        if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
         const { estado, sub_estado, comentario, responsable_id, link_exocad, forzar } = req.body;
         if (!estado) return res.status(400).json({ error: 'Estado es requerido' });
 
@@ -287,8 +295,12 @@ router.patch('/:id/estado', async (req, res, next) => {
 router.post('/:id/aprobacion', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
+        if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
         const { link_exocad, comentario } = req.body;
         if (!link_exocad) return res.status(400).json({ error: 'Link de Exocad es requerido' });
+
+        const pedidoResult = await pool.query('SELECT id FROM nl_pedidos WHERE id = $1', [req.params.id]);
+        if (pedidoResult.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
 
         const result = await pool.query(
             `INSERT INTO nl_pedido_aprobaciones (pedido_id, link_exocad) VALUES ($1, $2) RETURNING *`,
@@ -373,6 +385,7 @@ router.patch('/:id/fecha-entrega', async (req, res, next) => {
 router.patch('/:id/aprobacion/:aprobacionId', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
+        if (req.user.tipo !== 'cliente') return res.status(403).json({ error: 'No autorizado' });
         const { estado, comentario_cliente } = req.body;
         if (!['aprobado', 'ajuste_solicitado'].includes(estado)) {
             return res.status(400).json({ error: 'Estado de aprobacion no valido' });
@@ -383,16 +396,18 @@ router.patch('/:id/aprobacion/:aprobacionId', async (req, res, next) => {
             return res.status(400).json({ error: 'Comentario de ajustes requerido' });
         }
 
+        const pedidoResult = await pool.query('SELECT id, codigo, clinica_id FROM nl_pedidos WHERE id = $1', [req.params.id]);
+        if (pedidoResult.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+        const pedido = pedidoResult.rows[0];
+        if (!canAccessPedido(req.user, pedido)) return res.status(403).json({ error: 'No autorizado' });
+
         const result = await pool.query(
             `UPDATE nl_pedido_aprobaciones SET estado=$1, comentario_cliente=$2, respondido_at=NOW()
-       WHERE id=$3 RETURNING *`,
-            [estado, comentarioCliente || null, req.params.aprobacionId]
+       WHERE id=$3 AND pedido_id=$4 RETURNING *`,
+            [estado, comentarioCliente || null, req.params.aprobacionId, req.params.id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Aprobacion no encontrada' });
 
-        const pedidoResult = await pool.query('SELECT id, codigo FROM nl_pedidos WHERE id = $1', [req.params.id]);
-        if (pedidoResult.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
-        const pedido = pedidoResult.rows[0];
         const labUsers = await pool.query("SELECT id FROM nl_usuarios WHERE tipo IN ('admin','tecnico') AND estado='activo'");
 
         // If approved, auto-transition pedido to en_produccion
