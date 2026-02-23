@@ -17,6 +17,26 @@ const upload = multer({
 const router = Router();
 router.use(authenticateToken);
 
+const toNullableInt = (value) => {
+    if (value === undefined || value === null || value === '') return null;
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+};
+
+const toNullableNumber = (value) => {
+    if (value === undefined || value === null || value === '') return null;
+    const normalized = String(value).replace(',', '.');
+    const parsed = parseFloat(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+};
+
+const toNullableBoolean = (value) => {
+    if (value === undefined || value === null || value === '') return null;
+    if (value === true || value === 'true') return true;
+    if (value === false || value === 'false') return false;
+    return null;
+};
+
 // GET /api/productos
 router.get('/', async (req, res, next) => {
     try {
@@ -51,13 +71,18 @@ router.post('/', requireRole('admin'), upload.single('image'), async (req, res, 
         const pool = req.app.locals.pool;
         const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible } = req.body;
         const image_url = req.file ? await uploadProductImage(req.file) : null;
+        const categoriaId = toNullableInt(categoria_id);
+        const materialId = toNullableInt(material_id);
+        const precioBase = toNullableNumber(precio_base) ?? 0;
+        const tiempoEstimadoDias = toNullableInt(tiempo_estimado_dias) ?? 5;
+        const visibleValue = toNullableBoolean(visible);
 
         if (!nombre) return res.status(400).json({ error: 'Nombre es requerido' });
 
         const result = await pool.query(
             `INSERT INTO nl_productos (nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, image_url, visible)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-            [nombre, descripcion, categoria_id, precio_base || 0, material_id || null, tiempo_estimado_dias || 5, image_url, visible === 'true' || visible === true]
+            [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, image_url, visibleValue ?? true]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) { next(err); }
@@ -69,6 +94,12 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
         const pool = req.app.locals.pool;
         const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, activo, visible } = req.body;
         const image_url = req.file ? await uploadProductImage(req.file) : undefined;
+        const categoriaId = toNullableInt(categoria_id);
+        const precioBase = toNullableNumber(precio_base);
+        const materialId = toNullableInt(material_id);
+        const tiempoEstimadoDias = toNullableInt(tiempo_estimado_dias);
+        const activoValue = toNullableBoolean(activo);
+        const visibleValue = toNullableBoolean(visible);
 
         let updateQuery = `UPDATE nl_productos SET 
             nombre=COALESCE($1, nombre), 
@@ -80,7 +111,7 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
             activo=COALESCE($7, activo),
             visible=COALESCE($8, visible)`;
 
-        const params = [nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, activo, visible];
+        const params = [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, activoValue, visibleValue];
 
         if (image_url) {
             updateQuery += `, image_url=$${params.length + 1}`;
