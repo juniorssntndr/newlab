@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import Modal from '../components/Modal.jsx';
 import { API_URL } from '../config.js';
@@ -21,24 +21,23 @@ const Productos = () => {
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ nombre: '', descripcion: '', categoria_id: '', precio_base: '', material_id: '', tiempo_estimado_dias: 5, visible: true, image: null });
-    const [materialSearch, setMaterialSearch] = useState('');
+    const [form, setForm] = useState({ nombre: '', descripcion: '', categoria_id: '', precio_base: '', material_id: '', tiempo_estimado_dias: 5, visible: true, image: null, image_url: '' });
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
+    const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+    const fileInputRef = useRef(null);
 
     const fetchData = () => {
         const params = new URLSearchParams();
         if (search) params.set('search', search);
-        // We fetch all and filter by type locally for smoother UX, or we could pass type to backend
-
         Promise.all([
             fetch(`${API_URL}/productos?${params}`, { headers: getHeaders() }).then(r => r.json()),
             fetch(`${API_URL}/categorias`, { headers: getHeaders() }).then(r => r.json()),
             fetch(`${API_URL}/inventory`, { headers: getHeaders() }).then(r => r.json())
         ]).then(([prods, cats, mats]) => {
-            setProductos(prods);
-            setCategorias(cats);
-            setMateriales(mats);
+            setProductos(Array.isArray(prods) ? prods : []);
+            setCategorias(Array.isArray(cats) ? cats : []);
+            setMateriales(Array.isArray(mats) ? mats : []);
             setLoading(false);
         }).catch(() => setLoading(false));
     };
@@ -47,9 +46,9 @@ const Productos = () => {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ nombre: '', descripcion: '', categoria_id: '', precio_base: '', material_id: '', tiempo_estimado_dias: 5, visible: true, image: null });
-        setMaterialSearch('');
+        setForm({ nombre: '', descripcion: '', categoria_id: '', precio_base: '', material_id: '', tiempo_estimado_dias: 5, visible: true, image: null, image_url: '' });
         setFormError('');
+        setImagePreviewUrl('');
         setModalOpen(true);
     };
 
@@ -63,11 +62,66 @@ const Productos = () => {
             material_id: p.material_id ? String(p.material_id) : '',
             tiempo_estimado_dias: p.tiempo_estimado_dias || 5,
             visible: p.visible,
-            image: null // Don't preload image file, just URL is in 'p'
+            image: null,
+            image_url: p.image_url || ''
         });
-        setMaterialSearch('');
         setFormError('');
+        setImagePreviewUrl(resolveImageUrl(p.image_url));
         setModalOpen(true);
+    };
+
+    const handleImageChange = (file) => {
+        if (!file) {
+            setForm((prev) => ({ ...prev, image: null }));
+            setImagePreviewUrl(resolveImageUrl(form.image_url));
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setImagePreviewUrl(String(reader.result || ''));
+        };
+        reader.readAsDataURL(file);
+
+        setForm((prev) => ({ ...prev, image: file }));
+    };
+
+    const createMaterial = async () => {
+        const nombre = window.prompt('Nombre del material (ej. Zirconia HT):');
+        if (!nombre || !nombre.trim()) return;
+        const unidad = window.prompt('Unidad (ej. disco, bloque, kg, unid):', 'unid') || 'unid';
+
+        try {
+            setSaving(true);
+            const res = await fetch(`${API_URL}/inventory`, {
+                method: 'POST',
+                headers: {
+                    ...getHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    nombre: nombre.trim(),
+                    unidad: unidad.trim() || 'unid',
+                    stock_actual: 0,
+                    stock_minimo: 5
+                })
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setFormError(data.error || 'No se pudo crear el material');
+                return;
+            }
+
+            const material = await res.json();
+            setMateriales((prev) => [...prev, material].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+            setForm((prev) => ({ ...prev, material_id: String(material.id) }));
+        } catch (error) {
+            console.error(error);
+            setFormError('Error creando material');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const save = async () => {
@@ -152,10 +206,6 @@ const Productos = () => {
         if (!grouped[tipo]) grouped[tipo] = [];
         grouped[tipo].push(p);
     });
-
-    const filteredMateriales = materiales.filter((material) =>
-        material.nombre.toLowerCase().includes(materialSearch.toLowerCase())
-    );
 
     const toggleVisibility = async (e, p) => {
         e.stopPropagation();
@@ -327,22 +377,54 @@ const Productos = () => {
                         <input className="form-input" type="number" step="0.01" value={form.precio_base} onChange={e => setForm({ ...form, precio_base: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Material</label>
-                        <input
-                            className="form-input"
-                            placeholder="Buscar material..."
-                            value={materialSearch}
-                            onChange={e => setMaterialSearch(e.target.value)}
-                            style={{ marginBottom: 'var(--space-2)' }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                            <label className="form-label" style={{ marginBottom: 0 }}>Material</label>
+                            <button className="btn btn-secondary btn-sm" type="button" onClick={createMaterial} disabled={saving}>
+                                <i className="bi bi-plus-lg"></i> Crear material
+                            </button>
+                        </div>
                         <select className="form-select" value={form.material_id} onChange={e => setForm({ ...form, material_id: e.target.value })}>
                             <option value="">Ninguno / Por defecto</option>
-                            {filteredMateriales.map(m => <option key={m.id} value={String(m.id)}>{m.nombre} (Stock: {m.stock_actual} {m.unidad})</option>)}
+                            {materiales.map(m => <option key={m.id} value={String(m.id)}>{m.nombre} (Stock: {m.stock_actual} {m.unidad})</option>)}
                         </select>
+                        {materiales.length === 0 && (
+                            <small style={{ color: 'var(--color-text-secondary)' }}>
+                                No hay materiales en inventario. Crea uno para asignarlo al producto.
+                            </small>
+                        )}
                     </div>
                     <div className="form-group">
                         <label className="form-label">Imagen</label>
-                        <input className="form-input" type="file" accept="image/*" onChange={e => setForm({ ...form, image: e.target.files[0] })} />
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={e => handleImageChange(e.target.files?.[0])}
+                        />
+                        <div style={{
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 10,
+                            padding: 'var(--space-3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'var(--space-3)',
+                            minHeight: 76
+                        }}>
+                            {imagePreviewUrl ? (
+                                <img src={imagePreviewUrl} alt="Preview producto" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover' }} />
+                            ) : (
+                                <div style={{ width: 56, height: 56, borderRadius: 8, border: '1px dashed var(--color-border)', display: 'grid', placeItems: 'center', color: 'var(--color-text-secondary)' }}>
+                                    <i className="bi bi-image"></i>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                <button className="btn btn-secondary btn-sm" type="button" onClick={() => fileInputRef.current?.click()}>
+                                    <i className="bi bi-pencil"></i> {imagePreviewUrl ? 'Cambiar imagen' : 'Subir imagen'}
+                                </button>
+                                {form.image && <small style={{ color: 'var(--color-text-secondary)' }}>{form.image.name}</small>}
+                            </div>
+                        </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Tiempo estimado (días)</label>
@@ -350,7 +432,10 @@ const Productos = () => {
                     </div>
                     <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '28px' }}>
                         <label style={{ margin: 0 }}>Visible</label>
-                        <input type="checkbox" checked={form.visible} onChange={e => setForm({ ...form, visible: e.target.checked })} style={{ width: 20, height: 20 }} />
+                        <label className="switch" style={{ margin: 0 }}>
+                            <input type="checkbox" checked={!!form.visible} onChange={e => setForm({ ...form, visible: e.target.checked })} />
+                            <span className="slider round"></span>
+                        </label>
                     </div>
                 </div>
             </Modal>
