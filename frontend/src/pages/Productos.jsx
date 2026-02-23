@@ -22,6 +22,9 @@ const Productos = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ nombre: '', descripcion: '', categoria_id: '', precio_base: '', material_id: '', tiempo_estimado_dias: 5, visible: true, image: null });
+    const [materialSearch, setMaterialSearch] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [formError, setFormError] = useState('');
 
     const fetchData = () => {
         const params = new URLSearchParams();
@@ -45,6 +48,8 @@ const Productos = () => {
     const openNew = () => {
         setEditing(null);
         setForm({ nombre: '', descripcion: '', categoria_id: '', precio_base: '', material_id: '', tiempo_estimado_dias: 5, visible: true, image: null });
+        setMaterialSearch('');
+        setFormError('');
         setModalOpen(true);
     };
 
@@ -53,25 +58,33 @@ const Productos = () => {
         setForm({
             nombre: p.nombre,
             descripcion: p.descripcion || '',
-            categoria_id: p.categoria_id || '',
+            categoria_id: p.categoria_id ? String(p.categoria_id) : '',
             precio_base: p.precio_base,
-            material_id: p.material_id || '',
+            material_id: p.material_id ? String(p.material_id) : '',
             tiempo_estimado_dias: p.tiempo_estimado_dias || 5,
             visible: p.visible,
             image: null // Don't preload image file, just URL is in 'p'
         });
+        setMaterialSearch('');
+        setFormError('');
         setModalOpen(true);
     };
 
     const save = async () => {
+        if (saving) return;
+        if (!form.nombre?.trim()) {
+            setFormError('El nombre es requerido');
+            return;
+        }
+
         const method = editing ? 'PUT' : 'POST';
         const url = editing ? `${API_URL}/productos/${editing.id}` : `${API_URL}/productos`;
 
         const formData = new FormData();
-        formData.append('nombre', form.nombre);
+        formData.append('nombre', form.nombre.trim());
         formData.append('descripcion', form.descripcion);
         formData.append('categoria_id', form.categoria_id);
-        formData.append('precio_base', parseFloat(form.precio_base) || 0);
+        formData.append('precio_base', String(form.precio_base || '0').trim());
         formData.append('material_id', form.material_id);
         formData.append('tiempo_estimado_dias', form.tiempo_estimado_dias);
         formData.append('visible', form.visible);
@@ -80,6 +93,8 @@ const Productos = () => {
         }
 
         try {
+            setSaving(true);
+            setFormError('');
             const res = await fetch(url, {
                 method,
                 headers: { 'Authorization': getHeaders().Authorization }, // Content-Type must be undefined for FormData
@@ -89,10 +104,43 @@ const Productos = () => {
                 setModalOpen(false);
                 fetchData();
             } else {
-                alert('Error al guardar');
+                const data = await res.json().catch(() => ({}));
+                setFormError(data.error || 'Error al guardar');
             }
         } catch (error) {
             console.error(error);
+            setFormError('No se pudo guardar. Verifica tu conexión.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const removeProducto = async () => {
+        if (!editing || saving) return;
+        const accepted = window.confirm(`¿Eliminar el producto "${editing.nombre}"?`);
+        if (!accepted) return;
+
+        try {
+            setSaving(true);
+            setFormError('');
+            const res = await fetch(`${API_URL}/productos/${editing.id}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setFormError(data.error || 'No se pudo eliminar el producto');
+                return;
+            }
+
+            setModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            setFormError('No se pudo eliminar. Verifica tu conexión.');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -104,6 +152,10 @@ const Productos = () => {
         if (!grouped[tipo]) grouped[tipo] = [];
         grouped[tipo].push(p);
     });
+
+    const filteredMateriales = materiales.filter((material) =>
+        material.nombre.toLowerCase().includes(materialSearch.toLowerCase())
+    );
 
     const toggleVisibility = async (e, p) => {
         e.stopPropagation();
@@ -236,12 +288,24 @@ const Productos = () => {
                 ))
             )}
 
-            <Modal open={modalOpen} onClose={() => setModalOpen(false)}
+            <Modal open={modalOpen} onClose={() => { if (!saving) setModalOpen(false); }}
                 title={editing ? 'Editar Producto' : 'Nuevo Producto'}
                 footer={<>
-                    <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button>
-                    <button className="btn btn-primary" onClick={save}><i className="bi bi-check-lg"></i> {editing ? 'Guardar' : 'Crear'}</button>
+                    {editing && (
+                        <button className="btn btn-secondary" style={{ borderColor: '#dc2626', color: '#dc2626' }} onClick={removeProducto} disabled={saving}>
+                            <i className="bi bi-trash"></i> Eliminar
+                        </button>
+                    )}
+                    <button className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</button>
+                    <button className="btn btn-primary" onClick={save} disabled={saving}>
+                        <i className="bi bi-check-lg"></i> {saving ? 'Guardando...' : editing ? 'Guardar' : 'Crear'}
+                    </button>
                 </>}>
+                {formError && (
+                    <div className="alert alert-error" style={{ marginBottom: 'var(--space-4)' }}>
+                        <i className="bi bi-exclamation-circle"></i> {formError}
+                    </div>
+                )}
                 <div className="form-group">
                     <label className="form-label">Nombre *</label>
                     <input className="form-input" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
@@ -255,7 +319,7 @@ const Productos = () => {
                         <label className="form-label">Categoría</label>
                         <select className="form-select" value={form.categoria_id} onChange={e => setForm({ ...form, categoria_id: e.target.value })}>
                             <option value="">Seleccionar...</option>
-                            {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre} ({tipoLabels[c.tipo]})</option>)}
+                            {categorias.map(c => <option key={c.id} value={String(c.id)}>{c.nombre} ({tipoLabels[c.tipo]})</option>)}
                         </select>
                     </div>
                     <div className="form-group">
@@ -264,9 +328,16 @@ const Productos = () => {
                     </div>
                     <div className="form-group">
                         <label className="form-label">Material</label>
+                        <input
+                            className="form-input"
+                            placeholder="Buscar material..."
+                            value={materialSearch}
+                            onChange={e => setMaterialSearch(e.target.value)}
+                            style={{ marginBottom: 'var(--space-2)' }}
+                        />
                         <select className="form-select" value={form.material_id} onChange={e => setForm({ ...form, material_id: e.target.value })}>
                             <option value="">Ninguno / Por defecto</option>
-                            {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre} (Stock: {m.stock_actual} {m.unidad})</option>)}
+                            {filteredMateriales.map(m => <option key={m.id} value={String(m.id)}>{m.nombre} (Stock: {m.stock_actual} {m.unidad})</option>)}
                         </select>
                     </div>
                     <div className="form-group">

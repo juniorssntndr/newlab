@@ -37,6 +37,8 @@ const toNullableBoolean = (value) => {
     return null;
 };
 
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
 // GET /api/productos
 router.get('/', async (req, res, next) => {
     try {
@@ -94,36 +96,89 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
         const pool = req.app.locals.pool;
         const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, activo, visible } = req.body;
         const image_url = req.file ? await uploadProductImage(req.file) : undefined;
-        const categoriaId = toNullableInt(categoria_id);
-        const precioBase = toNullableNumber(precio_base);
-        const materialId = toNullableInt(material_id);
-        const tiempoEstimadoDias = toNullableInt(tiempo_estimado_dias);
-        const activoValue = toNullableBoolean(activo);
-        const visibleValue = toNullableBoolean(visible);
+        const updates = [];
+        const params = [];
 
-        let updateQuery = `UPDATE nl_productos SET 
-            nombre=COALESCE($1, nombre), 
-            descripcion=COALESCE($2, descripcion), 
-            categoria_id=COALESCE($3, categoria_id), 
-            precio_base=COALESCE($4, precio_base),
-            material_id=COALESCE($5, material_id), 
-            tiempo_estimado_dias=COALESCE($6, tiempo_estimado_dias), 
-            activo=COALESCE($7, activo),
-            visible=COALESCE($8, visible)`;
-
-        const params = [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, activoValue, visibleValue];
-
-        if (image_url) {
-            updateQuery += `, image_url=$${params.length + 1}`;
-            params.push(image_url);
+        if (hasOwn(req.body, 'nombre')) {
+            const nombreValue = String(nombre || '').trim();
+            if (!nombreValue) return res.status(400).json({ error: 'Nombre es requerido' });
+            params.push(nombreValue);
+            updates.push(`nombre=$${params.length}`);
         }
 
-        updateQuery += ` WHERE id=$${params.length + 1} RETURNING *`;
+        if (hasOwn(req.body, 'descripcion')) {
+            params.push(descripcion ?? null);
+            updates.push(`descripcion=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'categoria_id')) {
+            params.push(toNullableInt(categoria_id));
+            updates.push(`categoria_id=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'precio_base')) {
+            const precioBase = toNullableNumber(precio_base);
+            params.push(precioBase ?? 0);
+            updates.push(`precio_base=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'material_id')) {
+            params.push(toNullableInt(material_id));
+            updates.push(`material_id=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'tiempo_estimado_dias')) {
+            const tiempoEstimadoDias = toNullableInt(tiempo_estimado_dias);
+            if (tiempoEstimadoDias !== null && tiempoEstimadoDias <= 0) {
+                return res.status(400).json({ error: 'El tiempo estimado debe ser mayor a 0' });
+            }
+            params.push(tiempoEstimadoDias ?? 5);
+            updates.push(`tiempo_estimado_dias=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'activo')) {
+            params.push(toNullableBoolean(activo));
+            updates.push(`activo=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'visible')) {
+            params.push(toNullableBoolean(visible));
+            updates.push(`visible=$${params.length}`);
+        }
+
+        if (image_url !== undefined) {
+            params.push(image_url);
+            updates.push(`image_url=$${params.length}`);
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No hay cambios para actualizar' });
+        }
+
         params.push(req.params.id);
+
+        const updateQuery = `UPDATE nl_productos SET ${updates.join(', ')} WHERE id=$${params.length} RETURNING *`;
 
         const result = await pool.query(updateQuery, params);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Producto no encontrado' });
         res.json(result.rows[0]);
+    } catch (err) { next(err); }
+});
+
+// DELETE /api/productos/:id
+router.delete('/:id', requireRole('admin'), async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const result = await pool.query(
+            `UPDATE nl_productos
+             SET activo = false, visible = false
+             WHERE id = $1
+             RETURNING *`,
+            [req.params.id]
+        );
+
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Producto no encontrado' });
+        res.json({ success: true, producto: result.rows[0] });
     } catch (err) { next(err); }
 });
 
