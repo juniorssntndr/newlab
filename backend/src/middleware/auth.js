@@ -1,14 +1,13 @@
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../config/env.js';
 
-const JWT_SECRET = getJwtSecret();
-
 export const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Token requerido' });
 
     try {
+        const JWT_SECRET = getJwtSecret();
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
         next();

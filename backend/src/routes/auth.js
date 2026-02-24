@@ -8,7 +8,6 @@ import { loginSchema } from '../validation/schemas.js';
 import { writeAuditEvent } from '../services/audit.js';
 
 const router = Router();
-const JWT_SECRET = getJwtSecret();
 
 // POST /api/auth/login
 router.post('/login', validateBody(loginSchema), async (req, res, next) => {
@@ -52,6 +51,7 @@ router.post('/login', validateBody(loginSchema), async (req, res, next) => {
         // Update last access
         await pool.query('UPDATE nl_usuarios SET ultimo_acceso = NOW() WHERE id = $1', [user.id]);
 
+        const JWT_SECRET = getJwtSecret();
         const token = jwt.sign(
             { id: user.id, email: user.email, tipo: user.tipo, nombre: user.nombre, clinica_id: user.clinica_id, rol: user.rol_nombre },
             JWT_SECRET,

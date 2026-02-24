@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
@@ -8,9 +10,6 @@ import * as Sentry from '@sentry/node';
 import { randomUUID } from 'crypto';
 import { getAllowedOrigins, getDatabaseUrl, getPort, getRateLimitConfig, getSentryConfig, isProd } from './config/env.js';
 import { logger } from './lib/logger.js';
-
-dotenv.config();
-
 const { Pool } = pg;
 const pool = new Pool({ connectionString: getDatabaseUrl() });
 
