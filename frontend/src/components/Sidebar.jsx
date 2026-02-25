@@ -63,6 +63,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                                 >
                                     <i className={`bi ${item.icon}`}></i>
                                     <span>{item.label}</span>
+                                    <div className="nav-tooltip">{item.label}</div>
                                 </NavLink>
                             ))}
                         </div>
@@ -73,6 +74,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                     <button className="sidebar-toggle" onClick={onToggle}>
                         <i className={`bi ${collapsed ? 'bi-chevron-right' : 'bi-chevron-left'}`}></i>
                         <span>Colapsar</span>
+                        <div className="nav-tooltip">{collapsed ? 'Expandir' : 'Colapsar'}</div>
                     </button>
                     <button
                         className="sidebar-toggle"
@@ -81,6 +83,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                     >
                         <i className="bi bi-box-arrow-left"></i>
                         <span>Cerrar sesion</span>
+                        <div className="nav-tooltip">Cerrar sesion</div>
                     </button>
                 </div>
             </aside>
