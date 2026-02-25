@@ -72,7 +72,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                 <div className="sidebar-footer">
                     <button className="sidebar-toggle" onClick={onToggle}>
                         <i className={`bi ${collapsed ? 'bi-chevron-right' : 'bi-chevron-left'}`}></i>
-                        {!collapsed && <span>Colapsar</span>}
+                        <span>Colapsar</span>
                     </button>
                     <button
                         className="sidebar-toggle"
@@ -80,7 +80,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                         style={{ marginTop: '0.5rem', color: '#EF4444' }}
                     >
                         <i className="bi bi-box-arrow-left"></i>
-                        {!collapsed && <span>Cerrar sesion</span>}
+                        <span>Cerrar sesion</span>
                     </button>
                 </div>
             </aside>
