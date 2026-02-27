@@ -15,9 +15,11 @@ const DetalleFinanza = () => {
     const navigate = useNavigate();
     const { getHeaders } = useAuth();
     const [finanza, setFinanza] = useState(null);
+    const [comprobantes, setComprobantes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [savingPago, setSavingPago] = useState(false);
+    const [emitting, setEmitting] = useState(false);
     const [form, setForm] = useState({
         monto: '',
         metodo: 'transferencia',
@@ -27,9 +29,15 @@ const DetalleFinanza = () => {
     });
 
     const fetchFinanza = () => {
-        fetch(`${API_URL}/finanzas/${id}`, { headers: getHeaders() })
-            .then((r) => r.json())
-            .then((data) => { setFinanza(data); setLoading(false); })
+        Promise.all([
+            fetch(`${API_URL}/finanzas/${id}`, { headers: getHeaders() }).then(r => r.json()),
+            fetch(`${API_URL}/facturacion/${id}`, { headers: getHeaders() }).then(r => r.json()).catch(() => [])
+        ])
+            .then(([finanzaData, comprobantesData]) => {
+                setFinanza(finanzaData);
+                setComprobantes(Array.isArray(comprobantesData) ? comprobantesData : []);
+                setLoading(false);
+            })
             .catch(() => setLoading(false));
     };
 
@@ -79,6 +87,26 @@ const DetalleFinanza = () => {
             alert(err.message);
         } finally {
             setSavingPago(false);
+        }
+    };
+
+    const handleEmitir = async (tipoComprobante) => {
+        if (!window.confirm(`¿Seguro que deseas emitir ${tipoComprobante === '01' ? 'Factura' : 'Boleta'} electrónica a la SUNAT?`)) return;
+        setEmitting(true);
+        try {
+            const res = await fetch(`${API_URL}/facturacion/${id}/emitir`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({ tipoComprobante })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al emitir comprobante');
+            alert('Comprobante emitido con éxito');
+            fetchFinanza();
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            setEmitting(false);
         }
     };
 
@@ -226,6 +254,53 @@ const DetalleFinanza = () => {
         printWindow.print();
     };
 
+    const printTicketPago = (pago) => {
+        if (!finanza || !pago) return;
+        const html = `
+            <!doctype html>
+            <html>
+                <head>
+                    <meta charset="utf-8" />
+                    <title>Ticket Anticipo ${escapeHtml(finanza.codigo)}</title>
+                    <style>
+                        * { box-sizing: border-box; }
+                        body { font-family: monospace; font-size: 12px; margin: 0; padding: 12px; width: 300px; color: #000; }
+                        h1 { font-size: 16px; margin: 0 0 4px; text-align: center; }
+                        h2 { font-size: 12px; margin: 4px 0 12px; text-align: center; font-weight: normal; }
+                        .divider { border-top: 1px dashed #000; margin: 8px 0; }
+                        .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+                        .centered { text-align: center; margin-top: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>TICKET DE ANTICIPO</h1>
+                    <h2>Pedido: ${escapeHtml(finanza.codigo)}</h2>
+                    <div class="divider"></div>
+                    <div class="row"><span>Fecha:</span> <span>${escapeHtml(formatDate(pago.fecha_pago || pago.created_at, true))}</span></div>
+                    <div class="row"><span>Cliente:</span> <span>${escapeHtml(finanza.paciente_nombre)}</span></div>
+                    <div class="row"><span>Método:</span> <span>${escapeHtml(pago.metodo || '—')}</span></div>
+                    <div class="row"><span>Ref:</span> <span>${escapeHtml(pago.referencia || '—')}</span></div>
+                    <div class="divider"></div>
+                    <div class="row"><strong>MONTO PAGADO:</strong> <strong>${formatCurrency(pago.monto)}</strong></div>
+                    <div class="row"><span>Saldo Pendiente:</span> <span>${formatCurrency(finanza.saldo)}</span></div>
+                    <div class="divider"></div>
+                    <div class="centered">
+                        <p>Documento Interno - No válido para efectos tributarios.</p>
+                    </div>
+                </body>
+            </html>
+        `;
+        const printWindow = window.open('', 'PRINT', 'height=600,width=400');
+        if (!printWindow) {
+            alert('No se pudo abrir la ventana de impresión');
+            return;
+        }
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    };
+
     if (loading) {
         return (
             <div className="card">
@@ -256,11 +331,23 @@ const DetalleFinanza = () => {
                         <i className="bi bi-arrow-left"></i> Volver
                     </button>
                     <button className="btn btn-ghost" onClick={handlePrint}>
-                        <i className="bi bi-printer"></i> Imprimir comprobante
+                        <i className="bi bi-printer"></i> Imprimir interno
                     </button>
-                    <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
-                        <i className="bi bi-plus-lg"></i> Registrar pago
-                    </button>
+                    {finanza.estado_pago === 'cancelado' && comprobantes.length === 0 && (
+                        <>
+                            <button className="btn btn-primary" onClick={() => handleEmitir('03')} disabled={emitting}>
+                                <i className="bi bi-receipt"></i> Emitir Boleta
+                            </button>
+                            <button className="btn btn-primary" onClick={() => handleEmitir('01')} disabled={emitting}>
+                                <i className="bi bi-file-earmark-text"></i> Emitir Factura
+                            </button>
+                        </>
+                    )}
+                    {finanza.estado_pago !== 'cancelado' && (
+                        <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
+                            <i className="bi bi-plus-lg"></i> Registrar pago
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -318,6 +405,7 @@ const DetalleFinanza = () => {
                                     <th>Método</th>
                                     <th>Referencia</th>
                                     <th>Monto</th>
+                                    <th style={{ width: '50px' }}></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -327,10 +415,19 @@ const DetalleFinanza = () => {
                                         <td>{pago.metodo || '—'}</td>
                                         <td>{pago.referencia || '—'}</td>
                                         <td><strong>{formatCurrency(pago.monto)}</strong></td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button
+                                                className="btn btn-ghost btn-icon btn-sm"
+                                                title="Imprimir ticket"
+                                                onClick={() => printTicketPago(pago)}
+                                            >
+                                                <i className="bi bi-printer"></i>
+                                            </button>
+                                        </td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-tertiary)' }}>Sin pagos registrados</td>
+                                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--color-text-tertiary)' }}>Sin pagos registrados</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -362,6 +459,48 @@ const DetalleFinanza = () => {
                     </div>
                 </div>
             </div>
+
+            {comprobantes.length > 0 && (
+                <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+                    <h3 className="card-title" style={{ marginBottom: 'var(--space-3)' }}>Comprobantes Electrónicos (SUNAT)</h3>
+                    <div className="data-table-wrapper table-scroll-dense desktop-only" style={{ border: 'none' }}>
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Serie-Corre.</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Descargas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {comprobantes.map((comp) => (
+                                    <tr key={comp.id}>
+                                        <td>{formatDate(comp.fecha_emision)}</td>
+                                        <td>{comp.tipo_comprobante === '01' ? 'Factura' : 'Boleta'}</td>
+                                        <td>{comp.serie}-{comp.correlativo}</td>
+                                        <td>{formatCurrency(comp.total_venta)}</td>
+                                        <td>
+                                            <span className={`badge badge-${comp.estado_sunat === 'aceptado' || comp.estado_sunat === 'generado' ? 'enviado' : 'pendiente'}`}>
+                                                {comp.estado_sunat}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {comp.pdf_url && <a href={comp.pdf_url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>PDF</a>}
+                                                {comp.xml_url && <a href={comp.xml_url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>XML</a>}
+                                                {comp.cdr_url && <a href={comp.cdr_url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>CDR</a>}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             <div className="card">
                 <h3 className="card-title" style={{ marginBottom: 'var(--space-3)' }}>Detalle de items</h3>

@@ -98,13 +98,13 @@ router.post('/', validateBody(createPedidoSchema), async (req, res, next) => {
         const nextPedidoId = parseInt(nextIdResult.rows[0].id, 10);
         const codigo = `NL-${String(nextPedidoId).padStart(5, '0')}`;
 
-        // Calculate totals from items
-        let subtotal = 0;
+        // Calculate totals from items (prices include IGV)
+        let total = 0;
         if (items && items.length > 0) {
-            subtotal = items.reduce((sum, item) => sum + (item.precio_unitario * (item.cantidad || 1)), 0);
+            total = items.reduce((sum, item) => sum + (item.precio_unitario * (item.cantidad || 1)), 0);
         }
-        const igv = 0;
-        const total = subtotal;
+        const subtotal = Number((total / 1.18).toFixed(2));
+        const igv = Number((total - subtotal).toFixed(2));
 
         const client = await pool.connect();
         try {
@@ -120,6 +120,8 @@ router.post('/', validateBody(createPedidoSchema), async (req, res, next) => {
             // Insert items
             if (items && items.length > 0) {
                 for (const item of items) {
+                    const itemTotal = (item.precio_unitario || 0) * (item.cantidad || 1);
+
                     await client.query(
                         `INSERT INTO nl_pedido_items (pedido_id, producto_id, piezas_dentales, es_puente, pieza_inicio, pieza_fin,
              material, color_vita, color_munon, textura, oclusion, notas, cantidad, precio_unitario, subtotal)
@@ -127,7 +129,7 @@ router.post('/', validateBody(createPedidoSchema), async (req, res, next) => {
                         [pedido.id, item.producto_id, item.piezas_dentales || [], item.es_puente || false,
                         item.pieza_inicio, item.pieza_fin, item.material, item.color_vita, item.color_munon,
                         item.textura, item.oclusion, item.notas, item.cantidad || 1, item.precio_unitario || 0,
-                        (item.precio_unitario || 0) * (item.cantidad || 1)]
+                            itemTotal]
                     );
                 }
             }
