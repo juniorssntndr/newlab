@@ -8,7 +8,7 @@ router.use(authenticateToken);
 // Emitir comprobante electrónico SUNAT (Boleta o Factura)
 router.post('/:pedidoId/emitir', async (req, res, next) => {
     try {
-        const { tipoComprobante } = req.body; // '01' (Factura) o '03' (Boleta)
+        const { tipoComprobante, billingData } = req.body; // '01' (Factura) o '03' (Boleta)
         if (!['01', '03'].includes(tipoComprobante)) {
             return res.status(400).json({ error: 'Tipo de comprobante inválido. Use 01 o 03.' });
         }
@@ -26,11 +26,12 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
             return res.status(400).json({ error: 'El pedido ya tiene un comprobante emitido.' });
         }
 
-        const comprobante = await emitirComprobanteSunat(pool, req.params.pedidoId, tipoComprobante);
+        const comprobante = await emitirComprobanteSunat(pool, req.params.pedidoId, tipoComprobante, billingData);
 
         res.json(comprobante);
     } catch (err) {
         console.error('Error al emitir comprobante:', err);
+        import('fs').then(fs => fs.appendFileSync('error_facturacion.log', `[${new Date().toISOString()}] ${err.stack}\n`));
         next(err);
     }
 });
@@ -52,6 +53,34 @@ router.get('/:pedidoId', async (req, res, next) => {
             'SELECT * FROM nl_comprobantes WHERE pedido_id = $1 ORDER BY created_at DESC',
             [req.params.pedidoId]
         );
+        res.json(result.rows);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// Listar todos los comprobantes globales (Historial)
+router.get('/', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+
+        let queryStr = `
+            SELECT c.*, p.codigo as pedido_codigo, p.paciente_nombre, cl.nombre as clinica_nombre
+            FROM nl_comprobantes c
+            JOIN nl_pedidos p ON c.pedido_id = p.id
+            LEFT JOIN nl_clinicas cl ON p.clinica_id = cl.id
+        `;
+        const queryParams = [];
+
+        // Si es cliente, solo ve los comprobantes de su clínica
+        if (req.user.tipo === 'cliente') {
+            queryStr += ` WHERE p.clinica_id = $1`;
+            queryParams.push(req.user.clinica_id);
+        }
+
+        queryStr += ` ORDER BY c.created_at DESC`;
+
+        const result = await pool.query(queryStr, queryParams);
         res.json(result.rows);
     } catch (err) {
         next(err);

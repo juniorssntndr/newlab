@@ -1,4 +1,4 @@
-export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante) {
+export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, billingData = null) {
     // 1. Obtener datos de empresa
     const empRes = await pool.query('SELECT * FROM nl_empresas WHERE activo = true LIMIT 1');
     if (empRes.rows.length === 0) {
@@ -21,11 +21,6 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante) {
 
     const esFactura = tipoComprobante === '01';
 
-    // Validar tipo de documento del cliente para la factura (debe tener RUC)
-    if (esFactura && (!pedido.ruc || pedido.ruc.length !== 11)) {
-        throw new Error('Para emitir Factura, la clínica debe tener un RUC válido.');
-    }
-
     // 3. Determinar Serie y Correlativo
     const serie = esFactura ? empresa.serie_factura : empresa.serie_boleta;
 
@@ -37,38 +32,69 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante) {
     `, [tipoComprobante, serie]);
     const correlativo = corrRes.rows[0].next_corr;
 
-    // 4. Obtener items
-    const itemsRes = await pool.query('SELECT * FROM nl_pedido_items WHERE pedido_id = $1', [pedidoId]);
-    const items = itemsRes.rows;
+    // 4. Preparar payload (Priorizar billingData si viene del Frontend)
+    let clientData, documentDetails, mtoOperGravadas, mtoIGV, mtoImpVenta;
 
-    const documentDetails = items.map(item => {
-        // En nuestro sistema, item.subtotal es el monto sin IGV (lo ajustaremos en la BD en el siguiente paso)
-        const valorUnitario = parseFloat(item.subtotal) / parseFloat(item.cantidad);
-        const precioUnitario = valorUnitario * 1.18; // Precio con IGV
-        const igvItem = parseFloat(item.precio_unitario) * parseFloat(item.cantidad) - parseFloat(item.subtotal);
+    if (billingData) {
+        // Usar datos provistos por la UI Avanzada de Facturación
+        clientData = billingData.client;
+        documentDetails = billingData.details;
+        mtoOperGravadas = parseFloat(billingData.mtoOperGravadas);
+        mtoIGV = parseFloat(billingData.mtoIGV);
+        mtoImpVenta = parseFloat(billingData.mtoImpVenta);
 
-        return {
-            codProducto: item.producto_id ? item.producto_id.toString() : 'SRV',
-            unidad: 'ZZ', // ZZ = Servicio
-            descripcion: `${item.cantidad}x ${item.material || 'Servicio'} - DP: ${item.piezas_dentales?.join(',') || ''}`,
-            cantidad: parseInt(item.cantidad, 10),
-            mtoValorUnitario: valorUnitario,
-            mtoValorVenta: parseFloat(item.subtotal),
-            mtoBaseIgv: parseFloat(item.subtotal),
-            porcentajeIgv: 18,
-            igv: igvItem,
-            tipAfeIgv: 10, // 10 = Gravado - Operación Onerosa
-            totalImpuestos: igvItem,
-            mtoPrecioUnitario: precioUnitario
+        // Validar tipo de documento del cliente para la factura (debe tener RUC)
+        if (esFactura && (!clientData.numDoc || clientData.numDoc.length < 11)) {
+            throw new Error('Para emitir Factura, la clínica debe tener un RUC válido de 11 dígitos.');
+        }
+
+    } else {
+        // Fallback: Autogenerar desde Base de Datos
+        if (esFactura && (!pedido.ruc || pedido.ruc.length !== 11)) {
+            throw new Error('Para emitir Factura, la clínica debe tener un RUC válido en el sistema.');
+        }
+
+        const itemsRes = await pool.query('SELECT * FROM nl_pedido_items WHERE pedido_id = $1', [pedidoId]);
+        const items = itemsRes.rows;
+
+        documentDetails = items.map(item => {
+            const valorUnitario = parseFloat(item.subtotal) / parseFloat(item.cantidad);
+            const precioUnitario = valorUnitario * 1.18; // Precio con IGV
+            const igvItem = parseFloat(item.precio_unitario) * parseFloat(item.cantidad) - parseFloat(item.subtotal);
+
+            return {
+                codProducto: item.producto_id ? item.producto_id.toString() : 'SRV',
+                unidad: 'ZZ', // ZZ = Servicio
+                descripcion: `${item.cantidad}x ${item.material || 'Servicio'} - DP: ${item.piezas_dentales?.join(',') || ''}`,
+                cantidad: parseInt(item.cantidad, 10),
+                mtoValorUnitario: valorUnitario,
+                mtoValorVenta: parseFloat(item.subtotal),
+                mtoBaseIgv: parseFloat(item.subtotal),
+                porcentajeIgv: 18,
+                igv: igvItem,
+                tipAfeIgv: 10, // 10 = Gravado - Operación Onerosa
+                totalImpuestos: igvItem,
+                mtoPrecioUnitario: precioUnitario
+            };
+        });
+
+        mtoOperGravadas = parseFloat(pedido.subtotal);
+        mtoIGV = parseFloat(pedido.igv);
+        mtoImpVenta = parseFloat(pedido.total);
+
+        clientData = {
+            tipoDoc: esFactura ? '6' : (pedido.tipo_doc || (pedido.dni ? '1' : '6')),
+            numDoc: esFactura ? pedido.ruc : (pedido.dni || pedido.ruc || '00000000'),
+            rznSocial: pedido.razon_social || 'CLIENTE',
+            address: {
+                direccion: pedido.direccion || 'LIMA',
+                provincia: 'LIMA',
+                departamento: 'LIMA',
+                distrito: 'LIMA',
+                ubigeo: pedido.ubigeo || '150101'
+            }
         };
-    });
-
-    const mtoOperGravadas = parseFloat(pedido.subtotal);
-    const mtoIGV = parseFloat(pedido.igv);
-    const mtoImpVenta = parseFloat(pedido.total);
-
-    const clientNumDoc = esFactura ? pedido.ruc : (pedido.dni || pedido.ruc || '00000000');
-    const clientTipoDoc = esFactura ? '6' : (pedido.tipo_doc || (pedido.dni ? '1' : '6'));
+    }
 
     const payload = {
         ublVersion: '2.1',
@@ -82,18 +108,7 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante) {
             tipo: 'Contado' // Para simplificar. Si requiere crédito hay que añadir cuotas.
         },
         tipoMoneda: 'PEN',
-        client: {
-            tipoDoc: clientTipoDoc, // 6 = RUC, 1 = DNI
-            numDoc: clientNumDoc,
-            rznSocial: pedido.razon_social || 'CLIENTE',
-            address: {
-                direccion: pedido.direccion || 'LIMA',
-                provincia: 'LIMA',
-                departamento: 'LIMA',
-                distrito: 'LIMA',
-                ubigeo: pedido.ubigeo || '150101'
-            }
-        },
+        client: clientData,
         company: {
             ruc: empresa.ruc,
             razonSocial: empresa.razon_social,
@@ -121,21 +136,54 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante) {
         ]
     };
 
-    // 5. Llamada a APIs Perú
-    const apiUrl = 'https://facturacion.apisperu.com/api/v1/invoice/send';
-    const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${empresa.token_apisperu}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-    });
+    let responseData;
+    let isOk = true;
+    let responseStatus = 200;
 
-    const responseData = await response.json();
+    if (empresa.token_apisperu === 'TU_TOKEN_AQUI' || process.env.ENTORNO === 'demo') {
+        // DEMO MODE: Bypass real API call and simulate success
+        console.log('--- MODO DEMO ACTIVADO --- Simulando envío a SUNAT');
+        responseData = {
+            message: 'Aceptado por SUNAT (DEMO)',
+            sunatResponse: {
+                success: true,
+                cdrResponse: { id: `DEMO-${Math.floor(Math.random() * 100000)}` }
+            },
+            links: {
+                xml: 'https://nubefact.com/bpe_ejemplo.xml',
+                pdf: 'https://nubefact.com/bpe_ejemplo.pdf',
+                cdr: 'https://nubefact.com/bpe_ejemplo.cdr'
+            }
+        };
+    } else {
+        // 5. Llamada Real a APIs Perú
+        const apiUrl = 'https://facturacion.apisperu.com/api/v1/invoice/send';
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${empresa.token_apisperu}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
 
-    if (!response.ok) {
-        throw new Error(`Error en API Facturación: ${JSON.stringify(responseData)}`);
+        isOk = response.ok;
+        responseStatus = response.status;
+
+        try {
+            responseData = await response.json();
+        } catch {
+            responseData = { message: 'Error desconocido al contactar SUNAT/APIsPerú' };
+        }
+    }
+
+    if (!isOk) {
+        if (responseStatus === 401 || responseStatus === 403) {
+            throw new Error('Error de Autenticación con APIs Perú. Verifique que su Token sea válido.');
+        }
+
+        const sunatMessage = responseData.message || responseData.error || JSON.stringify(responseData);
+        throw new Error(`Rechazo de SUNAT: ${sunatMessage}`);
     }
 
     // 6. Guardar en Base de Datos

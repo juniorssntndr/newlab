@@ -24,7 +24,7 @@ const DetalleFinanza = () => {
         monto: '',
         metodo: 'transferencia',
         referencia: '',
-        fecha_pago: '',
+        fecha_pago: new Date().toISOString().split('T')[0],
         notas: ''
     });
 
@@ -81,7 +81,7 @@ const DetalleFinanza = () => {
                 throw new Error(data.error || 'Error al registrar pago');
             }
             setModalOpen(false);
-            setForm({ monto: '', metodo: 'transferencia', referencia: '', fecha_pago: '', notas: '' });
+            setForm({ monto: '', metodo: 'transferencia', referencia: '', fecha_pago: new Date().toISOString().split('T')[0], notas: '' });
             fetchFinanza();
         } catch (err) {
             alert(err.message);
@@ -333,15 +333,15 @@ const DetalleFinanza = () => {
                     <button className="btn btn-ghost" onClick={handlePrint}>
                         <i className="bi bi-printer"></i> Imprimir interno
                     </button>
-                    {finanza.estado_pago === 'cancelado' && comprobantes.length === 0 && (
-                        <>
-                            <button className="btn btn-primary" onClick={() => handleEmitir('03')} disabled={emitting}>
-                                <i className="bi bi-receipt"></i> Emitir Boleta
-                            </button>
-                            <button className="btn btn-primary" onClick={() => handleEmitir('01')} disabled={emitting}>
-                                <i className="bi bi-file-earmark-text"></i> Emitir Factura
-                            </button>
-                        </>
+                    {comprobantes.length === 0 && (
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => navigate(`/finanzas/${id}/facturar`)}
+                            disabled={finanza.estado_pago !== 'cancelado'}
+                            title={finanza.estado_pago !== 'cancelado' ? 'El pedido debe estar cancelado en su totalidad para emitir comprobantes a SUNAT' : ''}
+                        >
+                            <i className="bi bi-file-earmark-text"></i> Emitir Electrónico
+                        </button>
                     )}
                     {finanza.estado_pago !== 'cancelado' && (
                         <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
@@ -606,7 +606,7 @@ const DetalleFinanza = () => {
                     <input
                         className="form-input"
                         type="date"
-                        value={form.fecha_pago}
+                        value={form.fecha_pago || new Date().toISOString().split('T')[0]}
                         onChange={(e) => setForm((prev) => ({ ...prev, fecha_pago: e.target.value }))}
                     />
                 </div>
