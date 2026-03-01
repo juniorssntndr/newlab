@@ -29,8 +29,10 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const clientLinks = [
         {
             section: 'Mi Portal', items: [
-                { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Mis Pedidos' },
+                { to: '/catalogo', icon: 'bi-grid', label: 'Catálogo' },
                 { to: '/pedidos/nuevo', icon: 'bi-plus-circle', label: 'Nuevo Pedido' },
+                { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Mis Pedidos' },
+                { to: '/mi-calendario', icon: 'bi-calendar3', label: 'Calendario' },
             ]
         },
     ];

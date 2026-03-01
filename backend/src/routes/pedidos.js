@@ -246,23 +246,17 @@ router.patch('/:id/estado', async (req, res, next) => {
             [req.params.id, pedido.estado, estado, req.user.id, timelineComment]
         );
 
-        // Notify: if waiting for approval, notify the client
-        if (estado === 'esperando_aprobacion') {
-            const clientUsers = await pool.query(
-                "SELECT id FROM nl_usuarios WHERE clinica_id = $1 AND tipo = 'cliente' AND estado = 'activo'",
-                [pedido.clinica_id]
-            );
-            for (const cu of clientUsers.rows) {
-                await pool.query(
-                    `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
-           VALUES ($1, 'aprobacion', 'Diseño listo para aprobar', $2, $3)`,
-                    [cu.id, `Pedido ${pedido.codigo} tiene un diseño para revisar`, `/pedidos/${pedido.id}`]
-                );
-            }
-        }
+        // Notify client on every relevant status change
+        const clientNotifMap = {
+            en_diseno: { tipo: 'estado_diseno', titulo: 'Pedido en Diseño', mensaje: `Tu pedido ${pedido.codigo} ha comenzado el proceso de diseño.` },
+            esperando_aprobacion: { tipo: 'aprobacion', titulo: '⭐ Diseño listo para aprobar', mensaje: `Pedido ${pedido.codigo} tiene un diseño listo para que lo revises.` },
+            en_produccion: { tipo: 'estado_produccion', titulo: 'Pedido en Producción', mensaje: `Tu pedido ${pedido.codigo} ha pasado a la etapa de producción.` },
+            terminado: { tipo: 'estado_terminado', titulo: '✅ Pedido Terminado', mensaje: `Tu pedido ${pedido.codigo} está listo. Pronto será enviado.` },
+            enviado: { tipo: 'enviado', titulo: '🚀 Pedido Enviado', mensaje: `Tu pedido ${pedido.codigo} ha sido enviado. ¡Gracias por confiar en nosotros!` },
+        };
 
-        // If sent, notify client
-        if (estado === 'enviado') {
+        const notifInfo = clientNotifMap[estado];
+        if (notifInfo) {
             const clientUsers = await pool.query(
                 "SELECT id FROM nl_usuarios WHERE clinica_id = $1 AND tipo = 'cliente' AND estado = 'activo'",
                 [pedido.clinica_id]
@@ -270,8 +264,8 @@ router.patch('/:id/estado', async (req, res, next) => {
             for (const cu of clientUsers.rows) {
                 await pool.query(
                     `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
-           VALUES ($1, 'enviado', 'Pedido Enviado', $2, $3)`,
-                    [cu.id, `Su pedido ${pedido.codigo} ha sido enviado`, `/pedidos/${pedido.id}`]
+           VALUES ($1, $2, $3, $4, $5)`,
+                    [cu.id, notifInfo.tipo, notifInfo.titulo, notifInfo.mensaje, `/pedidos/${pedido.id}`]
                 );
             }
         }
@@ -378,6 +372,20 @@ router.patch('/:id/fecha-entrega', async (req, res, next) => {
        VALUES ($1, $2, $3, $4, $5)`,
             [req.params.id, result.rows[0].estado, result.rows[0].estado, req.user.id, comentario || 'Fecha de entrega actualizada']
         );
+
+        // Notify client about the updated delivery date
+        const fechaFormateada = new Date(fecha_entrega).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+        const clientUsers = await pool.query(
+            "SELECT id FROM nl_usuarios WHERE clinica_id = $1 AND tipo = 'cliente' AND estado = 'activo'",
+            [result.rows[0].clinica_id]
+        );
+        for (const cu of clientUsers.rows) {
+            await pool.query(
+                `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
+       VALUES ($1, 'fecha_actualizada', '📅 Fecha de entrega actualizada', $2, $3)`,
+                [cu.id, `La fecha de entrega de ${result.rows[0].codigo} fue actualizada al ${fechaFormateada}.`, `/pedidos/${result.rows[0].id}`]
+            );
+        }
 
         res.json(result.rows[0]);
     } catch (err) { next(err); }
