@@ -49,7 +49,7 @@ router.get('/:id', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const pedido = await pool.query(
-            `SELECT p.*, c.nombre as clinica_nombre, u.nombre as responsable_nombre, cr.nombre as creador_nombre
+            `SELECT p.*, c.nombre as clinica_nombre, c.ruc as clinica_ruc, c.dni as clinica_dni, c.razon_social as clinica_razon_social, c.direccion as clinica_direccion, u.nombre as responsable_nombre, cr.nombre as creador_nombre
        FROM nl_pedidos p
        LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
        LEFT JOIN nl_usuarios u ON p.responsable_id = u.id

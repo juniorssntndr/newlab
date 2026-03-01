@@ -81,6 +81,7 @@ import inventoryRoutes from './routes/inventory.js';
 import usuariosRoutes from './routes/usuarios.js';
 import auditRoutes from './routes/audit.js';
 import facturacionRoutes from './routes/facturacion.js';
+import consultasRoutes from './routes/consultas.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/clinicas', clinicasRoutes);
@@ -94,6 +95,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/facturacion', facturacionRoutes);
+app.use('/api/consultas', consultasRoutes);
 
 // Static uploads
 import path from 'path';
