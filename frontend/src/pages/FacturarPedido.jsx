@@ -194,18 +194,12 @@ export default function FacturarPedido() {
                     ? (typeof data.details === 'string' ? data.details : JSON.stringify(data.details))
                     : '';
                 if (res.status === 404 || res.status === 422) {
-                    toast.error(data.error || 'Documento no encontrado en RENIEC/SUNAT.');
+                    toast.error('Documento no encontrado en RENIEC/SUNAT.');
                 } else if (res.status === 401) {
                     toast.error('Token de APISPERU inválido. Revisa la configuración del backend.', { duration: 6000 });
                 } else {
                     toast.error(data.error || detailsStr || 'Error al consultar documento');
                 }
-                return;
-            }
-
-            // APISPERU puede devolver HTTP 200 con { success: false } en algunos casos
-            if (data.success === false) {
-                toast.error(data.message || 'Documento no encontrado en RENIEC/SUNAT.');
                 return;
             }
 
@@ -215,15 +209,12 @@ export default function FacturarPedido() {
             let ubigeoObtenido = cliente.ubigeo;
 
             if (endpoint === 'dni') {
-                nombreCompleto = [data.nombres, data.apellidoPaterno, data.apellidoMaterno]
-                    .filter(Boolean)
-                    .join(' ')
-                    .trim();
+                nombreCompleto = `${data.nombres || ''} ${data.apellidoPaterno || ''} ${data.apellidoMaterno || ''}`.trim();
             } else if (endpoint === 'ruc') {
-                nombreCompleto = data.razonSocial || data.nombre || '';
+                nombreCompleto = data.razonSocial || '';
                 direccionObtenida = data.direccion || direccionObtenida;
 
-                // Extraer ubigeo si viene en el formato de API
+                // Extraer ubigeo si viene en el formato de API (a veces viene como provincia/departamento/distrito o codigo_ubigeo)
                 if (data.ubigeo) ubigeoObtenido = data.ubigeo;
             }
 
@@ -236,7 +227,7 @@ export default function FacturarPedido() {
                 }));
                 toast.success('Datos obtenidos exitosamente.');
             } else {
-                toast.error('No se pudo extraer el nombre del documento consultado.');
+                toast.error('La API no devolvió información válida.');
             }
 
         } catch (err) {
