@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
+import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config.js';
 
 // Derive backend base for local /uploads/ paths (strips trailing /api segment)
@@ -15,12 +16,64 @@ const resolveImageUrl = (imageUrl) => {
 };
 
 const CatalogoCliente = () => {
-    const { getHeaders } = useAuth();
+    const { getHeaders, user } = useAuth();
+    const navigate = useNavigate();
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedCat, setSelectedCat] = useState('all');
     const [search, setSearch] = useState('');
+
+    // Quick-order modal
+    const [orderProduct, setOrderProduct] = useState(null); // product to order
+    const [orderForm, setOrderForm] = useState({ paciente_nombre: '', fecha_entrega: '', pieza_dental: '', color: '', observaciones: '' });
+    const [orderSaving, setOrderSaving] = useState(false);
+    const [orderError, setOrderError] = useState('');
+
+    const openOrder = (producto) => {
+        setOrderProduct(producto);
+        setOrderForm({ paciente_nombre: '', fecha_entrega: '', pieza_dental: '', color: '', observaciones: '' });
+        setOrderError('');
+    };
+
+    const closeOrder = () => { setOrderProduct(null); setOrderError(''); };
+
+    const handleOrderSubmit = async (e) => {
+        e.preventDefault();
+        if (!orderForm.paciente_nombre || !orderForm.fecha_entrega) {
+            setOrderError('Completa el nombre del paciente y la fecha de entrega.');
+            return;
+        }
+        setOrderSaving(true);
+        setOrderError('');
+        try {
+            const res = await fetch(`${API_URL}/pedidos`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    clinica_id: user.clinica_id,
+                    paciente_nombre: orderForm.paciente_nombre,
+                    fecha_entrega: orderForm.fecha_entrega,
+                    observaciones: orderForm.observaciones || '',
+                    items: [{
+                        producto_id: orderProduct.id,
+                        cantidad: 1,
+                        precio_unitario: parseFloat(orderProduct.precio_base),
+                        pieza_dental: orderForm.pieza_dental || '',
+                        color: orderForm.color || '',
+                        material: orderProduct.material_nombre || '',
+                        observaciones: orderForm.observaciones || ''
+                    }]
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al crear pedido');
+            navigate(`/pedidos/${data.id}`);
+        } catch (err) {
+            setOrderError(err.message);
+            setOrderSaving(false);
+        }
+    };
 
     useEffect(() => {
         Promise.all([
@@ -150,17 +203,153 @@ const CatalogoCliente = () => {
                             gap: '1.25rem'
                         }}>
                             {group.items.map(producto => (
-                                <ProductCard key={producto.id} producto={producto} />
+                                <ProductCard key={producto.id} producto={producto} resolveImageUrl={resolveImageUrl} onOrder={() => openOrder(producto)} />
                             ))}
                         </div>
                     </div>
                 ))
             )}
+
+            {/* ── Quick-Order Modal ── */}
+            {orderProduct && (
+                <>
+                    {/* Backdrop */}
+                    <div onClick={closeOrder} style={{
+                        position: 'fixed', inset: 0, zIndex: 1000,
+                        background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)'
+                    }} />
+                    {/* Drawer */}
+                    <div style={{
+                        position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001,
+                        width: 'min(480px, 100vw)',
+                        background: 'var(--color-bg-card, var(--color-bg-alt))',
+                        borderLeft: '1px solid var(--color-border)',
+                        boxShadow: '-8px 0 32px rgba(0,0,0,0.35)',
+                        display: 'flex', flexDirection: 'column',
+                        animation: 'slideInRight 0.25s ease'
+                    }}>
+                        {/* Header */}
+                        <div style={{
+                            padding: '1.25rem 1.5rem',
+                            borderBottom: '1px solid var(--color-border)',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
+                        }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700' }}>Solicitar Pedido</h3>
+                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                    {orderProduct.nombre}
+                                </p>
+                            </div>
+                            <button onClick={closeOrder} className="btn-icon" style={{
+                                background: 'transparent', border: 'none', cursor: 'pointer',
+                                fontSize: '1.2rem', color: 'var(--color-text-secondary)', padding: '0.25rem'
+                            }}><i className="bi bi-x-lg" /></button>
+                        </div>
+
+                        {/* Product summary */}
+                        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            {orderProduct.image_url ? (
+                                <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
+                                    style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
+                                    onError={e => { e.currentTarget.style.display = 'none'; }} />
+                            ) : (
+                                <div style={{
+                                    width: 72, height: 72, borderRadius: 12, flexShrink: 0,
+                                    background: 'var(--color-bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <i className="bi bi-gem" style={{ fontSize: '1.8rem', opacity: 0.3 }} />
+                                </div>
+                            )}
+                            <div>
+                                <div style={{ fontWeight: '700', marginBottom: '0.2rem' }}>{orderProduct.nombre}</div>
+                                {orderProduct.material_nombre && (
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, marginBottom: '0.2rem' }}>
+                                        <i className="bi bi-layers" style={{ marginRight: '0.25rem' }} />{orderProduct.material_nombre}
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--color-primary)' }}>
+                                        S/. {Number(orderProduct.precio_base).toFixed(2)}
+                                    </span>
+                                    {orderProduct.tiempo_estimado_dias && (
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                            <i className="bi bi-clock" /> {orderProduct.tiempo_estimado_dias} días
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Form */}
+                        <form onSubmit={handleOrderSubmit} style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                            {orderError && (
+                                <div style={{
+                                    padding: '0.65rem 1rem', borderRadius: '8px',
+                                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)',
+                                    color: '#F87171', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center'
+                                }}>
+                                    <i className="bi bi-exclamation-circle" />{orderError}
+                                </div>
+                            )}
+
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Nombre del Paciente *</label>
+                                <input className="form-input" placeholder="Nombre completo"
+                                    value={orderForm.paciente_nombre}
+                                    onChange={e => setOrderForm(f => ({ ...f, paciente_nombre: e.target.value }))} />
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Fecha de Entrega Estimada *</label>
+                                <input className="form-input" type="date"
+                                    min={new Date().toISOString().split('T')[0]}
+                                    value={orderForm.fecha_entrega}
+                                    onChange={e => setOrderForm(f => ({ ...f, fecha_entrega: e.target.value }))} />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Pieza Dental</label>
+                                    <input className="form-input" placeholder="ej: 1.1"
+                                        value={orderForm.pieza_dental}
+                                        onChange={e => setOrderForm(f => ({ ...f, pieza_dental: e.target.value }))} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Color / Tono</label>
+                                    <input className="form-input" placeholder="ej: A2"
+                                        value={orderForm.color}
+                                        onChange={e => setOrderForm(f => ({ ...f, color: e.target.value }))} />
+                                </div>
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Observaciones</label>
+                                <textarea className="form-textarea" rows={3} placeholder="Indicaciones especiales..."
+                                    value={orderForm.observaciones}
+                                    onChange={e => setOrderForm(f => ({ ...f, observaciones: e.target.value }))} />
+                            </div>
+
+                            <div style={{ marginTop: 'auto', paddingTop: '0.5rem', display: 'flex', gap: '0.75rem' }}>
+                                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={closeOrder}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={orderSaving}>
+                                    {orderSaving ? (
+                                        <><i className="bi bi-hourglass-split" /> Creando...</>
+                                    ) : (
+                                        <><i className="bi bi-bag-check" /> Solicitar Pedido</>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </>
+            )}
         </div>
     );
 };
 
-const ProductCard = ({ producto }) => {
+const ProductCard = ({ producto, resolveImageUrl, onOrder }) => {
     const [imgError, setImgError] = useState(false);
 
     return (
@@ -261,6 +450,14 @@ const ProductCard = ({ producto }) => {
                         </div>
                     )}
                 </div>
+
+                <button
+                    onClick={onOrder}
+                    className="btn btn-primary"
+                    style={{ width: '100%', marginTop: '0.85rem', fontSize: '0.875rem', gap: '0.4rem' }}
+                >
+                    <i className="bi bi-bag-plus" /> Solicitar Pedido
+                </button>
             </div>
         </div>
     );

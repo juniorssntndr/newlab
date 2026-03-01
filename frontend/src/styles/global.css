@@ -2561,3 +2561,14 @@ h4 {
     grid-template-columns: 1fr;
   }
 }
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
