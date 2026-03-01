@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config.js';
+import Modal from '../components/Modal.jsx';
 
 // Derive backend base for local /uploads/ paths (strips trailing /api segment)
 const BACKEND_BASE = API_URL.endsWith('/api')
@@ -39,7 +40,7 @@ const CatalogoCliente = () => {
     const closeOrder = () => { setOrderProduct(null); setOrderError(''); };
 
     const handleOrderSubmit = async (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         if (!orderForm.paciente_nombre || !orderForm.fecha_entrega) {
             setOrderError('Completa el nombre del paciente y la fecha de entrega.');
             return;
@@ -211,43 +212,29 @@ const CatalogoCliente = () => {
             )}
 
             {/* ── Quick-Order Modal ── */}
-            {orderProduct && (
-                <>
-                    {/* Backdrop */}
-                    <div onClick={closeOrder} style={{
-                        position: 'fixed', inset: 0, zIndex: 1000,
-                        background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)'
-                    }} />
-                    {/* Drawer */}
-                    <div style={{
-                        position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001,
-                        width: 'min(480px, 100vw)',
-                        background: 'var(--color-bg-card, var(--color-bg-alt))',
-                        borderLeft: '1px solid var(--color-border)',
-                        boxShadow: '-8px 0 32px rgba(0,0,0,0.35)',
-                        display: 'flex', flexDirection: 'column',
-                        animation: 'slideInRight 0.25s ease'
-                    }}>
-                        {/* Header */}
-                        <div style={{
-                            padding: '1.25rem 1.5rem',
-                            borderBottom: '1px solid var(--color-border)',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
-                        }}>
-                            <div>
-                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700' }}>Solicitar Pedido</h3>
-                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                    {orderProduct.nombre}
-                                </p>
-                            </div>
-                            <button onClick={closeOrder} className="btn-icon" style={{
-                                background: 'transparent', border: 'none', cursor: 'pointer',
-                                fontSize: '1.2rem', color: 'var(--color-text-secondary)', padding: '0.25rem'
-                            }}><i className="bi bi-x-lg" /></button>
-                        </div>
-
+            <Modal
+                open={!!orderProduct}
+                onClose={closeOrder}
+                title="Solicitar Pedido"
+                footer={(
+                    <>
+                        <button type="button" className="btn btn-ghost" onClick={closeOrder}>
+                            Cancelar
+                        </button>
+                        <button type="submit" form="orderForm" className="btn btn-primary" disabled={orderSaving}>
+                            {orderSaving ? (
+                                <><i className="bi bi-hourglass-split" /> Creando...</>
+                            ) : (
+                                <><i className="bi bi-bag-check" /> Solicitar Pedido</>
+                            )}
+                        </button>
+                    </>
+                )}
+            >
+                {orderProduct && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         {/* Product summary */}
-                        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div style={{ paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                             {orderProduct.image_url ? (
                                 <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
                                     style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
@@ -281,7 +268,7 @@ const CatalogoCliente = () => {
                         </div>
 
                         {/* Form */}
-                        <form onSubmit={handleOrderSubmit} style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                        <form id="orderForm" onSubmit={handleOrderSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                             {orderError && (
                                 <div style={{
                                     padding: '0.65rem 1rem', borderRadius: '8px',
@@ -328,23 +315,10 @@ const CatalogoCliente = () => {
                                     value={orderForm.observaciones}
                                     onChange={e => setOrderForm(f => ({ ...f, observaciones: e.target.value }))} />
                             </div>
-
-                            <div style={{ marginTop: 'auto', paddingTop: '0.5rem', display: 'flex', gap: '0.75rem' }}>
-                                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={closeOrder}>
-                                    Cancelar
-                                </button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={orderSaving}>
-                                    {orderSaving ? (
-                                        <><i className="bi bi-hourglass-split" /> Creando...</>
-                                    ) : (
-                                        <><i className="bi bi-bag-check" /> Solicitar Pedido</>
-                                    )}
-                                </button>
-                            </div>
                         </form>
                     </div>
-                </>
-            )}
+                )}
+            </Modal>
         </div>
     );
 };
