@@ -284,50 +284,136 @@ const Productos = () => {
                 </div>
             ) : (
                 Object.entries(grouped).map(([tipo, prods]) => (
-                    <div key={tipo} style={{ marginBottom: 'var(--space-6)' }}>
-                        <h3 style={{ marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                            <span style={{ width: 4, height: 20, borderRadius: 2, background: tipoColors[tipo] || '#6B7280', display: 'inline-block' }}></span>
-                            {tipoLabels[tipo] || tipo}
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--color-text-secondary)' }}>({prods.length})</span>
-                        </h3>
-                        <div className="grid grid-cols-3">
+                    <div key={tipo} style={{ marginBottom: '2.5rem' }}>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '0.75rem',
+                            marginBottom: '1.25rem', paddingBottom: '0.75rem',
+                            borderBottom: `2px solid ${tipoColors[tipo] || 'var(--color-border)'}`
+                        }}>
+                            <div style={{ width: '4px', height: '24px', borderRadius: '2px', background: tipoColors[tipo] || '#6B7280' }} />
+                            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700' }}>{tipoLabels[tipo] || tipo}</h2>
+                            <span style={{
+                                background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)',
+                                borderRadius: '999px', padding: '0.1rem 0.6rem',
+                                fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: '500'
+                            }}>
+                                {prods.length} producto{prods.length !== 1 ? 's' : ''}
+                            </span>
+                        </div>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                            gap: '1.25rem'
+                        }}>
                             {prods.map(p => (
-                                <div key={p.id} className="card card-hover" style={{ cursor: 'pointer', opacity: p.visible ? 1 : 0.6 }} onClick={() => openEdit(p)}>
-                                    <div style={{ display: 'flex', gap: '1rem' }}>
-                                        {p.image_url && (
-                                            <div style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-                                                <img src={resolveImageUrl(p.image_url)} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            </div>
+                                <div
+                                    key={p.id}
+                                    onClick={() => openEdit(p)}
+                                    style={{
+                                        background: 'var(--color-bg-card, var(--color-bg-alt))',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '16px',
+                                        overflow: 'hidden',
+                                        cursor: 'pointer',
+                                        opacity: p.visible ? 1 : 0.55,
+                                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                        e.currentTarget.style.boxShadow = '0 12px 28px -6px rgba(0,0,0,0.25)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '';
+                                    }}
+                                >
+                                    {/* Image area */}
+                                    <div style={{
+                                        height: '150px', overflow: 'hidden', position: 'relative',
+                                        background: 'linear-gradient(135deg, var(--color-bg-alt) 0%, var(--color-surface, var(--color-bg)) 100%)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        {p.image_url ? (
+                                            <img
+                                                src={resolveImageUrl(p.image_url)}
+                                                alt={p.nombre}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                onError={e => { e.currentTarget.style.display = 'none'; }}
+                                            />
+                                        ) : (
+                                            <i className="bi bi-gem" style={{ fontSize: '2.5rem', opacity: 0.25, color: 'var(--color-text-secondary)' }} />
                                         )}
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                <div>
-                                                    <h4 style={{ fontSize: '0.9375rem', marginBottom: 'var(--space-1)' }}>{p.nombre}</h4>
-                                                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)' }}>
-                                                        {p.categoria_nombre}
-                                                    </p>
-                                                </div>
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                                                        S/. {parseFloat(p.precio_base).toFixed(2)}
-                                                    </div>
-                                                </div>
+                                        {/* Category chip */}
+                                        {p.categoria_nombre && (
+                                            <span style={{
+                                                position: 'absolute', top: '0.65rem', right: '0.65rem',
+                                                background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+                                                color: '#fff', fontSize: '0.68rem', fontWeight: '600',
+                                                padding: '0.18rem 0.55rem', borderRadius: '999px'
+                                            }}>
+                                                {p.categoria_nombre}
+                                            </span>
+                                        )}
+                                        {/* Visibility toggle — stopPropagation so card click still opens edit */}
+                                        <div
+                                            onClick={e => e.stopPropagation()}
+                                            style={{
+                                                position: 'absolute', bottom: '0.65rem', right: '0.65rem',
+                                                background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+                                                borderRadius: '999px', padding: '0.2rem 0.55rem',
+                                                display: 'flex', alignItems: 'center', gap: '0.35rem'
+                                            }}
+                                        >
+                                            <label className="switch" style={{ margin: 0, transform: 'scale(0.8)' }}>
+                                                <input type="checkbox" checked={!!p.visible} onChange={(e) => toggleVisibility(e, p)} />
+                                                <span className="slider round" />
+                                            </label>
+                                            <span style={{ fontSize: '0.65rem', color: '#fff', fontWeight: 600 }}>
+                                                {p.visible ? 'Visible' : 'Oculto'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Content */}
+                                    <div style={{ padding: '1rem' }}>
+                                        <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.9375rem', fontWeight: '700' }}>
+                                            {p.nombre}
+                                        </h4>
+                                        {p.material_nombre && (
+                                            <p style={{
+                                                margin: '0 0 0.3rem 0', fontSize: '0.775rem',
+                                                color: 'var(--color-primary)', fontWeight: '600',
+                                                display: 'flex', alignItems: 'center', gap: '0.25rem'
+                                            }}>
+                                                <i className="bi bi-layers" style={{ fontSize: '0.7rem' }} />
+                                                {p.material_nombre}
+                                            </p>
+                                        )}
+                                        {p.descripcion && (
+                                            <p style={{
+                                                margin: '0 0 0.75rem 0', fontSize: '0.8rem',
+                                                color: 'var(--color-text-secondary)', lineHeight: '1.4',
+                                                display: '-webkit-box', WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                                            }}>
+                                                {p.descripcion}
+                                            </p>
+                                        )}
+                                        <div style={{
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            paddingTop: '0.6rem', borderTop: '1px solid var(--color-border)'
+                                        }}>
+                                            <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--color-primary)' }}>
+                                                S/. {parseFloat(p.precio_base).toFixed(2)}
                                             </div>
-                                            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-                                                {p.material_nombre && (
-                                                    <span className="badge" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
-                                                        <i className="bi bi-diamond" style={{ fontSize: '0.625rem' }}></i> {p.material_nombre}
-                                                    </span>
-                                                )}
-                                                <span className="badge" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
-                                                    <i className="bi bi-clock" style={{ fontSize: '0.625rem' }}></i> {p.tiempo_estimado_dias} días
-                                                </span>
-                                                <div style={{ marginLeft: 'auto' }} onClick={e => e.stopPropagation()}>
-                                                    <label className="switch">
-                                                        <input type="checkbox" checked={!!p.visible} onChange={(e) => toggleVisibility(e, p)} />
-                                                        <span className="slider round"></span>
-                                                    </label>
-                                                </div>
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center', gap: '0.25rem',
+                                                fontSize: '0.75rem', color: 'var(--color-text-secondary)',
+                                                background: 'var(--color-bg-alt)', padding: '0.18rem 0.55rem',
+                                                borderRadius: '999px', border: '1px solid var(--color-border)'
+                                            }}>
+                                                <i className="bi bi-clock" />
+                                                {p.tiempo_estimado_dias} días
                                             </div>
                                         </div>
                                     </div>
