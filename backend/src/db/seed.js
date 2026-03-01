@@ -112,9 +112,9 @@ const seed = async () => {
     // Sample pedidos
     const pedidosResult = await pool.query(`
       INSERT INTO nl_pedidos (codigo, clinica_id, paciente_nombre, fecha, fecha_entrega, estado, subtotal, igv, total, responsable_id, created_by) VALUES
-        ('NL-00001', $1, 'Ana García Pérez', CURRENT_DATE - 5, CURRENT_DATE + 3, 'en_produccion', 180.00, 32.40, 212.40, $3, $4),
-        ('NL-00002', $1, 'Luis Mendoza Torres', CURRENT_DATE - 2, CURRENT_DATE + 5, 'en_diseno', 420.00, 75.60, 495.60, $3, $4),
-        ('NL-00003', $2, 'Carmen Quispe Flores', CURRENT_DATE, CURRENT_DATE + 7, 'pendiente', 200.00, 36.00, 236.00, NULL, $4)
+        ('NL-00001', $1, 'Ana García Pérez', CURRENT_DATE - 5, CURRENT_DATE + 3, 'en_produccion', 152.54, 27.46, 180.00, $3, $4),
+        ('NL-00002', $1, 'Luis Mendoza Torres', CURRENT_DATE - 2, CURRENT_DATE + 5, 'en_diseno', 355.93, 64.07, 420.00, $3, $4),
+        ('NL-00003', $2, 'Carmen Quispe Flores', CURRENT_DATE, CURRENT_DATE + 7, 'pendiente', 169.49, 30.51, 200.00, NULL, $4)
       RETURNING id, codigo
     `, [clinicasResult.rows[0].id, clinicasResult.rows[1].id, tecnicoId, clienteId]);
     console.log('✅ Pedidos created');

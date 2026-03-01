@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate, Route, Routes, Outlet } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { useAuth } from './state/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
@@ -11,6 +12,7 @@ import NuevoPedido from './pages/NuevoPedido.jsx';
 import DetallePedido from './pages/DetallePedido.jsx';
 import Finanzas from './pages/Finanzas.jsx';
 import DetalleFinanza from './pages/DetalleFinanza.jsx';
+import FacturarPedido from './pages/FacturarPedido.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Equipo from './pages/Equipo.jsx';
@@ -55,25 +57,29 @@ const HomeRedirect = () => {
 
 const App = () => {
     return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                <Route index element={<HomeRedirect />} />
-                <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />
-                <Route path="clinicas" element={<LabOnlyRoute><Clinicas /></LabOnlyRoute>} />
-                <Route path="productos" element={<LabOnlyRoute><Productos /></LabOnlyRoute>} />
-                <Route path="almacen" element={<LabOnlyRoute><Almacen /></LabOnlyRoute>} />
-                <Route path="pedidos" element={<Pedidos />} />
-                <Route path="pedidos/nuevo" element={<NuevoPedido />} />
-                <Route path="pedidos/:id" element={<DetallePedido />} />
-                <Route path="finanzas" element={<LabOnlyRoute><Finanzas /></LabOnlyRoute>} />
-                <Route path="finanzas/:id" element={<LabOnlyRoute><DetalleFinanza /></LabOnlyRoute>} />
-                <Route path="calendario" element={<LabOnlyRoute><Calendario /></LabOnlyRoute>} />
-                <Route path="cuenta" element={<Cuenta />} />
-                <Route path="equipo" element={<AdminOnlyRoute><Equipo /></AdminOnlyRoute>} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <>
+            <Toaster position="top-right" />
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                    <Route index element={<HomeRedirect />} />
+                    <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />
+                    <Route path="clinicas" element={<LabOnlyRoute><Clinicas /></LabOnlyRoute>} />
+                    <Route path="productos" element={<LabOnlyRoute><Productos /></LabOnlyRoute>} />
+                    <Route path="almacen" element={<LabOnlyRoute><Almacen /></LabOnlyRoute>} />
+                    <Route path="pedidos" element={<Pedidos />} />
+                    <Route path="pedidos/nuevo" element={<NuevoPedido />} />
+                    <Route path="pedidos/:id" element={<DetallePedido />} />
+                    <Route path="finanzas" element={<LabOnlyRoute><Finanzas /></LabOnlyRoute>} />
+                    <Route path="finanzas/:id" element={<LabOnlyRoute><DetalleFinanza /></LabOnlyRoute>} />
+                    <Route path="finanzas/:id/facturar" element={<LabOnlyRoute><FacturarPedido /></LabOnlyRoute>} />
+                    <Route path="calendario" element={<LabOnlyRoute><Calendario /></LabOnlyRoute>} />
+                    <Route path="cuenta" element={<Cuenta />} />
+                    <Route path="equipo" element={<AdminOnlyRoute><Equipo /></AdminOnlyRoute>} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </>
     );
 };
 

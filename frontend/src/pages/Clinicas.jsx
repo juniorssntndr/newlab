@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import Modal from '../components/Modal.jsx';
+import { ModalPagoMasivo } from '../components/ModalPagoMasivo.jsx';
 import { API_URL } from '../config.js';
 
 const Clinicas = () => {
@@ -11,6 +12,10 @@ const Clinicas = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ nombre: '', razon_social: '', ruc: '', dni: '', email: '', telefono: '', direccion: '', contacto_nombre: '' });
+
+    // Mass payment modal state
+    const [massPaymentModalOpen, setMassPaymentModalOpen] = useState(false);
+    const [selectedClinica, setSelectedClinica] = useState(null);
 
     const fetchClinicas = () => {
         const params = search ? `?search=${encodeURIComponent(search)}` : '';
@@ -40,6 +45,11 @@ const Clinicas = () => {
         await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(form) });
         setModalOpen(false);
         fetchClinicas();
+    };
+
+    const openMassPayment = (c) => {
+        setSelectedClinica(c);
+        setMassPaymentModalOpen(true);
     };
 
     return (
@@ -77,36 +87,39 @@ const Clinicas = () => {
                 ) : (
                     <>
                         <div className="data-table-wrapper desktop-only">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Clínica</th><th>RUC / DNI</th><th>Contacto</th><th>Teléfono</th><th>Estado</th><th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {clinicas.map(c => (
-                                    <tr key={c.id}>
-                                        <td>
-                                            <div>
-                                                <strong>{c.nombre}</strong>
-                                                {c.razon_social && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{c.razon_social}</div>}
-                                            </div>
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{c.ruc || c.dni || '—'}</td>
-                                        <td>{c.contacto_nombre || '—'}</td>
-                                        <td>{c.telefono || '—'}</td>
-                                        <td><span className={`badge ${c.estado === 'activo' ? 'badge-terminado' : 'badge-enviado'}`}>{c.estado}</span></td>
-                                        <td>
-                                            <div className="table-actions">
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(c)} title="Editar">
-                                                    <i className="bi bi-pencil"></i>
-                                                </button>
-                                            </div>
-                                        </td>
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Clínica</th><th>RUC / DNI</th><th>Contacto</th><th>Teléfono</th><th>Estado</th><th></th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {clinicas.map(c => (
+                                        <tr key={c.id}>
+                                            <td>
+                                                <div>
+                                                    <strong>{c.nombre}</strong>
+                                                    {c.razon_social && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{c.razon_social}</div>}
+                                                </div>
+                                            </td>
+                                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{c.ruc || c.dni || '—'}</td>
+                                            <td>{c.contacto_nombre || '—'}</td>
+                                            <td>{c.telefono || '—'}</td>
+                                            <td><span className={`badge ${c.estado === 'activo' ? 'badge-terminado' : 'badge-enviado'}`}>{c.estado}</span></td>
+                                            <td>
+                                                <div className="table-actions">
+                                                    <button className="btn btn-ghost btn-sm btn-icon text-success" onClick={() => openMassPayment(c)} title="Estado de Cuenta / Pagos">
+                                                        <i className="bi bi-wallet2"></i>
+                                                    </button>
+                                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(c)} title="Editar">
+                                                        <i className="bi bi-pencil"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                         <div className="mobile-cards mobile-only">
                             {clinicas.map(c => (
@@ -121,7 +134,10 @@ const Clinicas = () => {
                                         <div className="mobile-field"><span className="mobile-field-label">Telefono</span><span className="mobile-field-value">{c.telefono || '—'}</span></div>
                                         {c.razon_social && <div className="mobile-field"><span className="mobile-field-label">Razon social</span><span className="mobile-field-value">{c.razon_social}</span></div>}
                                     </div>
-                                    <div className="mobile-card-actions">
+                                    <div className="mobile-card-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                        <button className="btn btn-ghost btn-sm text-success" onClick={() => openMassPayment(c)}>
+                                            Pagos <i className="bi bi-wallet2"></i>
+                                        </button>
                                         <button className="btn btn-ghost btn-sm" onClick={() => openEdit(c)}>
                                             Editar <i className="bi bi-pencil"></i>
                                         </button>
@@ -132,6 +148,14 @@ const Clinicas = () => {
                     </>
                 )}
             </div>
+
+            {/* Modal for Mass Payment Statement */}
+            <ModalPagoMasivo
+                clinica={selectedClinica}
+                open={massPaymentModalOpen}
+                onClose={() => setMassPaymentModalOpen(false)}
+                onPaymentSuccess={fetchClinicas}
+            />
 
             <Modal open={modalOpen} onClose={() => setModalOpen(false)}
                 title={editing ? 'Editar Clínica' : 'Nueva Clínica'}

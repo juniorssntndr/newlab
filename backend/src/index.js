@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
@@ -8,9 +10,6 @@ import * as Sentry from '@sentry/node';
 import { randomUUID } from 'crypto';
 import { getAllowedOrigins, getDatabaseUrl, getPort, getRateLimitConfig, getSentryConfig, isProd } from './config/env.js';
 import { logger } from './lib/logger.js';
-
-dotenv.config();
-
 const { Pool } = pg;
 const pool = new Pool({ connectionString: getDatabaseUrl() });
 
@@ -81,6 +80,8 @@ import categoriasRoutes from './routes/categorias.js';
 import inventoryRoutes from './routes/inventory.js';
 import usuariosRoutes from './routes/usuarios.js';
 import auditRoutes from './routes/audit.js';
+import facturacionRoutes from './routes/facturacion.js';
+import consultasRoutes from './routes/consultas.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/clinicas', clinicasRoutes);
@@ -93,6 +94,8 @@ app.use('/api/categorias', categoriasRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/facturacion', facturacionRoutes);
+app.use('/api/consultas', consultasRoutes);
 
 // Static uploads
 import path from 'path';
