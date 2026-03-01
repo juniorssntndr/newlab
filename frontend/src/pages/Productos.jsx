@@ -6,10 +6,14 @@ import { API_URL } from '../config.js';
 
 const tipoLabels = { fija: 'Prótesis Fija', implante: 'Sobre Implantes', removible: 'Removible (PPR)', especialidad: 'Especialidades' };
 const tipoColors = { fija: '#0891B2', implante: '#8B5CF6', removible: '#F59E0B', especialidad: '#10B981' };
+const BACKEND_BASE = API_URL.endsWith('/api')
+    ? API_URL.slice(0, -4)
+    : API_URL.startsWith('http') ? API_URL : '';
+
 const resolveImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
-    return `${API_URL}${imageUrl}`;
+    return `${BACKEND_BASE}${imageUrl}`;
 };
 
 const Productos = () => {

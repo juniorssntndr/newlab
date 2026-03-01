@@ -24,6 +24,14 @@ async function fetchFromExternalApi(endpoint, numero, res) {
         // APISPERU uses token as query param, NOT as Bearer header
         const url = `${EXTERNAL_API_BASE}/${endpoint}/${numero}?token=${token}`;
         const response = await axios.get(url, { timeout: 10000 });
+
+        // APISPERU can return HTTP 200 with { success: false } when document is not found
+        // or when the token quota is exceeded, etc.
+        if (response.data && response.data.success === false) {
+            const msg = response.data.message || 'Documento no encontrado.';
+            return res.status(404).json({ error: msg });
+        }
+
         return res.json(response.data);
     } catch (error) {
         if (error.response) {
