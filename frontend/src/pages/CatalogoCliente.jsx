@@ -3,6 +3,8 @@ import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
+import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
+import { formatDentalSelection } from '../utils/odontograma.js';
 
 // Derive backend base for local /uploads/ paths (strips trailing /api segment)
 const BACKEND_BASE = API_URL.endsWith('/api')
@@ -27,13 +29,33 @@ const CatalogoCliente = () => {
 
     // Quick-order modal
     const [orderProduct, setOrderProduct] = useState(null); // product to order
-    const [orderForm, setOrderForm] = useState({ paciente_nombre: '', fecha_entrega: '', pieza_dental: '', color: '', observaciones: '' });
+    const [orderForm, setOrderForm] = useState({
+        paciente_nombre: '',
+        fecha_entrega: '',
+        color_vita: '',
+        notas: '',
+        observaciones: '',
+        piezas_dentales: [],
+        es_puente: false,
+        pieza_inicio: null,
+        pieza_fin: null
+    });
     const [orderSaving, setOrderSaving] = useState(false);
     const [orderError, setOrderError] = useState('');
 
     const openOrder = (producto) => {
         setOrderProduct(producto);
-        setOrderForm({ paciente_nombre: '', fecha_entrega: '', pieza_dental: '', color: '', observaciones: '' });
+        setOrderForm({
+            paciente_nombre: '',
+            fecha_entrega: '',
+            color_vita: '',
+            notas: '',
+            observaciones: '',
+            piezas_dentales: [],
+            es_puente: false,
+            pieza_inicio: null,
+            pieza_fin: null
+        });
         setOrderError('');
     };
 
@@ -43,6 +65,10 @@ const CatalogoCliente = () => {
         if (e && e.preventDefault) e.preventDefault();
         if (!orderForm.paciente_nombre || !orderForm.fecha_entrega) {
             setOrderError('Completa el nombre del paciente y la fecha de entrega.');
+            return;
+        }
+        if (!orderForm.piezas_dentales.length) {
+            setOrderError('Selecciona al menos una pieza dental en el odontograma.');
             return;
         }
         setOrderSaving(true);
@@ -60,10 +86,13 @@ const CatalogoCliente = () => {
                         producto_id: orderProduct.id,
                         cantidad: 1,
                         precio_unitario: parseFloat(orderProduct.precio_base),
-                        pieza_dental: orderForm.pieza_dental || '',
-                        color: orderForm.color || '',
+                        piezas_dentales: orderForm.piezas_dentales,
+                        es_puente: orderForm.es_puente,
+                        pieza_inicio: orderForm.pieza_inicio,
+                        pieza_fin: orderForm.pieza_fin,
+                        color_vita: orderForm.color_vita || '',
                         material: orderProduct.material_nombre || '',
-                        observaciones: orderForm.observaciones || ''
+                        notas: orderForm.notas || ''
                     }]
                 })
             });
@@ -72,6 +101,8 @@ const CatalogoCliente = () => {
             navigate(`/pedidos/${data.id}`);
         } catch (err) {
             setOrderError(err.message);
+            setOrderSaving(false);
+        } finally {
             setOrderSaving(false);
         }
     };
@@ -216,6 +247,9 @@ const CatalogoCliente = () => {
                 open={!!orderProduct}
                 onClose={closeOrder}
                 title="Solicitar Pedido"
+                size="2xl"
+                className="order-modal-compact"
+                bodyClassName="order-modal-compact-body"
                 footer={(
                     <>
                         <button type="button" className="btn btn-ghost" onClick={closeOrder}>
@@ -232,91 +266,117 @@ const CatalogoCliente = () => {
                 )}
             >
                 {orderProduct && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {/* Product summary */}
-                        <div style={{ paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                            {orderProduct.image_url ? (
-                                <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
-                                    style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
-                                    onError={e => { e.currentTarget.style.display = 'none'; }} />
-                            ) : (
-                                <div style={{
-                                    width: 72, height: 72, borderRadius: 12, flexShrink: 0,
-                                    background: 'var(--color-bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}>
-                                    <i className="bi bi-gem" style={{ fontSize: '1.8rem', opacity: 0.3 }} />
+                    <form id="orderForm" onSubmit={handleOrderSubmit} className="order-modal-layout-v2">
+                        <div className="order-modal-bento-v2">
+                            <aside className="order-modal-fields-v2">
+                                <div className="order-modal-summary-v2">
+                                    {orderProduct.image_url ? (
+                                        <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
+                                            style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
+                                            onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                    ) : (
+                                        <div style={{
+                                            width: 64, height: 64, borderRadius: 10, flexShrink: 0,
+                                            background: 'var(--color-bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        }}>
+                                            <i className="bi bi-gem" style={{ fontSize: '1.8rem', opacity: 0.3 }} />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div style={{ fontWeight: '700', marginBottom: '0.2rem' }}>{orderProduct.nombre}</div>
+                                        {orderProduct.material_nombre && (
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, marginBottom: '0.2rem' }}>
+                                                <i className="bi bi-layers" style={{ marginRight: '0.25rem' }} />{orderProduct.material_nombre}
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <span style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--color-primary)' }}>
+                                                S/. {Number(orderProduct.precio_base).toFixed(2)}
+                                            </span>
+                                            {orderProduct.tiempo_estimado_dias && (
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                                    <i className="bi bi-clock" /> {orderProduct.tiempo_estimado_dias} días
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                            <div>
-                                <div style={{ fontWeight: '700', marginBottom: '0.2rem' }}>{orderProduct.nombre}</div>
-                                {orderProduct.material_nombre && (
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, marginBottom: '0.2rem' }}>
-                                        <i className="bi bi-layers" style={{ marginRight: '0.25rem' }} />{orderProduct.material_nombre}
+
+                                {orderError && (
+                                    <div className="order-modal-error-v2">
+                                        <i className="bi bi-exclamation-circle" />{orderError}
                                     </div>
                                 )}
-                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--color-primary)' }}>
-                                        S/. {Number(orderProduct.precio_base).toFixed(2)}
-                                    </span>
-                                    {orderProduct.tiempo_estimado_dias && (
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                                            <i className="bi bi-clock" /> {orderProduct.tiempo_estimado_dias} días
-                                        </span>
+
+                                <div className="order-fields-grid-v2">
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Nombre del Paciente *</label>
+                                        <input className="form-input" placeholder="Nombre completo"
+                                            value={orderForm.paciente_nombre}
+                                            onChange={e => setOrderForm(f => ({ ...f, paciente_nombre: e.target.value }))} />
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Fecha de Entrega Estimada *</label>
+                                        <input className="form-input" type="date"
+                                            min={new Date().toISOString().split('T')[0]}
+                                            value={orderForm.fecha_entrega}
+                                            onChange={e => setOrderForm(f => ({ ...f, fecha_entrega: e.target.value }))} />
+                                    </div>
+                                </div>
+
+                                <div className="order-status-card-v2">
+                                    <span>Piezas seleccionadas</span>
+                                    <strong>{orderForm.piezas_dentales.length}</strong>
+                                    <p className="order-selection-summary-v2">
+                                        {orderForm.piezas_dentales.length ? formatDentalSelection(orderForm) : 'Haz clic o arrastra sobre los dientes.'}
+                                    </p>
+                                    {orderForm.es_puente && orderForm.pieza_inicio && orderForm.pieza_fin && (
+                                        <p className="order-selection-bridge-v2">Puente {orderForm.pieza_inicio}-{orderForm.pieza_fin}</p>
                                     )}
                                 </div>
+
+                                <div className="order-fields-grid-v2">
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Selección dental</label>
+                                        <input className="form-input" value={formatDentalSelection(orderForm)} readOnly />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Color / Tono (VITA)</label>
+                                        <input className="form-input" placeholder="Ej: A2"
+                                            value={orderForm.color_vita}
+                                            onChange={e => setOrderForm(f => ({ ...f, color_vita: e.target.value }))} />
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Notas del item</label>
+                                    <textarea className="form-textarea" rows={1} placeholder="Instrucciones para esta restauración"
+                                        value={orderForm.notas}
+                                        onChange={e => setOrderForm(f => ({ ...f, notas: e.target.value }))} />
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Observaciones generales</label>
+                                    <textarea className="form-textarea" rows={1} placeholder="Indicaciones especiales..."
+                                        value={orderForm.observaciones}
+                                        onChange={e => setOrderForm(f => ({ ...f, observaciones: e.target.value }))} />
+                                </div>
+                            </aside>
+
+                            <div className="order-modal-odonto-v2">
+                                <OdontogramaInteractive
+                                    product={orderProduct}
+                                    selection={orderForm}
+                                    onChange={(dentalData) => setOrderForm(f => ({ ...f, ...dentalData }))}
+                                    title="Selecciona las piezas del caso"
+                                    showSidePanel={true}
+                                    showProductPill={false}
+                                    showHeader={false}
+                                />
                             </div>
                         </div>
-
-                        {/* Form */}
-                        <form id="orderForm" onSubmit={handleOrderSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-                            {orderError && (
-                                <div style={{
-                                    padding: '0.65rem 1rem', borderRadius: '8px',
-                                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)',
-                                    color: '#F87171', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center'
-                                }}>
-                                    <i className="bi bi-exclamation-circle" />{orderError}
-                                </div>
-                            )}
-
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Nombre del Paciente *</label>
-                                <input className="form-input" placeholder="Nombre completo"
-                                    value={orderForm.paciente_nombre}
-                                    onChange={e => setOrderForm(f => ({ ...f, paciente_nombre: e.target.value }))} />
-                            </div>
-
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Fecha de Entrega Estimada *</label>
-                                <input className="form-input" type="date"
-                                    min={new Date().toISOString().split('T')[0]}
-                                    value={orderForm.fecha_entrega}
-                                    onChange={e => setOrderForm(f => ({ ...f, fecha_entrega: e.target.value }))} />
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label">Pieza Dental</label>
-                                    <input className="form-input" placeholder="ej: 1.1"
-                                        value={orderForm.pieza_dental}
-                                        onChange={e => setOrderForm(f => ({ ...f, pieza_dental: e.target.value }))} />
-                                </div>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label">Color / Tono</label>
-                                    <input className="form-input" placeholder="ej: A2"
-                                        value={orderForm.color}
-                                        onChange={e => setOrderForm(f => ({ ...f, color: e.target.value }))} />
-                                </div>
-                            </div>
-
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Observaciones</label>
-                                <textarea className="form-textarea" rows={3} placeholder="Indicaciones especiales..."
-                                    value={orderForm.observaciones}
-                                    onChange={e => setOrderForm(f => ({ ...f, observaciones: e.target.value }))} />
-                            </div>
-                        </form>
-                    </div>
+                    </form>
                 )}
             </Modal>
         </div>

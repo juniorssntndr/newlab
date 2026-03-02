@@ -47,7 +47,16 @@ export const AuthProvider = ({ children }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
-        const data = await res.json();
+
+        if (res.status === 429) {
+            throw new Error('Demasiados intentos. Espera unos minutos e inténtalo de nuevo.');
+        }
+
+        const contentType = res.headers.get('content-type') || '';
+        const data = contentType.includes('application/json')
+            ? await res.json()
+            : { error: await res.text() };
+
         if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
 
         localStorage.setItem('nl_token', data.token);

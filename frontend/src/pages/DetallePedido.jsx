@@ -3,6 +3,7 @@ import { useAuth } from '../state/AuthContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
+import { formatDentalSelection } from '../utils/odontograma.js';
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
@@ -494,11 +495,11 @@ const DetallePedido = () => {
                                     {(pedido.items || []).map((item, i) => (
                                         <tr key={i}>
                                             <td><strong>{item.producto_nombre || `Producto #${item.producto_id}`}</strong></td>
-                                            <td style={{ fontFamily: 'var(--font-mono)' }}>{item.pieza_dental || '—'}</td>
-                                            <td>{item.color || '—'}</td>
+                                            <td style={{ fontFamily: 'var(--font-mono)' }}>{formatDentalSelection(item)}</td>
+                                            <td>{item.color_vita || item.color || '—'}</td>
                                             <td>{item.material || '—'}</td>
                                             <td>{item.cantidad}</td>
-                                            <td><strong>S/. {(item.cantidad * parseFloat(item.precio_unitario)).toFixed(2)}</strong></td>
+                                            <td><strong>S/. {(parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario))).toFixed(2)}</strong></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -514,11 +515,11 @@ const DetallePedido = () => {
                                     <div className="mobile-card-grid">
                                         <div className="mobile-field">
                                             <span className="mobile-field-label">Pieza</span>
-                                            <span className="mobile-field-value" style={{ fontFamily: 'var(--font-mono)' }}>{item.pieza_dental || '—'}</span>
+                                            <span className="mobile-field-value" style={{ fontFamily: 'var(--font-mono)' }}>{formatDentalSelection(item)}</span>
                                         </div>
                                         <div className="mobile-field">
                                             <span className="mobile-field-label">Color</span>
-                                            <span className="mobile-field-value">{item.color || '—'}</span>
+                                            <span className="mobile-field-value">{item.color_vita || item.color || '—'}</span>
                                         </div>
                                         <div className="mobile-field">
                                             <span className="mobile-field-label">Material</span>
@@ -526,7 +527,7 @@ const DetallePedido = () => {
                                         </div>
                                         <div className="mobile-field">
                                             <span className="mobile-field-label">Subtotal</span>
-                                            <span className="mobile-field-value"><strong>S/. {(item.cantidad * parseFloat(item.precio_unitario)).toFixed(2)}</strong></span>
+                                            <span className="mobile-field-value"><strong>S/. {(parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario))).toFixed(2)}</strong></span>
                                         </div>
                                     </div>
                                 </article>
