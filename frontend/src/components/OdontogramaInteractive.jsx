@@ -44,8 +44,8 @@ const OdontogramaInteractive = ({
             setBridgeAnchor(null);
         };
 
-        window.addEventListener('pointerup', stopDragging);
-        window.addEventListener('pointercancel', stopDragging);
+        window.addEventListener('pointerup', stopDragging, { passive: true });
+        window.addEventListener('pointercancel', stopDragging, { passive: true });
 
         return () => {
             window.removeEventListener('pointerup', stopDragging);
@@ -132,12 +132,17 @@ const OdontogramaInteractive = ({
         return classes.join(' ');
     };
 
-    const bridgeLine = selection?.es_puente && selection?.pieza_inicio && selection?.pieza_fin
-        ? {
-            start: toothCenters[selection.pieza_inicio],
-            end: toothCenters[selection.pieza_fin]
-        }
-        : null;
+    const bridgePoints = useMemo(() => {
+        if (!selection?.es_puente || currentTeeth.length < 2) return null;
+        
+        const validPoints = currentTeeth
+            .map(tooth => toothCenters[tooth])
+            .filter(Boolean);
+            
+        if (validPoints.length < 2) return null;
+        
+        return validPoints.map(p => `${p.x},${p.y}`).join(' ');
+    }, [selection?.es_puente, currentTeeth, toothCenters]);
 
     return (
         <div className="odontograma-shell">
@@ -156,7 +161,7 @@ const OdontogramaInteractive = ({
                 <section className="odontograma-panel">
                     <div className="odontograma-stage">
                         <svg
-                            viewBox="0 0 409 694"
+                            viewBox="12 0 372 694"
                             preserveAspectRatio="xMidYMid meet"
                             className="odontograma-svg"
                             role="img"
@@ -173,13 +178,13 @@ const OdontogramaInteractive = ({
                                 </filter>
                             </defs>
 
-                            {bridgeLine?.start && bridgeLine?.end && (
-                                <line
-                                    x1={bridgeLine.start.x}
-                                    y1={bridgeLine.start.y}
-                                    x2={bridgeLine.end.x}
-                                    y2={bridgeLine.end.y}
+                            {bridgePoints && (
+                                <polyline
+                                    points={bridgePoints}
                                     className="bridge-connector"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                     filter="url(#softGlow)"
                                 />
                             )}
@@ -280,6 +285,7 @@ const OdontogramaInteractive = ({
                             {isBridge && <div><i className="legend-dot pillar"></i> Pilar</div>}
                             {isBridge && <div><i className="legend-dot pontic"></i> Pontico</div>}
                             <div><i className="legend-dot disabled"></i> Deshabilitada</div>
+                            {isBridge && <p className="odontograma-legend-note">Pilar soporta el puente y pontico reemplaza la pieza intermedia.</p>}
                         </article>
                     </aside>
                 )}
