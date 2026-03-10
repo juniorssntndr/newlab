@@ -251,6 +251,8 @@ h4 {
 .app-layout {
   display: flex;
   min-height: 100vh;
+  overflow-x: hidden; /* Force strict containment to prevent mobile blowout */
+  width: 100%;
 }
 
 .app-main {
@@ -260,6 +262,8 @@ h4 {
   flex-direction: column;
   min-height: 100vh;
   transition: margin-left var(--transition-base);
+  min-width: 0; /* Prevent flex items from expanding beyond screen */
+  overflow-x: hidden;
 }
 
 .app-main.sidebar-collapsed {
