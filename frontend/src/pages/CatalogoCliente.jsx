@@ -190,11 +190,11 @@ const CatalogoCliente = () => {
                         onChange={e => setSearch(e.target.value)}
                     />
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <div className="catalog-filters-scrollable">
                     <button
                         onClick={() => setSelectedCat('all')}
                         className={`btn ${selectedCat === 'all' ? 'btn-primary' : 'btn-ghost'}`}
-                        style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', borderRadius: '999px' }}
+                        style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                         Todos
                     </button>
@@ -203,7 +203,7 @@ const CatalogoCliente = () => {
                             key={cat.id}
                             onClick={() => setSelectedCat(String(cat.id))}
                             className={`btn ${String(selectedCat) === String(cat.id) ? 'btn-primary' : 'btn-ghost'}`}
-                            style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', borderRadius: '999px' }}
+                            style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}
                         >
                             {cat.nombre}
                         </button>

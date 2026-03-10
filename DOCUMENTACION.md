@@ -13,6 +13,7 @@ El sistema opera a través de una aplicación web construida en **React** (Vite)
 Para continuar desarrollando este tipo de proyecto usando agentes IA (como Antigravity/Claude Code), se recomienda tener instalados los siguientes skills en el repositorio (carpeta `.agents/skills`):
 - **playwright-skill**: Útil para hacer testing End-to-End, automatización de navegadores, testing responsivo de la UI y flujos de usuario (como login o creación de órdenes).
 - **find-skills**: Fundamental para buscar y agregar rápidamente nuevas capacidades al ecosistema de IA.
+- **claude-code-templates@mobile-design**: Proporciona buenas prácticas, lineamientos de UI/UX, plantillas y componentes estandarizados para asegurar un diseño móvil premium, responsivo y moderno.
 
 ## 3. MCPs (Model Context Protocol)
 Los siguientes MCP servers son muy útiles o necesarios para el contexto del desarrollo de este sistema:

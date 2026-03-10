@@ -2653,6 +2653,22 @@ h4 {
   align-items: center;
 }
 
+/* Mobile-first: Scrollable category filters */
+.catalog-filters-scrollable {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  padding-bottom: 0.5rem; /* Room for thumb/focus ring if needed */
+  width: 100%;
+}
+
+.catalog-filters-scrollable::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+
 .order-modal-bento-v2 {
   display: grid;
   grid-template-columns: minmax(360px, 460px) minmax(460px, 540px);
@@ -2663,13 +2679,31 @@ h4 {
   justify-content: center;
 }
 
-.order-modal-odonto-v2 {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  height: 100%;
+@media (max-width: 990px) {
+  /* Enforce a strict vertical stack layout to avoid grid dimension collapse */
+  .order-modal-bento-v2 {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+    gap: var(--space-4);
+  }
+
+  .order-modal-fields-v2 {
+    order: 0 !important; /* Ensure it stays on top */
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important; 
+    flex: 0 0 auto;
+  }
+
+  .order-modal-odonto-v2 {
+    order: 1 !important; /* Ensure it stays at the bottom */
+    height: auto !important;
+    min-height: 480px; 
+    padding-bottom: 2rem;
+    flex: 0 0 auto;
+  }
 }
 
 .order-modal-fields-v2 {
@@ -2686,6 +2720,8 @@ h4 {
   min-height: 0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
+
+
 
 .order-modal-fields-v2 .form-label {
   margin-bottom: 0.3rem;
