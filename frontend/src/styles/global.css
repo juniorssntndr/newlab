@@ -2653,20 +2653,6 @@ h4 {
   align-items: center;
 }
 
-/* Mobile-first: Scrollable category filters */
-.catalog-filters-scrollable {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  padding-bottom: 0.5rem; /* Room for thumb/focus ring if needed */
-  width: 100%;
-}
-
-.catalog-filters-scrollable::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
-}
 
 
 .order-modal-bento-v2 {
@@ -3237,12 +3223,31 @@ h4 {
   align-items: center;
   margin-bottom: 1.5rem;
   width: 100%;
+  max-width: 100%;
+  min-width: 0; /* Critical for flex blowout */
 }
 
 .catalog-search-wrapper {
   position: relative;
   flex: 1;
   min-width: 200px;
+  max-width: 100%;
+}
+
+.catalog-filters-scrollable {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  padding-bottom: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* Critical: allows scrolling without pushing parent width */
+}
+
+.catalog-filters-scrollable::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 @media (max-width: 768px) {
@@ -3250,6 +3255,7 @@ h4 {
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
+    overflow: hidden; /* Force strict containment locally */
   }
   
   .catalog-search-wrapper {
@@ -3257,11 +3263,10 @@ h4 {
     width: 100%;
   }
 
-  /* Prevent the scrollable area from expanding the parent */
   .catalog-filters-scrollable {
-    width: auto;
-    margin: 0 calc(var(--space-4) * -1); /* Negative margin to reach edge of screen if container is padded */
-    padding: 0 var(--space-4) 0.5rem var(--space-4);
+    width: 100%;
+    margin: 0; 
+    padding: 0 0 0.5rem 0;
   }
 }
 
