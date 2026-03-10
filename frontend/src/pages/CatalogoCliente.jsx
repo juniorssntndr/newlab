@@ -172,11 +172,8 @@ const CatalogoCliente = () => {
             </div>
 
             {/* Search and filter bar */}
-            <div style={{
-                display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center',
-                marginBottom: '1.5rem'
-            }}>
-                <div style={{ position: 'relative', flex: '1', minWidth: '220px' }}>
+            <div className="catalog-search-filter-container">
+                <div className="catalog-search-wrapper">
                     <i className="bi bi-search" style={{
                         position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)',
                         color: 'var(--color-text-secondary)', pointerEvents: 'none'
