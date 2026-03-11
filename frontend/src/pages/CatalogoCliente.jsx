@@ -268,7 +268,7 @@ const CatalogoCliente = () => {
                         <button type="button" className={`btn btn-ghost hide-on-desktop ${mobileOrderStep === 1 ? 'hide-on-mobile' : ''}`} onClick={() => setMobileOrderStep(1)}>
                             Atrás
                         </button>
-                        <button type="button" className={`btn btn-primary hide-on-desktop ${mobileOrderStep === 2 ? 'hide-on-mobile' : ''}`} onClick={() => setMobileOrderStep(2)}>
+                        <button type="button" className={`btn btn-primary hide-on-desktop ${mobileOrderStep === 2 ? 'hide-on-mobile' : ''}`} disabled={!isOrderReady} onClick={() => setMobileOrderStep(2)}>
                             Siguiente
                         </button>
                         <button type="submit" form="orderForm" className={`btn btn-primary desktop-only-submit`} disabled={orderSaving || !isOrderReady}>
@@ -287,10 +287,10 @@ const CatalogoCliente = () => {
 
                             <aside className="order-modal-fields-v2">
                                 <div className="order-modal-summary-v2 mobile-only-hide-step-1" style={{ paddingBottom: '0.85rem', marginBottom: '0.4rem', borderBottom: '1px solid rgba(148, 163, 184, 0.2)', gap: '1rem' }}>
-                                    <div style={{ width: 56, height: 56, borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(148, 163, 184, 0.25)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-alt)' }}>
+                                    <div style={{ width: 56, height: 56, borderRadius: '12px', padding: '4px', overflow: 'hidden', border: '1px solid rgba(148, 163, 184, 0.25)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-alt)' }}>
                                         {orderProduct.image_url ? (
                                             <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }}
                                                 onError={e => { e.currentTarget.style.display = 'none'; }} />
                                         ) : (
                                             <i className="bi bi-gem" style={{ fontSize: '1.6rem', opacity: 0.3 }} />
@@ -367,11 +367,11 @@ const CatalogoCliente = () => {
                                     
                                     <div className="form-group">
                                         <label className="form-label">Selección dental y Color</label>
-                                        <div className="odonto-status-strip" style={{ marginTop: 0, height: '100%', minHeight: '42px', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                                        <div className="odonto-status-strip" style={{ marginTop: 0, height: '100%', minHeight: '42px', flexWrap: 'nowrap', gap: '0.5rem', justifyContent: 'space-between' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 <span className="odonto-status-pill">{Math.max(1, orderForm.piezas_dentales.length)} piezas</span>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 <i className="bi bi-palette" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}></i>
                                                 <select 
                                                     className="form-input" 
