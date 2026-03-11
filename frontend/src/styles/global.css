@@ -2661,7 +2661,7 @@ h4 {
 
 .order-modal-bento-v2 {
   display: grid;
-  grid-template-columns: minmax(360px, 460px) minmax(460px, 540px);
+  grid-template-columns: minmax(320px, 460px) minmax(400px, 540px);
   gap: var(--space-3);
   align-items: stretch;
   min-height: 0;
@@ -2678,7 +2678,7 @@ h4 {
   height: 100%;
 }
 
-@media (max-width: 990px) {
+@media (max-width: 860px) {
   /* Enforce a strict vertical stack layout to avoid grid dimension collapse */
   .order-modal-bento-v2 {
     display: flex !important;
@@ -2718,7 +2718,7 @@ h4 {
   }
 }
 
-@media (min-width: 991px) {
+@media (min-width: 861px) {
   .hide-on-desktop { display: none !important; }
 }
 
