@@ -286,28 +286,25 @@ const CatalogoCliente = () => {
                         <div className={`order-modal-bento-v2 modal-mobile-step-${mobileOrderStep}`}>
 
                             <aside className="order-modal-fields-v2">
-                                <div className="order-modal-summary-v2 mobile-only-hide-step-1">
-                                    {orderProduct.image_url ? (
-                                        <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
-                                            style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
-                                            onError={e => { e.currentTarget.style.display = 'none'; }} />
-                                    ) : (
-                                        <div style={{
-                                            width: 64, height: 64, borderRadius: 10, flexShrink: 0,
-                                            background: 'var(--color-bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
-                                            <i className="bi bi-gem" style={{ fontSize: '1.8rem', opacity: 0.3 }} />
-                                        </div>
-                                    )}
-                                    <div>
-                                        <div style={{ fontWeight: '700', marginBottom: '0.2rem' }}>{orderProduct.nombre}</div>
+                                <div className="order-modal-summary-v2 mobile-only-hide-step-1" style={{ paddingBottom: '0.85rem', marginBottom: '0.4rem', borderBottom: '1px solid rgba(148, 163, 184, 0.2)', gap: '1rem' }}>
+                                    <div style={{ width: 56, height: 56, borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(148, 163, 184, 0.25)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-alt)' }}>
+                                        {orderProduct.image_url ? (
+                                            <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                        ) : (
+                                            <i className="bi bi-gem" style={{ fontSize: '1.6rem', opacity: 0.3 }} />
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                        <div style={{ fontWeight: '700', fontSize: '1.05rem', lineHeight: 1.2 }}>{orderProduct.nombre}</div>
                                         {orderProduct.material_nombre && (
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, marginBottom: '0.2rem' }}>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
                                                 <i className="bi bi-layers" style={{ marginRight: '0.25rem' }} />{orderProduct.material_nombre}
                                             </div>
                                         )}
-                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                            <span style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--color-primary)' }}>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.1rem' }}>
+                                            <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--color-primary)' }}>
                                                 S/. {Number(orderProduct.precio_base).toFixed(2)}
                                             </span>
                                             {orderProduct.tiempo_estimado_dias && (
@@ -372,16 +369,8 @@ const CatalogoCliente = () => {
                                         <label className="form-label">Selección dental y Color</label>
                                         <div className="odonto-status-strip" style={{ marginTop: 0, height: '100%', minHeight: '42px', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span className="odonto-status-pill">{orderForm.piezas_dentales.length} piezas</span>
-                                                <span className="odonto-status-divider">•</span>
-                                                <span className="odonto-status-text">{orderForm.es_puente ? 'Modo puente' : 'Modo unitario'}</span>
+                                                <span className="odonto-status-pill">{Math.max(1, orderForm.piezas_dentales.length)} piezas</span>
                                             </div>
-                                            {orderForm.es_puente && orderForm.pieza_inicio && orderForm.pieza_fin && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <span className="odonto-status-divider">•</span>
-                                                    <span className="odonto-status-text">Pilares: {orderForm.pieza_inicio} / {orderForm.pieza_fin}</span>
-                                                </div>
-                                            )}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
                                                 <i className="bi bi-palette" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}></i>
                                                 <select 
