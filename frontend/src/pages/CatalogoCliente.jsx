@@ -37,6 +37,7 @@ const CatalogoCliente = () => {
 
     // Quick-order modal
     const [orderProduct, setOrderProduct] = useState(null); // product to order
+    const [mobileOrderStep, setMobileOrderStep] = useState(1); // 1 = Odontograma, 2 = Resumen (Solo móviles)
     const [orderForm, setOrderForm] = useState({
         paciente_nombre: '',
         fecha_entrega: '',
@@ -61,6 +62,7 @@ const CatalogoCliente = () => {
 
     const openOrder = (producto) => {
         setOrderProduct(producto);
+        setMobileOrderStep(1);
         setOrderForm({
             paciente_nombre: '',
             fecha_entrega: calculateDeliveryDate(producto, false),
@@ -260,10 +262,16 @@ const CatalogoCliente = () => {
                 bodyClassName="order-modal-compact-body"
                 footer={(
                     <>
-                        <button type="button" className="btn btn-ghost" onClick={closeOrder}>
+                        <button type="button" className={`btn btn-ghost ${mobileOrderStep === 2 ? 'hide-on-mobile' : ''}`} onClick={closeOrder}>
                             Cancelar
                         </button>
-                        <button type="submit" form="orderForm" className="btn btn-primary" disabled={orderSaving || !isOrderReady}>
+                        <button type="button" className={`btn btn-ghost hide-on-desktop ${mobileOrderStep === 1 ? 'hide-on-mobile' : ''}`} onClick={() => setMobileOrderStep(1)}>
+                            Atrás
+                        </button>
+                        <button type="button" className={`btn btn-primary hide-on-desktop ${mobileOrderStep === 2 ? 'hide-on-mobile' : ''}`} onClick={() => setMobileOrderStep(2)}>
+                            Siguiente
+                        </button>
+                        <button type="submit" form="orderForm" className={`btn btn-primary desktop-only-submit`} disabled={orderSaving || !isOrderReady}>
                             {orderSaving ? (
                                 <><i className="bi bi-hourglass-split" /> Creando...</>
                             ) : (
@@ -275,10 +283,10 @@ const CatalogoCliente = () => {
             >
                 {orderProduct && (
                     <form id="orderForm" onSubmit={handleOrderSubmit} className="order-modal-layout-v2">
-                        <div className="order-modal-bento-v2">
+                        <div className={`order-modal-bento-v2 modal-mobile-step-${mobileOrderStep}`}>
 
                             <aside className="order-modal-fields-v2">
-                                <div className="order-modal-summary-v2">
+                                <div className="order-modal-summary-v2 mobile-only-hide-step-1">
                                     {orderProduct.image_url ? (
                                         <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
                                             style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
@@ -317,7 +325,7 @@ const CatalogoCliente = () => {
                                     </div>
                                 )}
 
-                                <div className="order-form-section">
+                                <div className="order-form-section mobile-only-hide-step-2">
                                     <h6 className="order-section-title"><i className="bi bi-person-lines-fill"></i> Datos Administrativos</h6>
                                     
                                     <div className="order-fields-grid-v2">
@@ -357,7 +365,7 @@ const CatalogoCliente = () => {
                                     </div>
                                 </div>
 
-                                <div className="order-form-section">
+                                <div className="order-form-section mobile-only-hide-step-1">
                                     <h6 className="order-section-title"><i className="bi bi-journal-medical"></i> Especificaciones Clínicas</h6>
                                     
                                     <div className="form-group">
@@ -407,7 +415,7 @@ const CatalogoCliente = () => {
                                     </div>
                                 </div>
 
-                                <div className="order-form-section" style={{ background: 'rgba(var(--color-primary-rgb), 0.04)', borderColor: 'rgba(var(--color-primary-rgb), 0.15)' }}>
+                                <div className="order-form-section mobile-only-hide-step-1" style={{ background: 'rgba(var(--color-primary-rgb), 0.04)', borderColor: 'rgba(var(--color-primary-rgb), 0.15)' }}>
                                     <h6 className="order-section-title" style={{ color: 'var(--color-primary)', borderBottomColor: 'rgba(var(--color-primary-rgb), 0.2)', marginBottom: '0.6rem' }}>
                                         <i className="bi bi-receipt"></i> Resumen de Orden
                                     </h6>
@@ -435,7 +443,7 @@ const CatalogoCliente = () => {
                                 </div>
                             </aside>
 
-                            <div className="order-modal-odonto-v2">
+                            <div className="order-modal-odonto-v2 mobile-only-hide-step-2">
                                 <OdontogramaInteractive
                                     product={orderProduct}
                                     selection={orderForm}
