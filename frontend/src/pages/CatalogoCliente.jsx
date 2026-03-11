@@ -271,7 +271,7 @@ const CatalogoCliente = () => {
                         <button type="button" className={`btn btn-primary hide-on-desktop ${mobileOrderStep === 2 ? 'hide-on-mobile' : ''}`} disabled={!isOrderReady} onClick={() => setMobileOrderStep(2)}>
                             Siguiente
                         </button>
-                        <button type="submit" form="orderForm" className={`btn btn-primary desktop-only-submit`} disabled={orderSaving || !isOrderReady}>
+                        <button type="submit" form="orderForm" className={`btn btn-primary ${mobileOrderStep === 1 ? 'hide-on-mobile' : ''}`} disabled={orderSaving || !isOrderReady}>
                             {orderSaving ? (
                                 <><i className="bi bi-hourglass-split" /> Creando...</>
                             ) : (

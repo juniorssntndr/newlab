@@ -2698,7 +2698,6 @@ h4 {
   /* Multi-Step Mobile Form Logic */
   .modal-mobile-step-1 .mobile-only-hide-step-1 { display: none !important; }
   .modal-mobile-step-2 .mobile-only-hide-step-2 { display: none !important; }
-  .modal-mobile-step-1 .desktop-only-submit { display: none !important; }
   .hide-on-mobile { display: none !important; }
 
   .order-modal-fields-v2 {
