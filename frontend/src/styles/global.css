@@ -3102,14 +3102,6 @@ h4 {
     max-width: 1040px;
   }
 
-  .order-modal-bento-v2 {
-    grid-template-columns: 1fr;
-  }
-
-  .order-modal-odonto-v2 {
-    order: -1;
-  }
-
 .order-modal-bento-v2 .odontograma-stage {
   width: 100%;
   max-height: 50vh;
