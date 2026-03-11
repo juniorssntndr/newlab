@@ -2684,8 +2684,14 @@ h4 {
     display: flex !important;
     flex-direction: column !important;
     height: auto !important;
+    min-height: 100% !important;
     overflow: visible !important;
     gap: var(--space-4);
+  }
+
+  .order-modal-compact .modal-body {
+    display: block !important;
+    overflow-y: auto !important;
   }
 
   /* Multi-Step Mobile Form Logic */
@@ -2700,6 +2706,7 @@ h4 {
     max-height: none !important;
     overflow: visible !important; 
     flex: 0 0 auto;
+    padding-top: 0 !important;
   }
 
   .order-modal-odonto-v2 {
