@@ -488,25 +488,6 @@ const DetalleFinanza = () => {
                             </div>
                         )}
                     </div>
-                    {comprobantes.length > 0 && comprobantes[0].pdf_url && (
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => handlePrintComprobante(comprobantes[0])}
-                            style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dark, #0d9488))', boxShadow: '0 4px 12px rgba(20,184,166,0.35)' }}
-                        >
-                            <i className="bi bi-file-earmark-pdf-fill"></i> Imprimir Comprobante
-                        </button>
-                    )}
-                    {comprobantes.length === 0 && (
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => navigate(`/finanzas/${id}/facturar`)}
-                            disabled={finanza.estado_pago !== 'cancelado'}
-                            title={finanza.estado_pago !== 'cancelado' ? 'El pedido debe estar cancelado en su totalidad para emitir comprobantes a SUNAT' : ''}
-                        >
-                            <i className="bi bi-file-earmark-text"></i> Emitir Electrónico
-                        </button>
-                    )}
                     {finanza.estado_pago !== 'cancelado' && (
                         <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
                             <i className="bi bi-plus-lg"></i> Registrar pago
@@ -624,8 +605,7 @@ const DetalleFinanza = () => {
                 </div>
             </div>
 
-            {comprobantes.length > 0 && (
-                <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 0, overflow: 'hidden' }}>
+            <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 0, overflow: 'hidden' }}>
                     {/* Header */}
                     <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg-alt) 100%)' }}>
                         <div style={{ width: '2rem', height: '2rem', borderRadius: '8px', background: 'rgba(20,184,166,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -636,7 +616,7 @@ const DetalleFinanza = () => {
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Registrados ante SUNAT</div>
                         </div>
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
-                            {comprobantes[0]?.pdf_url && (
+                            {comprobantes.length > 0 && comprobantes[0]?.pdf_url && (
                                 <a
                                     href={comprobantes[0].pdf_url}
                                     target="_blank"
@@ -646,6 +626,17 @@ const DetalleFinanza = () => {
                                 >
                                     <i className="bi bi-file-earmark-pdf-fill"></i> Imprimir / Ver PDF
                                 </a>
+                            )}
+                            {comprobantes.length === 0 && (
+                                <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => navigate(`/finanzas/${id}/facturar`)}
+                                    disabled={finanza.estado_pago !== 'cancelado'}
+                                    title={finanza.estado_pago !== 'cancelado' ? 'El pedido debe estar cancelado para emitir comprobantes' : ''}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-primary), #0d9488)', boxShadow: '0 4px 12px rgba(20,184,166,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', fontWeight: '600', fontSize: '0.85rem' }}
+                                >
+                                    <i className="bi bi-file-earmark-text"></i> Emitir Electrónico
+                                </button>
                             )}
                         </div>
                     </div>
@@ -661,7 +652,14 @@ const DetalleFinanza = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {comprobantes.map((comp) => {
+                                {comprobantes.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                                            <i className="bi bi-file-earmark-x" style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem', opacity: 0.4 }}></i>
+                                            Sin comprobantes electrónicos emitidos
+                                        </td>
+                                    </tr>
+                                ) : comprobantes.map((comp) => {
                                     const isVoided = comp.estado_sunat === 'anulado';
                                     const isActive = comp.estado_sunat === 'aceptado' || comp.estado_sunat === 'generado';
                                     return (
@@ -733,8 +731,7 @@ const DetalleFinanza = () => {
                             </tbody>
                         </table>
                     </div>
-                </div>
-            )}
+            </div>
 
             <div className="card">
                 <h3 className="card-title" style={{ marginBottom: 'var(--space-3)' }}>Detalle de items</h3>
