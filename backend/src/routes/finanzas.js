@@ -41,7 +41,8 @@ router.get('/', async (req, res, next) => {
 
         if (search) {
             params.push(`%${search}%`);
-            where += ` AND (p.codigo ILIKE $${params.length} OR p.paciente_nombre ILIKE $${params.length})`;
+            where += ` AND (p.codigo ILIKE $${params.length} OR p.paciente_nombre ILIKE $${params.length} OR c.nombre ILIKE $${params.length})`;
+
         }
 
         const estadoCase = buildEstadoPagoCase('p', 'pg');
