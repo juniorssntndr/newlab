@@ -18,6 +18,7 @@ const DetalleFinanza = () => {
     const [comprobantes, setComprobantes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
+    const [printMenuOpen, setPrintMenuOpen] = useState(false);
     const [savingPago, setSavingPago] = useState(false);
     const [emitting, setEmitting] = useState(false);
     const [anulando, setAnulando] = useState(false);
@@ -189,15 +190,16 @@ const DetalleFinanza = () => {
             .replace(/'/g, '&#39;');
     };
 
-    const handlePrint = () => {
+    const handlePrintA4 = () => {
         if (!finanza) return;
+        setPrintMenuOpen(false);
         const pagosRows = finanza.pagos?.length
             ? finanza.pagos.map((pago) => (
                 `<tr>
                     <td>${escapeHtml(formatDate(pago.fecha_pago || pago.created_at))}</td>
                     <td>${escapeHtml(pago.metodo || '—')}</td>
                     <td>${escapeHtml(pago.referencia || '—')}</td>
-                    <td style="text-align:right">${formatCurrency(pago.monto)}</td>
+                    <td style="text-align:right;font-weight:600">${formatCurrency(pago.monto)}</td>
                 </tr>`
             )).join('')
             : '<tr><td colspan="4" style="text-align:center;color:#64748B;padding:12px 0;">Sin pagos registrados</td></tr>';
@@ -206,121 +208,183 @@ const DetalleFinanza = () => {
             ? finanza.items.map((item) => (
                 `<tr>
                     <td>${escapeHtml(item.producto_nombre || '—')}</td>
-                    <td>${escapeHtml(item.cantidad || 1)}</td>
+                    <td style="text-align:center">${escapeHtml(item.cantidad || 1)}</td>
                     <td style="text-align:right">${formatCurrency(item.precio_unitario)}</td>
-                    <td style="text-align:right">${formatCurrency(item.subtotal)}</td>
+                    <td style="text-align:right;font-weight:600">${formatCurrency(item.subtotal)}</td>
                 </tr>`
             )).join('')
             : '<tr><td colspan="4" style="text-align:center;color:#64748B;padding:12px 0;">Sin items registrados</td></tr>';
 
         const html = `
-            <!doctype html>
-            <html>
-                <head>
-                    <meta charset="utf-8" />
-                    <title>Comprobante ${escapeHtml(finanza.codigo)}</title>
-                    <style>
-                        * { box-sizing: border-box; }
-                        body { font-family: Arial, sans-serif; color: #0F172A; margin: 24px; }
-                        h1 { font-size: 20px; margin: 0 0 8px; }
-                        h2 { font-size: 14px; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; }
-                        .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-                        .chip { background: #E2E8F0; padding: 4px 10px; border-radius: 999px; font-size: 12px; }
-                        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-                        .card { border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px; }
-                        .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; }
-                        .value { font-size: 13px; font-weight: 600; margin-top: 4px; }
-                        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                        th { text-align: left; background: #F1F5F9; padding: 8px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; color: #475569; }
-                        td { padding: 8px; border-bottom: 1px solid #E2E8F0; }
-                        .totals { display: flex; justify-content: flex-end; gap: 16px; margin-top: 12px; }
-                        .totals div { text-align: right; }
-                        .totals .label { font-size: 10px; }
-                        .totals .value { font-size: 14px; }
-                        @page { size: A4; margin: 18mm; }
-                    </style>
-                </head>
-                <body>
-                    <div class="meta">
-                        <div>
-                            <h1>Comprobante de Pago</h1>
-                            <div class="label">Pedido ${escapeHtml(finanza.codigo)}</div>
-                        </div>
-                        <div class="chip">${escapeHtml(statusLabels[finanza.estado_pago])}</div>
-                    </div>
+<!doctype html><html><head><meta charset="utf-8" />
+<title>Comprobante ${escapeHtml(finanza.codigo)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #0F172A; background: #fff; }
+  .page { max-width: 190mm; margin: 0 auto; padding: 16mm 14mm; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 3px solid #0d9488; margin-bottom: 18px; }
+  .header-brand { font-size: 22px; font-weight: 800; color: #0d9488; letter-spacing: -0.5px; }
+  .header-brand span { display: block; font-size: 11px; font-weight: 400; color: #64748B; letter-spacing: 0; margin-top: 2px; }
+  .header-doc { text-align: right; }
+  .header-doc .doc-type { font-size: 15px; font-weight: 700; color: #0F172A; }
+  .header-doc .doc-code { font-size: 12px; color: #64748B; margin-top: 2px; font-family: monospace; }
+  .chip { display: inline-block; background: #f0fdf4; color: #15803d; border: 1px solid #86efac; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; margin-top: 6px; }
+  .chip.por_cancelar { background: #fefce8; color: #854d0e; border-color: #fde047; }
+  .chip.pago_parcial { background: #fff7ed; color: #9a3412; border-color: #fdba74; }
+  .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748B; margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #E2E8F0; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 4px; }
+  .info-block .ib-label { font-size: 10px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; }
+  .info-block .ib-value { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  thead tr { background: #F8FAFC; border-top: 1px solid #E2E8F0; border-bottom: 2px solid #E2E8F0; }
+  th { padding: 7px 10px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; }
+  td { padding: 8px 10px; border-bottom: 1px solid #F1F5F9; }
+  tbody tr:last-child td { border-bottom: none; }
+  .totals-box { margin-top: 16px; display: flex; justify-content: flex-end; }
+  .totals-inner { min-width: 220px; border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; }
+  .totals-row { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 12px; border-bottom: 1px solid #F1F5F9; }
+  .totals-row:last-child { border-bottom: none; background: #F0FDFA; font-size: 14px; font-weight: 700; color: #0d9488; }
+  .totals-row .t-label { color: #64748B; font-size: inherit; }
+  .footer { margin-top: 28px; padding-top: 12px; border-top: 1px dashed #CBD5E1; text-align: center; font-size: 10px; color: #94A3B8; }
+  @page { size: A4; margin: 0; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head><body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="header-brand">NewLab<span>Laboratorio Dental</span></div>
+    </div>
+    <div class="header-doc">
+      <div class="doc-type">COMPROBANTE INTERNO</div>
+      <div class="doc-code">${escapeHtml(finanza.codigo)}</div>
+      <span class="chip ${finanza.estado_pago || ''}">${
+        finanza.estado_pago === 'cancelado' ? 'Cancelado' :
+        finanza.estado_pago === 'pago_parcial' ? 'Pago Parcial' : 'Por Cancelar'
+      }</span>
+    </div>
+  </div>
 
-                    <div class="grid">
-                        <div class="card">
-                            <div class="label">Paciente</div>
-                            <div class="value">${escapeHtml(finanza.paciente_nombre)}</div>
-                            <div class="label" style="margin-top:8px;">Clínica</div>
-                            <div class="value">${escapeHtml(finanza.clinica_nombre || '—')}</div>
-                        </div>
-                        <div class="card">
-                            <div class="label">Fecha de pedido</div>
-                            <div class="value">${escapeHtml(formatDate(finanza.fecha || finanza.created_at))}</div>
-                            <div class="label" style="margin-top:8px;">Fecha de emisión</div>
-                            <div class="value">${escapeHtml(formatDate(new Date(), true))}</div>
-                        </div>
-                    </div>
+  <div class="section-title">Datos del pedido</div>
+  <div class="info-grid">
+    <div class="info-block"><div class="ib-label">Paciente</div><div class="ib-value">${escapeHtml(finanza.paciente_nombre)}</div></div>
+    <div class="info-block"><div class="ib-label">Clínica</div><div class="ib-value">${escapeHtml(finanza.clinica_nombre || '—')}</div></div>
+    <div class="info-block"><div class="ib-label">Fecha de pedido</div><div class="ib-value">${escapeHtml(formatDate(finanza.fecha || finanza.created_at))}</div></div>
+    <div class="info-block"><div class="ib-label">Fecha de emisión</div><div class="ib-value">${escapeHtml(formatDate(new Date(), true))}</div></div>
+  </div>
 
-                    <h2>Detalle de pedido</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th>Cantidad</th>
-                                <th style="text-align:right">Precio</th>
-                                <th style="text-align:right">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsRows}
-                        </tbody>
-                    </table>
+  <div class="section-title">Detalle de items</div>
+  <table><thead><tr>
+    <th>Producto</th><th style="text-align:center">Cant.</th>
+    <th style="text-align:right">P. Unitario</th><th style="text-align:right">Total</th>
+  </tr></thead><tbody>${itemsRows}</tbody></table>
 
-                    <h2>Pagos registrados</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Método</th>
-                                <th>Referencia</th>
-                                <th style="text-align:right">Monto</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${pagosRows}
-                        </tbody>
-                    </table>
+  <div class="section-title">Pagos registrados</div>
+  <table><thead><tr>
+    <th>Fecha</th><th>Método</th><th>Referencia</th><th style="text-align:right">Monto</th>
+  </tr></thead><tbody>${pagosRows}</tbody></table>
 
-                    <div class="totals">
-                        <div>
-                            <div class="label">Total</div>
-                            <div class="value">${formatCurrency(finanza.total)}</div>
-                        </div>
-                        <div>
-                            <div class="label">Pagado</div>
-                            <div class="value">${formatCurrency(finanza.monto_pagado)}</div>
-                        </div>
-                        <div>
-                            <div class="label">Saldo</div>
-                            <div class="value">${formatCurrency(finanza.saldo)}</div>
-                        </div>
-                    </div>
-                </body>
-            </html>
-        `;
+  <div class="totals-box">
+    <div class="totals-inner">
+      <div class="totals-row"><span class="t-label">Subtotal (inc. IGV)</span><span>${formatCurrency(finanza.total)}</span></div>
+      <div class="totals-row"><span class="t-label">Pagado</span><span>${formatCurrency(finanza.monto_pagado)}</span></div>
+      <div class="totals-row"><span class="t-label">Saldo pendiente</span><span>${formatCurrency(finanza.saldo)}</span></div>
+    </div>
+  </div>
 
-        const printWindow = window.open('', 'PRINT', 'height=900,width=900');
-        if (!printWindow) {
-            alert('No se pudo abrir la ventana de impresión');
-            return;
-        }
+  <div class="footer">Documento interno — No válido como comprobante de pago tributario &nbsp;·&nbsp; NewLab Dental &nbsp;·&nbsp; ${escapeHtml(formatDate(new Date(), true))}</div>
+</div>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`;
+
+        const printWindow = window.open('', 'PRINT_A4', 'height=900,width=800');
+        if (!printWindow) { alert('No se pudo abrir la ventana de impresión'); return; }
         printWindow.document.write(html);
         printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
+    };
+
+    const handlePrint80mm = () => {
+        if (!finanza) return;
+        setPrintMenuOpen(false);
+        const dashes = '--------------------------------';
+
+        const itemsRows = finanza.items?.length
+            ? finanza.items.map((item) => (
+                `<tr>
+                    <td colspan="2" style="padding-bottom:2px">${escapeHtml(item.producto_nombre || '—')}</td>
+                </tr>
+                <tr>
+                    <td style="color:#444;padding-left:4px">${escapeHtml(item.cantidad || 1)} x ${formatCurrency(item.precio_unitario)}</td>
+                    <td style="text-align:right;font-weight:700">${formatCurrency(item.subtotal)}</td>
+                </tr>`
+            )).join('')
+            : '<tr><td colspan="2" style="text-align:center">Sin items</td></tr>';
+
+        const pagosRows = finanza.pagos?.length
+            ? finanza.pagos.map((pago) => (
+                `<tr>
+                    <td>${escapeHtml(formatDate(pago.fecha_pago || pago.created_at))} · ${escapeHtml(pago.metodo || '—')}</td>
+                    <td style="text-align:right;font-weight:600">${formatCurrency(pago.monto)}</td>
+                </tr>`
+            )).join('')
+            : '<tr><td colspan="2" style="text-align:center">Sin pagos</td></tr>';
+
+        const html = `
+<!doctype html><html><head><meta charset="utf-8" />
+<title>Ticket ${escapeHtml(finanza.codigo)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; background: #fff; width: 80mm; margin: 0 auto; padding: 4mm 3mm 8mm; }
+  .center { text-align: center; }
+  .brand { font-size: 18px; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
+  .sub { font-size: 10px; margin-bottom: 2px; }
+  .divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+  .section { font-size: 10px; font-weight: 700; text-transform: uppercase; margin: 5px 0 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  td { padding: 2px 0; vertical-align: top; }
+  .row-bold { font-weight: 700; font-size: 13px; }
+  .total-row { font-size: 14px; font-weight: 900; }
+  .footer-note { font-size: 9.5px; text-align: center; margin-top: 8px; color: #333; }
+  @page { size: 80mm auto; margin: 0; }
+  @media print { body { width: 80mm; } }
+</style></head><body>
+<div class="center">
+  <div class="brand">NEWLAB</div>
+  <div class="sub">Laboratorio Dental</div>
+</div>
+<hr class="divider">
+<div class="center">
+  <div style="font-size:11px;font-weight:700">COMPROBANTE INTERNO</div>
+  <div style="font-size:11px">${escapeHtml(finanza.codigo)}</div>
+</div>
+<hr class="divider">
+<table>
+  <tr><td style="font-size:10px;color:#444">PACIENTE</td><td style="text-align:right;font-size:10px;color:#444">FECHA EMI.</td></tr>
+  <tr><td style="font-weight:600">${escapeHtml(finanza.paciente_nombre)}</td><td style="text-align:right">${escapeHtml(formatDate(new Date()))}</td></tr>
+  <tr><td style="font-size:10px;color:#444;padding-top:4px">CLÍNICA</td></tr>
+  <tr><td colspan="2">${escapeHtml(finanza.clinica_nombre || '—')}</td></tr>
+</table>
+<hr class="divider">
+<div class="section">Detalle</div>
+<table>${itemsRows}</table>
+<hr class="divider">
+<div class="section">Pagos</div>
+<table>${pagosRows}</table>
+<hr class="divider">
+<table>
+  <tr><td>Total (inc. IGV)</td><td style="text-align:right;font-weight:700">${formatCurrency(finanza.total)}</td></tr>
+  <tr><td>Pagado</td><td style="text-align:right;font-weight:700">${formatCurrency(finanza.monto_pagado)}</td></tr>
+  <tr class="total-row"><td>SALDO</td><td style="text-align:right">${formatCurrency(finanza.saldo)}</td></tr>
+</table>
+<hr class="divider">
+<div class="footer-note">Documento interno — No válido tributariamente</div>
+<div class="footer-note">¡Gracias por su confianza!</div>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`;
+
+        const printWindow = window.open('', 'PRINT_80MM', 'height=700,width=320');
+        if (!printWindow) { alert('No se pudo abrir la ventana de impresión'); return; }
+        printWindow.document.write(html);
+        printWindow.document.close();
     };
 
     const printTicketPago = (pago) => {
@@ -399,9 +463,31 @@ const DetalleFinanza = () => {
                     <button className="btn btn-ghost" onClick={() => navigate('/finanzas')}>
                         <i className="bi bi-arrow-left"></i> Volver
                     </button>
-                    <button className="btn btn-ghost" onClick={handlePrint}>
-                        <i className="bi bi-printer"></i> Imprimir interno
-                    </button>
+                    <div style={{ position: 'relative' }}>
+                        <button className="btn btn-ghost" onClick={() => setPrintMenuOpen(p => !p)}>
+                            <i className="bi bi-printer"></i> Imprimir interno <i className="bi bi-chevron-down" style={{ fontSize: '0.7rem', marginLeft: 2 }}></i>
+                        </button>
+                        {printMenuOpen && (
+                            <div style={{ position: 'absolute', top: '110%', left: 0, zIndex: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '200px', overflow: 'hidden' }}>
+                                <button className="btn btn-ghost" onClick={handlePrintA4}
+                                    style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '0.65rem 1rem', gap: '0.6rem', borderBottom: '1px solid var(--color-border)' }}>
+                                    <i className="bi bi-file-earmark-text" style={{ color: 'var(--color-primary)' }}></i>
+                                    <div style={{ textAlign: 'left' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Formato A4</div>
+                                        <div style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)' }}>Impresora estándar</div>
+                                    </div>
+                                </button>
+                                <button className="btn btn-ghost" onClick={handlePrint80mm}
+                                    style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '0.65rem 1rem', gap: '0.6rem' }}>
+                                    <i className="bi bi-receipt" style={{ color: 'var(--color-primary)' }}></i>
+                                    <div style={{ textAlign: 'left' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Ticketera 80mm</div>
+                                        <div style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)' }}>Impresora térmica</div>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     {comprobantes.length > 0 && comprobantes[0].pdf_url && (
                         <button
                             className="btn btn-primary"

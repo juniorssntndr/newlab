@@ -99,7 +99,7 @@ const Pedidos = () => {
                                         <td><span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span></td>
                                         <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{formatDateShort(p.fecha || p.created_at)}</td>
                                         <td style={{ fontSize: '0.8125rem' }}>{formatDateShort(p.fecha_entrega)}</td>
-                                        <td><strong>S/. {parseFloat(p.subtotal ?? p.total).toFixed(2)}</strong></td>
+                                        <td><strong>S/. {parseFloat(p.total ?? 0).toFixed(2)}</strong></td>
                                         <td>
                                             <button className="btn btn-ghost btn-sm btn-icon" title="Ver detalle">
                                                 <i className="bi bi-chevron-right"></i>
@@ -122,7 +122,7 @@ const Pedidos = () => {
                                         <div className="mobile-field"><span className="mobile-field-label">Clinica</span><span className="mobile-field-value">{p.clinica_nombre}</span></div>
                                         <div className="mobile-field"><span className="mobile-field-label">Fecha</span><span className="mobile-field-value">{formatDateShort(p.fecha || p.created_at)}</span></div>
                                         <div className="mobile-field"><span className="mobile-field-label">Entrega</span><span className="mobile-field-value">{formatDateShort(p.fecha_entrega)}</span></div>
-                                        <div className="mobile-field"><span className="mobile-field-label">Total</span><span className="mobile-field-value"><strong>S/. {parseFloat(p.subtotal ?? p.total).toFixed(2)}</strong></span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Total</span><span className="mobile-field-value"><strong>S/. {parseFloat(p.total ?? 0).toFixed(2)}</strong></span></div>
                                     </div>
                                     <div className="mobile-card-actions">
                                         <button className="btn btn-ghost btn-sm">Ver detalle <i className="bi bi-chevron-right"></i></button>

@@ -292,7 +292,7 @@ const DetallePedido = () => {
     const deliveryMeta = getDeliveryMeta();
     const itemsCount = (pedido.items || []).reduce((sum, item) => sum + (parseFloat(item.cantidad) || 0), 0);
     const itemsPiecesLabel = itemsCount === 1 ? 'pieza' : 'piezas';
-    const finalTotal = pedido.subtotal ?? pedido.total ?? 0;
+    const finalTotal = pedido.total ?? 0;
     const currentApproval = (pedido.aprobaciones || [])[0];
     const approvalLink = currentApproval?.link_exocad;
     const approvalEstado = currentApproval?.estado || 'pendiente';

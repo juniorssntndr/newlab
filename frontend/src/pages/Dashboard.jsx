@@ -156,7 +156,7 @@ const Dashboard = () => {
                                         <td>{p.clinica_nombre}</td>
                                         <td><span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span></td>
                                         <td>{formatDateShort(p.fecha_entrega)}</td>
-                                        <td><strong>S/. {parseFloat(p.subtotal ?? p.total).toFixed(2)}</strong></td>
+                                        <td><strong>S/. {parseFloat(p.total ?? 0).toFixed(2)}</strong></td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -173,7 +173,7 @@ const Dashboard = () => {
                                         <div className="mobile-field"><span className="mobile-field-label">Paciente</span><span className="mobile-field-value">{p.paciente_nombre}</span></div>
                                         <div className="mobile-field"><span className="mobile-field-label">Clinica</span><span className="mobile-field-value">{p.clinica_nombre}</span></div>
                                         <div className="mobile-field"><span className="mobile-field-label">Entrega</span><span className="mobile-field-value">{formatDateShort(p.fecha_entrega)}</span></div>
-                                        <div className="mobile-field"><span className="mobile-field-label">Total</span><span className="mobile-field-value"><strong>S/. {parseFloat(p.subtotal ?? p.total).toFixed(2)}</strong></span></div>
+                                        <div className="mobile-field"><span className="mobile-field-label">Total</span><span className="mobile-field-value"><strong>S/. {parseFloat(p.total ?? 0).toFixed(2)}</strong></span></div>
                                     </div>
                                 </div>
                             ))}
