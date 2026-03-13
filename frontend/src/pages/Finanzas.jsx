@@ -91,7 +91,7 @@ const Finanzas = () => {
                                 <i className="bi bi-search"></i>
                                 <input
                                     className="form-input"
-                                    placeholder="Buscar por código o paciente..."
+                                    placeholder="Buscar por código, paciente o clínica..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
