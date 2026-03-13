@@ -53,8 +53,9 @@ const Pedidos = () => {
                 <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'center' }}>
                     <div className="search-box" style={{ flex: 1, minWidth: 200 }}>
                         <i className="bi bi-search"></i>
-                        <input className="form-input" placeholder="Buscar por código o paciente..."
+                        <input className="form-input" placeholder="Buscar por código, paciente o clínica..."
                             value={search} onChange={e => setSearch(e.target.value)} />
+
                     </div>
                     <div style={{ display: 'flex', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
                         {estados.map(e => (

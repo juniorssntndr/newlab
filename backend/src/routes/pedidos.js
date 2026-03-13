@@ -36,7 +36,8 @@ router.get('/', async (req, res, next) => {
         if (estado) { params.push(estado); query += ` AND p.estado = $${params.length}`; }
         if (clinica_id) { params.push(clinica_id); query += ` AND p.clinica_id = $${params.length}`; }
         if (responsable_id) { params.push(responsable_id); query += ` AND p.responsable_id = $${params.length}`; }
-        if (search) { params.push(`%${search}%`); query += ` AND (p.codigo ILIKE $${params.length} OR p.paciente_nombre ILIKE $${params.length})`; }
+        if (search) { params.push(`%${search}%`); query += ` AND (p.codigo ILIKE $${params.length} OR p.paciente_nombre ILIKE $${params.length} OR c.nombre ILIKE $${params.length})`; }
+
         query += ' ORDER BY p.created_at DESC';
 
         const result = await pool.query(query, params);
