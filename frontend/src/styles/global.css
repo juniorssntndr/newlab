@@ -887,6 +887,21 @@ h4 {
   min-height: 116px;
 }
 
+.strategic-bento-main {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.strategic-chart-shell {
+  min-height: 340px;
+  height: 340px;
+}
+
+.strategic-chart-shell--short {
+  min-height: 280px;
+  height: 280px;
+}
+
 .kpi-card::after {
   content: '';
   position: absolute;
@@ -2359,6 +2374,20 @@ h4 {
   .grid-cols-2,
   .grid-cols-5 {
     grid-template-columns: 1fr;
+  }
+
+  .strategic-bento-main {
+    grid-template-columns: 1fr;
+  }
+
+  .strategic-chart-shell {
+    min-height: 260px;
+    height: 260px;
+  }
+
+  .strategic-chart-shell--short {
+    min-height: 220px;
+    height: 220px;
   }
 
   .dashboard-kpi-grid {

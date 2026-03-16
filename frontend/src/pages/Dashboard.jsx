@@ -48,6 +48,13 @@ const formatDateShort = (value) => {
 
 const formatPercent = (value) => `${toNumber(value).toFixed(1)}%`;
 
+const toMonthKey = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
 const Dashboard = () => {
     const { getHeaders } = useAuth();
     const navigate = useNavigate();
@@ -120,7 +127,6 @@ const Dashboard = () => {
     const liquidez = finance?.liquidez || {};
     const ingresosFin = finance?.ingresos || {};
     const gastosFin = finance?.gastos || {};
-    const metricas = finance?.metricas || {};
     const estrategicos = finance?.estrategicos || {};
     const estrategicosKpis = estrategicos?.kpis || {};
 
@@ -207,9 +213,10 @@ const Dashboard = () => {
 
     const topClinicasEstrategico = (estrategicos.top_clinicas_periodo || []).slice(0, strategicTopN);
     const topProductosEstrategico = (estrategicos.top_productos_periodo || []).slice(0, strategicTopN);
+    const topClinicaActual = topClinicasEstrategico[0] || null;
+    const topProductoActual = topProductosEstrategico[0] || null;
 
     const getStrategicValue = (row) => (strategicMetric === 'pct' ? toNumber(row.participacion_pct) : toNumber(row.total));
-    const formatStrategicValue = (row) => (strategicMetric === 'pct' ? formatPercent(row.participacion_pct) : formatCurrency(row.total));
 
     const topClinicasChartData = {
         labels: topClinicasEstrategico.map((row) => row.clinica),
@@ -242,21 +249,30 @@ const Dashboard = () => {
 
     const historyMap = new Map();
     strategicHistoryClinicas.forEach((row) => {
-        const key = row.periodo;
+        const key = toMonthKey(row.periodo);
+        if (!key) return;
         const current = historyMap.get(key) || { clinicas: 0, productos: 0 };
         current.clinicas += toNumber(row.total);
         historyMap.set(key, current);
     });
     strategicHistoryProductos.forEach((row) => {
-        const key = row.periodo;
+        const key = toMonthKey(row.periodo);
+        if (!key) return;
         const current = historyMap.get(key) || { clinicas: 0, productos: 0 };
         current.productos += toNumber(row.total);
         historyMap.set(key, current);
     });
 
-    const historyRows = Array.from(historyMap.entries())
-        .map(([periodo, values]) => ({ periodo, ...values }))
-        .sort((a, b) => String(a.periodo).localeCompare(String(b.periodo)));
+    const strategicYear = (() => {
+        const date = new Date(filters.to || todayIso());
+        return Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear();
+    })();
+
+    const historyRows = Array.from({ length: 12 }, (_, monthIndex) => {
+        const periodo = `${strategicYear}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+        const values = historyMap.get(periodo) || { clinicas: 0, productos: 0 };
+        return { periodo, ...values };
+    });
 
     const strategicHistoryData = {
         labels: historyRows.map((row) => toMonthLabel(row.periodo)),
@@ -469,11 +485,11 @@ const Dashboard = () => {
 
             {financeView === 'estrategicos' && (
                 <>
-                    <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-3)' }}>
+                    <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-4)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
                             <div>
                                 <h3 className="card-title">Centro Estratégico</h3>
-                                <p className="card-subtitle">Ranking, concentración e histórico comercial en una sola vista</p>
+                                <p className="card-subtitle">Identifica rápidamente qué clínica y qué producto impulsan tus ingresos</p>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <button className={`btn btn-sm ${strategicTopN === 5 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(5)}>Top 5</button>
@@ -486,12 +502,14 @@ const Dashboard = () => {
 
                     <div className="grid dashboard-kpi-grid-liquid" style={{ marginBottom: 'var(--space-6)' }}>
                         <div className="card dashboard-kpi-card strategic-kpi-card">
-                            <div className="kpi-label">Crecimiento vs período anterior</div>
-                            <div className="kpi-value dashboard-kpi-currency">{estrategicosKpis.crecimiento_ingresos_periodo_pct == null ? 'N/A' : formatPercent(estrategicosKpis.crecimiento_ingresos_periodo_pct)}</div>
+                            <div className="kpi-label">Clínica líder del período</div>
+                            <div className="kpi-value dashboard-kpi-currency">{topClinicaActual ? topClinicaActual.clinica : 'Sin datos'}</div>
+                            <div className="kpi-label" style={{ marginTop: 'var(--space-2)' }}>{topClinicaActual ? formatCurrency(topClinicaActual.total) : 'S/. 0.00'}</div>
                         </div>
                         <div className="card dashboard-kpi-card strategic-kpi-card">
-                            <div className="kpi-label">Ticket promedio cobrado</div>
-                            <div className="kpi-value dashboard-kpi-currency">{formatCurrency(estrategicosKpis.ticket_promedio_cobrado)}</div>
+                            <div className="kpi-label">Producto líder del período</div>
+                            <div className="kpi-value dashboard-kpi-currency">{topProductoActual ? topProductoActual.producto : 'Sin datos'}</div>
+                            <div className="kpi-label" style={{ marginTop: 'var(--space-2)' }}>{topProductoActual ? formatCurrency(topProductoActual.total) : 'S/. 0.00'}</div>
                         </div>
                         <div className="card dashboard-kpi-card strategic-kpi-card">
                             <div className="kpi-label">Concentración top 3 clínicas</div>
@@ -503,16 +521,17 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3" style={{ marginBottom: 'var(--space-6)' }}>
-                        <div className="card col-span-1">
-                            <div className="card-header"><h3 className="card-title">Ingresos por clínica</h3></div>
+                    <div className="grid strategic-bento-main" style={{ marginBottom: 'var(--space-6)' }}>
+                        <div className="card">
+                            <div className="card-header"><h3 className="card-title">Ranking de clínicas</h3></div>
                             {topClinicasEstrategico.length > 0 ? (
-                                <>
+                                <div className="strategic-chart-shell">
                                     <Bar
                                         data={topClinicasChartData}
                                         options={{
                                             indexAxis: 'y',
                                             responsive: true,
+                                            maintainAspectRatio: false,
                                             plugins: { legend: { display: false } },
                                             scales: {
                                                 x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } },
@@ -520,25 +539,21 @@ const Dashboard = () => {
                                             }
                                         }}
                                     />
-                                    <div className="dashboard-list compact" style={{ marginTop: 'var(--space-3)' }}>
-                                        {topClinicasEstrategico.slice(0, 4).map((row) => (
-                                            <div key={row.clinica} className="dashboard-list-item"><span>{row.clinica}</span><strong>{formatStrategicValue(row)}</strong></div>
-                                        ))}
-                                    </div>
-                                </>
+                                </div>
                             ) : (
                                 <div className="empty-state"><p className="empty-state-text">Sin datos por clínica</p></div>
                             )}
                         </div>
-                        <div className="card col-span-1">
-                            <div className="card-header"><h3 className="card-title">Ingresos por producto / servicio</h3></div>
+                        <div className="card">
+                            <div className="card-header"><h3 className="card-title">Ranking de productos</h3></div>
                             {topProductosEstrategico.length > 0 ? (
-                                <>
+                                <div className="strategic-chart-shell">
                                     <Bar
                                         data={topProductosChartData}
                                         options={{
                                             indexAxis: 'y',
                                             responsive: true,
+                                            maintainAspectRatio: false,
                                             plugins: { legend: { display: false } },
                                             scales: {
                                                 x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } },
@@ -546,41 +561,30 @@ const Dashboard = () => {
                                             }
                                         }}
                                     />
-                                    <div className="dashboard-list compact" style={{ marginTop: 'var(--space-3)' }}>
-                                        {topProductosEstrategico.slice(0, 4).map((row) => (
-                                            <div key={row.producto} className="dashboard-list-item"><span>{row.producto}</span><strong>{formatStrategicValue(row)}</strong></div>
-                                        ))}
-                                    </div>
-                                </>
+                                </div>
                             ) : (
                                 <div className="empty-state"><p className="empty-state-text">Sin datos por producto</p></div>
                             )}
-                        </div>
-                        <div className="card col-span-1">
-                            <div className="card-header"><h3 className="card-title">Resultado del período</h3></div>
-                            <div className="dashboard-list compact">
-                                <div className="dashboard-list-item"><span>Ingresos del período</span><strong>{formatCurrency(metricas.ingresos_periodo)}</strong></div>
-                                <div className="dashboard-list-item"><span>Egresos del período</span><strong>{formatCurrency(metricas.egresos_periodo)}</strong></div>
-                                <div className="dashboard-list-item"><span>Flujo neto del período</span><strong>{formatCurrency((toNumber(metricas.ingresos_periodo) - toNumber(metricas.egresos_periodo)))}</strong></div>
-                                <div className="dashboard-list-item"><span>Flujo proyectado diario</span><strong>{formatCurrency(metricas.flujo_proyectado_diario)}</strong></div>
-                            </div>
                         </div>
                     </div>
 
                     <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
                         <div className="card-header"><h3 className="card-title">Histórico estratégico mensual</h3></div>
                         {historyRows.length > 0 ? (
-                            <Bar
-                                data={strategicHistoryData}
-                                options={{
-                                    responsive: true,
-                                    plugins: { legend: { display: true } },
-                                    scales: {
-                                        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } }
-                                    }
-                                }}
-                            />
+                            <div className="strategic-chart-shell strategic-chart-shell--short">
+                                <Bar
+                                    data={strategicHistoryData}
+                                    options={{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: { legend: { display: true } },
+                                        scales: {
+                                            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                                            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } }
+                                        }
+                                    }}
+                                />
+                            </div>
                         ) : (
                             <div className="empty-state"><p className="empty-state-text">Sin histórico estratégico disponible</p></div>
                         )}
