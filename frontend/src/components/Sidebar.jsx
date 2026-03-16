@@ -12,7 +12,8 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
             section: 'Principal', items: [
                 { to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' },
                 { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Seguimiento de pedidos' },
-                { to: '/finanzas', icon: 'bi-cash-stack', label: 'Pagos y Facturación' },
+                { to: '/finanzas', icon: 'bi-cash-stack', label: 'Finanzas' },
+                { to: '/caja-gastos', icon: 'bi-wallet2', label: 'Caja y Gastos' },
                 { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
             ]
         },

@@ -12,7 +12,7 @@ const statusLabels = {
 const Finanzas = () => {
     const { getHeaders } = useAuth();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('finanzas'); // finanzas | comprobantes
+    const [activeTab, setActiveTab] = useState('finanzas');
     const [finanzas, setFinanzas] = useState([]);
     const [comprobantes, setComprobantes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ const Finanzas = () => {
             .then((r) => r.json())
             .then((data) => { setFinanzas(data); setLoading(false); })
             .catch(() => setLoading(false));
-    }, [filtroEstado, search, activeTab]);
+    }, [filtroEstado, search, activeTab, getHeaders]);
 
     useEffect(() => {
         if (activeTab !== 'comprobantes') return;
@@ -40,7 +40,7 @@ const Finanzas = () => {
             .then((r) => r.json())
             .then((data) => { setComprobantes(Array.isArray(data) ? data : []); setLoadingComprobantes(false); })
             .catch(() => setLoadingComprobantes(false));
-    }, [activeTab]);
+    }, [activeTab, getHeaders]);
 
     const estados = ['', 'por_cancelar', 'pago_parcial', 'cancelado'];
 
@@ -62,7 +62,7 @@ const Finanzas = () => {
             <div className="page-header">
                 <div className="page-header-left">
                     <h1>Finanzas</h1>
-                    <p>Seguimiento de pagos y comprobantes por pedido</p>
+                    <p>Seguimiento de estado de cuenta de clientes y facturación de pedidos</p>
                 </div>
             </div>
 

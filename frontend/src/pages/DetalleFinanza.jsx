@@ -10,6 +10,8 @@ const statusLabels = {
     cancelado: 'Cancelado'
 };
 
+const metodoToFondo = (metodo = '') => (String(metodo).toLowerCase() === 'efectivo' ? 'caja' : 'banco');
+
 const DetalleFinanza = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -17,6 +19,7 @@ const DetalleFinanza = () => {
     const [finanza, setFinanza] = useState(null);
     const [comprobantes, setComprobantes] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [catalogos, setCatalogos] = useState({ cuentas: [] });
     const [modalOpen, setModalOpen] = useState(false);
     const [printMenuOpen, setPrintMenuOpen] = useState(false);
     const [savingPago, setSavingPago] = useState(false);
@@ -30,6 +33,8 @@ const DetalleFinanza = () => {
     const [form, setForm] = useState({
         monto: '',
         metodo: 'transferencia',
+        tipo_fondo: 'banco',
+        cuenta_id: '',
         referencia: '',
         fecha_pago: new Date().toISOString().split('T')[0],
         notas: ''
@@ -49,6 +54,16 @@ const DetalleFinanza = () => {
     };
 
     useEffect(() => { fetchFinanza(); }, [id]);
+
+    useEffect(() => {
+        fetch(`${API_URL}/finanzas/catalogos`, { headers: getHeaders() })
+            .then((r) => r.json())
+            .then((data) => {
+                const cuentas = Array.isArray(data?.cuentas) ? data.cuentas : [];
+                setCatalogos({ cuentas });
+            })
+            .catch(() => setCatalogos({ cuentas: [] }));
+    }, [getHeaders]);
 
     const formatDate = (value, withTime = false) => {
         if (!value) return 'Sin definir';
@@ -71,6 +86,22 @@ const DetalleFinanza = () => {
         return { label: 'Por cancelar', tone: 'warning' };
     }, [finanza]);
 
+    const cuentasFiltradas = useMemo(() => {
+        const target = form.tipo_fondo === 'caja' ? 'caja' : 'banco';
+        return (catalogos.cuentas || []).filter((c) => c.tipo_cuenta === target);
+    }, [catalogos.cuentas, form.tipo_fondo]);
+
+    useEffect(() => {
+        if (cuentasFiltradas.length === 0) {
+            setForm((prev) => ({ ...prev, cuenta_id: '' }));
+            return;
+        }
+        const exists = cuentasFiltradas.some((c) => String(c.id) === String(form.cuenta_id));
+        if (!exists) {
+            setForm((prev) => ({ ...prev, cuenta_id: String(cuentasFiltradas[0].id) }));
+        }
+    }, [cuentasFiltradas, form.cuenta_id]);
+
     const submitPago = async () => {
         if (!form.monto || Number.isNaN(parseFloat(form.monto))) {
             alert('Ingresa un monto válido');
@@ -81,14 +112,25 @@ const DetalleFinanza = () => {
             const res = await fetch(`${API_URL}/finanzas/${id}/pagos`, {
                 method: 'POST',
                 headers: getHeaders(),
-                body: JSON.stringify(form)
+                body: JSON.stringify({
+                    ...form,
+                    cuenta_id: form.cuenta_id ? parseInt(form.cuenta_id, 10) : null
+                })
             });
             if (!res.ok) {
                 const data = await res.json();
                 throw new Error(data.error || 'Error al registrar pago');
             }
             setModalOpen(false);
-            setForm({ monto: '', metodo: 'transferencia', referencia: '', fecha_pago: new Date().toISOString().split('T')[0], notas: '' });
+            setForm({
+                monto: '',
+                metodo: 'transferencia',
+                tipo_fondo: 'banco',
+                cuenta_id: '',
+                referencia: '',
+                fecha_pago: new Date().toISOString().split('T')[0],
+                notas: ''
+            });
             fetchFinanza();
         } catch (err) {
             alert(err.message);
@@ -516,6 +558,14 @@ const DetalleFinanza = () => {
                     <span className="detail-value">{formatCurrency(finanza.saldo)}</span>
                     {saldoMeta && <span className={`date-chip is-${saldoMeta.tone}`}>{saldoMeta.label}</span>}
                 </div>
+                <div className="detail-metric">
+                    <span className="detail-label">Pagado en caja</span>
+                    <span className="detail-value">{formatCurrency(finanza.monto_pagado_caja)}</span>
+                </div>
+                <div className="detail-metric">
+                    <span className="detail-label">Pagado en bancos</span>
+                    <span className="detail-value">{formatCurrency(finanza.monto_pagado_bancos)}</span>
+                </div>
             </div>
 
             <div className="grid grid-cols-2" style={{ marginBottom: 'var(--space-6)' }}>
@@ -548,6 +598,8 @@ const DetalleFinanza = () => {
                                 <tr>
                                     <th>Fecha</th>
                                     <th>Método</th>
+                                    <th>Fondo</th>
+                                    <th>Cuenta</th>
                                     <th>Referencia</th>
                                     <th>Monto</th>
                                     <th style={{ width: '50px' }}></th>
@@ -558,6 +610,8 @@ const DetalleFinanza = () => {
                                     <tr key={pago.id}>
                                         <td>{formatDate(pago.fecha_pago || pago.created_at)}</td>
                                         <td>{pago.metodo || '—'}</td>
+                                        <td>{pago.tipo_fondo === 'caja' ? 'Caja' : 'Banco'}</td>
+                                        <td>{pago.cuenta_nombre || '—'}</td>
                                         <td>{pago.referencia || '—'}</td>
                                         <td><strong>{formatCurrency(pago.monto)}</strong></td>
                                         <td style={{ textAlign: 'center' }}>
@@ -827,12 +881,43 @@ const DetalleFinanza = () => {
                         <select
                             className="form-select"
                             value={form.metodo}
-                            onChange={(e) => setForm((prev) => ({ ...prev, metodo: e.target.value }))}
+                            onChange={(e) => {
+                                const nextMetodo = e.target.value;
+                                const nextFondo = metodoToFondo(nextMetodo);
+                                setForm((prev) => ({ ...prev, metodo: nextMetodo, tipo_fondo: nextFondo }));
+                            }}
                         >
                             <option value="transferencia">Transferencia</option>
                             <option value="efectivo">Efectivo</option>
                             <option value="tarjeta">Tarjeta</option>
                             <option value="yape">Yape / Plin</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <i className="bi bi-diagram-3" style={{ color: 'var(--color-primary)' }}></i> Destino de fondos
+                        </label>
+                        <input
+                            className="form-input"
+                            value={form.tipo_fondo === 'caja' ? 'Caja (efectivo)' : 'Banco (transferencia / yape / tarjeta)'}
+                            disabled
+                        />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <i className="bi bi-safe2" style={{ color: 'var(--color-primary)' }}></i> Cuenta
+                        </label>
+                        <select
+                            className="form-select"
+                            value={form.cuenta_id}
+                            onChange={(e) => setForm((prev) => ({ ...prev, cuenta_id: e.target.value }))}
+                        >
+                            {cuentasFiltradas.map((cuenta) => (
+                                <option key={cuenta.id} value={cuenta.id}>{cuenta.nombre}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
