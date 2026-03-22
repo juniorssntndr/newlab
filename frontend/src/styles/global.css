@@ -825,8 +825,23 @@ h4 {
   gap: var(--space-4);
 }
 
-.dashboard-kpi-currency {
-  font-size: clamp(1.1rem, 0.95rem + 0.7vw, 1.45rem);
+.dashboard-kpi-grid-featured {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.dashboard-summary-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.dashboard-summary-group-title {
+  margin-bottom: var(--space-3);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
 }
 
 .dashboard-filters-card {
@@ -867,18 +882,86 @@ h4 {
 
 .dashboard-kpi-card {
   padding: var(--space-4);
-  min-height: 126px;
+  min-height: 158px;
+}
+
+.dashboard-kpi-card-featured {
+  min-height: 172px;
+}
+
+.dashboard-kpi-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100%;
+}
+
+.dashboard-kpi-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dashboard-kpi-heading-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.dashboard-kpi-heading {
+  font-size: 0.95rem;
+  line-height: 1.25;
+  font-weight: 650;
+  color: var(--color-text);
 }
 
 .dashboard-kpi-card .kpi-icon {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   font-size: 1.125rem;
-  margin-bottom: var(--space-3);
+  margin-bottom: 0;
+  flex-shrink: 0;
+  border-radius: 14px;
 }
 
-.dashboard-kpi-card .kpi-value {
-  font-size: clamp(1.5rem, 1.2rem + 1vw, 1.9rem);
+.dashboard-kpi-icon-right {
+  margin-left: auto;
+}
+
+.dashboard-kpi-main-value {
+  font-size: clamp(2rem, 1.55rem + 1.25vw, 2.9rem);
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-text);
+  margin-top: auto;
+  word-break: break-word;
+}
+
+.dashboard-kpi-main-value-featured {
+  font-size: clamp(1.35rem, 1.1rem + 0.8vw, 1.95rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.dashboard-kpi-currency {
+  font-size: clamp(1.45rem, 1.2rem + 0.7vw, 2rem);
+  letter-spacing: -0.03em;
+}
+
+.dashboard-kpi-note {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  margin-top: auto;
+}
+
+.dashboard-kpi-note-featured {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.88;
 }
 
 .strategic-kpi-card {

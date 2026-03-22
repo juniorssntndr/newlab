@@ -90,11 +90,14 @@ router.get('/stats', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
 
-        const [pedidosTotal, pedidosHoy, enProduccion, pendientes, clinicasActivas, terminadosMes, timelineMes, pedidosMes, topProductoMes, topClinicaMes, nuevosClientesMes, historicoOperativo, historicoTopProducto, historicoTopClinica] = await Promise.all([
+        const [pedidosTotal, pedidosHoy, enProduccion, pendientes, enDiseno, esperandoAprobacion, retrasados, clinicasActivas, terminadosMes, timelineMes, pedidosMes, topProductoMes, topClinicaMes, topProductosMes, topClinicasMes, nuevosClientesMes, historicoOperativo, historicoTopProducto, historicoTopClinica] = await Promise.all([
             pool.query('SELECT COUNT(*) FROM nl_pedidos'),
             pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE fecha = CURRENT_DATE"),
             pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado = 'en_produccion'"),
             pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado = 'pendiente'"),
+            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado = 'en_diseno'"),
+            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado = 'esperando_aprobacion'"),
+            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE fecha_entrega < CURRENT_DATE AND estado NOT IN ('terminado', 'enviado')"),
             pool.query("SELECT COUNT(*) FROM nl_clinicas WHERE estado = 'activo'"),
             pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado IN ('terminado','enviado') AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)"),
             pool.query("SELECT estado_anterior, estado_nuevo FROM nl_pedido_timeline WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) AND estado_anterior IS NOT NULL AND estado_nuevo IS NOT NULL"),
@@ -117,6 +120,29 @@ router.get('/stats', async (req, res, next) => {
                  GROUP BY c.nombre
                  ORDER BY pedidos DESC, c.nombre ASC
                  LIMIT 1`
+            ),
+            pool.query(
+                `SELECT
+                    COALESCE(pr.nombre, 'Servicio sin producto') as producto,
+                    SUM(COALESCE(pi.cantidad, 1)) as cantidad
+                 FROM nl_pedido_items pi
+                 INNER JOIN nl_pedidos p ON p.id = pi.pedido_id
+                 LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
+                 WHERE DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', CURRENT_DATE)
+                 GROUP BY COALESCE(pr.nombre, 'Servicio sin producto')
+                 ORDER BY cantidad DESC, COALESCE(pr.nombre, 'Servicio sin producto') ASC
+                 LIMIT 5`
+            ),
+            pool.query(
+                `SELECT
+                    COALESCE(c.nombre, 'Sin clinica') as clinica,
+                    COUNT(*) as pedidos
+                 FROM nl_pedidos p
+                 LEFT JOIN nl_clinicas c ON c.id = p.clinica_id
+                 WHERE DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', CURRENT_DATE)
+                 GROUP BY COALESCE(c.nombre, 'Sin clinica')
+                 ORDER BY pedidos DESC, COALESCE(c.nombre, 'Sin clinica') ASC
+                 LIMIT 5`
             ),
             pool.query(
                 `SELECT COUNT(*) as count
@@ -229,12 +255,21 @@ router.get('/stats', async (req, res, next) => {
       GROUP BY mes ORDER BY mes
     `);
 
+        const pendientesCount = parseInt(pendientes.rows[0].count || 0, 10);
+        const enDisenoCount = parseInt(enDiseno.rows[0].count || 0, 10);
+        const esperandoAprobacionCount = parseInt(esperandoAprobacion.rows[0].count || 0, 10);
+        const enProduccionCount = parseInt(enProduccion.rows[0].count || 0, 10);
+
         res.json({
             kpis: {
                 total_pedidos: parseInt(pedidosTotal.rows[0].count),
                 pedidos_hoy: parseInt(pedidosHoy.rows[0].count),
-                en_produccion: parseInt(enProduccion.rows[0].count),
-                pendientes: parseInt(pendientes.rows[0].count),
+                en_produccion: enProduccionCount,
+                pendientes: pendientesCount,
+                en_diseno: enDisenoCount,
+                esperando_aprobacion: esperandoAprobacionCount,
+                trabajos_por_terminar: pendientesCount + enDisenoCount + esperandoAprobacionCount + enProduccionCount,
+                retrasados: parseInt(retrasados.rows[0].count || 0, 10),
                 clinicas_activas: parseInt(clinicasActivas.rows[0].count),
                 terminados_mes: parseInt(terminadosMes.rows[0].count),
                 retrocesos_mes: retrocesosMes,
@@ -247,6 +282,14 @@ router.get('/stats', async (req, res, next) => {
             top_clinica_mes: topClinicaMes.rows[0]
                 ? { clinica: topClinicaMes.rows[0].clinica || '—', pedidos: parseInt(topClinicaMes.rows[0].pedidos || 0, 10) }
                 : null,
+            top_productos_mes: topProductosMes.rows.map((row) => ({
+                producto: row.producto || '—',
+                cantidad: parseInt(row.cantidad || 0, 10)
+            })),
+            top_clinicas_mes: topClinicasMes.rows.map((row) => ({
+                clinica: row.clinica || '—',
+                pedidos: parseInt(row.pedidos || 0, 10)
+            })),
             historico_operativo_12m: historicoOperativo.rows.map((row) => ({
                 periodo: row.periodo,
                 pedidos: parseInt(row.pedidos || 0, 10),

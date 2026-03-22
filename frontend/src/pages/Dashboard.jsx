@@ -60,7 +60,6 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [financeStats, setFinanceStats] = useState(null);
-    const [clinicas, setClinicas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingFinance, setLoadingFinance] = useState(true);
     const [activeView, setActiveView] = useState('operativo');
@@ -71,8 +70,7 @@ const Dashboard = () => {
     const [operativeRange, setOperativeRange] = useState('12m');
     const [filters, setFilters] = useState({
         from: daysAgoIso(90),
-        to: todayIso(),
-        clinica_id: ''
+        to: todayIso()
     });
 
     useEffect(() => {
@@ -83,18 +81,10 @@ const Dashboard = () => {
     }, [getHeaders]);
 
     useEffect(() => {
-        fetch(`${API_URL}/clinicas?estado=activo`, { headers: getHeaders() })
-            .then((r) => r.json())
-            .then((data) => setClinicas(Array.isArray(data) ? data : []))
-            .catch(() => setClinicas([]));
-    }, [getHeaders]);
-
-    useEffect(() => {
         if (activeView !== 'financiero') return;
         const params = new URLSearchParams();
         if (filters.from) params.set('from', filters.from);
         if (filters.to) params.set('to', filters.to);
-        if (filters.clinica_id) params.set('clinica_id', filters.clinica_id);
 
         setLoadingFinance(true);
         fetch(`${API_URL}/dashboard/finance?${params.toString()}`, { headers: getHeaders() })
@@ -120,6 +110,8 @@ const Dashboard = () => {
     const kpis = stats?.kpis || {};
     const topProductoMes = stats?.top_producto_mes || null;
     const topClinicaMes = stats?.top_clinica_mes || null;
+    const topProductosMes = stats?.top_productos_mes || [];
+    const topClinicasMes = stats?.top_clinicas_mes || [];
     const historicoOperativo = stats?.historico_operativo_12m || [];
     const historicoTopProducto = stats?.historico_top_producto_12m || [];
     const historicoTopClinica = stats?.historico_top_clinica_12m || [];
@@ -130,18 +122,50 @@ const Dashboard = () => {
     const estrategicos = finance?.estrategicos || {};
     const estrategicosKpis = estrategicos?.kpis || {};
 
-    const kpiCardsMes = [
-        { label: 'Pedidos del mes', value: kpis.pedidos_mes, icon: 'bi-calendar2-week', color: '#0891B2', bg: 'rgba(8,145,178,0.1)' },
-        { label: 'Top producto (mes)', value: topProductoMes?.cantidad || 0, subvalue: topProductoMes?.producto || 'Sin pedidos', icon: 'bi-award', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
-        { label: 'Top clínica (mes)', value: topClinicaMes?.pedidos || 0, subvalue: topClinicaMes?.clinica || 'Sin pedidos', icon: 'bi-building-check', color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
-        { label: 'Nuevos clientes con pedido', value: kpis.nuevos_clientes_mes, icon: 'bi-person-plus', color: '#6366F1', bg: 'rgba(99,102,241,0.1)' }
+    const kpiCardsMesNumericos = [
+        { label: 'Pedidos del mes', value: kpis.pedidos_mes, icon: 'bi-calendar2-week', color: '#0891B2', bg: 'rgba(8,145,178,0.1)', detail: 'Registrados este mes' },
+        { label: 'Nuevos clientes con pedido', value: kpis.nuevos_clientes_mes, icon: 'bi-person-plus', color: '#6366F1', bg: 'rgba(99,102,241,0.1)', detail: 'Clínicas nuevas con actividad' },
+        { label: 'Reprocesos en el mes', value: kpis.retrocesos_mes, icon: 'bi-arrow-counterclockwise', color: '#EF4444', bg: 'rgba(239,68,68,0.12)', detail: 'Pedidos que volvieron de etapa' }
+    ];
+
+    const kpiCardsMesDatos = [
+        { label: 'Producto top del mes', value: topProductoMes?.producto || 'Sin pedidos', detail: `${topProductoMes?.cantidad || 0} pedidos`, icon: 'bi-award', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
+        { label: 'Clínica top del mes', value: topClinicaMes?.clinica || 'Sin pedidos', detail: `${topClinicaMes?.pedidos || 0} pedidos`, icon: 'bi-building-check', color: '#10B981', bg: 'rgba(16,185,129,0.1)' }
     ];
 
     const kpiCardsOperacion = [
-        { label: 'Pendientes', value: kpis.pendientes, icon: 'bi-hourglass-split', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
-        { label: 'En Producción', value: kpis.en_produccion, icon: 'bi-gear', color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)' },
-        { label: 'Clínicas Activas', value: kpis.clinicas_activas, icon: 'bi-building', color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
-        { label: 'Retrocesos (Mes)', value: kpis.retrocesos_mes, icon: 'bi-arrow-counterclockwise', color: '#EF4444', bg: 'rgba(239,68,68,0.12)' }
+        {
+            label: 'Trabajos por terminar',
+            value: kpis.trabajos_por_terminar,
+            icon: 'bi-hourglass-split',
+            color: '#F59E0B',
+            bg: 'rgba(245,158,11,0.1)',
+            detail: 'Pendientes de cerrar'
+        },
+        {
+            label: 'Trabajos en producción',
+            value: kpis.en_produccion,
+            icon: 'bi-gear',
+            color: '#8B5CF6',
+            bg: 'rgba(139,92,246,0.1)',
+            detail: 'Pedidos fabricándose ahora'
+        },
+        {
+            label: 'Pedidos retrasados',
+            value: kpis.retrasados,
+            icon: 'bi-alarm',
+            color: '#EF4444',
+            bg: 'rgba(239,68,68,0.12)',
+            detail: 'Con fecha de entrega vencida'
+        },
+        {
+            label: 'Clínicas activas',
+            value: kpis.clinicas_activas,
+            icon: 'bi-building',
+            color: '#10B981',
+            bg: 'rgba(16,185,129,0.1)',
+            detail: 'Con actividad vigente'
+        }
     ];
 
     const doughnutData = {
@@ -295,18 +319,43 @@ const Dashboard = () => {
     };
 
     const liquidityCards = [
-        { label: 'Saldo en caja', value: formatCurrency(liquidez.saldo_caja), icon: 'bi-safe2', color: '#0EA5E9', bg: 'rgba(14,165,233,0.1)' },
-        { label: 'Saldo en bancos', value: formatCurrency(liquidez.saldo_bancos), icon: 'bi-bank', color: '#1D4ED8', bg: 'rgba(29,78,216,0.1)' },
-        { label: 'Flujo del día', value: formatCurrency(liquidez.flujo_dia), icon: 'bi-lightning', color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
-        { label: 'Flujo del mes', value: formatCurrency(liquidez.flujo_mes), icon: 'bi-calendar-check', color: '#14B8A6', bg: 'rgba(20,184,166,0.12)' }
+        { label: 'Saldo en caja', value: formatCurrency(liquidez.saldo_caja), icon: 'bi-safe2', color: '#0EA5E9', bg: 'rgba(14,165,233,0.1)', detail: 'Fondos disponibles en caja' },
+        { label: 'Saldo en bancos', value: formatCurrency(liquidez.saldo_bancos), icon: 'bi-bank', color: '#1D4ED8', bg: 'rgba(29,78,216,0.1)', detail: 'Fondos disponibles en bancos' },
+        { label: 'Flujo del día', value: formatCurrency(liquidez.flujo_dia), icon: 'bi-lightning', color: '#10B981', bg: 'rgba(16,185,129,0.1)', detail: 'Ingreso neto de hoy' },
+        { label: 'Flujo del mes', value: formatCurrency(liquidez.flujo_mes), icon: 'bi-calendar-check', color: '#14B8A6', bg: 'rgba(20,184,166,0.12)', detail: 'Ingreso neto del mes' }
     ];
 
     const businessCards = [
-        { label: 'Ingresos del mes', value: formatCurrency(ingresosFin.mes), icon: 'bi-currency-dollar', color: '#16A34A', bg: 'rgba(22,163,74,0.12)' },
-        { label: 'Ingresos mes en caja', value: formatCurrency(ingresosFin.mes_caja), icon: 'bi-wallet', color: '#0EA5E9', bg: 'rgba(14,165,233,0.12)' },
-        { label: 'Ingresos mes en bancos', value: formatCurrency(ingresosFin.mes_banco), icon: 'bi-credit-card', color: '#2563EB', bg: 'rgba(37,99,235,0.12)' },
-        { label: 'Gastos totales del mes', value: formatCurrency(gastosFin.mes_total), icon: 'bi-receipt-cutoff', color: '#DC2626', bg: 'rgba(220,38,38,0.12)' }
+        { label: 'Ingresos del mes', value: formatCurrency(ingresosFin.mes), icon: 'bi-currency-dollar', color: '#16A34A', bg: 'rgba(22,163,74,0.12)', detail: 'Cobrado en el período actual' },
+        { label: 'Ingresos mes en caja', value: formatCurrency(ingresosFin.mes_caja), icon: 'bi-wallet', color: '#0EA5E9', bg: 'rgba(14,165,233,0.12)', detail: 'Disponible en caja' },
+        { label: 'Ingresos mes en bancos', value: formatCurrency(ingresosFin.mes_banco), icon: 'bi-credit-card', color: '#2563EB', bg: 'rgba(37,99,235,0.12)', detail: 'Disponible en bancos' },
+        { label: 'Gastos totales del mes', value: formatCurrency(gastosFin.mes_total), icon: 'bi-receipt-cutoff', color: '#DC2626', bg: 'rgba(220,38,38,0.12)', detail: 'Egresos acumulados del mes' }
     ];
+
+    const renderDashboardMetricCard = (kpi, i, options = {}) => {
+        const valueClassName = [
+            'dashboard-kpi-main-value',
+            options.currency ? 'dashboard-kpi-currency' : '',
+            options.valueClassName || ''
+        ].filter(Boolean).join(' ');
+
+        return (
+            <div key={options.key || i} className={`card kpi-card dashboard-kpi-card ${options.className || ''}`.trim()} style={options.style}>
+                <div className="dashboard-kpi-shell">
+                    <div className="dashboard-kpi-row">
+                        <div className="dashboard-kpi-heading-group">
+                            <div className="dashboard-kpi-heading">{kpi.label}</div>
+                        </div>
+                        <div className="kpi-icon dashboard-kpi-icon-right" style={{ background: kpi.bg, color: kpi.color }}>
+                            <i className={`bi ${kpi.icon}`}></i>
+                        </div>
+                    </div>
+                    <div className={valueClassName}>{kpi.value ?? 0}</div>
+                    {kpi.detail && <div className={`dashboard-kpi-note ${options.noteClassName || ''}`.trim()}>{kpi.detail}</div>}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="animate-fade-in">
@@ -356,17 +405,6 @@ const Dashboard = () => {
                             onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))}
                         />
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Clínica</label>
-                        <select
-                            className="form-select"
-                            value={filters.clinica_id}
-                            onChange={(e) => setFilters((prev) => ({ ...prev, clinica_id: e.target.value }))}
-                        >
-                            <option value="">Todas las clínicas</option>
-                            {clinicas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                        </select>
-                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
                     <button className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(30), to: todayIso() }))}>Últimos 30 días</button>
@@ -403,13 +441,11 @@ const Dashboard = () => {
                 ) : (
                     <div className="grid dashboard-kpi-grid-liquid">
                         {liquidityCards.map((kpi, i) => (
-                            <div key={i} className="card kpi-card dashboard-kpi-card animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
-                                <div className="kpi-icon" style={{ background: kpi.bg, color: kpi.color }}>
-                                    <i className={`bi ${kpi.icon}`}></i>
-                                </div>
-                                <div className="kpi-value dashboard-kpi-currency">{kpi.value}</div>
-                                <div className="kpi-label">{kpi.label}</div>
-                            </div>
+                            renderDashboardMetricCard(kpi, i, {
+                                currency: true,
+                                className: 'animate-slide-up',
+                                style: { animationDelay: `${i * 80}ms` }
+                            })
                         ))}
                     </div>
                 )}
@@ -429,13 +465,11 @@ const Dashboard = () => {
                 ) : (
                     <div className="grid dashboard-kpi-grid-liquid">
                         {businessCards.map((kpi, i) => (
-                            <div key={i} className="card kpi-card dashboard-kpi-card animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
-                                <div className="kpi-icon" style={{ background: kpi.bg, color: kpi.color }}>
-                                    <i className={`bi ${kpi.icon}`}></i>
-                                </div>
-                                <div className="kpi-value dashboard-kpi-currency">{kpi.value}</div>
-                                <div className="kpi-label">{kpi.label}</div>
-                            </div>
+                            renderDashboardMetricCard(kpi, i, {
+                                currency: true,
+                                className: 'animate-slide-up',
+                                style: { animationDelay: `${i * 80}ms` }
+                            })
                         ))}
                     </div>
                 )}
@@ -501,24 +535,38 @@ const Dashboard = () => {
                     </div>
 
                     <div className="grid dashboard-kpi-grid-liquid" style={{ marginBottom: 'var(--space-6)' }}>
-                        <div className="card dashboard-kpi-card strategic-kpi-card">
-                            <div className="kpi-label">Clínica líder del período</div>
-                            <div className="kpi-value dashboard-kpi-currency">{topClinicaActual ? topClinicaActual.clinica : 'Sin datos'}</div>
-                            <div className="kpi-label" style={{ marginTop: 'var(--space-2)' }}>{topClinicaActual ? formatCurrency(topClinicaActual.total) : 'S/. 0.00'}</div>
-                        </div>
-                        <div className="card dashboard-kpi-card strategic-kpi-card">
-                            <div className="kpi-label">Producto líder del período</div>
-                            <div className="kpi-value dashboard-kpi-currency">{topProductoActual ? topProductoActual.producto : 'Sin datos'}</div>
-                            <div className="kpi-label" style={{ marginTop: 'var(--space-2)' }}>{topProductoActual ? formatCurrency(topProductoActual.total) : 'S/. 0.00'}</div>
-                        </div>
-                        <div className="card dashboard-kpi-card strategic-kpi-card">
-                            <div className="kpi-label">Concentración top 3 clínicas</div>
-                            <div className="kpi-value dashboard-kpi-currency">{formatPercent(estrategicosKpis.concentracion_top3_clinicas_pct)}</div>
-                        </div>
-                        <div className="card dashboard-kpi-card strategic-kpi-card">
-                            <div className="kpi-label">Concentración top 3 productos</div>
-                            <div className="kpi-value dashboard-kpi-currency">{formatPercent(estrategicosKpis.concentracion_top3_productos_pct)}</div>
-                        </div>
+                        {renderDashboardMetricCard({
+                            label: 'Clínica líder del período',
+                            value: topClinicaActual ? topClinicaActual.clinica : 'Sin datos',
+                            detail: topClinicaActual ? formatCurrency(topClinicaActual.total) : 'S/. 0.00',
+                            icon: 'bi-building-check',
+                            color: '#0F766E',
+                            bg: 'rgba(20,184,166,0.12)'
+                        }, 'strategic-clinic', { className: 'strategic-kpi-card' })}
+                        {renderDashboardMetricCard({
+                            label: 'Producto líder del período',
+                            value: topProductoActual ? topProductoActual.producto : 'Sin datos',
+                            detail: topProductoActual ? formatCurrency(topProductoActual.total) : 'S/. 0.00',
+                            icon: 'bi-box-seam',
+                            color: '#7C3AED',
+                            bg: 'rgba(139,92,246,0.12)'
+                        }, 'strategic-product', { className: 'strategic-kpi-card' })}
+                        {renderDashboardMetricCard({
+                            label: 'Concentración top 3 clínicas',
+                            value: formatPercent(estrategicosKpis.concentracion_top3_clinicas_pct),
+                            detail: 'Participación sobre ingresos',
+                            icon: 'bi-pie-chart',
+                            color: '#2563EB',
+                            bg: 'rgba(37,99,235,0.12)'
+                        }, 'strategic-clinics-pct', { className: 'strategic-kpi-card', currency: true })}
+                        {renderDashboardMetricCard({
+                            label: 'Concentración top 3 productos',
+                            value: formatPercent(estrategicosKpis.concentracion_top3_productos_pct),
+                            detail: 'Participación sobre ingresos',
+                            icon: 'bi-bar-chart',
+                            color: '#EA580C',
+                            bg: 'rgba(249,115,22,0.12)'
+                        }, 'strategic-products-pct', { className: 'strategic-kpi-card', currency: true })}
                     </div>
 
                     <div className="grid strategic-bento-main" style={{ marginBottom: 'var(--space-6)' }}>
@@ -620,51 +668,79 @@ const Dashboard = () => {
                         <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
                             <div>
                                 <h3 className="card-title">Indicadores comerciales del mes</h3>
-                                <p className="card-subtitle">Rendimiento mensual de pedidos, clientes y demanda</p>
+                                <p className="card-subtitle">Separa métricas numéricas de los datos destacados del mes</p>
                             </div>
                         </div>
-                        <div className="grid dashboard-kpi-grid-liquid">
-                            {kpiCardsMes.map((kpi, i) => (
-                                <div key={i} className="card kpi-card dashboard-kpi-card animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
-                                    <div className="kpi-icon" style={{ background: kpi.bg, color: kpi.color }}>
-                                        <i className={`bi ${kpi.icon}`}></i>
-                                    </div>
-                                    <div className="kpi-value">{kpi.value ?? 0}</div>
-                                    <div className="kpi-label">{kpi.label}</div>
-                                    {kpi.subvalue && <div className="kpi-label" style={{ marginTop: 6, color: 'var(--color-text)' }}>{kpi.subvalue}</div>}
+                        <div className="dashboard-summary-groups">
+                            <div>
+                                <div className="dashboard-summary-group-title">Métricas numéricas</div>
+                                <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-numeric">
+                                    {kpiCardsMesNumericos.map((kpi, i) => (
+                                        renderDashboardMetricCard(kpi, i, {
+                                            className: 'animate-slide-up dashboard-kpi-card-numeric',
+                                            style: { animationDelay: `${i * 80}ms` }
+                                        })
+                                    ))}
                                 </div>
-                            ))}
+                            </div>
+                            <div>
+                                <div className="dashboard-summary-group-title">Datos destacados</div>
+                                <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-featured">
+                                    {kpiCardsMesDatos.map((kpi, i) => (
+                                        renderDashboardMetricCard(kpi, i, {
+                                            key: `featured-${i}`,
+                                            className: 'animate-slide-up dashboard-kpi-card-featured',
+                                            valueClassName: 'dashboard-kpi-main-value-featured',
+                                            noteClassName: 'dashboard-kpi-note-featured',
+                                            style: { animationDelay: `${(i + kpiCardsMesNumericos.length) * 80}ms` }
+                                        })
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3" style={{ marginBottom: 'var(--space-6)' }}>
+                    <div className="grid grid-cols-2" style={{ marginBottom: 'var(--space-6)' }}>
                         <div className="card">
-                            <div className="card-header"><h3 className="card-title">Pedidos por Estado</h3></div>
-                            <div style={{ maxWidth: 240, margin: '0 auto' }}>
-                                {(stats?.por_estado || []).length > 0 ? (
-                                    <Doughnut data={doughnutData} options={{
-                                        plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } } },
-                                        cutout: '65%'
-                                    }} />
-                                ) : (
-                                    <div className="empty-state"><p className="empty-state-text">Sin datos</p></div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="card col-span-2">
                             <div className="card-header">
                                 <div>
-                                    <h3 className="card-title">Top del mes (tiempo real)</h3>
-                                    <p className="card-subtitle">Se actualiza con los pedidos del mes actual</p>
+                                    <h3 className="card-title">Top 5 productos del mes</h3>
+                                    <p className="card-subtitle">Los productos con mayor volumen de pedidos</p>
                                 </div>
                             </div>
-                            <div className="dashboard-list compact">
-                                <div className="dashboard-list-item"><span>Top producto del mes</span><strong>{topProductoMes ? `${topProductoMes.producto} (${topProductoMes.cantidad})` : 'Sin pedidos'}</strong></div>
-                                <div className="dashboard-list-item"><span>Top clínica del mes</span><strong>{topClinicaMes ? `${topClinicaMes.clinica} (${topClinicaMes.pedidos})` : 'Sin pedidos'}</strong></div>
-                                <div className="dashboard-list-item"><span>Pedidos del mes</span><strong>{kpis.pedidos_mes || 0}</strong></div>
-                                <div className="dashboard-list-item"><span>Nuevos clientes con pedido</span><strong>{kpis.nuevos_clientes_mes || 0}</strong></div>
+                            {topProductosMes.length > 0 ? (
+                                <div className="dashboard-list compact">
+                                    {topProductosMes.map((row, index) => (
+                                        <div key={`${row.producto}-${index}`} className="dashboard-list-item">
+                                            <span>{index + 1}. {row.producto}</span>
+                                            <strong>{row.cantidad}</strong>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="empty-state"><p className="empty-state-text">Sin productos del mes</p></div>
+                            )}
+                        </div>
+
+                        <div className="card">
+                            <div className="card-header">
+                                <div>
+                                    <h3 className="card-title">Top 5 clínicas del mes</h3>
+                                    <p className="card-subtitle">Las clínicas que más pedidos enviaron</p>
+                                </div>
                             </div>
+                            {topClinicasMes.length > 0 ? (
+                                <div className="dashboard-list compact">
+                                    {topClinicasMes.map((row, index) => (
+                                        <div key={`${row.clinica}-${index}`} className="dashboard-list-item">
+                                            <span>{index + 1}. {row.clinica}</span>
+                                            <strong>{row.pedidos}</strong>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="empty-state"><p className="empty-state-text">Sin clínicas del mes</p></div>
+                            )}
                         </div>
                     </div>
                 </>
@@ -726,17 +802,32 @@ const Dashboard = () => {
 
             {operativeView === 'produccion' && (
                 <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                    <div className="card-header"><h3 className="card-title">Operación del laboratorio</h3></div>
+                    <div className="card-header">
+                        <div>
+                            <h3 className="card-title">Operación del laboratorio</h3>
+                            <p className="card-subtitle">Prioriza lo pendiente por cerrar, la carga real en producción y los pedidos atrasados</p>
+                        </div>
+                    </div>
                     <div className="grid dashboard-kpi-grid-liquid">
                         {kpiCardsOperacion.map((kpi, i) => (
-                            <div key={i} className="card kpi-card dashboard-kpi-card">
-                                <div className="kpi-icon" style={{ background: kpi.bg, color: kpi.color }}>
-                                    <i className={`bi ${kpi.icon}`}></i>
-                                </div>
-                                <div className="kpi-value">{kpi.value ?? 0}</div>
-                                <div className="kpi-label">{kpi.label}</div>
-                            </div>
+                            renderDashboardMetricCard(kpi, i)
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {operativeView === 'produccion' && (
+                <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+                    <div className="card-header"><h3 className="card-title">Pedidos por Estado</h3></div>
+                    <div style={{ maxWidth: 280, margin: '0 auto' }}>
+                        {(stats?.por_estado || []).length > 0 ? (
+                            <Doughnut data={doughnutData} options={{
+                                plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } } },
+                                cutout: '65%'
+                            }} />
+                        ) : (
+                            <div className="empty-state"><p className="empty-state-text">Sin datos</p></div>
+                        )}
                     </div>
                 </div>
             )}
