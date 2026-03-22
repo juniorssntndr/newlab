@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../config.js';
+import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Aprobación',
@@ -9,23 +9,23 @@ const statusLabels = {
 };
 
 const Pedidos = () => {
-    const { getHeaders, user } = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
-    const [pedidos, setPedidos] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [filtroEstado, setFiltroEstado] = useState('');
     const [search, setSearch] = useState('');
 
-    useEffect(() => {
-        const params = new URLSearchParams();
-        if (filtroEstado) params.set('estado', filtroEstado);
-        if (search) params.set('search', search);
+    const filters = useMemo(() => ({
+        estado: filtroEstado,
+        search
+    }), [filtroEstado, search]);
 
-        fetch(`${API_URL}/pedidos?${params}`, { headers: getHeaders() })
-            .then(r => r.json())
-            .then(data => { setPedidos(data); setLoading(false); })
-            .catch(() => setLoading(false));
-    }, [filtroEstado, search]);
+    const {
+        data: pedidos = [],
+        isLoading,
+        isFetching
+    } = useOrdersListQuery({ filters });
+
+    const loading = isLoading || isFetching;
 
     const estados = ['', 'pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
 

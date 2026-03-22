@@ -1,53 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../state/AuthContext';
-import { API_URL } from '../config';
 import Modal from './Modal';
 import { toast } from 'react-hot-toast';
+import { useFinanceAccountStateQuery } from '../modules/finance/queries/useFinanceAccountStateQuery.js';
+import { useRegisterBulkPaymentMutation } from '../modules/finance/mutations/useRegisterBulkPaymentMutation.js';
 
 export const ModalPagoMasivo = ({ clinica, open, onClose, onPaymentSuccess }) => {
-    const { getHeaders } = useAuth();
-    const [estadoCuenta, setEstadoCuenta] = useState(null);
-    const [loading, setLoading] = useState(false);
-
     // Form state
     const [montoTotal, setMontoTotal] = useState('');
     const [metodo, setMetodo] = useState('transferencia');
     const [referencia, setReferencia] = useState('');
     const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
     const [notas, setNotas] = useState('Abono automático por pago masivo');
-    const [submitting, setSubmitting] = useState(false);
+
+    const estadoCuentaQuery = useFinanceAccountStateQuery(clinica?.id, { enabled: open && Boolean(clinica?.id) });
+    const registerBulkPaymentMutation = useRegisterBulkPaymentMutation();
+
+    const estadoCuenta = estadoCuentaQuery.data || null;
+    const loading = estadoCuentaQuery.isFetching && !estadoCuenta;
+    const submitting = registerBulkPaymentMutation.isPending;
 
     useEffect(() => {
-        if (open && clinica) {
-            fetchEstadoCuenta();
-        } else {
-            // Reset form when closed
+        if (!open) {
             setMontoTotal('');
             setReferencia('');
-            setEstadoCuenta(null);
         }
-    }, [open, clinica]);
+    }, [open]);
 
-    const fetchEstadoCuenta = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_URL}/finanzas/estado-cuenta/${clinica.id}`, {
-                headers: getHeaders()
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setEstadoCuenta(data);
-                // Pre-fill total amount with exact debt
-                setMontoTotal(data.saldo_total_pendiente > 0 ? data.saldo_total_pendiente : '');
-            } else {
-                toast.error('Error al cargar estado de cuenta');
-            }
-        } catch (error) {
-            toast.error('Error de conexión');
-        } finally {
-            setLoading(false);
+    useEffect(() => {
+        if (open && estadoCuenta) {
+            setMontoTotal(estadoCuenta.saldo_total_pendiente > 0 ? estadoCuenta.saldo_total_pendiente : '');
         }
-    };
+    }, [open, estadoCuenta]);
+
+    useEffect(() => {
+        if (open && estadoCuentaQuery.isError) {
+            toast.error(estadoCuentaQuery.error?.message || 'Error al cargar estado de cuenta');
+        }
+    }, [open, estadoCuentaQuery.isError, estadoCuentaQuery.error]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -63,37 +52,21 @@ export const ModalPagoMasivo = ({ clinica, open, onClose, onPaymentSuccess }) =>
             return;
         }
 
-        setSubmitting(true);
         try {
-            const res = await fetch(`${API_URL}/finanzas/pagos-masivos`, {
-                method: 'POST',
-                headers: {
-                    ...getHeaders(),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    clinica_id: clinica.id,
-                    monto_total: montoNum,
-                    metodo,
-                    referencia,
-                    fecha_pago: fechaPago,
-                    notas
-                })
+            const result = await registerBulkPaymentMutation.mutateAsync({
+                clinica_id: clinica.id,
+                monto_total: montoNum,
+                metodo,
+                referencia,
+                fecha_pago: fechaPago,
+                notas
             });
 
-            if (res.ok) {
-                const result = await res.json();
-                toast.success(`Pago masivo registrado. Se cancelaron/abonaron ${result.pagos_registrados.length} pedidos.`, { duration: 4000 });
-                if (onPaymentSuccess) onPaymentSuccess();
-                onClose();
-            } else {
-                const error = await res.json();
-                toast.error(error.error || 'Error al procesar pago masivo');
-            }
+            toast.success(`Pago masivo registrado. Se cancelaron/abonaron ${result.pagos_registrados.length} pedidos.`, { duration: 4000 });
+            if (onPaymentSuccess) onPaymentSuccess();
+            onClose();
         } catch (error) {
-            toast.error('Error de conexión');
-        } finally {
-            setSubmitting(false);
+            toast.error(error?.message || 'Error al procesar pago masivo');
         }
     };
 

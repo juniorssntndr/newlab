@@ -1,11 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from './state/AuthContext.jsx';
-import { NotificationProvider } from './state/NotificationContext.jsx';
 import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initSentry } from './observability/sentry.js';
+import { AppProviders } from './bootstrap/appProviders.jsx';
 import './styles/global.css';
 
 initSentry();
@@ -13,13 +11,9 @@ initSentry();
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <ErrorBoundary>
-            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <AuthProvider>
-                    <NotificationProvider>
-                        <App />
-                    </NotificationProvider>
-                </AuthProvider>
-            </BrowserRouter>
+            <AppProviders>
+                <App />
+            </AppProviders>
         </ErrorBoundary>
     </React.StrictMode>
 );

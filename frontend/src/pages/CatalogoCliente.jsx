@@ -5,6 +5,7 @@ import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
 import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
 import { formatDentalSelection } from '../utils/odontograma.js';
+import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
 
 // Derive backend base for local /uploads/ paths (strips trailing /api segment)
 const BACKEND_BASE = API_URL.endsWith('/api')
@@ -51,6 +52,7 @@ const CatalogoCliente = () => {
     });
     const [orderSaving, setOrderSaving] = useState(false);
     const [orderError, setOrderError] = useState('');
+    const createOrderMutation = useCreateOrderMutation();
 
     const calculateDeliveryDate = (product, isUrgent) => {
         const baseDays = product?.tiempo_estimado_dias || 5;
@@ -94,31 +96,25 @@ const CatalogoCliente = () => {
         setOrderSaving(true);
         setOrderError('');
         try {
-            const res = await fetch(`${API_URL}/pedidos`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    clinica_id: user.clinica_id,
-                    paciente_nombre: orderForm.paciente_nombre,
-                    fecha_entrega: orderForm.fecha_entrega,
-                    observaciones: '',
-                    items: [{
-                        producto_id: orderProduct.id,
-                        cantidad: 1,
-                        precio_unitario: parseFloat(orderProduct.precio_base),
-                        piezas_dentales: orderForm.piezas_dentales,
-                        es_puente: orderForm.es_puente,
-                        pieza_inicio: orderForm.pieza_inicio,
-                        pieza_fin: orderForm.pieza_fin,
-                        color_vita: orderForm.color_vita || '',
-                        material: orderProduct.material_nombre || '',
-                        notas: orderForm.notas || '',
-                        es_urgente: orderForm.es_urgente
-                    }]
-                })
+            const data = await createOrderMutation.mutateAsync({
+                clinica_id: user.clinica_id,
+                paciente_nombre: orderForm.paciente_nombre,
+                fecha_entrega: orderForm.fecha_entrega,
+                observaciones: '',
+                items: [{
+                    producto_id: orderProduct.id,
+                    cantidad: 1,
+                    precio_unitario: parseFloat(orderProduct.precio_base),
+                    piezas_dentales: orderForm.piezas_dentales,
+                    es_puente: orderForm.es_puente,
+                    pieza_inicio: orderForm.pieza_inicio,
+                    pieza_fin: orderForm.pieza_fin,
+                    color_vita: orderForm.color_vita || '',
+                    material: orderProduct.material_nombre || '',
+                    notas: orderForm.notas || '',
+                    es_urgente: orderForm.es_urgente
+                }]
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error al crear pedido');
             navigate(`/pedidos/${data.id}`);
         } catch (err) {
             setOrderError(err.message);

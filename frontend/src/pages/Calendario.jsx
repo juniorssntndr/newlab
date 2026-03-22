@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../config.js';
 import '@fullcalendar/react/dist/vdom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
+import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Aprobación',
@@ -24,22 +23,13 @@ const statusColors = {
 };
 
 const Calendario = () => {
-    const { getHeaders } = useAuth();
     const navigate = useNavigate();
-    const [pedidos, setPedidos] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { data: pedidos = [], isLoading } = useOrdersListQuery({ filters: undefined });
     const [isCompact, setIsCompact] = useState(() => (
         typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
     ));
 
     const [selectedEvent, setSelectedEvent] = useState(null);
-
-    useEffect(() => {
-        fetch(`${API_URL}/pedidos`, { headers: getHeaders() })
-            .then(r => r.json())
-            .then(data => { setPedidos(data); setLoading(false); })
-            .catch(() => setLoading(false));
-    }, []);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -111,7 +101,7 @@ const Calendario = () => {
                         </div>
                     ))}
                 </div>
-                {loading ? (
+                {isLoading && pedidos.length === 0 ? (
                     <div className="skeleton" style={{ height: 520, borderRadius: 8 }} />
                 ) : (
                     <FullCalendar

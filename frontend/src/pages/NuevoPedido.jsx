@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
 import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
 import { buildItemSelection, formatDentalSelection } from '../utils/odontograma.js';
+import { apiClient } from '../services/http/apiClient.js';
+import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
 
 const NuevoPedido = () => {
     const { getHeaders, user } = useAuth();
@@ -18,12 +19,13 @@ const NuevoPedido = () => {
     const [saving, setSaving] = useState(false);
     const [step, setStep] = useState(1);
     const [odontogramaItemIndex, setOdontogramaItemIndex] = useState(null);
+    const createOrderMutation = useCreateOrderMutation();
 
     useEffect(() => {
         Promise.all([
-            fetch(`${API_URL}/clinicas`, { headers: getHeaders() }).then(r => r.json()),
-            fetch(`${API_URL}/productos`, { headers: getHeaders() }).then(r => r.json()),
-            fetch(`${API_URL}/categorias`, { headers: getHeaders() }).then(r => r.json())
+            apiClient('/clinicas', { headers: getHeaders() }),
+            apiClient('/productos', { headers: getHeaders() }),
+            apiClient('/categorias', { headers: getHeaders() })
         ]).then(([c, p, cat]) => {
             setClinicas(c);
             setProductos(p);
@@ -79,30 +81,21 @@ const NuevoPedido = () => {
         setSaving(true);
         setError('');
         try {
-            const res = await fetch(`${API_URL}/pedidos`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    ...form,
-                    items: items.map(i => ({
-                        producto_id: i.producto_id,
-                        cantidad: i.cantidad,
-                        precio_unitario: i.precio_unitario,
-                        piezas_dentales: i.piezas_dentales || [],
-                        es_puente: !!i.es_puente,
-                        pieza_inicio: i.pieza_inicio || null,
-                        pieza_fin: i.pieza_fin || null,
-                        color_vita: i.color_vita,
-                        material: i.material,
-                        notas: i.notas
-                    }))
-                })
+            const pedido = await createOrderMutation.mutateAsync({
+                ...form,
+                items: items.map(i => ({
+                    producto_id: i.producto_id,
+                    cantidad: i.cantidad,
+                    precio_unitario: i.precio_unitario,
+                    piezas_dentales: i.piezas_dentales || [],
+                    es_puente: !!i.es_puente,
+                    pieza_inicio: i.pieza_inicio || null,
+                    pieza_fin: i.pieza_fin || null,
+                    color_vita: i.color_vita,
+                    material: i.material,
+                    notas: i.notas
+                }))
             });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Error al crear pedido');
-            }
-            const pedido = await res.json();
             navigate(`/pedidos/${pedido.id}`);
         } catch (err) {
             setError(err.message);

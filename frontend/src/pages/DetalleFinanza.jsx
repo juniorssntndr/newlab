@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../state/AuthContext.jsx';
-import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
+import { useFinanceDetailQuery } from '../modules/finance/queries/useFinanceDetailQuery.js';
+import { useFinanceCatalogsQuery } from '../modules/finance/queries/useFinanceCatalogsQuery.js';
+import { useBillingPreviewQuery } from '../modules/billing/queries/useBillingPreviewQuery.js';
+import { useRegisterPaymentMutation } from '../modules/finance/mutations/useRegisterPaymentMutation.js';
+import { useCreateInvoiceMutation } from '../modules/billing/mutations/useCreateInvoiceMutation.js';
+import { useAnnulInvoiceMutation } from '../modules/billing/mutations/useAnnulInvoiceMutation.js';
+import { useCreateCreditNoteMutation } from '../modules/billing/mutations/useCreateCreditNoteMutation.js';
 
 const statusLabels = {
     por_cancelar: 'Por cancelar',
@@ -15,21 +20,12 @@ const metodoToFondo = (metodo = '') => (String(metodo).toLowerCase() === 'efecti
 const DetalleFinanza = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { getHeaders } = useAuth();
-    const [finanza, setFinanza] = useState(null);
-    const [comprobantes, setComprobantes] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [catalogos, setCatalogos] = useState({ cuentas: [] });
     const [modalOpen, setModalOpen] = useState(false);
     const [printMenuOpen, setPrintMenuOpen] = useState(false);
-    const [savingPago, setSavingPago] = useState(false);
-    const [emitting, setEmitting] = useState(false);
-    const [anulando, setAnulando] = useState(false);
     const [anularModal, setAnularModal] = useState(null); // comp object | null
     const [anularMotivo, setAnularMotivo] = useState('');
     const [notaCreditoModal, setNotaCreditoModal] = useState(null); // comp object | null
     const [ncForm, setNcForm] = useState({ motivo: '', monto: '' });
-    const [savingNC, setSavingNC] = useState(false);
     const [form, setForm] = useState({
         monto: '',
         metodo: 'transferencia',
@@ -40,30 +36,20 @@ const DetalleFinanza = () => {
         notas: ''
     });
 
-    const fetchFinanza = () => {
-        Promise.all([
-            fetch(`${API_URL}/finanzas/${id}`, { headers: getHeaders() }).then(r => r.json()),
-            fetch(`${API_URL}/facturacion/${id}`, { headers: getHeaders() }).then(r => r.json()).catch(() => [])
-        ])
-            .then(([finanzaData, comprobantesData]) => {
-                setFinanza(finanzaData);
-                setComprobantes(Array.isArray(comprobantesData) ? comprobantesData : []);
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
+    const financeDetailQuery = useFinanceDetailQuery(id);
+    const financeCatalogsQuery = useFinanceCatalogsQuery();
+    const comprobantesQuery = useBillingPreviewQuery(id);
+    const registerPaymentMutation = useRegisterPaymentMutation();
+    const createInvoiceMutation = useCreateInvoiceMutation();
+    const annulInvoiceMutation = useAnnulInvoiceMutation();
+    const createCreditNoteMutation = useCreateCreditNoteMutation();
+
+    const finanza = financeDetailQuery.data || null;
+    const comprobantes = comprobantesQuery.data || [];
+    const catalogos = {
+        cuentas: Array.isArray(financeCatalogsQuery.data?.cuentas) ? financeCatalogsQuery.data.cuentas : []
     };
-
-    useEffect(() => { fetchFinanza(); }, [id]);
-
-    useEffect(() => {
-        fetch(`${API_URL}/finanzas/catalogos`, { headers: getHeaders() })
-            .then((r) => r.json())
-            .then((data) => {
-                const cuentas = Array.isArray(data?.cuentas) ? data.cuentas : [];
-                setCatalogos({ cuentas });
-            })
-            .catch(() => setCatalogos({ cuentas: [] }));
-    }, [getHeaders]);
+    const loading = financeDetailQuery.isLoading;
 
     const formatDate = (value, withTime = false) => {
         if (!value) return 'Sin definir';
@@ -107,20 +93,15 @@ const DetalleFinanza = () => {
             alert('Ingresa un monto válido');
             return;
         }
-        setSavingPago(true);
         try {
-            const res = await fetch(`${API_URL}/finanzas/${id}/pagos`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
+            await registerPaymentMutation.mutateAsync({
+                orderId: id,
+                payload: {
                     ...form,
                     cuenta_id: form.cuenta_id ? parseInt(form.cuenta_id, 10) : null
-                })
+                }
             });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Error al registrar pago');
-            }
+
             setModalOpen(false);
             setForm({
                 monto: '',
@@ -131,31 +112,22 @@ const DetalleFinanza = () => {
                 fecha_pago: new Date().toISOString().split('T')[0],
                 notas: ''
             });
-            fetchFinanza();
         } catch (err) {
             alert(err.message);
-        } finally {
-            setSavingPago(false);
         }
     };
 
     const handleEmitir = async (tipoComprobante) => {
         if (!window.confirm(`¿Seguro que deseas emitir ${tipoComprobante === '01' ? 'Factura' : 'Boleta'} electrónica a la SUNAT?`)) return;
-        setEmitting(true);
         try {
-            const res = await fetch(`${API_URL}/facturacion/${id}/emitir`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({ tipoComprobante })
+            await createInvoiceMutation.mutateAsync({
+                orderId: id,
+                payload: { tipoComprobante }
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error al emitir comprobante');
+
             alert('Comprobante emitido con éxito');
-            fetchFinanza();
         } catch (err) {
             alert(err.message);
-        } finally {
-            setEmitting(false);
         }
     };
 
@@ -167,21 +139,15 @@ const DetalleFinanza = () => {
     const submitAnulacion = async () => {
         if (!anularModal) return;
         if (anularMotivo.trim().length < 5) { alert('El motivo debe tener al menos 5 caracteres.'); return; }
-        setAnulando(true);
         try {
-            const res = await fetch(`${API_URL}/facturacion/${anularModal.id}/anular`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({ motivo: anularMotivo.trim() })
+            await annulInvoiceMutation.mutateAsync({
+                orderId: id,
+                invoiceId: anularModal.id,
+                payload: { motivo: anularMotivo.trim() }
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error al anular comprobante');
             setAnularModal(null);
-            fetchFinanza();
         } catch (err) {
             alert(err.message);
-        } finally {
-            setAnulando(false);
         }
     };
 
@@ -196,21 +162,15 @@ const DetalleFinanza = () => {
         if (!ncForm.monto || isNaN(parseFloat(ncForm.monto)) || parseFloat(ncForm.monto) <= 0) {
             alert('Ingresa un monto válido mayor a 0.'); return;
         }
-        setSavingNC(true);
         try {
-            const res = await fetch(`${API_URL}/facturacion/${notaCreditoModal.id}/nota-credito`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({ motivo: ncForm.motivo.trim(), monto: parseFloat(ncForm.monto) })
+            await createCreditNoteMutation.mutateAsync({
+                orderId: id,
+                invoiceId: notaCreditoModal.id,
+                payload: { motivo: ncForm.motivo.trim(), monto: parseFloat(ncForm.monto) }
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error al emitir nota de crédito');
             setNotaCreditoModal(null);
-            fetchFinanza();
         } catch (err) {
             alert(err.message);
-        } finally {
-            setSavingNC(false);
         }
     };
 
@@ -756,7 +716,7 @@ const DetalleFinanza = () => {
                                                     <button
                                                         className="btn btn-sm"
                                                         onClick={() => handleAnularComprobante(comp)}
-                                                        disabled={anulando}
+                                                        disabled={annulInvoiceMutation.isPending}
                                                         style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '7px', border: '1px solid #ef4444', color: '#ef4444', background: 'rgba(239,68,68,0.06)', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.15s' }}
                                                         onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
                                                         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; e.currentTarget.style.color = '#ef4444'; }}
@@ -768,7 +728,7 @@ const DetalleFinanza = () => {
                                                     <button
                                                         className="btn btn-sm"
                                                         onClick={() => handleNotaCredito(comp)}
-                                                        disabled={savingNC}
+                                                        disabled={createCreditNoteMutation.isPending}
                                                         style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '7px', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', background: 'transparent', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', marginLeft: '4px' }}
                                                         title="Emitir Nota de Crédito referenciando este comprobante"
                                                     >
@@ -848,8 +808,8 @@ const DetalleFinanza = () => {
                 footer={(
                     <>
                         <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={submitPago} disabled={savingPago}>
-                            {savingPago ? 'Guardando...' : 'Guardar pago'}
+                        <button className="btn btn-primary" onClick={submitPago} disabled={registerPaymentMutation.isPending}>
+                            {registerPaymentMutation.isPending ? 'Guardando...' : 'Guardar pago'}
                         </button>
                     </>
                 )}
@@ -963,19 +923,19 @@ const DetalleFinanza = () => {
 
             {/* ── Modal: Anulación con Motivo ──────────────────────── */}
             <Modal
-                isOpen={!!anularModal}
+                open={!!anularModal}
                 onClose={() => setAnularModal(null)}
                 title="Anular Comprobante Electrónico"
                 footer={
                     <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-ghost" onClick={() => setAnularModal(null)} disabled={anulando}>Cancelar</button>
+                        <button className="btn btn-ghost" onClick={() => setAnularModal(null)} disabled={annulInvoiceMutation.isPending}>Cancelar</button>
                         <button
                             className="btn"
                             onClick={submitAnulacion}
-                            disabled={anulando || anularMotivo.trim().length < 5}
+                            disabled={annulInvoiceMutation.isPending || anularMotivo.trim().length < 5}
                             style={{ background: '#ef4444', color: '#fff', border: 'none', fontWeight: '600' }}
                         >
-                            {anulando
+                            {annulInvoiceMutation.isPending
                                 ? <><i className="bi bi-hourglass-split"></i> Anulando...</>
                                 : <><i className="bi bi-x-circle"></i> Confirmar anulación</>
                             }
@@ -1009,18 +969,18 @@ const DetalleFinanza = () => {
 
             {/* ── Modal: Nota de Crédito ──────────────────────────── */}
             <Modal
-                isOpen={!!notaCreditoModal}
+                open={!!notaCreditoModal}
                 onClose={() => setNotaCreditoModal(null)}
                 title="Emitir Nota de Crédito"
                 footer={
                     <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-ghost" onClick={() => setNotaCreditoModal(null)} disabled={savingNC}>Cancelar</button>
+                        <button className="btn btn-ghost" onClick={() => setNotaCreditoModal(null)} disabled={createCreditNoteMutation.isPending}>Cancelar</button>
                         <button
                             className="btn btn-primary"
                             onClick={submitNotaCredito}
-                            disabled={savingNC || ncForm.motivo.trim().length < 5}
+                            disabled={createCreditNoteMutation.isPending || ncForm.motivo.trim().length < 5}
                         >
-                            {savingNC
+                            {createCreditNoteMutation.isPending
                                 ? <><i className="bi bi-hourglass-split"></i> Emitiendo...</>
                                 : <><i className="bi bi-arrow-counterclockwise"></i> Emitir N/C</>
                             }

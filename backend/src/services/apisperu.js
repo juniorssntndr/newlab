@@ -8,6 +8,8 @@
  *  - emitirNotaCredito       (credit note referencing original)
  */
 
+import { logger } from '../lib/logger.js';
+
 // ─── Ubigeo → Jurisdiction lookup ───────────────────────────────────────────
 // SUNAT requires provincia/departamento/distrito, not just the 6-digit code.
 // We store a minimal map for the most common ubigeos. If the code is not found
@@ -56,10 +58,22 @@ const UBIGEO_MAP = {
     '140101': { dep: 'LAMBAYEQUE', prov: 'CHICLAYO', dist: 'CHICLAYO' },
 };
 
-function resolveAddress(ubigeo, direccion) {
-    const loc = UBIGEO_MAP[ubigeo] || { dep: 'LIMA', prov: 'LIMA', dist: 'LIMA' };
+export function resolveUbigeoAddress(ubigeo, direccion, context = {}) {
+    const fallback = { dep: 'LIMA', prov: 'LIMA', dist: 'LIMA' };
+    const loc = UBIGEO_MAP[ubigeo] || fallback;
+    const normalizedUbigeo = ubigeo || '150101';
+
+    if (!UBIGEO_MAP[ubigeo]) {
+        const clinicName = context.clinicName || context.customerName || 'desconocida';
+        logger.warn(`Fallback de Ubigeo ${normalizedUbigeo} a Lima para la clínica ${clinicName}`, {
+            ubigeo: normalizedUbigeo,
+            clinic_name: clinicName,
+            source: context.source || 'apisperu.resolveUbigeoAddress'
+        });
+    }
+
     return {
-        ubigeo: ubigeo || '150101',
+        ubigeo: normalizedUbigeo,
         direccion: direccion || 'SIN DIRECCION',
         provincia: loc.prov,
         departamento: loc.dep,
@@ -203,7 +217,14 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
         }
         // Enrich address from ubigeo if client sent ubigeo
         if (clientData.address?.ubigeo) {
-            clientData.address = resolveAddress(clientData.address.ubigeo, clientData.address.direccion);
+            clientData.address = resolveUbigeoAddress(
+                clientData.address.ubigeo,
+                clientData.address.direccion,
+                {
+                    clinicName: clientData.rznSocial,
+                    source: 'apisperu.emitirComprobanteSunat.billingData.client'
+                }
+            );
         }
     } else {
         // Auto-generate from DB
@@ -243,12 +264,17 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
             tipoDoc: esFactura ? '6' : (pedido.tipo_doc || (pedido.ruc ? '6' : '1')),
             numDoc: esFactura ? pedido.ruc : (pedido.dni || pedido.ruc || '00000000'),
             rznSocial: pedido.razon_social || pedido.paciente_nombre || 'CLIENTE VARIOS',
-            address: resolveAddress(pedido.ubigeo, pedido.direccion),
+            address: resolveUbigeoAddress(pedido.ubigeo, pedido.direccion, {
+                clinicName: pedido.razon_social || pedido.paciente_nombre,
+                source: 'apisperu.emitirComprobanteSunat.dbClient'
+            }),
         };
     }
 
     // 5. Payload APISPERU
-    const companyAddress = resolveAddress(empresa.ubigeo, empresa.direccion_fiscal);
+    const companyAddress = resolveUbigeoAddress(empresa.ubigeo, empresa.direccion_fiscal, {
+        source: 'apisperu.emitirComprobanteSunat.company'
+    });
     const payload = {
         ublVersion: '2.1',
         tipoOperacion: '0101',
@@ -437,13 +463,18 @@ export async function emitirNotaCredito(pool, comprobanteId, { motivo, detalles,
             ruc: empresa.ruc,
             razonSocial: empresa.razon_social,
             nombreComercial: empresa.nombre_comercial || empresa.razon_social,
-            address: resolveAddress(empresa.ubigeo, empresa.direccion_fiscal),
+            address: resolveUbigeoAddress(empresa.ubigeo, empresa.direccion_fiscal, {
+                source: 'apisperu.emitirNotaCredito.company'
+            }),
         },
         client: {
             tipoDoc: comp.tipo_comprobante === '01' ? '6' : (pedido.tipo_doc || '1'),
             numDoc: comp.tipo_comprobante === '01' ? pedido.ruc : (pedido.dni || pedido.ruc || '00000000'),
             rznSocial: pedido.razon_social || pedido.paciente_nombre || 'CLIENTE VARIOS',
-            address: resolveAddress(pedido.ubigeo, pedido.direccion),
+            address: resolveUbigeoAddress(pedido.ubigeo, pedido.direccion, {
+                clinicName: pedido.razon_social || pedido.paciente_nombre,
+                source: 'apisperu.emitirNotaCredito.client'
+            }),
         },
         mtoOperGravadas: baseNC,
         mtoIGV: igvNC,

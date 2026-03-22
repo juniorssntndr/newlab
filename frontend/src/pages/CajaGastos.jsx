@@ -1,14 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../state/AuthContext.jsx';
-import { API_URL } from '../config.js';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useFinanceCatalogsQuery } from '../modules/finance/queries/useFinanceCatalogsQuery.js';
+import { useFinanceMovementsQuery } from '../modules/finance/queries/useFinanceMovementsQuery.js';
+import { useCreateFinanceMovementMutation } from '../modules/finance/mutations/useCreateFinanceMovementMutation.js';
 
 const CajaGastos = () => {
-    const { getHeaders } = useAuth();
-    const [movimientos, setMovimientos] = useState([]);
-    const [catalogos, setCatalogos] = useState({ cuentas: [], categorias_gasto: { operativo: [], costo_directo: [] } });
-    const [loadingMovimientos, setLoadingMovimientos] = useState(true);
     const [movSearch, setMovSearch] = useState('');
-    const [savingMovimiento, setSavingMovimiento] = useState(false);
+    const [searchInput, setSearchInput] = useState('');
     const [movForm, setMovForm] = useState({
         tipo_fondo: 'banco',
         cuenta_id: '',
@@ -19,40 +16,22 @@ const CajaGastos = () => {
         descripcion: ''
     });
 
-    useEffect(() => {
-        setLoadingMovimientos(true);
-        Promise.all([
-            fetch(`${API_URL}/finanzas/catalogos`, { headers: getHeaders() }).then((r) => r.json()),
-            fetch(`${API_URL}/finanzas/movimientos?tipo=egreso&limit=60`, { headers: getHeaders() }).then((r) => r.json())
-        ])
-            .then(([catData, movData]) => {
-                const categorias = catData?.categorias_gasto || { operativo: [], costo_directo: [], otro: [] };
-                setCatalogos({
-                    cuentas: Array.isArray(catData?.cuentas) ? catData.cuentas : [],
-                    categorias_gasto: categorias
-                });
-                const cuentaDefault = Array.isArray(catData?.cuentas) && catData.cuentas.length > 0 ? String(catData.cuentas[0].id) : '';
-                setMovForm((prev) => ({ ...prev, cuenta_id: prev.cuenta_id || cuentaDefault }));
-                setMovimientos(Array.isArray(movData) ? movData : []);
-                setLoadingMovimientos(false);
-            })
-            .catch(() => setLoadingMovimientos(false));
-    }, [getHeaders]);
+    const catalogosQuery = useFinanceCatalogsQuery();
+    const movementsFilters = useMemo(() => ({
+        tipo: 'egreso',
+        limit: '60',
+        search: movSearch
+    }), [movSearch]);
+    const movimientosQuery = useFinanceMovementsQuery({ filters: movementsFilters });
+    const createMovementMutation = useCreateFinanceMovementMutation();
 
-    const loadMovimientos = () => {
-        setLoadingMovimientos(true);
-        const params = new URLSearchParams();
-        params.set('tipo', 'egreso');
-        params.set('limit', '100');
-        if (movSearch) params.set('search', movSearch);
-        fetch(`${API_URL}/finanzas/movimientos?${params.toString()}`, { headers: getHeaders() })
-            .then((r) => r.json())
-            .then((data) => {
-                setMovimientos(Array.isArray(data) ? data : []);
-                setLoadingMovimientos(false);
-            })
-            .catch(() => setLoadingMovimientos(false));
+    const catalogos = {
+        cuentas: Array.isArray(catalogosQuery.data?.cuentas) ? catalogosQuery.data.cuentas : [],
+        categorias_gasto: catalogosQuery.data?.categorias_gasto || { operativo: [], costo_directo: [], otro: [] }
     };
+    const movimientos = movimientosQuery.data || [];
+    const loadingMovimientos = (catalogosQuery.isLoading || movimientosQuery.isLoading) && movimientos.length === 0;
+    const savingMovimiento = createMovementMutation.isPending;
 
     const categoriasByGroup = catalogos?.categorias_gasto || { operativo: [], costo_directo: [], otro: [] };
     const currentCategorias = categoriasByGroup[movForm.grupo_gasto] || [];
@@ -72,36 +51,27 @@ const CajaGastos = () => {
     const handleCreateMovimiento = async (e) => {
         e.preventDefault();
         if (!movForm.monto || parseFloat(movForm.monto) <= 0) return;
-        setSavingMovimiento(true);
         try {
-            const res = await fetch(`${API_URL}/finanzas/movimientos`, {
-                method: 'POST',
-                headers: { ...getHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    tipo: 'egreso',
-                    tipo_fondo: movForm.tipo_fondo,
-                    cuenta_id: movForm.cuenta_id ? parseInt(movForm.cuenta_id, 10) : null,
-                    fecha_movimiento: movForm.fecha_movimiento,
-                    monto: parseFloat(movForm.monto),
-                    grupo_gasto: movForm.grupo_gasto,
-                    categoria_gasto: movForm.categoria_gasto,
-                    descripcion: movForm.descripcion || null
-                })
+            await createMovementMutation.mutateAsync({
+                tipo: 'egreso',
+                tipo_fondo: movForm.tipo_fondo,
+                cuenta_id: movForm.cuenta_id ? parseInt(movForm.cuenta_id, 10) : null,
+                fecha_movimiento: movForm.fecha_movimiento,
+                monto: parseFloat(movForm.monto),
+                grupo_gasto: movForm.grupo_gasto,
+                categoria_gasto: movForm.categoria_gasto,
+                descripcion: movForm.descripcion || null
             });
 
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err?.error || 'No se pudo registrar el gasto');
-            }
-
             setMovForm((prev) => ({ ...prev, monto: '', descripcion: '' }));
-            loadMovimientos();
         } catch (err) {
             alert(err.message || 'No se pudo registrar el gasto');
-            setSavingMovimiento(false);
             return;
         }
-        setSavingMovimiento(false);
+    };
+
+    const applyMovementSearch = () => {
+        setMovSearch(searchInput.trim());
     };
 
     const formatDateShort = (value) => {
@@ -229,9 +199,9 @@ const CajaGastos = () => {
                             <input
                                 className="form-input"
                                 placeholder="Buscar categoría o descripción"
-                                value={movSearch}
-                                onChange={(e) => setMovSearch(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && loadMovimientos()}
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && applyMovementSearch()}
                             />
                         </div>
                     </div>

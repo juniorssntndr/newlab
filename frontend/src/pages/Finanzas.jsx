@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../state/AuthContext.jsx';
-import { API_URL } from '../config.js';
+import { useFinanceAccountsQuery } from '../modules/finance/queries/useFinanceAccountsQuery.js';
+import { useFacturacionListQuery } from '../modules/finance/queries/useFacturacionListQuery.js';
 
 const statusLabels = {
     por_cancelar: 'Por cancelar',
@@ -10,37 +10,26 @@ const statusLabels = {
 };
 
 const Finanzas = () => {
-    const { getHeaders } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('finanzas');
-    const [finanzas, setFinanzas] = useState([]);
-    const [comprobantes, setComprobantes] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [loadingComprobantes, setLoadingComprobantes] = useState(false);
     const [filtroEstado, setFiltroEstado] = useState('');
     const [search, setSearch] = useState('');
 
-    useEffect(() => {
-        if (activeTab !== 'finanzas') return;
-        const params = new URLSearchParams();
-        if (filtroEstado) params.set('estado_pago', filtroEstado);
-        if (search) params.set('search', search);
+    const filters = useMemo(() => ({
+        estado_pago: filtroEstado,
+        search
+    }), [filtroEstado, search]);
 
-        setLoading(true);
-        fetch(`${API_URL}/finanzas?${params}`, { headers: getHeaders() })
-            .then((r) => r.json())
-            .then((data) => { setFinanzas(data); setLoading(false); })
-            .catch(() => setLoading(false));
-    }, [filtroEstado, search, activeTab, getHeaders]);
+    const financeAccountsQuery = useFinanceAccountsQuery({
+        filters,
+        enabled: activeTab === 'finanzas'
+    });
+    const facturacionQuery = useFacturacionListQuery(activeTab === 'comprobantes');
 
-    useEffect(() => {
-        if (activeTab !== 'comprobantes') return;
-        setLoadingComprobantes(true);
-        fetch(`${API_URL}/facturacion`, { headers: getHeaders() })
-            .then((r) => r.json())
-            .then((data) => { setComprobantes(Array.isArray(data) ? data : []); setLoadingComprobantes(false); })
-            .catch(() => setLoadingComprobantes(false));
-    }, [activeTab, getHeaders]);
+    const finanzas = financeAccountsQuery.data || [];
+    const comprobantes = facturacionQuery.data || [];
+    const loading = financeAccountsQuery.isLoading && finanzas.length === 0;
+    const loadingComprobantes = facturacionQuery.isLoading && comprobantes.length === 0;
 
     const estados = ['', 'por_cancelar', 'pago_parcial', 'cancelado'];
 

@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { API_URL } from '../config.js';
 import { useAuth } from '../state/AuthContext.jsx';
+import { useOrderDetailQuery } from '../modules/orders/queries/useOrderDetailQuery.js';
+import { useCreateInvoiceMutation } from '../modules/billing/mutations/useCreateInvoiceMutation.js';
 
 export default function FacturarPedido() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { getHeaders } = useAuth();
+    const { data: pedido, isLoading } = useOrderDetailQuery(id);
+    const createInvoiceMutation = useCreateInvoiceMutation();
+    const hydratedOrderIdRef = useRef(null);
 
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
     const [consultando, setConsultando] = useState(false);
-    const [pedido, setPedido] = useState(null);
-    const [items, setItems] = useState([]);
 
     // Form State
     const [tipoComprobante, setTipoComprobante] = useState('03'); // Boleta por defecto
@@ -36,83 +36,64 @@ export default function FacturarPedido() {
     });
 
     useEffect(() => {
-        fetchData();
+        hydratedOrderIdRef.current = null;
     }, [id]);
 
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-            const res = await fetch(`${API_URL}/pedidos/${id}`, {
-                headers: getHeaders()
-            });
-            if (!res.ok) throw new Error('Error al cargar datos');
-            const data = await res.json();
-            setPedido(data);
-            setItems(data.items);
-
-            // Pre-fill Cliente data based on Pedido
-            // Default to Clinic's fiscal data, fallback to patient data
-            let defaultTipoDoc = '1';
-            let defaultNum = data.clinica_dni || data.dni || '';
-            let isFactura = false;
-
-            if (data.clinica_ruc && data.clinica_ruc.length === 11) {
-                defaultTipoDoc = '6';
-                defaultNum = data.clinica_ruc;
-                isFactura = true;
-                setTipoComprobante('01');
-            } else if (data.ruc && data.ruc.length === 11) {
-                defaultTipoDoc = '6';
-                defaultNum = data.ruc;
-                isFactura = true;
-                setTipoComprobante('01');
-            }
-
-            setCliente({
-                tipoDoc: defaultTipoDoc,
-                numDoc: defaultNum,
-                rznSocial: data.clinica_razon_social || data.clinica_nombre || data.razon_social || data.paciente_nombre || '',
-                direccion: data.clinica_direccion || data.direccion || 'Lima, Peru',
-                ubigeo: data.ubigeo || '150101' // Default Lima
-            });
-
-            // Map original items to Facturación structure
-            const initialFacturacionItems = data.items.map(item => {
-                // Determine prices since the original price *includes* IGV
-                const cantidad = parseFloat(item.cantidad) || 1;
-                const mtoPrecioUnitario = parseFloat(item.precio_unitario) || 0; // Con IGV
-
-                // MtoValorUnitario is without IGV
-                const mtoValorUnitario = mtoPrecioUnitario / 1.18;
-                const mtoValorVenta = mtoValorUnitario * cantidad; // Subtotal sin IGV
-                const igvItem = (mtoPrecioUnitario * cantidad) - mtoValorVenta;
-
-                return {
-                    id_local: item.id,
-                    codProducto: item.producto_id ? item.producto_id.toString() : 'SRV',
-                    descripcion: `${item.cantidad}x ${item.material || 'Servicio Dent.'}`,
-                    unidad: 'ZZ', // Servicio
-                    tipoIgv: '10', // Gravado
-                    cantidad: cantidad,
-                    mtoValorUnitario: mtoValorUnitario,
-                    mtoValorVenta: mtoValorVenta, // Subtotal sin IGV por producto
-                    mtoBaseIgv: mtoValorVenta,
-                    igv: igvItem,
-                    mtoPrecioUnitario: mtoPrecioUnitario,
-                    importe: mtoPrecioUnitario * cantidad
-                };
-            });
-
-            setProductosFacturacion(initialFacturacionItems);
-            recalcularTotales(initialFacturacionItems);
-
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            toast.error('Error al cargar datos del pedido');
-        } finally {
-            setLoading(false);
+    useEffect(() => {
+        if (!pedido || hydratedOrderIdRef.current === pedido.id) {
+            return;
         }
-    };
+
+        let defaultTipoDoc = '1';
+        let defaultNum = pedido.clinica_dni || pedido.dni || '';
+        let defaultTipoComprobante = '03';
+
+        if (pedido.clinica_ruc && pedido.clinica_ruc.length === 11) {
+            defaultTipoDoc = '6';
+            defaultNum = pedido.clinica_ruc;
+            defaultTipoComprobante = '01';
+        } else if (pedido.ruc && pedido.ruc.length === 11) {
+            defaultTipoDoc = '6';
+            defaultNum = pedido.ruc;
+            defaultTipoComprobante = '01';
+        }
+
+        setTipoComprobante(defaultTipoComprobante);
+        setCliente({
+            tipoDoc: defaultTipoDoc,
+            numDoc: defaultNum,
+            rznSocial: pedido.clinica_razon_social || pedido.clinica_nombre || pedido.razon_social || pedido.paciente_nombre || '',
+            direccion: pedido.clinica_direccion || pedido.direccion || 'Lima, Peru',
+            ubigeo: pedido.ubigeo || '150101'
+        });
+
+        const initialFacturacionItems = (pedido.items || []).map((item) => {
+            const cantidad = parseFloat(item.cantidad) || 1;
+            const mtoPrecioUnitario = parseFloat(item.precio_unitario) || 0;
+            const mtoValorUnitario = mtoPrecioUnitario / 1.18;
+            const mtoValorVenta = mtoValorUnitario * cantidad;
+            const igvItem = (mtoPrecioUnitario * cantidad) - mtoValorVenta;
+
+            return {
+                id_local: item.id,
+                codProducto: item.producto_id ? item.producto_id.toString() : 'SRV',
+                descripcion: `${item.cantidad}x ${item.material || 'Servicio Dent.'}`,
+                unidad: 'ZZ',
+                tipoIgv: '10',
+                cantidad,
+                mtoValorUnitario,
+                mtoValorVenta,
+                mtoBaseIgv: mtoValorVenta,
+                igv: igvItem,
+                mtoPrecioUnitario,
+                importe: mtoPrecioUnitario * cantidad
+            };
+        });
+
+        setProductosFacturacion(initialFacturacionItems);
+        recalcularTotales(initialFacturacionItems);
+        hydratedOrderIdRef.current = pedido.id;
+    }, [pedido]);
 
     const recalcularTotales = (listaProductos) => {
         let gravada = 0;
@@ -261,8 +242,6 @@ export default function FacturarPedido() {
         }
 
         try {
-            setSubmitting(true);
-            const token = localStorage.getItem('token');
             const payload = {
                 tipoComprobante,
                 billingData: {
@@ -283,28 +262,20 @@ export default function FacturarPedido() {
                 }
             };
 
-            const res = await fetch(`${API_URL}/facturacion/${id}/emitir`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify(payload)
+            await createInvoiceMutation.mutateAsync({
+                orderId: id,
+                payload
             });
-
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || 'Error al emitir comprobante');
-            }
 
             toast.success('Comprobante emitido correctamente en SUNAT.');
             navigate(`/finanzas/${id}`);
         } catch (err) {
             console.error(err);
             toast.error(err.message || 'Error al emitir comprobante');
-        } finally {
-            setSubmitting(false);
         }
     };
 
-    if (loading) return <div>Cargando pantalla de facturación...</div>;
+    if (isLoading) return <div>Cargando pantalla de facturación...</div>;
     if (!pedido) return <div>Pedido no encontrado.</div>;
 
     return (
@@ -606,11 +577,11 @@ export default function FacturarPedido() {
                         onClick={handleSubmit}
                         className="btn btn-primary"
                         style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center', borderRadius: '12px', transition: 'all 0.2s ease', transform: 'translateY(0)', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)' }}
-                        disabled={submitting}
-                        onMouseOver={(e) => { if (!submitting) e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(59, 130, 246, 0.4)'; }}
+                        disabled={createInvoiceMutation.isPending}
+                        onMouseOver={(e) => { if (!createInvoiceMutation.isPending) e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(59, 130, 246, 0.4)'; }}
                         onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(59, 130, 246, 0.3)'; }}
                     >
-                        {submitting ? (
+                        {createInvoiceMutation.isPending ? (
                             <>
                                 <i className="bi bi-arrow-repeat spin"></i> Procesando...
                             </>

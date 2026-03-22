@@ -10,9 +10,13 @@
         "bootstrap:clean": "node src/db/bootstrap_clean.js",
         "seed:small": "node src/db/seed_small.js",
         "seed": "node src/db/seed.js",
-        "smoke": "node scripts/smoke.js"
+        "smoke": "node scripts/smoke.js",
+        "test:billing-acl": "node --test src/modules/billing/__tests__/acl.contract.test.js",
+        "test:billing-acl:coverage": "node scripts/check-billing-acl-coverage.mjs",
+        "test:order-payment-invoice-e2e": "node --test src/routes/__tests__/order-payment-invoice-http.e2e.test.js"
     },
     "dependencies": {
+        "@newlab/contracts": "file:../packages/contracts",
         "@sentry/node": "^10.20.0",
         "@supabase/supabase-js": "^2.57.4",
         "axios": "^1.13.6",

@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
-import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
 import { formatDentalSelection } from '../utils/odontograma.js';
+import { apiClient } from '../services/http/apiClient.js';
+import { useOrderDetailQuery } from '../modules/orders/queries/useOrderDetailQuery.js';
+import { useUpdateOrderStatusMutation } from '../modules/orders/mutations/useUpdateOrderStatusMutation.js';
+import { useCreateOrderApprovalMutation } from '../modules/orders/mutations/useCreateOrderApprovalMutation.js';
+import { useApproveOrderMutation } from '../modules/orders/mutations/useApproveOrderMutation.js';
+import { useUpdateOrderResponsibleMutation } from '../modules/orders/mutations/useUpdateOrderResponsibleMutation.js';
+import { useUpdateOrderDeliveryDateMutation } from '../modules/orders/mutations/useUpdateOrderDeliveryDateMutation.js';
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
@@ -22,9 +28,6 @@ const DetallePedido = () => {
     const { id } = useParams();
     const { getHeaders, user } = useAuth();
     const navigate = useNavigate();
-    const [pedido, setPedido] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [updating, setUpdating] = useState(false);
     const [approvalModalOpen, setApprovalModalOpen] = useState(false);
     const [exocadLink, setExocadLink] = useState('');
     const [approvalNote, setApprovalNote] = useState('');
@@ -37,30 +40,31 @@ const DetallePedido = () => {
     const [forceReason, setForceReason] = useState('');
     const [responsables, setResponsables] = useState([]);
     const [responsableId, setResponsableId] = useState('');
-    const [savingResponsable, setSavingResponsable] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState('');
-    const [savingDelivery, setSavingDelivery] = useState(false);
     const adjustPopoverRef = useRef(null);
     const adjustButtonRef = useRef(null);
     const adjustTextareaRef = useRef(null);
+    const { data: pedido, isLoading } = useOrderDetailQuery(id);
+    const updateOrderStatusMutation = useUpdateOrderStatusMutation();
+    const createOrderApprovalMutation = useCreateOrderApprovalMutation();
+    const approveOrderMutation = useApproveOrderMutation();
+    const updateOrderResponsibleMutation = useUpdateOrderResponsibleMutation();
+    const updateOrderDeliveryDateMutation = useUpdateOrderDeliveryDateMutation();
 
-    const fetchPedido = () => {
-        fetch(`${API_URL}/pedidos/${id}`, { headers: getHeaders() })
-            .then(r => r.json())
-            .then(data => { setPedido(data); setLoading(false); })
-            .catch(() => setLoading(false));
-    };
-
-    useEffect(() => { fetchPedido(); }, [id]);
+    const updating =
+        updateOrderStatusMutation.isPending ||
+        createOrderApprovalMutation.isPending ||
+        approveOrderMutation.isPending;
+    const savingResponsable = updateOrderResponsibleMutation.isPending;
+    const savingDelivery = updateOrderDeliveryDateMutation.isPending;
 
     useEffect(() => {
         if (user?.tipo === 'admin') {
-            fetch(`${API_URL}/usuarios?tipo=equipo`, { headers: getHeaders() })
-                .then(r => r.json())
+            apiClient('/usuarios', { headers: getHeaders(), query: { tipo: 'equipo' } })
                 .then(data => setResponsables(data))
                 .catch(() => setResponsables([]));
         }
-    }, [user?.tipo]);
+    }, [getHeaders, user?.tipo]);
 
     useEffect(() => {
         if (pedido?.responsable_id !== undefined) {
@@ -113,22 +117,13 @@ const DetallePedido = () => {
     }, [adjustPopoverOpen]);
 
     const changeStatus = async (newStatus, options = {}) => {
-        setUpdating(true);
         try {
-            const res = await fetch(`${API_URL}/pedidos/${id}/estado`, {
-                method: 'PATCH',
-                headers: getHeaders(),
-                body: JSON.stringify({ estado: newStatus, ...options })
+            await updateOrderStatusMutation.mutateAsync({
+                orderId: id,
+                payload: { estado: newStatus, ...options }
             });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Error al actualizar estado');
-            }
-            fetchPedido();
         } catch (err) {
             alert(err.message);
-        } finally {
-            setUpdating(false);
         }
     };
 
@@ -164,24 +159,14 @@ const DetallePedido = () => {
             return;
         }
         if (pedido?.estado === 'esperando_aprobacion') {
-            setUpdating(true);
             try {
-                const res = await fetch(`${API_URL}/pedidos/${id}/aprobacion`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ link_exocad: exocadLink.trim(), comentario: approvalNote.trim() })
+                await createOrderApprovalMutation.mutateAsync({
+                    orderId: id,
+                    payload: { link_exocad: exocadLink.trim(), comentario: approvalNote.trim() }
                 });
-                if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || 'Error al guardar link');
-                }
-                fetchPedido();
             } catch (err) {
                 alert(err.message);
-                setUpdating(false);
                 return;
-            } finally {
-                setUpdating(false);
             }
         } else {
             await changeStatus('esperando_aprobacion', {
@@ -200,25 +185,17 @@ const DetallePedido = () => {
             alert('Escribe el motivo del ajuste');
             return false;
         }
-        setUpdating(true);
         try {
             const currentApproval = pedido.aprobaciones[0];
-            const res = await fetch(`${API_URL}/pedidos/${id}/aprobacion/${currentApproval.id}`, {
-                method: 'PATCH',
-                headers: getHeaders(),
-                body: JSON.stringify({ estado, comentario_cliente: comentarioCliente })
+            await approveOrderMutation.mutateAsync({
+                orderId: id,
+                approvalId: currentApproval.id,
+                payload: { estado, comentario_cliente: comentarioCliente }
             });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Error al responder aprobacion');
-            }
-            fetchPedido();
             return true;
         } catch (err) {
             alert(err.message);
             return false;
-        } finally {
-            setUpdating(false);
         }
     };
 
@@ -230,46 +207,28 @@ const DetallePedido = () => {
     };
 
     const saveResponsable = async () => {
-        setSavingResponsable(true);
         try {
-            const res = await fetch(`${API_URL}/pedidos/${id}/responsable`, {
-                method: 'PATCH',
-                headers: getHeaders(),
-                body: JSON.stringify({ responsable_id: responsableId || null })
+            await updateOrderResponsibleMutation.mutateAsync({
+                orderId: id,
+                payload: { responsable_id: responsableId || null }
             });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Error al asignar responsable');
-            }
-            fetchPedido();
         } catch (err) {
             alert(err.message);
-        } finally {
-            setSavingResponsable(false);
         }
     };
 
     const saveDeliveryDate = async () => {
-        setSavingDelivery(true);
         try {
-            const res = await fetch(`${API_URL}/pedidos/${id}/fecha-entrega`, {
-                method: 'PATCH',
-                headers: getHeaders(),
-                body: JSON.stringify({ fecha_entrega: deliveryDate })
+            await updateOrderDeliveryDateMutation.mutateAsync({
+                orderId: id,
+                payload: { fecha_entrega: deliveryDate }
             });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Error al actualizar fecha');
-            }
-            fetchPedido();
         } catch (err) {
             alert(err.message);
-        } finally {
-            setSavingDelivery(false);
         }
     };
 
-    if (loading) return (
+    if (isLoading) return (
         <div>
             <div className="skeleton" style={{ height: 200, borderRadius: 12 }} />
         </div>

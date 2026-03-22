@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../state/AuthContext.jsx';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
-import { API_URL } from '../config.js';
+import { useDashboardStatsQuery } from '../modules/dashboard/queries/useDashboardStatsQuery.js';
+import { useDashboardFinanceQuery } from '../modules/dashboard/queries/useDashboardFinanceQuery.js';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -56,12 +56,7 @@ const toMonthKey = (value) => {
 };
 
 const Dashboard = () => {
-    const { getHeaders } = useAuth();
     const navigate = useNavigate();
-    const [stats, setStats] = useState(null);
-    const [financeStats, setFinanceStats] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [loadingFinance, setLoadingFinance] = useState(true);
     const [activeView, setActiveView] = useState('operativo');
     const [financeView, setFinanceView] = useState('resumen');
     const [strategicTopN, setStrategicTopN] = useState(5);
@@ -73,28 +68,19 @@ const Dashboard = () => {
         to: todayIso()
     });
 
-    useEffect(() => {
-        fetch(`${API_URL}/dashboard/stats`, { headers: getHeaders() })
-            .then(r => r.json())
-            .then(data => { setStats(data); setLoading(false); })
-            .catch(() => setLoading(false));
-    }, [getHeaders]);
-
-    useEffect(() => {
-        if (activeView !== 'financiero') return;
-        const params = new URLSearchParams();
-        if (filters.from) params.set('from', filters.from);
-        if (filters.to) params.set('to', filters.to);
-
-        setLoadingFinance(true);
-        fetch(`${API_URL}/dashboard/finance?${params.toString()}`, { headers: getHeaders() })
-            .then((r) => r.json())
-            .then((data) => {
-                setFinanceStats(data);
-                setLoadingFinance(false);
-            })
-            .catch(() => setLoadingFinance(false));
-    }, [filters, getHeaders, activeView]);
+    const financeRange = useMemo(() => ({
+        from: filters.from,
+        to: filters.to
+    }), [filters.from, filters.to]);
+    const dashboardStatsQuery = useDashboardStatsQuery();
+    const dashboardFinanceQuery = useDashboardFinanceQuery({
+        range: financeRange,
+        enabled: activeView === 'financiero'
+    });
+    const stats = dashboardStatsQuery.data || null;
+    const financeStats = dashboardFinanceQuery.data || null;
+    const loading = dashboardStatsQuery.isLoading;
+    const loadingFinance = dashboardFinanceQuery.isLoading && !dashboardFinanceQuery.data;
 
     if (loading) {
         return (
