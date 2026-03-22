@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../state/AuthContext.jsx';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Modal from '../components/Modal.jsx';
-import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
-import { buildItemSelection, formatDentalSelection } from '../utils/odontograma.js';
+import { useAuth } from '../state/AuthContext.jsx';
 import { apiClient } from '../services/http/apiClient.js';
+import { formatDentalSelection } from '../utils/odontograma.js';
+import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
+import OrderClinicalPanel from '../components/orders/OrderClinicalPanel.jsx';
+import OrderComposerLayout from '../components/orders/OrderComposerLayout.jsx';
+import OrderCatalogPane from '../components/orders/OrderCatalogPane.jsx';
+import OrderPricingSummary from '../components/orders/OrderPricingSummary.jsx';
 import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
+import { useOrderComposerState } from '../modules/orders/composer/useOrderComposerState.js';
 
 const NuevoPedido = () => {
     const { getHeaders, user } = useAuth();
@@ -13,96 +17,104 @@ const NuevoPedido = () => {
     const [clinicas, setClinicas] = useState([]);
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
-    const [form, setForm] = useState({ clinica_id: '', paciente_nombre: '', fecha_entrega: '', observaciones: '' });
-    const [items, setItems] = useState([]);
+    const [form, setForm] = useState({
+        clinica_id: '',
+        paciente_nombre: '',
+        fecha_entrega: '',
+        observaciones: ''
+    });
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
     const [step, setStep] = useState(1);
-    const [odontogramaItemIndex, setOdontogramaItemIndex] = useState(null);
     const createOrderMutation = useCreateOrderMutation();
+    const {
+        items,
+        total,
+        selectedItem,
+        selectedItemId,
+        ui,
+        addProduct,
+        removeItem,
+        selectItem,
+        updateItemField,
+        updateDentalSelection,
+        updateQuantity,
+        setMobileStep
+    } = useOrderComposerState();
 
     useEffect(() => {
         Promise.all([
             apiClient('/clinicas', { headers: getHeaders() }),
             apiClient('/productos', { headers: getHeaders() }),
             apiClient('/categorias', { headers: getHeaders() })
-        ]).then(([c, p, cat]) => {
-            setClinicas(c);
-            setProductos(p);
-            setCategorias(cat);
-            // If client, auto-select their clinic
-            if (user?.clinica_id) setForm(f => ({ ...f, clinica_id: user.clinica_id }));
+        ]).then(([clinics, products, categories]) => {
+            setClinicas(clinics);
+            setProductos(products);
+            setCategorias(categories);
+            if (user?.clinica_id) {
+                setForm((prevForm) => ({ ...prevForm, clinica_id: user.clinica_id }));
+            }
         });
     }, []);
 
     const addItem = (producto) => {
-        const nextItem = {
-            producto_id: producto.id,
-            nombre: producto.nombre,
-            categoria_nombre: producto.categoria_nombre,
-            categoria_tipo: producto.categoria_tipo,
-            cantidad: 1,
-            precio_unitario: parseFloat(producto.precio_base),
-            color_vita: '',
-            material: producto.material_nombre || producto.material_default || '',
-            notas: '',
-            ...buildItemSelection([], false)
-        };
-        const nextItems = [...items, nextItem];
-        setItems(nextItems);
-        setOdontogramaItemIndex(nextItems.length - 1);
+        const itemId = addProduct(producto);
+        selectItem(itemId);
+        setMobileStep(2);
     };
 
-    const updateItem = (idx, field, value) => {
-        setItems(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+    const removeOrderItem = (itemId) => {
+        removeItem(itemId);
+        if (selectedItemId === itemId) {
+            const nextSelected = items.find((item) => item.id !== itemId);
+            selectItem(nextSelected?.id || null);
+            setMobileStep(nextSelected ? 2 : 1);
+        }
     };
 
-    const removeItem = (idx) => {
-        setItems(items.filter((_, i) => i !== idx));
-        setOdontogramaItemIndex((current) => {
-            if (current === null) return null;
-            if (current === idx) return null;
-            if (current > idx) return current - 1;
-            return current;
-        });
-    };
+    const hasMissingDentalSelection = items.some((item) => {
+        return item.requiresDentalSelection && (!item.piezas_dentales || item.piezas_dentales.length === 0);
+    });
 
-    const total = items.reduce((sum, i) => sum + (i.cantidad * i.precio_unitario), 0);
+    const handleOpenSummary = () => {
+        if (items.length === 0) {
+            setError('Agrega al menos un producto para continuar.');
+            return;
+        }
+        if (hasMissingDentalSelection) {
+            setError('Completa la seleccion dental en todos los items clinicos antes de revisar el resumen.');
+            return;
+        }
+        setError('');
+        setStep(3);
+    };
 
     const handleSubmit = async () => {
         if (!form.clinica_id || !form.paciente_nombre || !form.fecha_entrega || items.length === 0) {
-            setError('Completa clínica, paciente, fecha de entrega y agrega al menos un producto.');
+            setError('Completa clinica, paciente, fecha de entrega y agrega al menos un producto.');
             return;
         }
-        if (items.some(item => !item.piezas_dentales || item.piezas_dentales.length === 0)) {
-            setError('Cada item debe tener al menos una pieza seleccionada en el odontograma.');
+        if (hasMissingDentalSelection) {
+            setError('Cada item clinico debe tener al menos una pieza seleccionada en el odontograma.');
             return;
         }
+
         setSaving(true);
         setError('');
         try {
             const pedido = await createOrderMutation.mutateAsync({
                 ...form,
-                items: items.map(i => ({
-                    producto_id: i.producto_id,
-                    cantidad: i.cantidad,
-                    precio_unitario: i.precio_unitario,
-                    piezas_dentales: i.piezas_dentales || [],
-                    es_puente: !!i.es_puente,
-                    pieza_inicio: i.pieza_inicio || null,
-                    pieza_fin: i.pieza_fin || null,
-                    color_vita: i.color_vita,
-                    material: i.material,
-                    notas: i.notas
-                }))
+                items
             });
             navigate(`/pedidos/${pedido.id}`);
-        } catch (err) {
-            setError(err.message);
+        } catch (submitError) {
+            setError(submitError.message);
         } finally {
             setSaving(false);
         }
     };
+
+    const stepLabels = ['Datos del Paciente', 'Compositor Clinico', 'Resumen'];
 
     return (
         <div className="animate-fade-in">
@@ -113,240 +125,231 @@ const NuevoPedido = () => {
                     </button>
                     <div>
                         <h1>Nuevo Pedido</h1>
-                        <p>Prescripción digital de trabajo dental</p>
+                        <p>Prescripcion digital de trabajo dental</p>
                     </div>
                 </div>
             </div>
 
             {error && (
-                <div className="login-error" style={{ marginBottom: 'var(--space-4)', maxWidth: '100%' }}>
+                <div className="login-error order-composer-error-banner">
                     <i className="bi bi-exclamation-circle"></i> {error}
                 </div>
             )}
 
-            {/* Step indicators */}
-            <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-6)', flexWrap: 'wrap' }}>
-                {['Datos del Paciente', 'Productos', 'Resumen'].map((label, i) => (
-                    <button key={i}
-                        className={`btn ${step === i + 1 ? 'btn-primary' : i + 1 < step ? 'btn-accent' : 'btn-ghost'} btn-sm`}
-                        onClick={() => setStep(i + 1)}
-                        style={{ flex: '1 1 160px', whiteSpace: 'normal', textAlign: 'left' }}>
-                        <span style={{ marginRight: 6, fontWeight: 700 }}>{i + 1}</span> {label}
-                    </button>
-                ))}
+            <div className="order-composer-stepper">
+                {stepLabels.map((label, index) => {
+                    const currentStep = index + 1;
+                    const buttonClass = step === currentStep
+                        ? 'btn-primary'
+                        : currentStep < step
+                            ? 'btn-accent'
+                            : 'btn-ghost';
+
+                    return (
+                        <button
+                            key={label}
+                            className={`btn btn-sm ${buttonClass}`}
+                            onClick={() => setStep(currentStep)}
+                        >
+                            <span>{currentStep}</span> {label}
+                        </button>
+                    );
+                })}
             </div>
 
-            {/* Step 1: Patient Data */}
             {step === 1 && (
                 <div className="card animate-slide-up">
-                    <div className="card-header"><h3 className="card-title">Datos del Paciente</h3></div>
+                    <div className="card-header">
+                        <h3 className="card-title">Datos del Paciente</h3>
+                    </div>
                     <div className="grid grid-cols-2">
                         <div className="form-group">
-                            <label className="form-label">Clínica *</label>
-                            <select className="form-select" value={form.clinica_id}
-                                onChange={e => setForm({ ...form, clinica_id: e.target.value })}
-                                disabled={!!user?.clinica_id}>
-                                <option value="">Seleccionar clínica...</option>
-                                {clinicas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                            <label className="form-label">Clinica *</label>
+                            <select
+                                className="form-select"
+                                value={form.clinica_id}
+                                onChange={(event) => setForm({ ...form, clinica_id: event.target.value })}
+                                disabled={!!user?.clinica_id}
+                            >
+                                <option value="">Seleccionar clinica...</option>
+                                {clinicas.map((clinic) => (
+                                    <option key={clinic.id} value={clinic.id}>{clinic.nombre}</option>
+                                ))}
                             </select>
                         </div>
                         <div className="form-group">
                             <label className="form-label">Nombre del Paciente *</label>
-                            <input className="form-input" placeholder="Nombre completo del paciente"
-                                value={form.paciente_nombre} onChange={e => setForm({ ...form, paciente_nombre: e.target.value })} />
+                            <input
+                                className="form-input"
+                                placeholder="Nombre completo del paciente"
+                                value={form.paciente_nombre}
+                                onChange={(event) => setForm({ ...form, paciente_nombre: event.target.value })}
+                            />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Fecha de Entrega *</label>
-                            <input className="form-input" type="date" value={form.fecha_entrega}
-                                onChange={e => setForm({ ...form, fecha_entrega: e.target.value })} />
+                            <input
+                                className="form-input"
+                                type="date"
+                                value={form.fecha_entrega}
+                                onChange={(event) => setForm({ ...form, fecha_entrega: event.target.value })}
+                            />
                         </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Observaciones Generales</label>
-                        <textarea className="form-textarea" rows={3} value={form.observaciones}
-                            onChange={e => setForm({ ...form, observaciones: e.target.value })} />
+                        <textarea
+                            className="form-textarea"
+                            rows={3}
+                            value={form.observaciones}
+                            onChange={(event) => setForm({ ...form, observaciones: event.target.value })}
+                        />
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
-                        <button className="btn btn-primary" onClick={() => setStep(2)}
-                            disabled={!form.paciente_nombre || !form.clinica_id || !form.fecha_entrega}>
+                    <div className="order-composer-actions-row">
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => {
+                                setStep(2);
+                                setMobileStep(1);
+                            }}
+                            disabled={!form.paciente_nombre || !form.clinica_id || !form.fecha_entrega}
+                        >
                             Siguiente <i className="bi bi-arrow-right"></i>
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Step 2: Select Products */}
             {step === 2 && (
                 <div className="animate-slide-up">
-                    <div className="grid grid-cols-2" style={{ gap: 'var(--space-6)' }}>
-                        {/* Product catalog */}
-                        <div className="card" style={{ maxHeight: 500, overflowY: 'auto' }}>
-                            <div className="card-header"><h3 className="card-title">Catálogo</h3></div>
-                            {categorias.map(cat => {
-                                const catProds = productos.filter(p => p.categoria_id === cat.id);
-                                if (catProds.length === 0) return null;
-                                return (
-                                    <div key={cat.id} style={{ marginBottom: 'var(--space-4)' }}>
-                                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>
-                                            {cat.nombre}
-                                        </div>
-                                        {catProds.map(p => (
-                                            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.625rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                                                <div>
-                                                    <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{p.nombre}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>S/. {parseFloat(p.precio_base).toFixed(2)}</div>
-                                                </div>
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => addItem(p)}>
-                                                    <i className="bi bi-plus-circle"></i>
-                                                </button>
-                                            </div>
-                                        ))}
+                    <OrderComposerLayout
+                        mobileStep={ui.mobileStep}
+                        onMobileStepChange={setMobileStep}
+                        disableClinicalStep={items.length === 0}
+                        leftPane={(
+                            <OrderCatalogPane
+                                categorias={categorias}
+                                productos={productos}
+                                items={items}
+                                selectedItemId={selectedItemId}
+                                onAddProduct={addItem}
+                                onSelectItem={(itemId) => {
+                                    selectItem(itemId);
+                                    setMobileStep(2);
+                                }}
+                                onRemoveItem={removeOrderItem}
+                            />
+                        )}
+                        rightPane={selectedItem ? (
+                            <section className="order-composer-clinical-pane">
+                                <article className="card order-composer-item-focus-card">
+                                    <div>
+                                        <p className="order-composer-item-focus-kicker">Producto activo</p>
+                                        <h3>{selectedItem.nombre}</h3>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                    <p className="order-composer-item-focus-price">S/. {Number(selectedItem.precio_unitario || 0).toFixed(2)}</p>
+                                </article>
 
-                        {/* Selected items */}
-                        <div className="card">
-                            <div className="card-header">
-                                <h3 className="card-title">Items del Pedido ({items.length})</h3>
-                            </div>
-                            {items.length === 0 ? (
-                                <div className="empty-state" style={{ padding: '2rem' }}>
-                                    <i className="bi bi-cart empty-state-icon" style={{ fontSize: '2rem' }}></i>
-                                    <p className="empty-state-text">Agrega productos del catálogo</p>
-                                </div>
-                            ) : (
-                                items.map((item, idx) => (
-                                    <div key={idx} style={{ padding: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', marginBottom: 'var(--space-3)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
-                                            <strong style={{ fontSize: '0.875rem' }}>{item.nombre}</strong>
-                                            <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                                                <button className="btn btn-ghost btn-sm" onClick={() => setOdontogramaItemIndex(idx)}>
-                                                    <i className="bi bi-grid"></i> Odontograma
-                                                </button>
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => removeItem(idx)}
-                                                    style={{ color: '#EF4444' }}><i className="bi bi-trash"></i></button>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-3" style={{ gap: 'var(--space-2)' }}>
-                                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Cantidad</label>
-                                                <input className="form-input" type="number" min={1} value={item.cantidad}
-                                                    onChange={e => updateItem(idx, 'cantidad', parseInt(e.target.value) || 1)} />
-                                            </div>
-                                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Selección dental</label>
-                                                <input className="form-input" value={formatDentalSelection(item)} readOnly />
-                                            </div>
-                                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Color VITA</label>
-                                                <input className="form-input" placeholder="Ej: A2"
-                                                    value={item.color_vita} onChange={e => updateItem(idx, 'color_vita', e.target.value)} />
-                                            </div>
-                                        </div>
-                                        <div className="form-group" style={{ marginBottom: 0, marginTop: 'var(--space-2)' }}>
-                                            <label className="form-label" style={{ fontSize: '0.6875rem' }}>Notas del item</label>
-                                            <input className="form-input" placeholder="Instrucciones de la restauración"
-                                                value={item.notas || ''} onChange={e => updateItem(idx, 'notas', e.target.value)} />
-                                        </div>
-                                        {item.piezas_dentales?.length > 0 && (
-                                            <div className="dental-summary-line">
-                                                <span className="dental-summary-chip">{item.piezas_dentales.length} piezas</span>
-                                                {item.es_puente && <span className="dental-summary-chip">Puente {item.pieza_inicio}-{item.pieza_fin}</span>}
-                                            </div>
-                                        )}
-                                        <div style={{ textAlign: 'right', marginTop: 'var(--space-2)', fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                                            {item.cantidad} × S/. {item.precio_unitario.toFixed(2)} = <strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong>
-                                        </div>
+                                <OrderClinicalPanel
+                                    form={selectedItem}
+                                    resolvedCantidad={selectedItem.cantidad}
+                                    requiresDentalSelection={selectedItem.requiresDentalSelection}
+                                    onColorChange={(color_vita) => updateItemField(selectedItem.id, 'color_vita', color_vita)}
+                                    onNotesChange={(notas) => updateItemField(selectedItem.id, 'notas', notas)}
+                                    onQuantityChange={(cantidad_manual) => updateQuantity(selectedItem.id, parseInt(cantidad_manual, 10) || 1)}
+                                />
+
+                                {selectedItem.requiresDentalSelection && (
+                                    <div className="order-composer-odontograma-slot">
+                                        <OdontogramaInteractive
+                                            product={selectedItem.product || selectedItem}
+                                            selection={selectedItem}
+                                            onChange={(dentalData) => updateDentalSelection(selectedItem.id, dentalData)}
+                                            title="Selecciona las piezas del producto"
+                                        />
                                     </div>
-                                ))
-                            )}
-                            <div style={{ borderTop: '2px solid var(--color-border)', paddingTop: 'var(--space-3)', textAlign: 'right', fontSize: '1.125rem', fontWeight: 700 }}>
-                                Total: S/. {total.toFixed(2)}
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-4)' }}>
+                                )}
+
+                                <OrderPricingSummary item={selectedItem} total={total} title="Subtotal reactivo" />
+                            </section>
+                        ) : (
+                            <article className="card order-composer-empty-clinical">
+                                <i className="bi bi-hand-index"></i>
+                                <h3>Elegi un item para editar detalles clinicos</h3>
+                                <p>
+                                    Selecciona un producto desde el panel izquierdo para configurar odontograma,
+                                    color VITA, notas y ver el subtotal en tiempo real.
+                                </p>
+                            </article>
+                        )}
+                    />
+
+                    <div className="order-composer-actions-between">
                         <button className="btn btn-ghost" onClick={() => setStep(1)}>
                             <i className="bi bi-arrow-left"></i> Anterior
                         </button>
-                        <button className="btn btn-primary" onClick={() => setStep(3)} disabled={items.length === 0}>
+                        <button className="btn btn-primary" onClick={handleOpenSummary} disabled={items.length === 0}>
                             Siguiente <i className="bi bi-arrow-right"></i>
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Step 3: Summary */}
             {step === 3 && (
                 <div className="card animate-slide-up">
-                    <div className="card-header"><h3 className="card-title">Resumen del Pedido</h3></div>
+                    <div className="card-header">
+                        <h3 className="card-title">Resumen del Pedido</h3>
+                    </div>
+
                     <div className="grid grid-cols-2" style={{ marginBottom: 'var(--space-4)' }}>
                         <div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Clínica</div>
-                            <div style={{ fontWeight: 600 }}>{clinicas.find(c => c.id == form.clinica_id)?.nombre}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Clinica</div>
+                            <div style={{ fontWeight: 600 }}>{clinicas.find((clinic) => clinic.id == form.clinica_id)?.nombre}</div>
                         </div>
                         <div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Paciente</div>
                             <div style={{ fontWeight: 600 }}>{form.paciente_nombre}</div>
                         </div>
-                        {form.fecha_entrega && <div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Fecha de Entrega</div>
-                            <div style={{ fontWeight: 600 }}>{form.fecha_entrega}</div>
-                        </div>}
+                        {form.fecha_entrega && (
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Fecha de Entrega</div>
+                                <div style={{ fontWeight: 600 }}>{form.fecha_entrega}</div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="data-table-wrapper table-scroll-dense desktop-only" style={{ marginBottom: 'var(--space-4)' }}>
                         <table className="data-table">
-                            <thead><tr><th>Producto</th><th>Pieza</th><th>Color</th><th>Cant.</th><th>P.U.</th><th>Subtotal</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Pieza</th>
+                                    <th>Color</th>
+                                    <th>Cant.</th>
+                                    <th>P.U.</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                {items.map((item, i) => (
-                                    <tr key={i}>
+                                {items.map((item) => (
+                                    <tr key={item.id}>
                                         <td>{item.nombre}</td>
                                         <td>{formatDentalSelection(item)}</td>
                                         <td>{item.color_vita || '—'}</td>
                                         <td>{item.cantidad}</td>
-                                        <td>S/. {item.precio_unitario.toFixed(2)}</td>
-                                        <td><strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong></td>
+                                        <td>S/. {Number(item.precio_unitario || 0).toFixed(2)}</td>
+                                        <td><strong>S/. {Number(item.subtotal || 0).toFixed(2)}</strong></td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                    <div className="mobile-cards mobile-only" style={{ marginBottom: 'var(--space-4)' }}>
-                        {items.map((item, i) => (
-                            <article className="mobile-card" key={`resumen-item-${i}`}>
-                                <div className="mobile-card-head">
-                                    <div className="mobile-card-title">{item.nombre}</div>
-                                    <span className="badge badge-enviado">{item.cantidad}</span>
-                                </div>
-                                    <div className="mobile-card-grid">
-                                        <div className="mobile-field">
-                                            <span className="mobile-field-label">Pieza</span>
-                                            <span className="mobile-field-value">{formatDentalSelection(item)}</span>
-                                        </div>
-                                        <div className="mobile-field">
-                                            <span className="mobile-field-label">Color</span>
-                                            <span className="mobile-field-value">{item.color_vita || '—'}</span>
-                                        </div>
-                                    <div className="mobile-field">
-                                        <span className="mobile-field-label">Precio unitario</span>
-                                        <span className="mobile-field-value">S/. {item.precio_unitario.toFixed(2)}</span>
-                                    </div>
-                                    <div className="mobile-field">
-                                        <span className="mobile-field-label">Subtotal</span>
-                                        <span className="mobile-field-value"><strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong></span>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
+
                     <div style={{ textAlign: 'right', fontSize: '1.25rem', fontWeight: 700 }}>
                         Total: S/. {total.toFixed(2)}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-6)' }}>
+                    <div className="order-composer-actions-between">
                         <button className="btn btn-ghost" onClick={() => setStep(2)}>
                             <i className="bi bi-arrow-left"></i> Anterior
                         </button>
@@ -356,31 +359,6 @@ const NuevoPedido = () => {
                     </div>
                 </div>
             )}
-
-            <Modal
-                open={odontogramaItemIndex !== null}
-                onClose={() => setOdontogramaItemIndex(null)}
-                size="2xl"
-                title={`Asignación dental • ${items[odontogramaItemIndex]?.nombre || ''}`}
-                footer={(
-                    <>
-                        <button className="btn btn-ghost" onClick={() => setOdontogramaItemIndex(null)}>
-                            Cerrar
-                        </button>
-                    </>
-                )}
-            >
-                {odontogramaItemIndex !== null && items[odontogramaItemIndex] && (
-                    <OdontogramaInteractive
-                        product={items[odontogramaItemIndex]}
-                        selection={items[odontogramaItemIndex]}
-                        onChange={(dentalData) => {
-                            setItems(prev => prev.map((item, idx) => idx === odontogramaItemIndex ? { ...item, ...dentalData } : item));
-                        }}
-                        title="Selecciona las piezas del producto"
-                    />
-                )}
-            </Modal>
         </div>
     );
 };

@@ -2748,7 +2748,19 @@ h4 {
   overflow: hidden;
 }
 
+.order-composer-modal {
+  max-width: 1160px;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .order-modal-compact .modal-header {
+  padding: var(--space-5);
+}
+
+.order-composer-modal .modal-header {
   padding: var(--space-5);
 }
 
@@ -2759,11 +2771,38 @@ h4 {
   min-height: 0;
 }
 
+.order-composer-modal .modal-body {
+  padding: var(--space-3) var(--space-4);
+  overflow: auto;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .order-modal-compact .modal-footer {
   padding: var(--space-2) var(--space-4);
   position: static;
   background: var(--color-surface);
   z-index: 2;
+}
+
+.order-composer-modal .modal-footer {
+  padding: var(--space-2) var(--space-4);
+  position: static;
+  background: var(--color-surface);
+  z-index: 2;
+}
+
+.order-composer-modal-form {
+  display: grid;
+  gap: var(--space-3);
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.order-composer-modal-body {
+  padding: var(--space-3) var(--space-4);
 }
 
 .order-modal-notes-grid {
@@ -2787,7 +2826,8 @@ h4 {
   align-items: center;
 }
 
-.order-form-section {
+.order-form-section,
+.order-composer-clinical-panel {
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: var(--radius-lg);
@@ -2796,7 +2836,8 @@ h4 {
   backdrop-filter: blur(8px);
 }
 
-.order-section-title {
+.order-section-title,
+.order-composer-section-title {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -2811,7 +2852,8 @@ h4 {
   margin-bottom: var(--space-3);
 }
 
-.order-section-title i {
+.order-section-title i,
+.order-composer-section-title i {
   color: var(--color-primary);
   font-size: 0.95rem;
 }
@@ -2861,7 +2903,8 @@ h4 {
     gap: var(--space-4);
   }
 
-  .order-modal-compact .modal-body {
+  .order-modal-compact .modal-body,
+  .order-composer-modal .modal-body {
     display: block !important;
     overflow-y: auto !important;
   }
@@ -2932,10 +2975,499 @@ h4 {
   min-height: 86px;
 }
 
-.order-fields-grid-v2 {
+.order-fields-grid-v2,
+.order-composer-fields-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
+}
+
+.order-composer-status-strip {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, 0.75);
+  margin-top: 0;
+  min-height: 42px;
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.order-composer-status-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.order-composer-status-icon {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.order-composer-vita-pill {
+  border-radius: var(--radius-full);
+  border: 1px dashed rgba(148, 163, 184, 0.6);
+  background: rgba(248, 250, 252, 0.95);
+  color: var(--color-text-secondary);
+  padding: 0.18rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.order-composer-vita-pill.is-selected {
+  border-style: solid;
+  border-color: rgba(var(--color-primary-rgb), 0.45);
+  background: rgba(var(--color-primary-rgb), 0.12);
+  color: var(--color-primary-hover);
+}
+
+.order-composer-vita-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.32rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.order-composer-vita-select {
+  padding: 0.2rem 1.8rem 0.2rem 0.6rem;
+  min-height: 30px;
+  font-size: 0.8rem;
+  width: auto;
+  border-color: transparent;
+  background: transparent;
+}
+
+.order-composer-vita-select:focus {
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: var(--color-surface);
+}
+
+@media (max-width: 560px) {
+  .order-composer-status-strip {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .order-composer-vita-select-wrap {
+    width: 100%;
+  }
+
+  .order-composer-vita-select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.order-composer-field-reset {
+  margin-bottom: 0;
+}
+
+.order-composer-error-banner {
+  margin-bottom: var(--space-4);
+  max-width: 100%;
+}
+
+.order-composer-stepper {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.order-composer-stepper .btn {
+  flex: 1 1 170px;
+  white-space: normal;
+  text-align: left;
+}
+
+.order-composer-stepper .btn span {
+  margin-right: 6px;
+  font-weight: 700;
+}
+
+.order-composer-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.order-composer-shell {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.order-composer-modal .order-composer-shell {
+  min-height: 0;
+  height: 100%;
+}
+
+.order-composer-mobile-switcher {
+  display: none;
+  gap: var(--space-2);
+}
+
+.order-composer-mobile-switcher .btn {
+  flex: 1;
+}
+
+.order-composer-desktop-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(420px, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.order-composer-modal .order-composer-desktop-grid {
+  min-height: 0;
+  height: 100%;
+  align-items: stretch;
+}
+
+.order-composer-pane {
+  min-width: 0;
+}
+
+.order-composer-modal .order-composer-pane {
+  min-height: 0;
+}
+
+.order-composer-catalog-pane {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.order-composer-catalog-pane > .card {
+  position: relative;
+}
+
+.order-composer-catalog-pane > .card + .card::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-3) * -0.5);
+  left: var(--space-3);
+  right: var(--space-3);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.45), transparent);
+}
+
+.order-composer-catalog-card {
+  max-height: 580px;
+  overflow: hidden;
+}
+
+.order-composer-catalog-list {
+  overflow-y: auto;
+  max-height: 500px;
+  padding-right: 4px;
+}
+
+.order-composer-catalog-group {
+  margin-bottom: var(--space-4);
+}
+
+.order-composer-catalog-group-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+.order-composer-catalog-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.order-composer-catalog-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.order-composer-catalog-item-price {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.order-composer-empty-state {
+  padding: 2rem;
+}
+
+.order-composer-selected-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.order-composer-selected-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.order-composer-selected-item.is-selected {
+  border-color: rgba(var(--color-primary-rgb), 0.5);
+  background: rgba(var(--color-primary-rgb), 0.06);
+}
+
+.order-composer-selected-content {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+}
+
+.order-composer-selected-content strong {
+  font-size: 0.86rem;
+}
+
+.order-composer-selected-meta {
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+}
+
+.order-composer-clinical-pane {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.order-composer-item-focus-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.order-composer-item-focus-card-premium {
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.order-composer-item-focus-media {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(145deg, rgba(248, 250, 252, 0.92), rgba(241, 245, 249, 0.62));
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.order-composer-item-focus-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.order-composer-item-focus-media i {
+  font-size: 1.4rem;
+  color: rgba(var(--color-primary-rgb), 0.65);
+}
+
+.order-composer-item-focus-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-composer-item-focus-main h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.order-composer-item-focus-aside {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.order-composer-item-focus-kicker {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.2rem;
+}
+
+.order-composer-item-focus-price {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.order-composer-odontograma-slot {
+  min-width: 0;
+}
+
+@media (min-width: 861px) {
+  .order-composer-modal .order-composer-desktop-grid {
+    grid-template-columns: minmax(430px, 1.2fr) minmax(360px, 0.9fr);
+    min-height: clamp(540px, 72vh, 760px);
+  }
+
+  .order-composer-modal .quick-order-left-pane {
+    max-height: clamp(540px, 72vh, 760px);
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: var(--space-2);
+  }
+
+  .order-composer-modal .quick-order-odonto-pane,
+  .order-composer-modal .quick-order-odonto-slot {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    display: flex;
+  }
+
+  .order-composer-modal .quick-order-odonto-slot .odontograma-shell {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .order-composer-modal .quick-order-odonto-slot .odontograma-bento,
+  .order-composer-modal .quick-order-odonto-slot .odontograma-stage {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  .order-composer-modal .quick-order-odonto-slot .odontograma-panel {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  .order-composer-modal .quick-order-odonto-slot .odontograma-svg {
+    height: auto;
+    max-height: min(72vh, 760px);
+  }
+}
+
+.order-composer-pricing {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.24);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(155deg, rgba(var(--color-primary-rgb), 0.08), rgba(var(--color-primary-rgb), 0.03));
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.order-composer-pricing-title {
+  margin: 0;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(var(--color-primary-rgb), 0.9);
+  font-weight: 800;
+}
+
+.order-composer-pricing-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.order-composer-pricing-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.order-composer-pricing-value {
+  font-size: 0.92rem;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.order-composer-pricing-value-extra-charge {
+  color: var(--color-error);
+}
+
+.order-composer-pricing-row-subtotal {
+  padding-bottom: 0.55rem;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.6);
+}
+
+.order-composer-pricing-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(var(--color-primary-rgb), 0.2);
+}
+
+.order-composer-pricing-total-label {
+  font-size: 0.82rem;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.order-composer-pricing-total strong {
+  font-size: 1.22rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-primary);
+}
+
+.order-composer-pricing-empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.order-composer-empty-clinical {
+  min-height: 320px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: var(--space-2);
+}
+
+.order-composer-empty-clinical i {
+  font-size: 2rem;
+  color: var(--color-primary);
+}
+
+.order-composer-empty-clinical p {
+  color: var(--color-text-secondary);
+  max-width: 48ch;
+}
+
+.order-composer-actions-between {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-4);
 }
 
 .order-status-card-v2 {
@@ -3149,46 +3681,57 @@ h4 {
   border-radius: var(--radius-lg);
 }
 
-.order-modal-compact .odontograma-shell {
+.order-modal-compact .odontograma-shell,
+.order-composer-modal .odontograma-shell {
   padding: var(--space-2);
 }
 
-.order-modal-compact .odontograma-header {
+.order-modal-compact .odontograma-header,
+.order-composer-modal .odontograma-header {
   margin-bottom: var(--space-1);
 }
 
-.order-modal-compact .odontograma-header h4 {
+.order-modal-compact .odontograma-header h4,
+.order-composer-modal .odontograma-header h4 {
   font-size: 0.97rem;
 }
 
-.order-modal-compact .odontograma-header p {
+.order-modal-compact .odontograma-header p,
+.order-composer-modal .odontograma-header p {
   font-size: 0.73rem;
 }
 
-.order-modal-compact .odontograma-bento {
+.order-modal-compact .odontograma-bento,
+.order-composer-modal .odontograma-bento {
   grid-template-columns: minmax(0, 4fr) minmax(190px, 1fr);
   gap: var(--space-3);
 }
 
-.order-modal-compact .odontograma-bento.odontograma-bento-single {
+.order-modal-compact .odontograma-bento.odontograma-bento-single,
+.order-composer-modal .odontograma-bento.odontograma-bento-single {
   grid-template-columns: 1fr;
 }
 
-.order-modal-compact .odontograma-panel {
+.order-modal-compact .odontograma-panel,
+.order-composer-modal .odontograma-panel {
   padding: var(--space-2);
 }
 
-.order-modal-compact .odontograma-side {
+.order-modal-compact .odontograma-side,
+.order-composer-modal .odontograma-side {
   padding: var(--space-2);
   gap: var(--space-2);
 }
 
 .order-modal-compact .odontograma-stat,
-.order-modal-compact .odontograma-legend {
+.order-modal-compact .odontograma-legend,
+.order-composer-modal .odontograma-stat,
+.order-composer-modal .odontograma-legend {
   padding: var(--space-2);
 }
 
-.order-modal-compact .odontograma-svg {
+.order-modal-compact .odontograma-svg,
+.order-composer-modal .odontograma-svg {
   height: clamp(300px, 50vh, 520px);
   max-height: 50vh;
 }
@@ -3269,7 +3812,8 @@ h4 {
 }
 
 @media (max-width: 1220px) {
-  .order-modal-compact {
+  .order-modal-compact,
+  .order-composer-modal {
     max-width: 1040px;
   }
 
@@ -3524,6 +4068,32 @@ h4 {
   border-color: rgba(103, 232, 249, 0.15);
 }
 
+[data-theme="dark"] .order-composer-status-strip {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(103, 232, 249, 0.15);
+}
+
+[data-theme="dark"] .order-composer-vita-pill {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.42);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .order-composer-vita-pill.is-selected {
+  border-color: rgba(103, 232, 249, 0.45);
+  background: rgba(8, 145, 178, 0.2);
+  color: #CFFAFE;
+}
+
+[data-theme="dark"] .order-composer-vita-select-wrap {
+  border-color: rgba(103, 232, 249, 0.25);
+  background: rgba(15, 23, 42, 0.62);
+}
+
+[data-theme="dark"] .order-composer-vita-select {
+  color: var(--color-text);
+}
+
 [data-theme="dark"] .odontograma-svg {
   background: transparent;
 }
@@ -3537,7 +4107,17 @@ h4 {
   border-color: rgba(103, 232, 249, 0.15);
 }
 
+[data-theme="dark"] .order-composer-clinical-panel {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(103, 232, 249, 0.15);
+}
+
 [data-theme="dark"] .order-section-title {
+  color: #94A3B8;
+  border-bottom-color: rgba(34, 211, 238, 0.2);
+}
+
+[data-theme="dark"] .order-composer-section-title {
   color: #94A3B8;
   border-bottom-color: rgba(34, 211, 238, 0.2);
 }
@@ -3554,6 +4134,23 @@ h4 {
 [data-theme="dark"] .odonto-status-strip {
   background: rgba(15, 23, 42, 0.58);
   border-color: rgba(148, 163, 184, 0.28);
+}
+
+[data-theme="dark"] .order-composer-pricing {
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.42));
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+[data-theme="dark"] .order-composer-pricing-row-subtotal {
+  border-bottom-color: rgba(148, 163, 184, 0.45);
+}
+
+[data-theme="dark"] .order-composer-pricing-total {
+  border-top-color: rgba(148, 163, 184, 0.28);
+}
+
+[data-theme="dark"] .order-composer-pricing-total-label {
+  color: #E2E8F0;
 }
 
 [data-theme="dark"] .odonto-status-pill {
@@ -3653,6 +4250,34 @@ h4 {
     grid-template-columns: 1fr;
   }
 
+  .order-composer-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-composer-mobile-switcher {
+    display: flex;
+  }
+
+  .order-composer-desktop-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-composer-mobile-hidden {
+    display: none;
+  }
+
+  .order-composer-catalog-card {
+    max-height: none;
+  }
+
+  .order-composer-catalog-list {
+    max-height: none;
+  }
+
+  .order-composer-actions-between {
+    gap: var(--space-2);
+  }
+
   .odontograma-bento {
     grid-template-columns: 1fr;
   }
@@ -3671,7 +4296,8 @@ h4 {
     max-height: min(460px, 60vh);
   }
 
-  .order-modal-compact .odontograma-svg {
+  .order-modal-compact .odontograma-svg,
+  .order-composer-modal .odontograma-svg {
     width: 100%;
     height: auto;
     max-height: min(420px, 52vh);

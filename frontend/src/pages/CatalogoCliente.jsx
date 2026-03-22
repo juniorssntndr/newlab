@@ -4,8 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
 import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
-import { formatDentalSelection } from '../utils/odontograma.js';
 import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
+import OrderClinicalPanel from '../components/orders/OrderClinicalPanel.jsx';
+import OrderComposerLayout from '../components/orders/OrderComposerLayout.jsx';
+import OrderPricingSummary from '../components/orders/OrderPricingSummary.jsx';
+import { useOrderComposerState } from '../modules/orders/composer/useOrderComposerState.js';
+import { normalizeOrderItem } from '../modules/orders/composer/orderItemNormalizer.js';
 
 // Derive backend base for local /uploads/ paths (strips trailing /api segment)
 const BACKEND_BASE = API_URL.endsWith('/api')
@@ -27,6 +31,10 @@ const Skeleton = () => (
     </div>
 );
 
+const createQuickComposerItemId = (productId) => {
+    return `quick-item-${productId}-${Date.now()}`;
+};
+
 const CatalogoCliente = () => {
     const { getHeaders, user } = useAuth();
     const navigate = useNavigate();
@@ -37,22 +45,26 @@ const CatalogoCliente = () => {
     const [search, setSearch] = useState('');
 
     // Quick-order modal
-    const [orderProduct, setOrderProduct] = useState(null); // product to order
-    const [mobileOrderStep, setMobileOrderStep] = useState(1); // 1 = Odontograma, 2 = Resumen (Solo móviles)
-    const [orderForm, setOrderForm] = useState({
+    const [orderProduct, setOrderProduct] = useState(null);
+    const [orderMeta, setOrderMeta] = useState({
         paciente_nombre: '',
         fecha_entrega: '',
-        color_vita: '',
-        notas: '',
-        piezas_dentales: [],
-        es_puente: false,
-        pieza_inicio: null,
-        pieza_fin: null,
         es_urgente: false
     });
     const [orderSaving, setOrderSaving] = useState(false);
     const [orderError, setOrderError] = useState('');
     const createOrderMutation = useCreateOrderMutation();
+    const {
+        items,
+        total,
+        selectedItem,
+        ui,
+        replaceItems,
+        selectItem,
+        updateItemField,
+        updateDentalSelection,
+        setMobileStep
+    } = useOrderComposerState();
 
     const calculateDeliveryDate = (product, isUrgent) => {
         const baseDays = product?.tiempo_estimado_dias || 5;
@@ -63,33 +75,64 @@ const CatalogoCliente = () => {
     };
 
     const openOrder = (producto) => {
-        setOrderProduct(producto);
-        setMobileOrderStep(1);
-        setOrderForm({
-            paciente_nombre: '',
-            fecha_entrega: calculateDeliveryDate(producto, false),
+        const nextItem = normalizeOrderItem({
+            id: createQuickComposerItemId(producto.id),
+            product: producto,
+            producto_id: producto.id,
+            nombre: producto.nombre,
+            precio_unitario: parseFloat(producto.precio_base),
+            material: producto.material_nombre || '',
             color_vita: '',
             notas: '',
+            cantidadManual: 1,
             piezas_dentales: [],
             es_puente: false,
             pieza_inicio: null,
-            pieza_fin: null,
+            pieza_fin: null
+        });
+
+        setOrderProduct(producto);
+        replaceItems([nextItem]);
+        selectItem(nextItem.id);
+        setMobileStep(1);
+        setOrderMeta({
+            paciente_nombre: '',
+            fecha_entrega: calculateDeliveryDate(producto, false),
             es_urgente: false
         });
         setOrderError('');
     };
 
-    const closeOrder = () => { setOrderProduct(null); setOrderError(''); };
+    const closeOrder = () => {
+        setOrderProduct(null);
+        replaceItems([]);
+        selectItem(null);
+        setMobileStep(1);
+        setOrderError('');
+    };
 
-    const isOrderReady = !!orderForm.paciente_nombre && !!orderForm.fecha_entrega && orderForm.piezas_dentales.length > 0;
+    const activeOrderItem = selectedItem || items[0] || null;
+    const resolvedCantidad = activeOrderItem?.cantidad || 0;
+    const urgentSurcharge = orderMeta.es_urgente
+        ? Number(activeOrderItem?.precio_unitario || orderProduct?.precio_base || 0) * 0.25 * resolvedCantidad
+        : 0;
+    const totalAprox = total + urgentSurcharge;
+
+    const isOrderReady = !!orderMeta.paciente_nombre
+        && !!orderMeta.fecha_entrega
+        && (
+            activeOrderItem
+            ? (!activeOrderItem.requiresDentalSelection || activeOrderItem.piezas_dentales.length > 0)
+            : false
+        );
 
     const handleOrderSubmit = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
-        if (!orderForm.paciente_nombre || !orderForm.fecha_entrega) {
+        if (!orderMeta.paciente_nombre || !orderMeta.fecha_entrega) {
             setOrderError('Completa el nombre del paciente y la fecha de entrega.');
             return;
         }
-        if (!orderForm.piezas_dentales.length) {
+        if (activeOrderItem?.requiresDentalSelection && !(activeOrderItem.piezas_dentales || []).length) {
             setOrderError('Selecciona al menos una pieza dental en el odontograma.');
             return;
         }
@@ -98,22 +141,12 @@ const CatalogoCliente = () => {
         try {
             const data = await createOrderMutation.mutateAsync({
                 clinica_id: user.clinica_id,
-                paciente_nombre: orderForm.paciente_nombre,
-                fecha_entrega: orderForm.fecha_entrega,
+                paciente_nombre: orderMeta.paciente_nombre,
+                fecha_entrega: orderMeta.fecha_entrega,
                 observaciones: '',
-                items: [{
-                    producto_id: orderProduct.id,
-                    cantidad: 1,
-                    precio_unitario: parseFloat(orderProduct.precio_base),
-                    piezas_dentales: orderForm.piezas_dentales,
-                    es_puente: orderForm.es_puente,
-                    pieza_inicio: orderForm.pieza_inicio,
-                    pieza_fin: orderForm.pieza_fin,
-                    color_vita: orderForm.color_vita || '',
-                    material: orderProduct.material_nombre || '',
-                    notas: orderForm.notas || '',
-                    es_urgente: orderForm.es_urgente
-                }]
+                items: activeOrderItem
+                    ? [{ ...activeOrderItem, es_urgente: orderMeta.es_urgente }]
+                    : []
             });
             navigate(`/pedidos/${data.id}`);
         } catch (err) {
@@ -254,20 +287,20 @@ const CatalogoCliente = () => {
                 onClose={closeOrder}
                 title="Solicitar Pedido"
                 size="2xl"
-                className="order-modal-compact"
-                bodyClassName="order-modal-compact-body"
+                className="order-composer-modal"
+                bodyClassName="order-composer-modal-body"
                 footer={(
                     <>
-                        <button type="button" className={`btn btn-ghost ${mobileOrderStep === 2 ? 'hide-on-mobile' : ''}`} onClick={closeOrder}>
+                        <button type="button" className={`btn btn-ghost ${ui.mobileStep === 2 ? 'hide-on-mobile' : ''}`} onClick={closeOrder}>
                             Cancelar
                         </button>
-                        <button type="button" className={`btn btn-ghost hide-on-desktop ${mobileOrderStep === 1 ? 'hide-on-mobile' : ''}`} onClick={() => setMobileOrderStep(1)}>
+                        <button type="button" className={`btn btn-ghost hide-on-desktop ${ui.mobileStep === 1 ? 'hide-on-mobile' : ''}`} onClick={() => setMobileStep(1)}>
                             Atrás
                         </button>
-                        <button type="button" className={`btn btn-primary hide-on-desktop ${mobileOrderStep === 2 ? 'hide-on-mobile' : ''}`} disabled={!isOrderReady} onClick={() => setMobileOrderStep(2)}>
+                        <button type="button" className={`btn btn-primary hide-on-desktop ${ui.mobileStep === 2 ? 'hide-on-mobile' : ''}`} disabled={!isOrderReady} onClick={() => setMobileStep(2)}>
                             Siguiente
                         </button>
-                        <button type="submit" form="orderForm" className={`btn btn-primary ${mobileOrderStep === 1 ? 'hide-on-mobile' : ''}`} disabled={orderSaving || !isOrderReady}>
+                        <button type="submit" form="orderForm" className={`btn btn-primary ${ui.mobileStep === 1 ? 'hide-on-mobile' : ''}`} disabled={orderSaving || !isOrderReady}>
                             {orderSaving ? (
                                 <><i className="bi bi-hourglass-split" /> Creando...</>
                             ) : (
@@ -278,168 +311,135 @@ const CatalogoCliente = () => {
                 )}
             >
                 {orderProduct && (
-                    <form id="orderForm" onSubmit={handleOrderSubmit} className="order-modal-layout-v2">
-                        <div className={`order-modal-bento-v2 modal-mobile-step-${mobileOrderStep}`}>
+                    <form id="orderForm" onSubmit={handleOrderSubmit} className="order-composer-modal-form">
+                        {orderError && (
+                            <div className="login-error order-composer-error-banner">
+                                <i className="bi bi-exclamation-circle"></i> {orderError}
+                            </div>
+                        )}
 
-                            <aside className="order-modal-fields-v2">
-                                <div className="order-modal-summary-v2 mobile-only-hide-step-1" style={{ paddingBottom: '0.85rem', marginBottom: '0.4rem', borderBottom: '1px solid rgba(148, 163, 184, 0.2)', gap: '1rem' }}>
-                                    <div style={{ width: 56, height: 56, borderRadius: '12px', padding: '4px', overflow: 'hidden', border: '1px solid rgba(148, 163, 184, 0.25)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-alt)' }}>
-                                        {orderProduct.image_url ? (
-                                            <img src={resolveImageUrl(orderProduct.image_url)} alt={orderProduct.nombre}
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }}
-                                                onError={e => { e.currentTarget.style.display = 'none'; }} />
-                                        ) : (
-                                            <i className="bi bi-gem" style={{ fontSize: '1.6rem', opacity: 0.3 }} />
-                                        )}
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                        <div style={{ fontWeight: '700', fontSize: '1.05rem', lineHeight: 1.2 }}>{orderProduct.nombre}</div>
-                                        {orderProduct.material_nombre && (
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                                                <i className="bi bi-layers" style={{ marginRight: '0.25rem' }} />{orderProduct.material_nombre}
-                                            </div>
-                                        )}
-                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.1rem' }}>
-                                            <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--color-primary)' }}>
-                                                S/. {Number(orderProduct.precio_base).toFixed(2)}
-                                            </span>
-                                            {orderProduct.tiempo_estimado_dias && (
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                                                    <i className="bi bi-clock" /> {orderProduct.tiempo_estimado_dias} días
-                                                </span>
+                        <OrderComposerLayout
+                            mobileStep={ui.mobileStep}
+                            onMobileStepChange={setMobileStep}
+                            disableClinicalStep={!activeOrderItem}
+                            leftPane={(
+                                <section className="order-composer-catalog-pane quick-order-left-pane">
+                                    <article className="card order-composer-item-focus-card order-composer-item-focus-card-premium">
+                                        <div className="order-composer-item-focus-media" aria-hidden="true">
+                                            {orderProduct.image_url ? (
+                                                <img
+                                                    src={resolveImageUrl(orderProduct.image_url)}
+                                                    alt={orderProduct.nombre}
+                                                    loading="lazy"
+                                                    onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                                                />
+                                            ) : (
+                                                <i className="bi bi-gem"></i>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
 
-                                {orderError && (
-                                    <div className="order-modal-error-v2">
-                                        <i className="bi bi-exclamation-circle" />{orderError}
-                                    </div>
-                                )}
-
-                                <div className="order-form-section mobile-only-hide-step-2">
-                                    <h6 className="order-section-title"><i className="bi bi-person-lines-fill"></i> Datos Administrativos</h6>
-                                    
-                                    <div className="order-fields-grid-v2">
-                                        <div className="form-group" style={{ marginBottom: 0 }}>
-                                            <label className="form-label">Nombre del Paciente *</label>
-                                            <input className="form-input" placeholder="Nombre completo"
-                                                value={orderForm.paciente_nombre}
-                                                onChange={e => setOrderForm(f => ({ ...f, paciente_nombre: e.target.value }))} />
+                                        <div className="order-composer-item-focus-main">
+                                            <p className="order-composer-item-focus-kicker">Producto seleccionado</p>
+                                            <h3>{orderProduct.nombre}</h3>
+                                            {orderProduct.material_nombre && (
+                                                <p className="order-composer-selected-meta">Material: {orderProduct.material_nombre}</p>
+                                            )}
                                         </div>
 
-                                        <div className="form-group" style={{ marginBottom: 0 }}>
-                                            <label className="form-label">Fecha de Entrega Estimada</label>
-                                            <input className="form-input" type="date"
-                                                value={orderForm.fecha_entrega}
-                                                readOnly
-                                                disabled
-                                                style={{ backgroundColor: 'var(--color-bg-alt)', cursor: 'not-allowed', color: 'var(--color-text-secondary)', opacity: 0.8 }}
-                                                onChange={() => {}} />
+                                        <div className="order-composer-item-focus-aside">
+                                            <p className="order-composer-item-focus-price">S/. {Number(orderProduct.precio_base || 0).toFixed(2)}</p>
                                         </div>
-                                    </div>
-                                    <div style={{ marginTop: '0.75rem', padding: '0.6rem', background: orderForm.es_urgente ? 'rgba(239, 68, 68, 0.08)' : 'var(--color-bg-alt)', border: `1px solid ${orderForm.es_urgente ? 'rgba(239, 68, 68, 0.3)' : 'var(--color-border)'}`, borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
-                                         onClick={() => {
-                                             const newUrgente = !orderForm.es_urgente;
-                                             setOrderForm(f => ({ 
-                                                 ...f, 
-                                                 es_urgente: newUrgente,
-                                                 fecha_entrega: calculateDeliveryDate(orderProduct, newUrgente)
-                                             }));
-                                         }}>
-                                        <div style={{ width: '18px', height: '18px', borderRadius: '4px', border: `2px solid ${orderForm.es_urgente ? 'var(--color-danger)' : 'var(--color-text-secondary)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: orderForm.es_urgente ? 'var(--color-danger)' : 'transparent' }}>
-                                            {orderForm.es_urgente && <i className="bi bi-check" style={{ color: 'white', fontSize: '1rem', marginTop: '1px' }}></i>}
-                                        </div>
-                                        <span style={{ fontSize: '0.85rem', fontWeight: orderForm.es_urgente ? 600 : 500, color: orderForm.es_urgente ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                                            <i className="bi bi-lightning-charge" style={{ marginRight: '0.3rem' }}></i> 
-                                            Solicitar como Pedido Express (Urgente)
-                                        </span>
-                                    </div>
-                                </div>
+                                    </article>
 
-                                <div className="order-form-section mobile-only-hide-step-1">
-                                    <h6 className="order-section-title"><i className="bi bi-journal-medical"></i> Especificaciones Clínicas</h6>
-                                    
-                                    <div className="form-group">
-                                        <label className="form-label">Selección dental y Color</label>
-                                        <div className="odonto-status-strip" style={{ marginTop: 0, height: '100%', minHeight: '42px', flexWrap: 'nowrap', gap: '0.5rem', justifyContent: 'space-between' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span className="odonto-status-pill">{Math.max(1, orderForm.piezas_dentales.length)} piezas</span>
+                                    <article className="card">
+                                        <h6 className="order-composer-section-title"><i className="bi bi-person-lines-fill"></i> Datos Administrativos</h6>
+                                        <div className="order-composer-fields-grid">
+                                            <div className="form-group order-composer-field-reset">
+                                                <label className="form-label">Nombre del Paciente *</label>
+                                                <input
+                                                    className="form-input"
+                                                    placeholder="Nombre completo"
+                                                    value={orderMeta.paciente_nombre}
+                                                    onChange={(event) => setOrderMeta((prev) => ({ ...prev, paciente_nombre: event.target.value }))}
+                                                />
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <i className="bi bi-palette" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}></i>
-                                                <select 
-                                                    className="form-input" 
-                                                    style={{ padding: '0.2rem 1.8rem 0.2rem 0.6rem', minHeight: '30px', fontSize: '0.8rem', width: 'auto' }}
-                                                    value={orderForm.color_vita}
-                                                    onChange={e => setOrderForm(f => ({ ...f, color_vita: e.target.value }))}
-                                                >
-                                                    <option value="">Color VITA...</option>
-                                                    <optgroup label="Tonos A">
-                                                        <option value="A1">A1</option><option value="A2">A2</option>
-                                                        <option value="A3">A3</option><option value="A3.5">A3.5</option><option value="A4">A4</option>
-                                                    </optgroup>
-                                                    <optgroup label="Tonos B">
-                                                        <option value="B1">B1</option><option value="B2">B2</option>
-                                                        <option value="B3">B3</option><option value="B4">B4</option>
-                                                    </optgroup>
-                                                    <optgroup label="Tonos C / D / Bleach">
-                                                        <option value="C1">C1</option><option value="D2">D2</option><option value="BL1">BL1</option>
-                                                    </optgroup>
-                                                </select>
+                                            <div className="form-group order-composer-field-reset">
+                                                <label className="form-label">Fecha de Entrega Estimada</label>
+                                                <input
+                                                    className="form-input"
+                                                    type="date"
+                                                    value={orderMeta.fecha_entrega}
+                                                    readOnly
+                                                    disabled
+                                                />
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label">Notas del ítem</label>
-                                        <textarea className="form-textarea" rows={1} placeholder="Instrucciones para esta restauración (ej. cofia, blindaje...)"
-                                            value={orderForm.notas}
-                                            onChange={e => setOrderForm(f => ({ ...f, notas: e.target.value }))} />
-                                    </div>
-                                </div>
+                                        <button
+                                            type="button"
+                                            className={`btn ${orderMeta.es_urgente ? 'btn-danger' : 'btn-secondary'} btn-sm`}
+                                            style={{ width: '100%', marginTop: 'var(--space-3)' }}
+                                            onClick={() => {
+                                                const nextUrgente = !orderMeta.es_urgente;
+                                                setOrderMeta((prev) => ({
+                                                    ...prev,
+                                                    es_urgente: nextUrgente,
+                                                    fecha_entrega: calculateDeliveryDate(orderProduct, nextUrgente)
+                                                }));
+                                            }}
+                                        >
+                                            <i className="bi bi-lightning-charge"></i>
+                                            {orderMeta.es_urgente ? 'Pedido Express activo' : 'Solicitar como Pedido Express'}
+                                        </button>
+                                    </article>
 
-                                <div className="order-form-section mobile-only-hide-step-1" style={{ background: 'rgba(var(--color-primary-rgb), 0.04)', borderColor: 'rgba(var(--color-primary-rgb), 0.15)' }}>
-                                    <h6 className="order-section-title" style={{ color: 'var(--color-primary)', borderBottomColor: 'rgba(var(--color-primary-rgb), 0.2)', marginBottom: '0.6rem' }}>
-                                        <i className="bi bi-receipt"></i> Resumen de Orden
-                                    </h6>
-                                    
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '0.35rem' }}>
-                                        <span>Precio Unitario (Base)</span>
-                                        <span>S/. {Number(orderProduct.precio_base).toFixed(2)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: orderForm.es_urgente ? '0.35rem' : '0.5rem', paddingBottom: orderForm.es_urgente ? '0' : '0.5rem', borderBottom: orderForm.es_urgente ? 'none' : '1px dashed var(--color-border)' }}>
-                                        <span>Piezas Clínicas Seleccionadas</span>
-                                        <span>× {Math.max(1, orderForm.piezas_dentales.length)}</span>
-                                    </div>
-                                    {orderForm.es_urgente && (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-danger)', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px dashed var(--color-border)' }}>
-                                            <span>Recargo Express (+25%)</span>
-                                            <span>S/. {(Number(orderProduct.precio_base) * 0.25 * Math.max(1, orderForm.piezas_dentales.length)).toFixed(2)}</span>
-                                        </div>
+                                    {activeOrderItem && (
+                                        <OrderClinicalPanel
+                                            form={activeOrderItem}
+                                            resolvedCantidad={resolvedCantidad}
+                                            requiresDentalSelection={activeOrderItem.requiresDentalSelection}
+                                            showDerivedFields={false}
+                                            onColorChange={(color_vita) => updateItemField(activeOrderItem.id, 'color_vita', color_vita)}
+                                            onNotesChange={(notas) => updateItemField(activeOrderItem.id, 'notas', notas)}
+                                        />
                                     )}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>Total Aprox.</span>
-                                        <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                                            S/. {((Number(orderProduct.precio_base) + (orderForm.es_urgente ? Number(orderProduct.precio_base) * 0.25 : 0)) * Math.max(1, orderForm.piezas_dentales.length)).toFixed(2)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </aside>
 
-                            <div className="order-modal-odonto-v2 mobile-only-hide-step-2">
-                                <OdontogramaInteractive
-                                    product={orderProduct}
-                                    selection={orderForm}
-                                    onChange={(dentalData) => setOrderForm(f => ({ ...f, ...dentalData }))}
-                                    title="Selecciona las piezas del caso"
-                                    showSidePanel={false}
-                                    showProductPill={false}
-                                    showHeader={false}
-                                />
-                            </div>
-                        </div>
+                                    {activeOrderItem && (
+                                        <OrderPricingSummary
+                                            item={activeOrderItem}
+                                            total={totalAprox}
+                                            title="Resumen del caso"
+                                            showItemSubtotal={false}
+                                            extraCharge={urgentSurcharge}
+                                            extraChargeLabel="Recargo Express (+25%)"
+                                        />
+                                    )}
+                                </section>
+                            )}
+                            rightPane={activeOrderItem ? (
+                                <section className="quick-order-odonto-pane">
+                                    <div className="order-composer-odontograma-slot quick-order-odonto-slot">
+                                        {activeOrderItem.requiresDentalSelection ? (
+                                            <OdontogramaInteractive
+                                                product={activeOrderItem.product || orderProduct}
+                                                selection={activeOrderItem}
+                                                onChange={(dentalData) => updateDentalSelection(activeOrderItem.id, dentalData)}
+                                                title="Selecciona las piezas del caso"
+                                                showSidePanel={false}
+                                                showProductPill={false}
+                                                showHeader={false}
+                                            />
+                                        ) : (
+                                            <article className="card order-composer-empty-clinical">
+                                                <i className="bi bi-info-circle"></i>
+                                                <h3>Este producto no requiere odontograma</h3>
+                                                <p>Podes editar cantidad, color y notas desde la columna izquierda.</p>
+                                            </article>
+                                        )}
+                                    </div>
+                                </section>
+                            ) : null}
+                        />
                     </form>
                 )}
             </Modal>
