@@ -11,15 +11,16 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
         {
             section: 'Principal', items: [
                 { to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' },
-                { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Pedidos' },
+                { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Seguimiento de pedidos' },
                 { to: '/finanzas', icon: 'bi-cash-stack', label: 'Finanzas' },
+                { to: '/caja-gastos', icon: 'bi-wallet2', label: 'Caja y Gastos' },
                 { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
             ]
         },
         {
             section: 'Gestión', items: [
                 { to: '/clinicas', icon: 'bi-building', label: 'Clientes / CRM' },
-                { to: '/productos', icon: 'bi-box-seam', label: 'Productos' },
+                { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo de Productos' },
                 { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
                 ...(user?.tipo === 'admin' ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : [])
             ]
@@ -29,8 +30,10 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const clientLinks = [
         {
             section: 'Mi Portal', items: [
-                { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Mis Pedidos' },
+                { to: '/catalogo', icon: 'bi-grid', label: 'Catálogo' },
                 { to: '/pedidos/nuevo', icon: 'bi-plus-circle', label: 'Nuevo Pedido' },
+                { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Mis Pedidos' },
+                { to: '/mi-calendario', icon: 'bi-calendar3', label: 'Calendario' },
             ]
         },
     ];

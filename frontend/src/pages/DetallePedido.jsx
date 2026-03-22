@@ -3,6 +3,7 @@ import { useAuth } from '../state/AuthContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
+import { formatDentalSelection } from '../utils/odontograma.js';
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
@@ -291,7 +292,7 @@ const DetallePedido = () => {
     const deliveryMeta = getDeliveryMeta();
     const itemsCount = (pedido.items || []).reduce((sum, item) => sum + (parseFloat(item.cantidad) || 0), 0);
     const itemsPiecesLabel = itemsCount === 1 ? 'pieza' : 'piezas';
-    const finalTotal = pedido.subtotal ?? pedido.total ?? 0;
+    const finalTotal = pedido.total ?? 0;
     const currentApproval = (pedido.aprobaciones || [])[0];
     const approvalLink = currentApproval?.link_exocad;
     const approvalEstado = currentApproval?.estado || 'pendiente';
@@ -494,11 +495,11 @@ const DetallePedido = () => {
                                     {(pedido.items || []).map((item, i) => (
                                         <tr key={i}>
                                             <td><strong>{item.producto_nombre || `Producto #${item.producto_id}`}</strong></td>
-                                            <td style={{ fontFamily: 'var(--font-mono)' }}>{item.pieza_dental || '—'}</td>
-                                            <td>{item.color || '—'}</td>
+                                            <td style={{ fontFamily: 'var(--font-mono)' }}>{formatDentalSelection(item)}</td>
+                                            <td>{item.color_vita || item.color || '—'}</td>
                                             <td>{item.material || '—'}</td>
                                             <td>{item.cantidad}</td>
-                                            <td><strong>S/. {(item.cantidad * parseFloat(item.precio_unitario)).toFixed(2)}</strong></td>
+                                            <td><strong>S/. {(parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario))).toFixed(2)}</strong></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -514,11 +515,11 @@ const DetallePedido = () => {
                                     <div className="mobile-card-grid">
                                         <div className="mobile-field">
                                             <span className="mobile-field-label">Pieza</span>
-                                            <span className="mobile-field-value" style={{ fontFamily: 'var(--font-mono)' }}>{item.pieza_dental || '—'}</span>
+                                            <span className="mobile-field-value" style={{ fontFamily: 'var(--font-mono)' }}>{formatDentalSelection(item)}</span>
                                         </div>
                                         <div className="mobile-field">
                                             <span className="mobile-field-label">Color</span>
-                                            <span className="mobile-field-value">{item.color || '—'}</span>
+                                            <span className="mobile-field-value">{item.color_vita || item.color || '—'}</span>
                                         </div>
                                         <div className="mobile-field">
                                             <span className="mobile-field-label">Material</span>
@@ -526,7 +527,7 @@ const DetallePedido = () => {
                                         </div>
                                         <div className="mobile-field">
                                             <span className="mobile-field-label">Subtotal</span>
-                                            <span className="mobile-field-value"><strong>S/. {(item.cantidad * parseFloat(item.precio_unitario)).toFixed(2)}</strong></span>
+                                            <span className="mobile-field-value"><strong>S/. {(parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario))).toFixed(2)}</strong></span>
                                         </div>
                                     </div>
                                 </article>
@@ -540,93 +541,91 @@ const DetallePedido = () => {
 
                 {/* Right: Approval + Timeline */}
                 <div style={{ flex: '1 1 30%', minWidth: 'min(100%, 280px)', maxWidth: '100%' }}>
-                    {(isApproval || approvalLink) && (
-                        <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                            <div className="card-header"><h3 className="card-title">Diseño 3D</h3></div>
-                            <div className="approval-card">
-                                {approvalLink ? (
-                                    <div>
-                                        <div className="approval-link approval-link-highlight" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-                                            <i className="bi bi-cube"></i>
-                                            <a href={approvalLink} target="_blank" rel="noreferrer" className="btn btn-link-strong btn-sm">
-                                                Ver diseño 3D
-                                            </a>
-                                            <span className={`badge ${approvalBadgeClass}`}>{approvalStatusLabels[approvalEstado] || approvalEstado.replace(/_/g, ' ')}</span>
-                                        </div>
-                                        {isLab && (
-                                            <button className="btn btn-primary btn-sm" onClick={() => setApprovalModalOpen(true)}>
-                                                <i className="bi bi-upload"></i> Subir nueva version
-                                            </button>
-                                        )}
-                                        {!isLab && isApproval && (
-                                            <div className="approval-actions">
-                                                <div className="approval-actions-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+                    <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+                        <div className="card-header"><h3 className="card-title">Diseño 3D</h3></div>
+                        <div className="approval-card">
+                            {approvalLink ? (
+                                <div>
+                                    <div className="approval-link approval-link-highlight" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                                        <i className="bi bi-cube"></i>
+                                        <a href={approvalLink} target="_blank" rel="noreferrer" className="btn btn-link-strong btn-sm">
+                                            Ver diseño 3D
+                                        </a>
+                                        <span className={`badge ${approvalBadgeClass}`}>{approvalStatusLabels[approvalEstado] || approvalEstado.replace(/_/g, ' ')}</span>
+                                    </div>
+                                    {isLab && (
+                                        <button className="btn btn-primary btn-sm" onClick={() => setApprovalModalOpen(true)}>
+                                            <i className="bi bi-upload"></i> Subir nueva version
+                                        </button>
+                                    )}
+                                    {!isLab && isApproval && (
+                                        <div className="approval-actions">
+                                            <div className="approval-actions-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+                                                <button
+                                                    className="btn btn-accent"
+                                                    onClick={() => updateApproval('aprobado')}
+                                                    disabled={updating}
+                                                >
+                                                    <i className="bi bi-check-lg"></i> Aprobar diseño
+                                                </button>
+                                                <div className="approval-popover-wrap" ref={adjustPopoverRef}>
                                                     <button
-                                                        className="btn btn-accent"
-                                                        onClick={() => updateApproval('aprobado')}
+                                                        ref={adjustButtonRef}
+                                                        className="btn btn-secondary"
+                                                        onClick={() => setAdjustPopoverOpen(prev => !prev)}
                                                         disabled={updating}
                                                     >
-                                                        <i className="bi bi-check-lg"></i> Aprobar diseño
+                                                        <i className="bi bi-chat-left-text"></i> Solicitar ajustes
                                                     </button>
-                                                    <div className="approval-popover-wrap" ref={adjustPopoverRef}>
-                                                        <button
-                                                            ref={adjustButtonRef}
-                                                            className="btn btn-secondary"
-                                                            onClick={() => setAdjustPopoverOpen(prev => !prev)}
-                                                            disabled={updating}
-                                                        >
-                                                            <i className="bi bi-chat-left-text"></i> Solicitar ajustes
-                                                        </button>
-                                                        {adjustPopoverOpen && (
-                                                            <div className="approval-popover animate-fade-in" role="dialog" aria-label="Solicitar ajustes">
-                                                                <label className="form-label" style={{ marginBottom: 'var(--space-2)' }}>Comentarios de ajustes *</label>
-                                                                <textarea
-                                                                    ref={adjustTextareaRef}
-                                                                    className="form-textarea approval-textarea"
-                                                                    placeholder="Describe los cambios que necesitas"
-                                                                    value={adjustComment}
-                                                                    onChange={e => setAdjustComment(e.target.value)}
-                                                                />
-                                                                <div className="approval-popover-actions">
-                                                                    <button
-                                                                        className="btn btn-ghost btn-sm"
-                                                                        onClick={() => {
-                                                                            setAdjustPopoverOpen(false);
-                                                                            setAdjustComment('');
-                                                                        }}
-                                                                        disabled={updating}
-                                                                    >
-                                                                        Cancelar
-                                                                    </button>
-                                                                    <button
-                                                                        className="btn btn-secondary btn-sm"
-                                                                        onClick={submitAdjustmentRequest}
-                                                                        disabled={updating || !adjustComment.trim()}
-                                                                    >
-                                                                        {updating ? 'Enviando...' : 'Enviar ajustes'}
-                                                                    </button>
-                                                                </div>
+                                                    {adjustPopoverOpen && (
+                                                        <div className="approval-popover animate-fade-in" role="dialog" aria-label="Solicitar ajustes">
+                                                            <label className="form-label" style={{ marginBottom: 'var(--space-2)' }}>Comentarios de ajustes *</label>
+                                                            <textarea
+                                                                ref={adjustTextareaRef}
+                                                                className="form-textarea approval-textarea"
+                                                                placeholder="Describe los cambios que necesitas"
+                                                                value={adjustComment}
+                                                                onChange={e => setAdjustComment(e.target.value)}
+                                                            />
+                                                            <div className="approval-popover-actions">
+                                                                <button
+                                                                    className="btn btn-ghost btn-sm"
+                                                                    onClick={() => {
+                                                                        setAdjustPopoverOpen(false);
+                                                                        setAdjustComment('');
+                                                                    }}
+                                                                    disabled={updating}
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-secondary btn-sm"
+                                                                    onClick={submitAdjustmentRequest}
+                                                                    disabled={updating || !adjustComment.trim()}
+                                                                >
+                                                                    {updating ? 'Enviando...' : 'Enviar ajustes'}
+                                                                </button>
                                                             </div>
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="empty-state" style={{ padding: '1.5rem' }}>
-                                        <i className="bi bi-cube empty-state-icon" style={{ fontSize: '2rem' }}></i>
-                                        <p className="empty-state-text">Diseño 3D aún no disponible</p>
-                                        {isLab && isApproval && (
-                                            <button className="btn btn-primary btn-sm" onClick={() => setApprovalModalOpen(true)}>
-                                                <i className="bi bi-upload"></i> Agregar link
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="empty-state" style={{ padding: '1.5rem' }}>
+                                    <i className="bi bi-cube empty-state-icon" style={{ fontSize: '2rem' }}></i>
+                                    <p className="empty-state-text">Diseño 3D aún no disponible</p>
+                                    {isLab && ['pendiente', 'en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
+                                        <button className="btn btn-primary btn-sm" onClick={() => setApprovalModalOpen(true)} style={{ marginTop: '0.5rem' }}>
+                                            <i className="bi bi-upload"></i> Subir link interactivo
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
 
                     <div className="card">
                         <div className="card-header"><h3 className="card-title">Historial</h3></div>

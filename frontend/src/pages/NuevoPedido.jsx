@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config.js';
+import Modal from '../components/Modal.jsx';
+import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
+import { buildItemSelection, formatDentalSelection } from '../utils/odontograma.js';
 
 const NuevoPedido = () => {
     const { getHeaders, user } = useAuth();
@@ -14,6 +17,7 @@ const NuevoPedido = () => {
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
     const [step, setStep] = useState(1);
+    const [odontogramaItemIndex, setOdontogramaItemIndex] = useState(null);
 
     useEffect(() => {
         Promise.all([
@@ -30,19 +34,21 @@ const NuevoPedido = () => {
     }, []);
 
     const addItem = (producto) => {
-        const exists = items.find(i => i.producto_id === producto.id);
-        if (exists) {
-            setItems(items.map(i => i.producto_id === producto.id ? { ...i, cantidad: i.cantidad + 1 } : i));
-        } else {
-            setItems([...items, {
-                producto_id: producto.id,
-                nombre: producto.nombre,
-                cantidad: 1,
-                precio_unitario: parseFloat(producto.precio_base),
-                color: '', material: producto.material_default || '',
-                pieza_dental: '', observaciones: ''
-            }]);
-        }
+        const nextItem = {
+            producto_id: producto.id,
+            nombre: producto.nombre,
+            categoria_nombre: producto.categoria_nombre,
+            categoria_tipo: producto.categoria_tipo,
+            cantidad: 1,
+            precio_unitario: parseFloat(producto.precio_base),
+            color_vita: '',
+            material: producto.material_nombre || producto.material_default || '',
+            notas: '',
+            ...buildItemSelection([], false)
+        };
+        const nextItems = [...items, nextItem];
+        setItems(nextItems);
+        setOdontogramaItemIndex(nextItems.length - 1);
     };
 
     const updateItem = (idx, field, value) => {
@@ -51,13 +57,23 @@ const NuevoPedido = () => {
 
     const removeItem = (idx) => {
         setItems(items.filter((_, i) => i !== idx));
+        setOdontogramaItemIndex((current) => {
+            if (current === null) return null;
+            if (current === idx) return null;
+            if (current > idx) return current - 1;
+            return current;
+        });
     };
 
     const total = items.reduce((sum, i) => sum + (i.cantidad * i.precio_unitario), 0);
 
     const handleSubmit = async () => {
-        if (!form.clinica_id || !form.paciente_nombre || items.length === 0) {
-            setError('Completa los campos requeridos y agrega al menos un producto');
+        if (!form.clinica_id || !form.paciente_nombre || !form.fecha_entrega || items.length === 0) {
+            setError('Completa clínica, paciente, fecha de entrega y agrega al menos un producto.');
+            return;
+        }
+        if (items.some(item => !item.piezas_dentales || item.piezas_dentales.length === 0)) {
+            setError('Cada item debe tener al menos una pieza seleccionada en el odontograma.');
             return;
         }
         setSaving(true);
@@ -72,10 +88,13 @@ const NuevoPedido = () => {
                         producto_id: i.producto_id,
                         cantidad: i.cantidad,
                         precio_unitario: i.precio_unitario,
-                        color: i.color,
+                        piezas_dentales: i.piezas_dentales || [],
+                        es_puente: !!i.es_puente,
+                        pieza_inicio: i.pieza_inicio || null,
+                        pieza_fin: i.pieza_fin || null,
+                        color_vita: i.color_vita,
                         material: i.material,
-                        pieza_dental: i.pieza_dental,
-                        observaciones: i.observaciones
+                        notas: i.notas
                     }))
                 })
             });
@@ -144,7 +163,7 @@ const NuevoPedido = () => {
                                 value={form.paciente_nombre} onChange={e => setForm({ ...form, paciente_nombre: e.target.value })} />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Fecha de Entrega</label>
+                            <label className="form-label">Fecha de Entrega *</label>
                             <input className="form-input" type="date" value={form.fecha_entrega}
                                 onChange={e => setForm({ ...form, fecha_entrega: e.target.value })} />
                         </div>
@@ -156,7 +175,7 @@ const NuevoPedido = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
                         <button className="btn btn-primary" onClick={() => setStep(2)}
-                            disabled={!form.paciente_nombre || !form.clinica_id}>
+                            disabled={!form.paciente_nombre || !form.clinica_id || !form.fecha_entrega}>
                             Siguiente <i className="bi bi-arrow-right"></i>
                         </button>
                     </div>
@@ -209,8 +228,13 @@ const NuevoPedido = () => {
                                     <div key={idx} style={{ padding: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', marginBottom: 'var(--space-3)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
                                             <strong style={{ fontSize: '0.875rem' }}>{item.nombre}</strong>
-                                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => removeItem(idx)}
-                                                style={{ color: '#EF4444' }}><i className="bi bi-trash"></i></button>
+                                            <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => setOdontogramaItemIndex(idx)}>
+                                                    <i className="bi bi-grid"></i> Odontograma
+                                                </button>
+                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => removeItem(idx)}
+                                                    style={{ color: '#EF4444' }}><i className="bi bi-trash"></i></button>
+                                            </div>
                                         </div>
                                         <div className="grid grid-cols-3" style={{ gap: 'var(--space-2)' }}>
                                             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -219,16 +243,26 @@ const NuevoPedido = () => {
                                                     onChange={e => updateItem(idx, 'cantidad', parseInt(e.target.value) || 1)} />
                                             </div>
                                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Pieza dental</label>
-                                                <input className="form-input" placeholder="ej: 1.1"
-                                                    value={item.pieza_dental} onChange={e => updateItem(idx, 'pieza_dental', e.target.value)} />
+                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Selección dental</label>
+                                                <input className="form-input" value={formatDentalSelection(item)} readOnly />
                                             </div>
                                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Color</label>
-                                                <input className="form-input" placeholder="ej: A2"
-                                                    value={item.color} onChange={e => updateItem(idx, 'color', e.target.value)} />
+                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Color VITA</label>
+                                                <input className="form-input" placeholder="Ej: A2"
+                                                    value={item.color_vita} onChange={e => updateItem(idx, 'color_vita', e.target.value)} />
                                             </div>
                                         </div>
+                                        <div className="form-group" style={{ marginBottom: 0, marginTop: 'var(--space-2)' }}>
+                                            <label className="form-label" style={{ fontSize: '0.6875rem' }}>Notas del item</label>
+                                            <input className="form-input" placeholder="Instrucciones de la restauración"
+                                                value={item.notas || ''} onChange={e => updateItem(idx, 'notas', e.target.value)} />
+                                        </div>
+                                        {item.piezas_dentales?.length > 0 && (
+                                            <div className="dental-summary-line">
+                                                <span className="dental-summary-chip">{item.piezas_dentales.length} piezas</span>
+                                                {item.es_puente && <span className="dental-summary-chip">Puente {item.pieza_inicio}-{item.pieza_fin}</span>}
+                                            </div>
+                                        )}
                                         <div style={{ textAlign: 'right', marginTop: 'var(--space-2)', fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
                                             {item.cantidad} × S/. {item.precio_unitario.toFixed(2)} = <strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong>
                                         </div>
@@ -277,8 +311,8 @@ const NuevoPedido = () => {
                                 {items.map((item, i) => (
                                     <tr key={i}>
                                         <td>{item.nombre}</td>
-                                        <td>{item.pieza_dental || '—'}</td>
-                                        <td>{item.color || '—'}</td>
+                                        <td>{formatDentalSelection(item)}</td>
+                                        <td>{item.color_vita || '—'}</td>
                                         <td>{item.cantidad}</td>
                                         <td>S/. {item.precio_unitario.toFixed(2)}</td>
                                         <td><strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong></td>
@@ -294,15 +328,15 @@ const NuevoPedido = () => {
                                     <div className="mobile-card-title">{item.nombre}</div>
                                     <span className="badge badge-enviado">{item.cantidad}</span>
                                 </div>
-                                <div className="mobile-card-grid">
-                                    <div className="mobile-field">
-                                        <span className="mobile-field-label">Pieza</span>
-                                        <span className="mobile-field-value">{item.pieza_dental || '—'}</span>
-                                    </div>
-                                    <div className="mobile-field">
-                                        <span className="mobile-field-label">Color</span>
-                                        <span className="mobile-field-value">{item.color || '—'}</span>
-                                    </div>
+                                    <div className="mobile-card-grid">
+                                        <div className="mobile-field">
+                                            <span className="mobile-field-label">Pieza</span>
+                                            <span className="mobile-field-value">{formatDentalSelection(item)}</span>
+                                        </div>
+                                        <div className="mobile-field">
+                                            <span className="mobile-field-label">Color</span>
+                                            <span className="mobile-field-value">{item.color_vita || '—'}</span>
+                                        </div>
                                     <div className="mobile-field">
                                         <span className="mobile-field-label">Precio unitario</span>
                                         <span className="mobile-field-value">S/. {item.precio_unitario.toFixed(2)}</span>
@@ -329,6 +363,31 @@ const NuevoPedido = () => {
                     </div>
                 </div>
             )}
+
+            <Modal
+                open={odontogramaItemIndex !== null}
+                onClose={() => setOdontogramaItemIndex(null)}
+                size="2xl"
+                title={`Asignación dental • ${items[odontogramaItemIndex]?.nombre || ''}`}
+                footer={(
+                    <>
+                        <button className="btn btn-ghost" onClick={() => setOdontogramaItemIndex(null)}>
+                            Cerrar
+                        </button>
+                    </>
+                )}
+            >
+                {odontogramaItemIndex !== null && items[odontogramaItemIndex] && (
+                    <OdontogramaInteractive
+                        product={items[odontogramaItemIndex]}
+                        selection={items[odontogramaItemIndex]}
+                        onChange={(dentalData) => {
+                            setItems(prev => prev.map((item, idx) => idx === odontogramaItemIndex ? { ...item, ...dentalData } : item));
+                        }}
+                        title="Selecciona las piezas del producto"
+                    />
+                )}
+            </Modal>
         </div>
     );
 };

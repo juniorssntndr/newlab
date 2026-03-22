@@ -35,7 +35,38 @@ export const createPedidoSchema = z.object({
 export const createPagoSchema = z.object({
     monto: montoSchema,
     metodo: z.string().trim().max(50).optional().nullable(),
+    tipo_fondo: z.enum(['caja', 'banco']).optional().nullable(),
+    cuenta_id: z.coerce.number().int().positive().optional().nullable(),
     referencia: z.string().trim().max(120).optional().nullable(),
     fecha_pago: z.string().max(30).optional().nullable(),
     notas: z.string().trim().max(1000).optional().nullable()
+});
+
+export const createMovimientoFinancieroSchema = z.object({
+    tipo: z.enum(['ingreso', 'egreso']).default('egreso'),
+    tipo_fondo: z.enum(['caja', 'banco']).optional().nullable(),
+    cuenta_id: z.coerce.number().int().positive().optional().nullable(),
+    fecha_movimiento: z.string().max(30).optional().nullable(),
+    monto: montoSchema,
+    grupo_gasto: z.enum(['operativo', 'costo_directo', 'otro']).optional().nullable(),
+    categoria_gasto: z.string().trim().max(80).optional().nullable(),
+    producto_id: z.coerce.number().int().positive().optional().nullable(),
+    clinica_id: z.coerce.number().int().positive().optional().nullable(),
+    descripcion: z.string().trim().max(1000).optional().nullable(),
+    referencia: z.string().trim().max(120).optional().nullable()
+}).superRefine((value, ctx) => {
+    if (value.tipo === 'egreso' && !value.categoria_gasto) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'La categoria de gasto es obligatoria para egresos.',
+            path: ['categoria_gasto']
+        });
+    }
+    if (value.tipo === 'egreso' && !value.grupo_gasto) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'El grupo de gasto es obligatorio para egresos.',
+            path: ['grupo_gasto']
+        });
+    }
 });

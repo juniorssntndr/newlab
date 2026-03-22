@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
-import { createPagoSchema } from '../validation/schemas.js';
+import { createMovimientoFinancieroSchema, createPagoSchema } from '../validation/schemas.js';
 import { writeAuditEvent } from '../services/audit.js';
 
 const router = Router();
@@ -17,9 +17,47 @@ const buildEstadoPagoCase = (alias = 'p', pagoAlias = 'pg') => {
 
 const normalizePago = (pago) => ({
     ...pago,
-    monto: parseFloat(pago.monto),
+    monto: parseFloat(pago.monto || 0),
     conciliado: !!pago.conciliado
 });
+
+const GASTOS_OPERATIVOS = ['alquiler', 'servicios', 'sueldos', 'marketing', 'mantenimiento'];
+const COSTOS_DIRECTOS = ['insumos', 'materiales', 'laboratorio', 'logistica'];
+
+const normalizeMovimiento = (movimiento) => ({
+    ...movimiento,
+    monto: parseFloat(movimiento.monto || 0)
+});
+
+const metodoToTipoFondo = (metodo = '') => {
+    const normalized = String(metodo || '').trim().toLowerCase();
+    if (normalized === 'efectivo') return 'caja';
+    return 'banco';
+};
+
+const resolveCuentaFinanciera = async (db, { cuentaId, tipoFondo }) => {
+    if (cuentaId) {
+        const cuenta = await db.query('SELECT id, tipo_cuenta, activo FROM nl_fin_cuentas WHERE id = $1 LIMIT 1', [cuentaId]);
+        if (cuenta.rows.length === 0 || !cuenta.rows[0].activo) {
+            return { error: 'La cuenta financiera seleccionada no existe o está inactiva.' };
+        }
+        if (cuenta.rows[0].tipo_cuenta !== tipoFondo) {
+            return { error: `La cuenta seleccionada no corresponde a ${tipoFondo === 'caja' ? 'caja' : 'banco'}.` };
+        }
+        return { cuentaId: cuenta.rows[0].id };
+    }
+
+    const cuentaDefault = await db.query(
+        'SELECT id FROM nl_fin_cuentas WHERE activo = TRUE AND tipo_cuenta = $1 ORDER BY id ASC LIMIT 1',
+        [tipoFondo]
+    );
+
+    if (cuentaDefault.rows.length === 0) {
+        return { error: `No existe una cuenta activa de tipo ${tipoFondo}.` };
+    }
+
+    return { cuentaId: cuentaDefault.rows[0].id };
+};
 
 // GET /api/finanzas
 router.get('/', async (req, res, next) => {
@@ -41,7 +79,8 @@ router.get('/', async (req, res, next) => {
 
         if (search) {
             params.push(`%${search}%`);
-            where += ` AND (p.codigo ILIKE $${params.length} OR p.paciente_nombre ILIKE $${params.length})`;
+            where += ` AND (p.codigo ILIKE $${params.length} OR p.paciente_nombre ILIKE $${params.length} OR c.nombre ILIKE $${params.length})`;
+
         }
 
         const estadoCase = buildEstadoPagoCase('p', 'pg');
@@ -53,12 +92,18 @@ router.get('/', async (req, res, next) => {
         const query = `
             SELECT p.*, c.nombre as clinica_nombre,
                    COALESCE(pg.monto_pagado, 0) as monto_pagado,
+                   COALESCE(pg.monto_pagado_caja, 0) as monto_pagado_caja,
+                   COALESCE(pg.monto_pagado_banco, 0) as monto_pagado_banco,
                    (p.total - COALESCE(pg.monto_pagado, 0)) as saldo,
                    ${estadoCase} as estado_pago
             FROM nl_pedidos p
             LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
             LEFT JOIN (
-                SELECT pedido_id, SUM(monto) as monto_pagado
+                SELECT
+                    pedido_id,
+                    SUM(monto) as monto_pagado,
+                    SUM(CASE WHEN tipo_fondo = 'caja' THEN monto ELSE 0 END) as monto_pagado_caja,
+                    SUM(CASE WHEN tipo_fondo = 'banco' THEN monto ELSE 0 END) as monto_pagado_banco
                 FROM nl_pagos
                 GROUP BY pedido_id
             ) pg ON pg.pedido_id = p.id
@@ -70,9 +115,167 @@ router.get('/', async (req, res, next) => {
         const rows = result.rows.map((row) => ({
             ...row,
             monto_pagado: parseFloat(row.monto_pagado || 0),
+            monto_pagado_caja: parseFloat(row.monto_pagado_caja || 0),
+            monto_pagado_banco: parseFloat(row.monto_pagado_banco || 0),
             saldo: parseFloat(row.saldo || 0)
         }));
         res.json(rows);
+    } catch (err) { next(err); }
+});
+
+// GET /api/finanzas/catalogos
+router.get('/catalogos', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const cuentasResult = await pool.query(
+            'SELECT id, nombre, tipo_cuenta, moneda, saldo_inicial, activo FROM nl_fin_cuentas WHERE activo = TRUE ORDER BY tipo_cuenta ASC, nombre ASC'
+        );
+
+        res.json({
+            cuentas: cuentasResult.rows.map((row) => ({
+                ...row,
+                saldo_inicial: parseFloat(row.saldo_inicial || 0)
+            })),
+            categorias_gasto: {
+                operativo: GASTOS_OPERATIVOS,
+                costo_directo: COSTOS_DIRECTOS,
+                otro: []
+            }
+        });
+    } catch (err) { next(err); }
+});
+
+// GET /api/finanzas/movimientos
+router.get('/movimientos', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const { tipo, tipo_fondo, grupo_gasto, from, to, search, limit } = req.query;
+        const params = [];
+        let where = 'WHERE 1=1';
+
+        if (tipo) {
+            params.push(tipo);
+            where += ` AND m.tipo = $${params.length}`;
+        }
+        if (grupo_gasto) {
+            params.push(grupo_gasto);
+            where += ` AND m.grupo_gasto = $${params.length}`;
+        }
+        if (tipo_fondo) {
+            params.push(tipo_fondo);
+            where += ` AND m.tipo_fondo = $${params.length}`;
+        }
+        if (from) {
+            params.push(from);
+            where += ` AND m.fecha_movimiento >= $${params.length}::date`;
+        }
+        if (to) {
+            params.push(to);
+            where += ` AND m.fecha_movimiento <= $${params.length}::date`;
+        }
+        if (search) {
+            params.push(`%${search}%`);
+            where += ` AND (m.categoria_gasto ILIKE $${params.length} OR m.descripcion ILIKE $${params.length} OR m.referencia ILIKE $${params.length})`;
+        }
+
+        if (req.user.tipo === 'cliente' && req.user.clinica_id) {
+            params.push(req.user.clinica_id);
+            where += ` AND m.clinica_id = $${params.length}`;
+        }
+
+        const queryLimit = Math.min(Math.max(parseInt(limit || 80, 10), 1), 300);
+        params.push(queryLimit);
+
+        const result = await pool.query(
+            `SELECT m.*, c.nombre as cuenta_nombre, c.tipo_cuenta, u.nombre as creado_por_nombre, pr.nombre as producto_nombre
+             FROM nl_fin_movimientos m
+             LEFT JOIN nl_fin_cuentas c ON c.id = m.cuenta_id
+             LEFT JOIN nl_usuarios u ON u.id = m.creado_por
+             LEFT JOIN nl_productos pr ON pr.id = m.producto_id
+             ${where}
+             ORDER BY m.fecha_movimiento DESC, m.created_at DESC
+             LIMIT $${params.length}`,
+            params
+        );
+
+        res.json(result.rows.map(normalizeMovimiento));
+    } catch (err) { next(err); }
+});
+
+// POST /api/finanzas/movimientos
+router.post('/movimientos', validateBody(createMovimientoFinancieroSchema), async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
+
+        const {
+            tipo,
+            tipo_fondo,
+            cuenta_id,
+            fecha_movimiento,
+            monto,
+            grupo_gasto,
+            categoria_gasto,
+            producto_id,
+            clinica_id,
+            descripcion,
+            referencia
+        } = req.body;
+
+        const montoNumber = parseFloat(monto);
+        if (Number.isNaN(montoNumber) || montoNumber <= 0) {
+            return res.status(400).json({ error: 'Monto invalido' });
+        }
+
+        const tipoFondo = tipo_fondo || 'banco';
+        const cuentaResolution = await resolveCuentaFinanciera(pool, {
+            cuentaId: cuenta_id || null,
+            tipoFondo
+        });
+        if (cuentaResolution.error) {
+            return res.status(400).json({ error: cuentaResolution.error });
+        }
+        const cuentaId = cuentaResolution.cuentaId;
+
+        const result = await pool.query(
+            `INSERT INTO nl_fin_movimientos (
+                tipo, tipo_fondo, cuenta_id, fecha_movimiento, monto, grupo_gasto, categoria_gasto,
+                producto_id, clinica_id, descripcion, referencia, creado_por
+            )
+            VALUES ($1, $2, $3, COALESCE($4::date, CURRENT_DATE), $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING *`,
+            [
+                tipo,
+                tipoFondo,
+                cuentaId,
+                fecha_movimiento || null,
+                montoNumber,
+                grupo_gasto || null,
+                categoria_gasto || null,
+                producto_id || null,
+                clinica_id || null,
+                descripcion || null,
+                referencia || null,
+                req.user.id
+            ]
+        );
+
+        await writeAuditEvent(req, {
+            entidad: 'movimiento_financiero',
+            entidadId: result.rows[0].id,
+            accion: 'movimiento_financiero_created',
+            descripcion: `${tipo === 'egreso' ? 'Egreso' : 'Ingreso'} registrado`,
+            metadata: {
+                tipo,
+                monto: montoNumber,
+                categoria_gasto: categoria_gasto || null,
+                grupo_gasto: grupo_gasto || null,
+                cuenta_id: cuentaId,
+                tipo_fondo: tipoFondo
+            }
+        });
+
+        res.status(201).json(normalizeMovimiento(result.rows[0]));
     } catch (err) { next(err); }
 });
 
@@ -96,9 +299,10 @@ router.get('/:id', async (req, res, next) => {
         }
 
         const pagosResult = await pool.query(
-            `SELECT pg.*, u.nombre as creado_por_nombre
+            `SELECT pg.*, u.nombre as creado_por_nombre, c.nombre as cuenta_nombre
              FROM nl_pagos pg
              LEFT JOIN nl_usuarios u ON pg.creado_por = u.id
+             LEFT JOIN nl_fin_cuentas c ON c.id = pg.cuenta_id
              WHERE pg.pedido_id = $1
              ORDER BY pg.fecha_pago DESC, pg.created_at DESC`,
             [req.params.id]
@@ -114,6 +318,12 @@ router.get('/:id', async (req, res, next) => {
 
         const pagos = pagosResult.rows.map(normalizePago);
         const montoPagado = pagos.reduce((sum, pago) => sum + (Number.isNaN(pago.monto) ? 0 : pago.monto), 0);
+        const montoPagadoCaja = pagos
+            .filter((pago) => pago.tipo_fondo === 'caja')
+            .reduce((sum, pago) => sum + (Number.isNaN(pago.monto) ? 0 : pago.monto), 0);
+        const montoPagadoBancos = pagos
+            .filter((pago) => pago.tipo_fondo === 'banco')
+            .reduce((sum, pago) => sum + (Number.isNaN(pago.monto) ? 0 : pago.monto), 0);
         const total = parseFloat(pedido.total || 0);
         const saldo = total - montoPagado;
         const estadoPago = montoPagado >= total ? 'cancelado' : montoPagado > 0 ? 'pago_parcial' : 'por_cancelar';
@@ -124,6 +334,8 @@ router.get('/:id', async (req, res, next) => {
             items: itemsResult.rows,
             pagos,
             monto_pagado: montoPagado,
+            monto_pagado_caja: montoPagadoCaja,
+            monto_pagado_bancos: montoPagadoBancos,
             saldo,
             estado_pago: estadoPago,
             pagos_pendientes_conciliacion: pagosPendientesConciliacion
@@ -137,11 +349,14 @@ router.post('/:id/pagos', validateBody(createPagoSchema), async (req, res, next)
         const pool = req.app.locals.pool;
         if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
 
-        const { monto, metodo, referencia, fecha_pago, notas } = req.body;
+        const { monto, metodo, tipo_fondo, cuenta_id, referencia, fecha_pago, notas } = req.body;
         const montoNumber = parseFloat(monto);
         if (!monto || Number.isNaN(montoNumber) || montoNumber <= 0) {
             return res.status(400).json({ error: 'Monto válido es requerido' });
         }
+
+        const metodoPago = metodo || 'transferencia';
+        const tipoFondo = tipo_fondo || metodoToTipoFondo(metodoPago);
 
         const client = await pool.connect();
         try {
@@ -175,11 +390,30 @@ router.post('/:id/pagos', validateBody(createPagoSchema), async (req, res, next)
                 });
             }
 
+            const cuentaResolution = await resolveCuentaFinanciera(client, {
+                cuentaId: cuenta_id || null,
+                tipoFondo
+            });
+            if (cuentaResolution.error) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: cuentaResolution.error });
+            }
+
             const result = await client.query(
-                `INSERT INTO nl_pagos (pedido_id, monto, metodo, referencia, fecha_pago, notas, creado_por)
-                 VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_DATE), $6, $7)
+                `INSERT INTO nl_pagos (pedido_id, monto, metodo, tipo_fondo, cuenta_id, referencia, fecha_pago, notas, creado_por)
+                 VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_DATE), $8, $9)
                  RETURNING *`,
-                [req.params.id, montoNumber, metodo || 'transferencia', referencia || null, fecha_pago || null, notas || null, req.user.id]
+                [
+                    req.params.id,
+                    montoNumber,
+                    metodoPago,
+                    tipoFondo,
+                    cuentaResolution.cuentaId,
+                    referencia || null,
+                    fecha_pago || null,
+                    notas || null,
+                    req.user.id
+                ]
             );
 
             await client.query('COMMIT');
@@ -192,7 +426,9 @@ router.post('/:id/pagos', validateBody(createPagoSchema), async (req, res, next)
                 metadata: {
                     pedido_id: Number(req.params.id),
                     monto: montoNumber,
-                    metodo: metodo || 'transferencia'
+                    metodo: metodoPago,
+                    tipo_fondo: tipoFondo,
+                    cuenta_id: cuentaResolution.cuentaId
                 }
             });
 
@@ -265,7 +501,7 @@ router.post('/pagos-masivos', async (req, res, next) => {
         const pool = req.app.locals.pool;
         if (req.user.tipo === 'cliente') return res.status(403).json({ error: 'No autorizado' });
 
-        const { clinica_id, monto_total, metodo, referencia, fecha_pago, notas } = req.body;
+        const { clinica_id, monto_total, metodo, tipo_fondo, cuenta_id, referencia, fecha_pago, notas } = req.body;
         const montoTotalNumber = parseFloat(monto_total);
 
         if (!clinica_id || isNaN(montoTotalNumber) || montoTotalNumber <= 0) {
@@ -275,6 +511,17 @@ router.post('/pagos-masivos', async (req, res, next) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
+
+            const metodoPago = metodo || 'transferencia';
+            const tipoFondo = tipo_fondo || metodoToTipoFondo(metodoPago);
+            const cuentaResolution = await resolveCuentaFinanciera(client, {
+                cuentaId: cuenta_id || null,
+                tipoFondo
+            });
+            if (cuentaResolution.error) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: cuentaResolution.error });
+            }
 
             // Find all pending orders for this clinica, FOR UPDATE to lock them during transaction
             const pendingOrdersQuery = `
@@ -308,16 +555,18 @@ router.post('/pagos-masivos', async (req, res, next) => {
                 
                 // Insert individual payment record for this order
                 const pagoResult = await client.query(
-                    `INSERT INTO nl_pagos (pedido_id, monto, metodo, referencia, fecha_pago, notas, creado_por)
-                     VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_DATE), $6, $7)
+                    `INSERT INTO nl_pagos (pedido_id, monto, metodo, tipo_fondo, cuenta_id, referencia, fecha_pago, notas, creado_por)
+                     VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_DATE), $8, $9)
                      RETURNING *`,
                     [
                         order.id, 
                         montoAbonarOrder, 
-                        metodo || 'transferencia', 
-                        referencia || 'Pago Masivo', 
-                        fecha_pago || null, 
-                        notas || 'Abono automático por pago masivo', 
+                        metodoPago,
+                        tipoFondo,
+                        cuentaResolution.cuentaId,
+                        referencia || 'Pago Masivo',
+                        fecha_pago || null,
+                        notas || 'Abono automático por pago masivo',
                         req.user.id
                     ]
                 );

@@ -25,8 +25,8 @@ export const getAllowedOrigins = () => {
 export const getPort = () => parseInt(process.env.PORT || '3001', 10);
 
 export const getRateLimitConfig = () => ({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
-    max: parseInt(process.env.RATE_LIMIT_MAX || '300', 10)
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || (isProduction ? '900000' : '60000'), 10),
+    max: parseInt(process.env.RATE_LIMIT_MAX || (isProduction ? '300' : '1000'), 10)
 });
 
 export const getSupabaseStorageConfig = () => ({

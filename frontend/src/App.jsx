@@ -13,11 +13,14 @@ import DetallePedido from './pages/DetallePedido.jsx';
 import Finanzas from './pages/Finanzas.jsx';
 import DetalleFinanza from './pages/DetalleFinanza.jsx';
 import FacturarPedido from './pages/FacturarPedido.jsx';
+import CajaGastos from './pages/CajaGastos.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Equipo from './pages/Equipo.jsx';
 
 import Almacen from './pages/Almacen.jsx';
+import CalendarioCliente from './pages/CalendarioCliente.jsx';
+import CatalogoCliente from './pages/CatalogoCliente.jsx';
 
 const LoadingScreen = () => (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
@@ -71,9 +74,12 @@ const App = () => {
                     <Route path="pedidos/nuevo" element={<NuevoPedido />} />
                     <Route path="pedidos/:id" element={<DetallePedido />} />
                     <Route path="finanzas" element={<LabOnlyRoute><Finanzas /></LabOnlyRoute>} />
+                    <Route path="caja-gastos" element={<LabOnlyRoute><CajaGastos /></LabOnlyRoute>} />
                     <Route path="finanzas/:id" element={<LabOnlyRoute><DetalleFinanza /></LabOnlyRoute>} />
                     <Route path="finanzas/:id/facturar" element={<LabOnlyRoute><FacturarPedido /></LabOnlyRoute>} />
                     <Route path="calendario" element={<LabOnlyRoute><Calendario /></LabOnlyRoute>} />
+                    <Route path="mi-calendario" element={<CalendarioCliente />} />
+                    <Route path="catalogo" element={<CatalogoCliente />} />
                     <Route path="cuenta" element={<Cuenta />} />
                     <Route path="equipo" element={<AdminOnlyRoute><Equipo /></AdminOnlyRoute>} />
                 </Route>

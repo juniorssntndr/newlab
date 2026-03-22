@@ -251,6 +251,8 @@ h4 {
 .app-layout {
   display: flex;
   min-height: 100vh;
+  overflow-x: hidden; /* Force strict containment to prevent mobile blowout */
+  width: 100%;
 }
 
 .app-main {
@@ -260,6 +262,8 @@ h4 {
   flex-direction: column;
   min-height: 100vh;
   transition: margin-left var(--transition-base);
+  min-width: 0; /* Prevent flex items from expanding beyond screen */
+  overflow-x: hidden;
 }
 
 .app-main.sidebar-collapsed {
@@ -353,6 +357,15 @@ h4 {
   flex: 1;
   padding: var(--space-4) var(--space-3);
   overflow-y: auto;
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari and Opera */
 }
 
 .nav-section {
@@ -807,20 +820,169 @@ h4 {
   gap: var(--space-4);
 }
 
+.dashboard-kpi-grid-liquid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.dashboard-kpi-grid-featured {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.dashboard-summary-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.dashboard-summary-group-title {
+  margin-bottom: var(--space-3);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.dashboard-filters-card {
+  padding: var(--space-4);
+}
+
+.dashboard-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.dashboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dashboard-list.compact {
+  gap: var(--space-2);
+}
+
+.dashboard-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px dashed var(--color-border);
+  padding-bottom: var(--space-2);
+}
+
+.dashboard-list-item strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .dashboard-kpi-card {
   padding: var(--space-4);
-  min-height: 126px;
+  min-height: 158px;
+}
+
+.dashboard-kpi-card-featured {
+  min-height: 172px;
+}
+
+.dashboard-kpi-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100%;
+}
+
+.dashboard-kpi-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dashboard-kpi-heading-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.dashboard-kpi-heading {
+  font-size: 0.95rem;
+  line-height: 1.25;
+  font-weight: 650;
+  color: var(--color-text);
 }
 
 .dashboard-kpi-card .kpi-icon {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   font-size: 1.125rem;
-  margin-bottom: var(--space-3);
+  margin-bottom: 0;
+  flex-shrink: 0;
+  border-radius: 14px;
 }
 
-.dashboard-kpi-card .kpi-value {
-  font-size: clamp(1.5rem, 1.2rem + 1vw, 1.9rem);
+.dashboard-kpi-icon-right {
+  margin-left: auto;
+}
+
+.dashboard-kpi-main-value {
+  font-size: clamp(2rem, 1.55rem + 1.25vw, 2.9rem);
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-text);
+  margin-top: auto;
+  word-break: break-word;
+}
+
+.dashboard-kpi-main-value-featured {
+  font-size: clamp(1.35rem, 1.1rem + 0.8vw, 1.95rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.dashboard-kpi-currency {
+  font-size: clamp(1.45rem, 1.2rem + 0.7vw, 2rem);
+  letter-spacing: -0.03em;
+}
+
+.dashboard-kpi-note {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  margin-top: auto;
+}
+
+.dashboard-kpi-note-featured {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.88;
+}
+
+.strategic-kpi-card {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
+  background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.06), rgba(var(--color-primary-rgb), 0.015));
+  min-height: 116px;
+}
+
+.strategic-bento-main {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.strategic-chart-shell {
+  min-height: 340px;
+  height: 340px;
+}
+
+.strategic-chart-shell--short {
+  min-height: 280px;
+  height: 280px;
 }
 
 .kpi-card::after {
@@ -2237,6 +2399,10 @@ h4 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .dashboard-filters-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .app-content {
     padding: var(--space-6);
   }
@@ -2293,9 +2459,27 @@ h4 {
     grid-template-columns: 1fr;
   }
 
+  .strategic-bento-main {
+    grid-template-columns: 1fr;
+  }
+
+  .strategic-chart-shell {
+    min-height: 260px;
+    height: 260px;
+  }
+
+  .strategic-chart-shell--short {
+    min-height: 220px;
+    height: 220px;
+  }
+
   .dashboard-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-3);
+  }
+
+  .dashboard-filters-grid {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-kpi-card {
@@ -2556,8 +2740,972 @@ h4 {
   align-items: start;
 }
 
+.order-modal-compact {
+  max-width: 1160px;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.order-modal-compact .modal-header {
+  padding: var(--space-5);
+}
+
+.order-modal-compact .modal-body {
+  padding: var(--space-3) var(--space-4);
+  overflow: auto;
+  display: flex;
+  min-height: 0;
+}
+
+.order-modal-compact .modal-footer {
+  padding: var(--space-2) var(--space-4);
+  position: static;
+  background: var(--color-surface);
+  z-index: 2;
+}
+
+.order-modal-notes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.order-modal-layout-v2 {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 0;
+  width: 100%;
+}
+
+.order-modal-summary-v2 {
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.order-form-section {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-3);
+  backdrop-filter: blur(8px);
+}
+
+.order-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid rgba(var(--color-primary-rgb), 0.15);
+  padding-bottom: 0.5rem;
+  margin-top: 0;
+  margin-bottom: var(--space-3);
+}
+
+.order-section-title i {
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.order-modal-error-v2 {
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #dc2626;
+  font-size: 0.82rem;
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+
+
+.order-modal-bento-v2 {
+  display: grid;
+  grid-template-columns: minmax(320px, 460px) minmax(400px, 540px);
+  gap: var(--space-3);
+  align-items: stretch;
+  min-height: 0;
+  height: 100%;
+  justify-content: center;
+}
+
+.order-modal-odonto-v2 {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+}
+
+@media (max-width: 860px) {
+  /* Enforce a strict vertical stack layout to avoid grid dimension collapse */
+  .order-modal-bento-v2 {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    gap: var(--space-4);
+  }
+
+  .order-modal-compact .modal-body {
+    display: block !important;
+    overflow-y: auto !important;
+  }
+
+  /* Multi-Step Mobile Form Logic */
+  .modal-mobile-step-1 .mobile-only-hide-step-1 { display: none !important; }
+  .modal-mobile-step-2 .mobile-only-hide-step-2 { display: none !important; }
+  .hide-on-mobile { display: none !important; }
+
+  .order-modal-fields-v2 {
+    order: 0 !important; /* Ensure it stays on top */
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important; 
+    flex: 0 0 auto;
+    padding-top: 1rem !important;
+  }
+
+  .order-modal-odonto-v2 {
+    order: 1 !important; /* Ensure it stays at the bottom */
+    height: auto !important;
+    min-height: 480px; 
+    padding-bottom: 2rem;
+    flex: 0 0 auto;
+  }
+}
+
+@media (min-width: 861px) {
+  .hide-on-desktop { display: none !important; }
+}
+
+.order-modal-fields-v2 {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.5);
+  padding: var(--space-2);
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  overflow: auto;
+  max-height: none;
+  height: 100%;
+  min-height: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+
+
+.order-modal-fields-v2 .form-label {
+  margin-bottom: 0.3rem;
+  font-size: 0.79rem;
+  font-weight: 600;
+}
+
+.order-modal-fields-v2 .form-input,
+.order-modal-fields-v2 .form-select,
+.order-modal-fields-v2 .form-textarea {
+  min-height: 40px;
+  padding: 0.45rem 0.7rem;
+}
+
+.order-modal-fields-v2 .form-textarea {
+  min-height: 68px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), min-height var(--transition-fast);
+}
+
+.order-modal-fields-v2 .form-textarea:focus {
+  min-height: 86px;
+}
+
+.order-fields-grid-v2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.order-status-card-v2 {
+  border: 1px dashed rgba(148, 163, 184, 0.38);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.7rem;
+  background: rgba(248, 250, 252, 0.62);
+}
+
+.order-status-card-v2 span {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+}
+
+.order-status-card-v2 strong {
+  display: block;
+  font-size: 1.05rem;
+  margin-top: 0.15rem;
+}
+
+.order-status-card-v2 p {
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+  color: var(--color-text-secondary);
+}
+
+.order-selection-summary-v2 {
+  font-family: var(--font-sans);
+  line-height: 1.35;
+}
+
+.order-selection-bridge-v2 {
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--color-primary-hover);
+  font-weight: 600;
+}
+
+.order-selection-meta-v2 {
+  margin-top: 0.35rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.28);
+  padding-top: 0.35rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.order-selection-row-v2 {
+  font-size: 0.73rem;
+  color: var(--color-text-secondary);
+}
+
+.order-selection-row-v2 b {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.order-status-legend-v2 {
+  margin-top: 0.25rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.38rem 0.75rem;
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+}
+
+.order-status-legend-v2 div {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+
+/* ============================================ */
+/* Odontograma Interactive                      */
+/* ============================================ */
+.odontograma-shell {
+  --odt-neutral-fill: #D1D5DB;
+  --odt-neutral-stroke: #E5E7EB;
+  --odt-groove: rgba(51, 65, 85, 0.62);
+  --odt-selected-fill: #22D3EE;
+  --odt-selected-stroke: #0891B2;
+  --odt-pillar-fill: #10B981;
+  --odt-pillar-stroke: #047857;
+  --odt-pontic-fill: #F97316;
+  --odt-pontic-stroke: #C2410C;
+  --odt-disabled-fill: rgba(100, 116, 139, 0.22);
+  --odt-disabled-stroke: rgba(100, 116, 139, 0.55);
+  --odt-label: #FFFFFF;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.92));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  padding: var(--space-5);
+}
+
+.odontograma-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.odontograma-header h4 {
+  margin-bottom: 2px;
+  font-size: 1.02rem;
+}
+
+.odontograma-header p {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.odontograma-hint {
+  margin-top: 0.25rem;
+  color: #B45309;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.odontograma-inline-hint {
+  margin-top: 0.45rem;
+  font-size: 0.74rem;
+  color: #B45309;
+  font-weight: 600;
+  text-align: center;
+}
+
+.odontograma-product-pill {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.45);
+  background: rgba(var(--color-primary-rgb), 0.12);
+  color: var(--color-primary-hover);
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.odontograma-bento {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
+  gap: var(--space-4);
+}
+
+.order-modal-bento-v2 .odontograma-bento {
+  grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
+  gap: var(--space-2);
+}
+
+.order-modal-bento-v2 .odontograma-bento.odontograma-bento-single {
+  grid-template-columns: 1fr;
+  height: 100%;
+  flex: 1;
+}
+
+.order-modal-bento-v2 .odontograma-side {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.order-modal-bento-v2 .odontograma-legend {
+  margin-top: auto;
+}
+
+.odontograma-bento-single {
+  grid-template-columns: 1fr;
+}
+
+.odontograma-panel,
+.odontograma-side {
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.56);
+  backdrop-filter: blur(6px);
+}
+
+.odontograma-panel {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.odontograma-stage {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.odontograma-svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: min(50vh, 520px);
+  user-select: none;
+  touch-action: none;
+  background: radial-gradient(circle at 50% 50%, rgba(241, 245, 249, 0.95), rgba(226, 232, 240, 0.95));
+  border-radius: var(--radius-lg);
+}
+
+.order-modal-compact .odontograma-shell {
+  padding: var(--space-2);
+}
+
+.order-modal-compact .odontograma-header {
+  margin-bottom: var(--space-1);
+}
+
+.order-modal-compact .odontograma-header h4 {
+  font-size: 0.97rem;
+}
+
+.order-modal-compact .odontograma-header p {
+  font-size: 0.73rem;
+}
+
+.order-modal-compact .odontograma-bento {
+  grid-template-columns: minmax(0, 4fr) minmax(190px, 1fr);
+  gap: var(--space-3);
+}
+
+.order-modal-compact .odontograma-bento.odontograma-bento-single {
+  grid-template-columns: 1fr;
+}
+
+.order-modal-compact .odontograma-panel {
+  padding: var(--space-2);
+}
+
+.order-modal-compact .odontograma-side {
+  padding: var(--space-2);
+  gap: var(--space-2);
+}
+
+.order-modal-compact .odontograma-stat,
+.order-modal-compact .odontograma-legend {
+  padding: var(--space-2);
+}
+
+.order-modal-compact .odontograma-svg {
+  height: clamp(300px, 50vh, 520px);
+  max-height: 50vh;
+}
+
+.order-modal-bento-v2 .odontograma-shell {
+  height: 100%;
+  width: 100%;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.odonto-status-strip {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, 0.75);
+  margin-top: var(--space-2);
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: nowrap;
+  font-size: 0.76rem;
+  overflow: hidden;
+}
+
+.odonto-status-pill {
+  background: rgba(var(--color-primary-rgb), 0.12);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+  border-radius: 999px;
+  color: var(--color-primary-hover);
+  padding: 0.1rem 0.55rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.odonto-status-text {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.odonto-pieces-list {
+  flex: 1;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.odonto-status-divider {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.order-modal-bento-v2 .odontograma-panel {
+  min-height: 0;
+  padding: var(--space-2);
+  height: 100%;
+}
+
+.order-modal-bento-v2 .odontograma-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+  margin-inline: auto;
+}
+
+.order-modal-bento-v2 .odontograma-svg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+@media (max-width: 1220px) {
+  .order-modal-compact {
+    max-width: 1040px;
+  }
+
+.order-modal-bento-v2 .odontograma-stage {
+  width: 100%;
+  max-height: 50vh;
+}
+}
+
+.tooth-node {
+  cursor: pointer;
+  transition: transform var(--transition-fast), opacity var(--transition-fast), filter var(--transition-fast);
+}
+
+.tooth-outline {
+  fill: none;
+  stroke: var(--odt-neutral-stroke);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tooth-fill {
+  fill: var(--odt-neutral-fill);
+  opacity: 1;
+  transition: fill var(--transition-fast), stroke var(--transition-fast), filter var(--transition-fast);
+}
+
+.tooth-groove {
+  fill: none;
+  stroke: var(--odt-groove);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.tooth-code {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  fill: var(--odt-label);
+  stroke: rgba(15, 23, 42, 0.9);
+  stroke-width: 1.6;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+.tooth-node:hover {
+  transform: scale(1.012);
+}
+
+.tooth-node:hover .tooth-fill {
+  fill: rgba(34, 211, 238, 0.55);
+}
+
+.tooth-node.is-selected .tooth-fill {
+  fill: var(--odt-selected-fill);
+  filter: drop-shadow(0 0 7px rgba(34, 211, 238, 0.5));
+}
+
+.tooth-node.is-selected .tooth-outline {
+  stroke: var(--odt-selected-stroke);
+}
+
+.tooth-node.is-pillar .tooth-fill {
+  fill: var(--odt-pillar-fill);
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.52));
+}
+
+.tooth-node.is-pillar .tooth-outline {
+  stroke: var(--odt-pillar-stroke);
+}
+
+.tooth-node.is-pontic .tooth-fill {
+  fill: var(--odt-pontic-fill);
+  filter: drop-shadow(0 0 8px rgba(251, 146, 60, 0.52));
+}
+
+.tooth-node.is-pontic .tooth-outline {
+  stroke: var(--odt-pontic-stroke);
+}
+
+.tooth-node.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.tooth-node.is-disabled .tooth-fill {
+  fill: var(--odt-disabled-fill);
+}
+
+.tooth-node.is-disabled .tooth-outline {
+  stroke: var(--odt-disabled-stroke);
+  stroke-dasharray: 3 2;
+}
+
+.bridge-connector {
+  stroke: rgba(var(--color-primary-rgb), 0.95);
+  stroke-width: 9;
+  stroke-linecap: round;
+  opacity: 0.94;
+}
+
+.bridge-role-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke-width: 1.6;
+}
+
+.bridge-role-label.pillar {
+  fill: #22C55E;
+  stroke: #14532D;
+}
+
+.bridge-role-label.pontic {
+  fill: #FB923C;
+  stroke: #9A3412;
+}
+
+.odontograma-help-text {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================ */
+/* Catalog Filters Container Fix                */
+/* ============================================ */
+.catalog-search-filter-container {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* Critical for flex blowout */
+}
+
+.catalog-search-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 100%;
+}
+
+.catalog-filters-scrollable {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  padding-bottom: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* Critical: allows scrolling without pushing parent width */
+}
+
+.catalog-filters-scrollable::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+@media (max-width: 768px) {
+  .catalog-search-filter-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    overflow: hidden; /* Force strict containment locally */
+  }
+  
+  .catalog-search-wrapper {
+    flex: none;
+    width: 100%;
+  }
+
+  .catalog-filters-scrollable {
+    width: 100%;
+    margin: 0; 
+    padding: 0 0 0.5rem 0;
+  }
+}
+
+.odontograma-legend-note {
+  margin-top: 0.45rem;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+}
+
+.odontograma-side {
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+.odontograma-stat {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.odontograma-stat span {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+}
+
+.odontograma-stat strong {
+  display: block;
+  font-size: 1rem;
+  margin-top: 0.2rem;
+}
+
+.odontograma-stat p {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.odontograma-stat.warning {
+  border-color: rgba(250, 204, 21, 0.35);
+  background: rgba(250, 204, 21, 0.14);
+}
+
+[data-theme="dark"] .odontograma-shell {
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.48));
+  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 45px rgba(3, 7, 18, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .odontograma-product-pill {
+  background: rgba(var(--color-primary-rgb), 0.14);
+  color: #CFFAFE;
+}
+
+[data-theme="dark"] .odontograma-panel,
+[data-theme="dark"] .odontograma-side {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] .odonto-status-strip {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(103, 232, 249, 0.15);
+}
+
+[data-theme="dark"] .odontograma-svg {
+  background: transparent;
+}
+
+[data-theme="dark"] .odontograma-stat {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+[data-theme="dark"] .order-form-section {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(103, 232, 249, 0.15);
+}
+
+[data-theme="dark"] .order-section-title {
+  color: #94A3B8;
+  border-bottom-color: rgba(34, 211, 238, 0.2);
+}
+
+[data-theme="dark"] .odontograma-stat.warning {
+  background: rgba(161, 98, 7, 0.16);
+}
+
+[data-theme="dark"] .order-modal-fields-v2 {
+  background: rgba(15, 23, 42, 0.56);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+[data-theme="dark"] .odonto-status-strip {
+  background: rgba(15, 23, 42, 0.58);
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+[data-theme="dark"] .odonto-status-pill {
+  color: #CFFAFE;
+}
+
+[data-theme="dark"] .order-status-card-v2 {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+.odontograma-legend {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.odontograma-legend div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  display: inline-block;
+}
+
+.legend-dot.selected {
+  background: var(--odt-selected-fill);
+}
+
+.legend-dot.pillar {
+  background: var(--odt-pillar-fill);
+}
+
+.legend-dot.pontic {
+  background: var(--odt-pontic-fill);
+}
+
+.legend-dot.disabled {
+  background: var(--odt-disabled-stroke);
+}
+
+.dental-summary-line {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.dental-summary-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.35);
+  background: rgba(var(--color-primary-rgb), 0.14);
+  color: #CFFAFE;
+  padding: 0.1rem 0.5rem;
+}
+
 @media (max-width: 860px) {
   .modal-grid-layout {
     grid-template-columns: 1fr;
+  }
+
+  .order-modal-notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-modal-bento-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .order-modal-layout-v2 {
+    height: auto;
+  }
+
+  .order-modal-fields-v2 {
+    padding: var(--space-2);
+    max-height: none;
+    overflow: visible;
+  }
+
+  .order-status-legend-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .order-fields-grid-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .odontograma-bento {
+    grid-template-columns: 1fr;
+  }
+
+  .odontograma-shell {
+    padding: var(--space-4);
+  }
+
+  .odontograma-panel {
+    padding: var(--space-3);
+  }
+
+  .odontograma-svg {
+    width: 100%;
+    height: auto;
+    max-height: min(460px, 60vh);
+  }
+
+  .order-modal-compact .odontograma-svg {
+    width: 100%;
+    height: auto;
+    max-height: min(420px, 52vh);
+  }
+
+  .order-modal-bento-v2 .odontograma-stage {
+    width: min(100%, 420px);
+    max-height: none;
+  }
+
+  .odontograma-side {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .odontograma-header p {
+    font-size: 0.76rem;
+  }
+
+  .tooth-code {
+    font-size: 11px;
+    font-weight: 600;
+    stroke-width: 1.35;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }
