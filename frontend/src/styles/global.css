@@ -4323,6 +4323,19 @@ Rediseño UI: Nuevo Pedido Layout Base
     min-height: clamp(540px, 72vh, 760px);
   }
 
+  .nuevo-pedido-catalog-card {
+    min-height: clamp(540px, 72vh, 760px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .nuevo-pedido-catalog-card .order-composer-catalog-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+
   .nuevo-pedido-odontograma-slot .odontograma-bento,
   .nuevo-pedido-odontograma-slot .odontograma-stage,
   .nuevo-pedido-odontograma-slot .odontograma-panel {
