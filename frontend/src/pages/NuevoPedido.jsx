@@ -373,6 +373,26 @@ const NuevoPedido = () => {
                                     <span>TOTAL PEDIDO</span>
                                     <strong>S/. {Number(total || 0).toFixed(2)}</strong>
                                 </div>
+                                <div className="nuevo-pedido-case-summary-actions">
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-crear-pedido"
+                                        onClick={handleSubmit}
+                                        disabled={saving}
+                                    >
+                                        {saving ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                Guardando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-check-circle-fill"></i>
+                                                Crear Pedido
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </article>
                         </div>
 
@@ -410,26 +430,6 @@ const NuevoPedido = () => {
                 </aside>
             </div>
 
-            <div className="nuevo-pedido-bottom-bar">
-                <div className="nuevo-pedido-bottom-bar-inner">
-                    <div className="nuevo-pedido-bottom-total">
-                        <span>Total Pedido:</span>
-                        <strong>S/. {Number(total || 0).toFixed(2)}</strong>
-                    </div>
-                    <button
-                        type="button"
-                        className="btn btn-primary btn-crear-pedido"
-                        onClick={handleSubmit}
-                        disabled={saving}
-                    >
-                        {saving ? (
-                            <><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...</>
-                        ) : (
-                            <><i className="bi bi-check-circle-fill"></i> Crear Prescripcion</>
-                        )}
-                    </button>
-                </div>
-            </div>
         </div>
     );
 };

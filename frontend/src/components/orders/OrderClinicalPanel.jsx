@@ -8,12 +8,11 @@ export const OrderClinicalPanel = ({
     onColorChange,
     onNotesChange,
     onQuantityChange,
-    showDerivedFields = true
+    showDerivedFields = true,
+    disabled = false
 }) => {
     const panelClassName = ['order-composer-clinical-panel', className].filter(Boolean).join(' ');
     const piezasSeleccionadas = form?.piezas_dentales?.length || 0;
-    const selectedVita = form?.color_vita || '';
-
     return (
         <section className={panelClassName}>
             <h6 className="order-composer-section-title"><i className="bi bi-journal-medical"></i> Especificaciones Clinicas</h6>
@@ -27,12 +26,7 @@ export const OrderClinicalPanel = ({
                         </span>
                     </div>
                     <div className="order-composer-status-inline">
-                        <span
-                            className={`order-composer-vita-pill ${selectedVita ? 'is-selected' : 'is-empty'}`}
-                            aria-live="polite"
-                        >
-                            {selectedVita ? `VITA ${selectedVita}` : 'VITA sin seleccionar'}
-                        </span>
+                        <span className="order-composer-vita-pill">VITA</span>
                         <div className="order-composer-vita-select-wrap">
                             <i className="bi bi-palette order-composer-status-icon"></i>
                             <select
@@ -40,6 +34,7 @@ export const OrderClinicalPanel = ({
                                 value={form?.color_vita || ''}
                                 onChange={(event) => onColorChange(event.target.value)}
                                 aria-label="Seleccionar tono VITA"
+                                disabled={disabled}
                             >
                                 <option value="">Elegir tono VITA</option>
                                 <optgroup label="Tonos A">
@@ -84,14 +79,16 @@ export const OrderClinicalPanel = ({
                 </div>
             )}
 
-            <div className="form-group order-composer-field-reset">
+            <div className="form-group order-composer-field-reset" style={{ marginTop: '1rem' }}>
                 <label className="form-label">Notas del item</label>
                 <textarea
-                    className="form-textarea"
-                    rows={1}
-                    placeholder="Instrucciones para esta restauracion"
+                    className="form-input form-textarea"
+                    rows={3}
+                    style={{ minHeight: '80px', resize: 'vertical' }}
+                    placeholder="Instrucciones especificas para esta restauracion..."
                     value={form?.notas || ''}
                     onChange={(event) => onNotesChange(event.target.value)}
+                    disabled={disabled}
                 />
             </div>
         </section>
