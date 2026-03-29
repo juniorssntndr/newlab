@@ -4675,21 +4675,21 @@ Rediseño UI: Nuevo Pedido Layout Base
 /* Odontograma Interactive                      */
 /* ============================================ */
 .odontograma-shell {
-  --odt-neutral-fill: #D1D5DB;
-  --odt-neutral-stroke: #E5E7EB;
-  --odt-groove: rgba(51, 65, 85, 0.62);
+  --odt-neutral-fill: #F8FAFC;
+  --odt-neutral-stroke: #B8C2D1;
+  --odt-groove: rgba(71, 85, 105, 0.56);
   --odt-selected-fill: #22D3EE;
   --odt-selected-stroke: #0891B2;
   --odt-pillar-fill: #10B981;
   --odt-pillar-stroke: #047857;
   --odt-pontic-fill: #F97316;
   --odt-pontic-stroke: #C2410C;
-  --odt-disabled-fill: rgba(100, 116, 139, 0.22);
-  --odt-disabled-stroke: rgba(100, 116, 139, 0.55);
-  --odt-label: #FFFFFF;
+  --odt-disabled-fill: rgba(100, 116, 139, 0.26);
+  --odt-disabled-stroke: rgba(100, 116, 139, 0.62);
+  --odt-label: #F8FAFC;
   border: 1px solid rgba(var(--color-primary-rgb), 0.2);
   border-radius: var(--radius-xl);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.92));
+  background: linear-gradient(145deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96));
   backdrop-filter: blur(12px);
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.45);
   padding: var(--space-5);
@@ -4805,7 +4805,7 @@ Rediseño UI: Nuevo Pedido Layout Base
   max-height: min(50vh, 520px);
   user-select: none;
   touch-action: none;
-  background: radial-gradient(circle at 50% 50%, rgba(241, 245, 249, 0.95), rgba(226, 232, 240, 0.95));
+  background: radial-gradient(circle at 50% 50%, rgba(226, 232, 240, 0.98), rgba(203, 213, 225, 0.98));
   border-radius: var(--radius-lg);
 }
 
@@ -4959,7 +4959,7 @@ Rediseño UI: Nuevo Pedido Layout Base
 .tooth-outline {
   fill: none;
   stroke: var(--odt-neutral-stroke);
-  stroke-width: 2.2;
+  stroke-width: 2.1;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -4973,7 +4973,7 @@ Rediseño UI: Nuevo Pedido Layout Base
 .tooth-groove {
   fill: none;
   stroke: var(--odt-groove);
-  stroke-width: 1.2;
+  stroke-width: 1.15;
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none;
@@ -4984,9 +4984,9 @@ Rediseño UI: Nuevo Pedido Layout Base
   font-weight: 700;
   font-family: var(--font-mono);
   fill: var(--odt-label);
-  stroke: rgba(15, 23, 42, 0.9);
-  stroke-width: 1.6;
-  paint-order: stroke;
+  stroke: rgba(15, 23, 42, 0.98);
+  stroke-width: 1.8;
+  paint-order: stroke fill;
   pointer-events: none;
 }
 
@@ -5706,8 +5706,13 @@ Rediseño UI: Nuevo Pedido Layout Base
 }
 
 [data-theme="dark"] .odontograma-shell {
-  border: 1px solid rgba(103, 232, 249, 0.22);
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.48));
+  --odt-neutral-fill: #CBD5E1;
+  --odt-neutral-stroke: #E2E8F0;
+  --odt-groove: rgba(148, 163, 184, 0.7);
+  --odt-disabled-fill: rgba(148, 163, 184, 0.16);
+  --odt-disabled-stroke: rgba(148, 163, 184, 0.48);
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.84), rgba(15, 23, 42, 0.58));
   backdrop-filter: blur(18px);
   box-shadow: 0 20px 45px rgba(3, 7, 18, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
@@ -5719,8 +5724,8 @@ Rediseño UI: Nuevo Pedido Layout Base
 
 [data-theme="dark"] .odontograma-panel,
 [data-theme="dark"] .odontograma-side {
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(15, 23, 42, 0.46);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.58);
   backdrop-filter: blur(8px);
 }
 
@@ -5756,7 +5761,7 @@ Rediseño UI: Nuevo Pedido Layout Base
 }
 
 [data-theme="dark"] .odontograma-svg {
-  background: transparent;
+  background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.84), rgba(15, 23, 42, 0.9));
 }
 
 [data-theme="dark"] .odontograma-stat {
