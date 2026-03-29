@@ -2984,6 +2984,20 @@ h4 {
   gap: var(--space-2);
 }
 
+.catalog-order-admin-grid {
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.catalog-order-admin-grid .form-group {
+  margin-bottom: 0;
+}
+
+.catalog-order-admin-grid .form-input,
+.catalog-order-admin-grid .form-select {
+  min-height: 42px;
+}
+
 .order-composer-status-strip {
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: var(--radius-md);
@@ -5196,6 +5210,21 @@ Rediseño UI: Nuevo Pedido Layout Base
 .catalog-order-express-btn {
   width: 100%;
   margin-top: var(--space-3);
+}
+
+.catalog-order-admin-card .catalog-order-express-wrapper {
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+  padding: 0.95rem 1rem;
+  align-items: flex-start;
+}
+
+.catalog-order-admin-card .catalog-order-express-wrapper .nuevo-pedido-express-toggle-info strong {
+  font-size: 0.92rem;
+}
+
+.catalog-order-admin-card .catalog-order-express-wrapper .nuevo-pedido-express-toggle-info p {
+  font-size: 0.8rem;
 }
 
 .catalog-product-card {

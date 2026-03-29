@@ -330,9 +330,9 @@ const CatalogoCliente = () => {
                                         </div>
                                     </article>
 
-                                    <article className="card">
+                                    <article className="card catalog-order-admin-card">
                                         <h6 className="order-composer-section-title"><i className="bi bi-person-lines-fill"></i> Datos Administrativos</h6>
-                                        <div className="order-composer-fields-grid">
+                                        <div className="order-composer-fields-grid catalog-order-admin-grid">
                                             <div className="form-group order-composer-field-reset">
                                                 <label className="form-label">Nombre del Paciente *</label>
                                                 <input
