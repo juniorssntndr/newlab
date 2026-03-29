@@ -4956,6 +4956,14 @@ Rediseño UI: Nuevo Pedido Layout Base
   transition: transform var(--transition-fast), opacity var(--transition-fast), filter var(--transition-fast);
 }
 
+.odontograma-shell.is-readonly .odontograma-svg {
+  pointer-events: none;
+}
+
+.odontograma-shell.is-readonly .tooth-node {
+  cursor: default;
+}
+
 .tooth-outline {
   fill: none;
   stroke: var(--odt-neutral-stroke);
@@ -4983,10 +4991,7 @@ Rediseño UI: Nuevo Pedido Layout Base
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font-mono);
-  fill: var(--odt-label);
-  stroke: rgba(15, 23, 42, 0.98);
-  stroke-width: 1.8;
-  paint-order: stroke fill;
+  fill: #334155;
   pointer-events: none;
 }
 
@@ -5764,6 +5769,10 @@ Rediseño UI: Nuevo Pedido Layout Base
   background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.84), rgba(15, 23, 42, 0.9));
 }
 
+[data-theme="dark"] .tooth-code {
+  fill: #F8FAFC;
+}
+
 [data-theme="dark"] .odontograma-stat {
   background: rgba(15, 23, 42, 0.45);
 }
@@ -5995,7 +6004,6 @@ Rediseño UI: Nuevo Pedido Layout Base
   .tooth-code {
     font-size: 11px;
     font-weight: 600;
-    stroke-width: 1.35;
   }
 }
 

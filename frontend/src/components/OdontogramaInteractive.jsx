@@ -19,7 +19,8 @@ const OdontogramaInteractive = ({
     showSidePanel = true,
     showProductPill = true,
     showHeader = true,
-    preserveAspectRatio = 'xMidYMid meet'
+    preserveAspectRatio = 'xMidYMid meet',
+    disabled = false
 }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [dragSelectValue, setDragSelectValue] = useState(true);
@@ -81,6 +82,7 @@ const OdontogramaInteractive = ({
 
     const handlePointerDown = (event, tooth) => {
         event.preventDefault();
+        if (disabled) return;
         if (disabledTeeth.has(tooth)) return;
 
         if (isBridge) {
@@ -103,7 +105,7 @@ const OdontogramaInteractive = ({
     };
 
     const handlePointerEnter = (tooth) => {
-        if (!isDragging || disabledTeeth.has(tooth)) return;
+        if (disabled || !isDragging || disabledTeeth.has(tooth)) return;
 
         if (isBridge && bridgeAnchor) {
             applyBridgeRange(bridgeAnchor, tooth);
@@ -116,6 +118,7 @@ const OdontogramaInteractive = ({
     };
 
     const handlePointerMove = (event) => {
+        if (disabled) return;
         if (!isDragging) return;
         const hitTarget = document.elementFromPoint(event.clientX, event.clientY);
         const toothNode = hitTarget?.closest?.('[data-tooth-code]');
@@ -146,7 +149,7 @@ const OdontogramaInteractive = ({
     }, [selection?.es_puente, currentTeeth, toothCenters]);
 
     return (
-        <div className="odontograma-shell">
+        <div className={`odontograma-shell${disabled ? ' is-readonly' : ''}`}>
             {showHeader && (
                 <div className="odontograma-header">
                     <div>
@@ -168,6 +171,7 @@ const OdontogramaInteractive = ({
                             role="img"
                             aria-label="Mapa dental FDI"
                             onPointerMove={handlePointerMove}
+                            aria-disabled={disabled}
                         >
                             <defs>
                                 <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">

@@ -403,28 +403,21 @@ const NuevoPedido = () => {
                 <aside className="nuevo-pedido-odontograma-column">
                     <section className="card nuevo-pedido-odontograma-pane">
                         <div className="nuevo-pedido-odontograma-body">
-                            {selectedItem ? (
-                                <div className="order-composer-odontograma-slot nuevo-pedido-odontograma-slot">
-                                    <OdontogramaInteractive
-                                        product={selectedItem.product || selectedItem}
-                                        selection={selectedItem}
-                                        onChange={(dentalData) => updateDentalSelection(selectedItem.id, dentalData)}
-                                        title="Selecciona las piezas del producto"
-                                        showSidePanel={false}
-                                        showProductPill={false}
-                                        showHeader={false}
-                                        preserveAspectRatio="xMidYMid meet"
-                                    />
-                                </div>
-                            ) : (
-                                <article className="order-composer-empty-clinical nuevo-pedido-odontograma-empty">
-                                    <i className="bi bi-grid-1x2"></i>
-                                    <h3>Odontograma disponible</h3>
-                                    <p>
-                                        Agrega un producto desde el catalogo y el odontograma quedara listo para trabajar sin seleccionarlo manualmente.
-                                    </p>
-                                </article>
-                            )}
+                            <div className="order-composer-odontograma-slot nuevo-pedido-odontograma-slot">
+                                <OdontogramaInteractive
+                                    product={selectedItem?.product || selectedItem || null}
+                                    selection={selectedItem || { piezas_dentales: [] }}
+                                    onChange={(dentalData) => {
+                                        if (selectedItem) updateDentalSelection(selectedItem.id, dentalData);
+                                    }}
+                                    title="Selecciona las piezas del producto"
+                                    showSidePanel={false}
+                                    showProductPill={false}
+                                    showHeader={false}
+                                    preserveAspectRatio="xMidYMid meet"
+                                    disabled={!selectedItem}
+                                />
+                            </div>
                         </div>
                     </section>
                 </aside>

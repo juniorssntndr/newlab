@@ -354,21 +354,30 @@ const CatalogoCliente = () => {
                                             </div>
                                         </div>
 
-                                        <button
-                                            type="button"
-                                            className={`btn ${orderMeta.es_urgente ? 'btn-danger' : 'btn-secondary'} btn-sm catalog-order-express-btn`}
-                                            onClick={() => {
-                                                const nextUrgente = !orderMeta.es_urgente;
-                                                setOrderMeta((prev) => ({
-                                                    ...prev,
-                                                    es_urgente: nextUrgente,
-                                                    fecha_entrega: calculateDeliveryDate(orderProduct, nextUrgente)
-                                                }));
-                                            }}
-                                        >
-                                            <i className="bi bi-lightning-charge"></i>
-                                            {orderMeta.es_urgente ? 'Pedido Express activo' : 'Solicitar como Pedido Express'}
-                                        </button>
+                                        <div className={`nuevo-pedido-express-toggle-wrapper catalog-order-express-wrapper ${orderMeta.es_urgente ? 'is-express' : ''}`}>
+                                            <i className={orderMeta.es_urgente ? 'bi bi-lightning-charge-fill' : 'bi bi-lightning-charge'}></i>
+                                            <div className="nuevo-pedido-express-toggle-info">
+                                                <strong>Pedido Express ⚡</strong>
+                                                <p>Marca esta opcion si el trabajo requiere prioridad maxima en laboratorio.</p>
+                                            </div>
+                                            <div className="nuevo-pedido-express-switch">
+                                                <input
+                                                    type="checkbox"
+                                                    id="expressOrderToggleCatalog"
+                                                    className="toggle-switch-input"
+                                                    checked={orderMeta.es_urgente}
+                                                    onChange={(e) => {
+                                                        const nextUrgente = e.target.checked;
+                                                        setOrderMeta((prev) => ({
+                                                            ...prev,
+                                                            es_urgente: nextUrgente,
+                                                            fecha_entrega: calculateDeliveryDate(orderProduct, nextUrgente)
+                                                        }));
+                                                    }}
+                                                />
+                                                <label htmlFor="expressOrderToggleCatalog" className="toggle-switch-label"></label>
+                                            </div>
+                                        </div>
                                     </article>
 
                                     {activeOrderItem && (
