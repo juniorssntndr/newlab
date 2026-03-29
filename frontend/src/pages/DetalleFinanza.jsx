@@ -8,6 +8,7 @@ import { useRegisterPaymentMutation } from '../modules/finance/mutations/useRegi
 import { useCreateInvoiceMutation } from '../modules/billing/mutations/useCreateInvoiceMutation.js';
 import { useAnnulInvoiceMutation } from '../modules/billing/mutations/useAnnulInvoiceMutation.js';
 import { useCreateCreditNoteMutation } from '../modules/billing/mutations/useCreateCreditNoteMutation.js';
+import '../styles/detalle-finanza-ui-consistency.css';
 
 const statusLabels = {
     por_cancelar: 'Por cancelar',
@@ -438,8 +439,8 @@ const DetalleFinanza = () => {
 
     if (loading) {
         return (
-            <div className="card">
-                <div className="skeleton" style={{ height: 120, borderRadius: 12 }} />
+            <div className="card detail-finanza-loading-card">
+                <div className="skeleton detail-finanza-loading-skeleton" />
             </div>
         );
     }
@@ -455,36 +456,34 @@ const DetalleFinanza = () => {
     }
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in detail-finanza-page">
             <div className="page-header">
                 <div className="page-header-left">
                     <h1>Detalle de finanzas</h1>
                     <p>Pedido {finanza.codigo} · {finanza.paciente_nombre}</p>
                 </div>
-                <div className="pedido-actions">
+                <div className="pedido-actions detail-finanza-header-actions">
                     <button className="btn btn-ghost" onClick={() => navigate('/finanzas')}>
                         <i className="bi bi-arrow-left"></i> Volver
                     </button>
-                    <div style={{ position: 'relative' }}>
+                    <div className="detail-finanza-print-menu">
                         <button className="btn btn-ghost" onClick={() => setPrintMenuOpen(p => !p)}>
-                            <i className="bi bi-printer"></i> Imprimir interno <i className="bi bi-chevron-down" style={{ fontSize: '0.7rem', marginLeft: 2 }}></i>
+                            <i className="bi bi-printer"></i> Imprimir interno <i className="bi bi-chevron-down detail-finanza-chevron"></i>
                         </button>
                         {printMenuOpen && (
-                            <div style={{ position: 'absolute', top: '110%', left: 0, zIndex: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '200px', overflow: 'hidden' }}>
-                                <button className="btn btn-ghost" onClick={handlePrintA4}
-                                    style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '0.65rem 1rem', gap: '0.6rem', borderBottom: '1px solid var(--color-border)' }}>
-                                    <i className="bi bi-file-earmark-text" style={{ color: 'var(--color-primary)' }}></i>
-                                    <div style={{ textAlign: 'left' }}>
-                                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Formato A4</div>
-                                        <div style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)' }}>Impresora estándar</div>
+                            <div className="detail-finanza-print-popover">
+                                <button className="btn btn-ghost detail-finanza-print-option" onClick={handlePrintA4}>
+                                    <i className="bi bi-file-earmark-text detail-finanza-icon-tone"></i>
+                                    <div className="detail-finanza-print-option-content">
+                                        <div className="detail-finanza-print-option-title">Formato A4</div>
+                                        <div className="detail-finanza-print-option-subtitle">Impresora estándar</div>
                                     </div>
                                 </button>
-                                <button className="btn btn-ghost" onClick={handlePrint80mm}
-                                    style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '0.65rem 1rem', gap: '0.6rem' }}>
-                                    <i className="bi bi-receipt" style={{ color: 'var(--color-primary)' }}></i>
-                                    <div style={{ textAlign: 'left' }}>
-                                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Ticketera 80mm</div>
-                                        <div style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)' }}>Impresora térmica</div>
+                                <button className="btn btn-ghost detail-finanza-print-option" onClick={handlePrint80mm}>
+                                    <i className="bi bi-receipt detail-finanza-icon-tone"></i>
+                                    <div className="detail-finanza-print-option-content">
+                                        <div className="detail-finanza-print-option-title">Ticketera 80mm</div>
+                                        <div className="detail-finanza-print-option-subtitle">Impresora térmica</div>
                                     </div>
                                 </button>
                             </div>
@@ -498,7 +497,7 @@ const DetalleFinanza = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-4" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className="detail-finanza-metrics-grid">
                 <div className="detail-metric">
                     <span className="detail-label">Estado de pago</span>
                     <span className="detail-value">
@@ -528,10 +527,10 @@ const DetalleFinanza = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className="detail-finanza-summary-grid">
                 <div className="card">
-                    <h3 className="card-title" style={{ marginBottom: 'var(--space-3)' }}>Datos del pedido</h3>
-                    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+                    <h3 className="card-title detail-finanza-card-title">Datos del pedido</h3>
+                    <div className="detail-finanza-summary-content">
                         <div>
                             <div className="detail-label">Clínica</div>
                             <div className="detail-value">{finanza.clinica_nombre || '—'}</div>
@@ -551,8 +550,8 @@ const DetalleFinanza = () => {
                     </div>
                 </div>
                 <div className="card">
-                    <h3 className="card-title" style={{ marginBottom: 'var(--space-3)' }}>Resumen de pagos</h3>
-                    <div className="data-table-wrapper table-scroll-dense desktop-only" style={{ border: 'none' }}>
+                    <h3 className="card-title detail-finanza-card-title">Resumen de pagos</h3>
+                    <div className="data-table-wrapper table-scroll-dense desktop-only detail-finanza-table-shell">
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -562,7 +561,7 @@ const DetalleFinanza = () => {
                                     <th>Cuenta</th>
                                     <th>Referencia</th>
                                     <th>Monto</th>
-                                    <th style={{ width: '50px' }}></th>
+                                <th className="detail-finanza-table-icon-col"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -574,7 +573,7 @@ const DetalleFinanza = () => {
                                         <td>{pago.cuenta_nombre || '—'}</td>
                                         <td>{pago.referencia || '—'}</td>
                                         <td><strong>{formatCurrency(pago.monto)}</strong></td>
-                                        <td style={{ textAlign: 'center' }}>
+                                        <td className="detail-finanza-table-action-cell">
                                             <button
                                                 className="btn btn-ghost btn-icon btn-sm"
                                                 title="Imprimir ticket"
@@ -586,7 +585,7 @@ const DetalleFinanza = () => {
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--color-text-tertiary)' }}>Sin pagos registrados</td>
+                                        <td colSpan={7} className="detail-finanza-empty-cell">Sin pagos registrados</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -619,35 +618,33 @@ const DetalleFinanza = () => {
                 </div>
             </div>
 
-            <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 0, overflow: 'hidden' }}>
+            <div className="card detail-finanza-comprobantes-card">
                     {/* Header */}
-                    <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg-alt) 100%)' }}>
-                        <div style={{ width: '2rem', height: '2rem', borderRadius: '8px', background: 'rgba(20,184,166,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <i className="bi bi-file-earmark-check-fill" style={{ color: 'var(--color-primary)', fontSize: '1rem' }}></i>
+                    <div className="detail-finanza-section-header">
+                        <div className="detail-finanza-section-icon">
+                            <i className="bi bi-file-earmark-check-fill detail-finanza-section-icon-mark"></i>
                         </div>
                         <div>
-                            <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>Comprobantes Electrónicos</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Registrados ante SUNAT</div>
+                            <div className="detail-finanza-section-title">Comprobantes Electrónicos</div>
+                            <div className="detail-finanza-section-subtitle">Registrados ante SUNAT</div>
                         </div>
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+                        <div className="detail-finanza-section-actions">
                             {comprobantes.length > 0 && comprobantes[0]?.pdf_url && (
                                 <a
                                     href={comprobantes[0].pdf_url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="btn btn-primary btn-sm"
-                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-primary), #0d9488)', boxShadow: '0 4px 12px rgba(20,184,166,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', fontWeight: '600', textDecoration: 'none', color: '#fff', fontSize: '0.85rem' }}
+                                    className="btn btn-primary btn-sm detail-finanza-action-link detail-finanza-action-link--primary"
                                 >
                                     <i className="bi bi-file-earmark-pdf-fill"></i> Imprimir / Ver PDF
                                 </a>
                             )}
                             {comprobantes.length === 0 && (
                                 <button
-                                    className="btn btn-primary btn-sm"
+                                    className="btn btn-primary btn-sm detail-finanza-action-button detail-finanza-action-button--primary"
                                     onClick={() => navigate(`/finanzas/${id}/facturar`)}
                                     disabled={finanza.estado_pago !== 'cancelado'}
                                     title={finanza.estado_pago !== 'cancelado' ? 'El pedido debe estar cancelado para emitir comprobantes' : ''}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-primary), #0d9488)', boxShadow: '0 4px 12px rgba(20,184,166,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', fontWeight: '600', fontSize: '0.85rem' }}
                                 >
                                     <i className="bi bi-file-earmark-text"></i> Emitir Electrónico
                                 </button>
@@ -656,20 +653,20 @@ const DetalleFinanza = () => {
                     </div>
 
                     {/* Table */}
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <div className="detail-finanza-comprobantes-scroll">
+                        <table className="detail-finanza-comprobantes-table">
                             <thead>
-                                <tr style={{ background: 'var(--color-bg-alt)', borderBottom: '2px solid var(--color-border)' }}>
+                                <tr>
                                     {['Fecha', 'Tipo', 'Serie-Corre.', 'Total', 'Estado', 'Descargas', 'Acciones'].map(h => (
-                                        <th key={h} style={{ padding: '0.75rem 1rem', textAlign: h === 'Total' || h === 'Acciones' ? 'right' : 'left', fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{h}</th>
+                                        <th key={h}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {comprobantes.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
-                                            <i className="bi bi-file-earmark-x" style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem', opacity: 0.4 }}></i>
+                                        <td colSpan={7} className="detail-finanza-comprobantes-empty">
+                                            <i className="bi bi-file-earmark-x detail-finanza-comprobantes-empty-icon"></i>
                                             Sin comprobantes electrónicos emitidos
                                         </td>
                                     </tr>
@@ -677,66 +674,62 @@ const DetalleFinanza = () => {
                                     const isVoided = comp.estado_sunat === 'anulado';
                                     const isActive = comp.estado_sunat === 'aceptado' || comp.estado_sunat === 'generado';
                                     return (
-                                        <tr key={comp.id} style={{ borderBottom: '1px solid var(--color-border)', opacity: isVoided ? 0.55 : 1, transition: 'opacity 0.2s' }}>
-                                            <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem' }}>{formatDate(comp.fecha_emision)}</td>
-                                            <td style={{ padding: '0.875rem 1rem' }}>
-                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: '600', fontSize: '0.85rem' }}>
-                                                    <i className={`bi ${comp.tipo_comprobante === '01' ? 'bi-receipt' : 'bi-file-text'}`} style={{ color: 'var(--color-primary)' }}></i>
+                                        <tr key={comp.id} className={`detail-finanza-comprobante-row${isVoided ? ' is-voided' : ''}`}>
+                                            <td>{formatDate(comp.fecha_emision)}</td>
+                                            <td>
+                                                <span className="detail-finanza-comprobante-type">
+                                                    <i className={`bi ${comp.tipo_comprobante === '01' ? 'bi-receipt' : 'bi-file-text'} detail-finanza-icon-tone`}></i>
                                                     {comp.tipo_comprobante === '01' ? 'Factura' : 'Boleta'}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '0.875rem 1rem', fontFamily: 'monospace', fontWeight: '600', fontSize: '0.9rem' }}>{comp.serie}-{comp.correlativo}</td>
-                                            <td style={{ padding: '0.875rem 1rem', textAlign: 'right', fontWeight: '700', color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(comp.total_venta)}</td>
-                                            <td style={{ padding: '0.875rem 1rem' }}>
+                                            <td className="detail-finanza-comprobante-code">{comp.serie}-{comp.correlativo}</td>
+                                            <td className="detail-finanza-comprobante-total">{formatCurrency(comp.total_venta)}</td>
+                                            <td>
                                                 <span className={`badge badge-${isVoided ? 'cancelado' : isActive ? 'enviado' : 'pendiente'}`}>
                                                     {comp.estado_sunat}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '0.875rem 1rem' }}>
-                                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                            <td>
+                                                <div className="detail-finanza-pill-links">
                                                     {comp.pdf_url && (
                                                         <a href={comp.pdf_url} target="_blank" rel="noreferrer"
-                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.78rem', fontWeight: '600', color: 'var(--color-primary)', textDecoration: 'none', background: 'rgba(20,184,166,0.06)' }}
+                                                            className="detail-finanza-pill-link detail-finanza-pill-link--pdf"
                                                         ><i className="bi bi-filetype-pdf"></i>PDF</a>
                                                     )}
                                                     {comp.xml_url && (
                                                         <a href={comp.xml_url} target="_blank" rel="noreferrer"
-                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.78rem', fontWeight: '600', color: 'var(--color-text-secondary)', textDecoration: 'none' }}
+                                                            className="detail-finanza-pill-link detail-finanza-pill-link--neutral"
                                                         ><i className="bi bi-code-slash"></i>XML</a>
                                                     )}
                                                     {comp.cdr_url && (
                                                         <a href={comp.cdr_url} target="_blank" rel="noreferrer"
-                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.78rem', fontWeight: '600', color: 'var(--color-text-secondary)', textDecoration: 'none' }}
+                                                            className="detail-finanza-pill-link detail-finanza-pill-link--neutral"
                                                         ><i className="bi bi-shield-check"></i>CDR</a>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td style={{ padding: '0.875rem 1rem', textAlign: 'right' }}>
+                                            <td className="detail-finanza-action-cell">
                                                 {!isVoided && (
                                                     <button
-                                                        className="btn btn-sm"
                                                         onClick={() => handleAnularComprobante(comp)}
                                                         disabled={annulInvoiceMutation.isPending}
-                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '7px', border: '1px solid #ef4444', color: '#ef4444', background: 'rgba(239,68,68,0.06)', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                        onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
-                                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; e.currentTarget.style.color = '#ef4444'; }}
+                                                        className="btn btn-sm detail-finanza-danger-btn"
                                                     >
                                                         <><i className="bi bi-x-circle"></i> Anular</>
                                                     </button>
                                                 )}
                                                 {!isVoided && (
                                                     <button
-                                                        className="btn btn-sm"
                                                         onClick={() => handleNotaCredito(comp)}
                                                         disabled={createCreditNoteMutation.isPending}
-                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '7px', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', background: 'transparent', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', marginLeft: '4px' }}
+                                                        className="btn btn-sm detail-finanza-outline-btn"
                                                         title="Emitir Nota de Crédito referenciando este comprobante"
                                                     >
                                                         <i className="bi bi-arrow-counterclockwise"></i> N/C
                                                     </button>
                                                 )}
                                                 {isVoided && (
-                                                    <span style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)', fontStyle: 'italic' }}>Anulado</span>
+                                                    <span className="detail-finanza-muted-italic">Anulado</span>
                                                 )}
                                             </td>
                                         </tr>
@@ -748,8 +741,8 @@ const DetalleFinanza = () => {
             </div>
 
             <div className="card">
-                <h3 className="card-title" style={{ marginBottom: 'var(--space-3)' }}>Detalle de items</h3>
-                <div className="data-table-wrapper table-scroll-dense desktop-only" style={{ border: 'none' }}>
+                <h3 className="card-title detail-finanza-card-title">Detalle de items</h3>
+                <div className="data-table-wrapper table-scroll-dense desktop-only detail-finanza-table-shell">
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -769,7 +762,7 @@ const DetalleFinanza = () => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-tertiary)' }}>Sin items registrados</td>
+                            <td colSpan={4} className="detail-finanza-empty-cell">Sin items registrados</td>
                                 </tr>
                             )}
                         </tbody>
@@ -814,16 +807,15 @@ const DetalleFinanza = () => {
                     </>
                 )}
             >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <i className="bi bi-cash-coin" style={{ color: 'var(--color-primary)' }}></i> Monto <span style={{ color: 'red' }}>*</span>
+                <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            <i className="bi bi-cash-coin detail-finanza-form-label-icon"></i> Monto <span className="detail-finanza-required">*</span>
                         </label>
-                        <div style={{ position: 'relative' }}>
-                            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 'bold', color: 'var(--color-text-secondary)' }}>S/.</span>
+                        <div className="detail-finanza-currency-wrap">
+                            <span className="detail-finanza-currency-prefix">S/.</span>
                             <input
-                                className="form-input"
-                                style={{ paddingLeft: '2.5rem', fontWeight: 'bold', fontSize: '1.05rem' }}
+                                className="form-input detail-finanza-currency-input"
                                 type="number"
                                 min="0"
                                 step="0.01"
@@ -834,9 +826,9 @@ const DetalleFinanza = () => {
                             />
                         </div>
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <i className="bi bi-bank" style={{ color: 'var(--color-primary)' }}></i> Método <span style={{ color: 'red' }}>*</span>
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            <i className="bi bi-bank detail-finanza-form-label-icon"></i> Método <span className="detail-finanza-required">*</span>
                         </label>
                         <select
                             className="form-select"
@@ -855,10 +847,10 @@ const DetalleFinanza = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <i className="bi bi-diagram-3" style={{ color: 'var(--color-primary)' }}></i> Destino de fondos
+                <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            <i className="bi bi-diagram-3 detail-finanza-form-label-icon"></i> Destino de fondos
                         </label>
                         <input
                             className="form-input"
@@ -866,9 +858,9 @@ const DetalleFinanza = () => {
                             disabled
                         />
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <i className="bi bi-safe2" style={{ color: 'var(--color-primary)' }}></i> Cuenta
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            <i className="bi bi-safe2 detail-finanza-form-label-icon"></i> Cuenta
                         </label>
                         <select
                             className="form-select"
@@ -882,10 +874,10 @@ const DetalleFinanza = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <i className="bi bi-hash" style={{ color: 'var(--color-text-tertiary)' }}></i> Referencia
+                <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            <i className="bi bi-hash detail-finanza-form-label-icon detail-finanza-form-label-icon--muted"></i> Referencia
                         </label>
                         <input
                             className="form-input"
@@ -894,9 +886,9 @@ const DetalleFinanza = () => {
                             placeholder="Nro. operación (opcional)"
                         />
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <i className="bi bi-calendar-check" style={{ color: 'var(--color-primary)' }}></i> Fecha de pago
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            <i className="bi bi-calendar-check detail-finanza-form-label-icon"></i> Fecha de pago
                         </label>
                         <input
                             className="form-input"
@@ -907,16 +899,15 @@ const DetalleFinanza = () => {
                     </div>
                 </div>
 
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <i className="bi bi-card-text" style={{ color: 'var(--color-text-tertiary)' }}></i> Notas
+                <div className="form-group detail-finanza-form-group">
+                    <label className="form-label detail-finanza-form-label">
+                        <i className="bi bi-card-text detail-finanza-form-label-icon detail-finanza-form-label-icon--muted"></i> Notas
                     </label>
                     <textarea
-                        className="form-textarea"
                         value={form.notas}
                         onChange={(e) => setForm((prev) => ({ ...prev, notas: e.target.value }))}
                         placeholder="Detalle adicional u observación sobre este pago (opcional)"
-                        style={{ minHeight: '80px' }}
+                        className="form-textarea detail-finanza-textarea-md"
                     />
                 </div>
             </Modal>
@@ -927,13 +918,12 @@ const DetalleFinanza = () => {
                 onClose={() => setAnularModal(null)}
                 title="Anular Comprobante Electrónico"
                 footer={
-                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <div className="detail-finanza-modal-footer">
                         <button className="btn btn-ghost" onClick={() => setAnularModal(null)} disabled={annulInvoiceMutation.isPending}>Cancelar</button>
                         <button
-                            className="btn"
                             onClick={submitAnulacion}
                             disabled={annulInvoiceMutation.isPending || anularMotivo.trim().length < 5}
-                            style={{ background: '#ef4444', color: '#fff', border: 'none', fontWeight: '600' }}
+                            className="btn detail-finanza-danger-btn"
                         >
                             {annulInvoiceMutation.isPending
                                 ? <><i className="bi bi-hourglass-split"></i> Anulando...</>
@@ -943,25 +933,24 @@ const DetalleFinanza = () => {
                     </div>
                 }
             >
-                <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid #fca5a5', borderRadius: '10px', padding: '0.875rem 1rem', marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                    <i className="bi bi-exclamation-triangle-fill" style={{ color: '#ef4444', fontSize: '1.1rem', flexShrink: 0, marginTop: '1px' }}></i>
-                    <div style={{ fontSize: '0.85rem', lineHeight: '1.5' }}>
+                <div className="detail-finanza-warning-panel detail-finanza-warning-panel--danger">
+                    <i className="bi bi-exclamation-triangle-fill detail-finanza-warning-panel__icon"></i>
+                    <div className="detail-finanza-warning-panel__body">
                         <strong>Acción irreversible.</strong> Esta anulación se comunicará a SUNAT. Comprobante <strong>{anularModal?.serie}-{anularModal?.correlativo}</strong> quedará inactivo.
                     </div>
                 </div>
                 <div className="form-group">
-                    <label className="form-label">
-                        <i className="bi bi-chat-left-text" style={{ color: 'var(--color-primary)' }}></i> Motivo de anulación <span style={{ color: '#ef4444' }}>*</span>
+                    <label className="form-label detail-finanza-form-label">
+                        <i className="bi bi-chat-left-text detail-finanza-form-label-icon"></i> Motivo de anulación <span className="detail-finanza-required">*</span>
                     </label>
                     <textarea
-                        className="form-textarea"
                         value={anularMotivo}
                         onChange={e => setAnularMotivo(e.target.value)}
                         placeholder="Ej: Error en datos del receptor, monto incorrecto..."
-                        style={{ minHeight: '80px' }}
+                        className="form-textarea detail-finanza-textarea-md"
                         autoFocus
                     />
-                    <div style={{ fontSize: '0.75rem', color: anularMotivo.trim().length < 5 ? '#ef4444' : 'var(--color-text-tertiary)', marginTop: '4px' }}>
+                    <div className={`detail-finanza-counter ${anularMotivo.trim().length < 5 ? 'is-invalid' : ''}`}>
                         {anularMotivo.trim().length} car. &mdash; mínimo 5
                     </div>
                 </div>
@@ -973,7 +962,7 @@ const DetalleFinanza = () => {
                 onClose={() => setNotaCreditoModal(null)}
                 title="Emitir Nota de Crédito"
                 footer={
-                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <div className="detail-finanza-modal-footer">
                         <button className="btn btn-ghost" onClick={() => setNotaCreditoModal(null)} disabled={createCreditNoteMutation.isPending}>Cancelar</button>
                         <button
                             className="btn btn-primary"
@@ -988,12 +977,12 @@ const DetalleFinanza = () => {
                     </div>
                 }
             >
-                <div style={{ background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.25)', borderRadius: '10px', padding: '0.875rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                <div className="detail-finanza-warning-panel detail-finanza-warning-panel--info">
                     Comprobante de referencia: <strong>{notaCreditoModal?.serie}-{notaCreditoModal?.correlativo}</strong> &mdash; {formatCurrency(notaCreditoModal?.total_venta)}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Monto a anular (S/.) <span style={{ color: '#ef4444' }}>*</span></label>
+                <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">Monto a anular (S/.) <span className="detail-finanza-required">*</span></label>
                         <input
                             className="form-input"
                             type="number"
@@ -1003,21 +992,20 @@ const DetalleFinanza = () => {
                             onChange={e => setNcForm(p => ({ ...p, monto: e.target.value }))}
                         />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', fontSize: '0.8rem', color: 'var(--color-text-tertiary)', paddingBottom: '4px' }}>
+                    <div className="detail-finanza-igv-summary">
                         <span>IGV estimado (18%)</span>
-                        <span style={{ fontWeight: '700', color: 'var(--color-primary)', fontSize: '1rem' }}>
+                        <span className="detail-finanza-igv-value">
                             {ncForm.monto && !isNaN(parseFloat(ncForm.monto)) ? formatCurrency(parseFloat(ncForm.monto) / 1.18 * 0.18) : 'S/. 0.00'}
                         </span>
                     </div>
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Motivo <span style={{ color: '#ef4444' }}>*</span></label>
+                <div className="form-group detail-finanza-form-group">
+                    <label className="form-label detail-finanza-form-label">Motivo <span className="detail-finanza-required">*</span></label>
                     <textarea
-                        className="form-textarea"
                         value={ncForm.motivo}
                         onChange={e => setNcForm(p => ({ ...p, motivo: e.target.value }))}
                         placeholder="Ej: Descuento acordado, error en precio, servicio no completado..."
-                        style={{ minHeight: '70px' }}
+                        className="form-textarea detail-finanza-textarea-sm"
                     />
                 </div>
             </Modal>

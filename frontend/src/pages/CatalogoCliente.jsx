@@ -24,9 +24,9 @@ const resolveImageUrl = (imageUrl) => {
 };
 
 const Skeleton = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
+    <div className="catalog-products-grid">
         {[...Array(6)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ borderRadius: '16px', height: '280px' }} />
+            <div key={i} className="skeleton catalog-product-skeleton" />
         ))}
     </div>
 );
@@ -205,14 +205,10 @@ const CatalogoCliente = () => {
             {/* Search and filter bar */}
             <div className="catalog-search-filter-container">
                 <div className="catalog-search-wrapper">
-                    <i className="bi bi-search" style={{
-                        position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)',
-                        color: 'var(--color-text-secondary)', pointerEvents: 'none'
-                    }} />
+                    <i className="bi bi-search catalog-search-icon" />
                     <input
                         type="text"
-                        className="form-input"
-                        style={{ paddingLeft: '2.5rem' }}
+                        className="form-input catalog-search-input"
                         placeholder="Buscar producto..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
@@ -221,8 +217,7 @@ const CatalogoCliente = () => {
                 <div className="catalog-filters-scrollable">
                     <button
                         onClick={() => setSelectedCat('all')}
-                        className={`btn ${selectedCat === 'all' ? 'btn-primary' : 'btn-ghost'}`}
-                        style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}
+                        className={`btn ${selectedCat === 'all' ? 'btn-primary' : 'btn-ghost'} catalog-filter-chip`}
                     >
                         Todos
                     </button>
@@ -230,8 +225,7 @@ const CatalogoCliente = () => {
                         <button
                             key={cat.id}
                             onClick={() => setSelectedCat(String(cat.id))}
-                            className={`btn ${String(selectedCat) === String(cat.id) ? 'btn-primary' : 'btn-ghost'}`}
-                            style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}
+                            className={`btn ${String(selectedCat) === String(cat.id) ? 'btn-primary' : 'btn-ghost'} catalog-filter-chip`}
                         >
                             {cat.nombre}
                         </button>
@@ -242,37 +236,22 @@ const CatalogoCliente = () => {
             {loading ? (
                 <Skeleton />
             ) : filtered.length === 0 ? (
-                <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                    <i className="bi bi-box-seam" style={{ fontSize: '3rem', marginBottom: '1rem', display: 'block' }} />
+                <div className="catalog-empty-state">
+                    <i className="bi bi-box-seam catalog-empty-state-icon" />
                     <h3>No se encontraron productos</h3>
                     <p>Intenta buscar con otros términos o selecciona otra categoría.</p>
                 </div>
             ) : (
                 grouped.map(group => (
-                    <div key={group.nombre} style={{ marginBottom: '2.5rem' }}>
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '0.75rem',
-                            marginBottom: '1.25rem', paddingBottom: '0.75rem',
-                            borderBottom: '2px solid var(--color-border)'
-                        }}>
-                            <div style={{
-                                width: '4px', height: '24px', borderRadius: '2px',
-                                background: 'var(--color-primary)'
-                            }} />
-                            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700' }}>{group.nombre}</h2>
-                            <span style={{
-                                background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)',
-                                borderRadius: '999px', padding: '0.1rem 0.6rem',
-                                fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: '500'
-                            }}>
+                    <div key={group.nombre} className="catalog-group">
+                        <div className="catalog-group-header">
+                            <div className="catalog-group-accent" />
+                            <h2 className="catalog-group-title">{group.nombre}</h2>
+                            <span className="catalog-group-count">
                                 {group.items.length} producto{group.items.length !== 1 ? 's' : ''}
                             </span>
                         </div>
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                            gap: '1.25rem'
-                        }}>
+                        <div className="catalog-products-grid">
                             {group.items.map(producto => (
                                 <ProductCard key={producto.id} producto={producto} resolveImageUrl={resolveImageUrl} onOrder={() => openOrder(producto)} />
                             ))}
@@ -377,8 +356,7 @@ const CatalogoCliente = () => {
 
                                         <button
                                             type="button"
-                                            className={`btn ${orderMeta.es_urgente ? 'btn-danger' : 'btn-secondary'} btn-sm`}
-                                            style={{ width: '100%', marginTop: 'var(--space-3)' }}
+                                            className={`btn ${orderMeta.es_urgente ? 'btn-danger' : 'btn-secondary'} btn-sm catalog-order-express-btn`}
                                             onClick={() => {
                                                 const nextUrgente = !orderMeta.es_urgente;
                                                 setOrderMeta((prev) => ({
@@ -451,98 +429,56 @@ const ProductCard = React.memo(({ producto, resolveImageUrl, onOrder }) => {
     const [imgError, setImgError] = useState(false);
 
     return (
-        <div
-            className="card"
-            style={{
-                padding: 0, overflow: 'hidden', borderRadius: '16px',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                cursor: 'default'
-            }}
-            onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 12px 28px -6px rgba(0,0,0,0.25)';
-            }}
-            onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '';
-            }}
-        >
+        <div className="card catalog-product-card">
             {/* Image / placeholder */}
-            <div style={{
-                height: '160px', overflow: 'hidden',
-                background: 'linear-gradient(135deg, var(--color-bg-alt) 0%, var(--color-surface) 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative'
-            }}>
+            <div className="catalog-product-card-media">
                 {producto.image_url && !imgError ? (
                     <img
                         src={resolveImageUrl(producto.image_url)}
                         alt={producto.nombre}
                         onError={() => setImgError(true)}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        className="catalog-product-card-image"
                     />
                 ) : (
-                    <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                        <i className="bi bi-gem" style={{ fontSize: '2.5rem', opacity: 0.4 }} />
+                    <div className="catalog-product-card-media-fallback">
+                        <i className="bi bi-gem" />
                     </div>
                 )}
                 {/* Category badge */}
                 {producto.categoria_nombre && (
-                    <span style={{
-                        position: 'absolute', top: '0.75rem', right: '0.75rem',
-                        background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
-                        color: '#fff', fontSize: '0.7rem', fontWeight: '600',
-                        padding: '0.2rem 0.6rem', borderRadius: '999px'
-                    }}>
+                    <span className="catalog-product-card-category">
                         {producto.categoria_nombre}
                     </span>
                 )}
             </div>
 
             {/* Content */}
-            <div style={{ padding: '1.25rem' }}>
-                <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', fontWeight: '700' }}>
+            <div className="catalog-product-card-content">
+                <h3 className="catalog-product-card-title">
                     {producto.nombre}
                 </h3>
                 {producto.material_nombre && (
-                    <p style={{
-                        margin: '0 0 0.5rem 0', fontSize: '0.8rem',
-                        color: 'var(--color-primary)', fontWeight: '600',
-                        display: 'flex', alignItems: 'center', gap: '0.3rem'
-                    }}>
-                        <i className="bi bi-layers" style={{ fontSize: '0.75rem' }} />
+                    <p className="catalog-product-card-material">
+                        <i className="bi bi-layers" />
                         {producto.material_nombre}
                     </p>
                 )}
                 {producto.descripcion && (
-                    <p style={{
-                        margin: '0 0 1rem 0', fontSize: '0.825rem',
-                        color: 'var(--color-text-secondary)', lineHeight: '1.4',
-                        display: '-webkit-box', WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical', overflow: 'hidden'
-                    }}>
+                    <p className="catalog-product-card-description">
                         {producto.descripcion}
                     </p>
                 )}
 
-                <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)'
-                }}>
+                <div className="catalog-product-card-footer">
                     <div>
                         {producto.precio_base > 0 && (
-                            <div style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--color-primary)' }}>
+                            <div className="catalog-product-card-price">
                                 S/. {Number(producto.precio_base).toFixed(2)}
                             </div>
                         )}
                     </div>
                     {producto.tiempo_estimado_dias && (
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '0.3rem',
-                            fontSize: '0.78rem', color: 'var(--color-text-secondary)',
-                            background: 'var(--color-bg-alt)', padding: '0.2rem 0.6rem',
-                            borderRadius: '999px', border: '1px solid var(--color-border)'
-                        }}>
+                        <div className="catalog-product-card-time">
                             <i className="bi bi-clock" />
                             {producto.tiempo_estimado_dias} día{producto.tiempo_estimado_dias !== 1 ? 's' : ''}
                         </div>
@@ -551,8 +487,7 @@ const ProductCard = React.memo(({ producto, resolveImageUrl, onOrder }) => {
 
                 <button
                     onClick={onOrder}
-                    className="btn btn-primary"
-                    style={{ width: '100%', marginTop: '0.85rem', fontSize: '0.875rem', gap: '0.4rem' }}
+                    className="btn btn-primary catalog-product-card-cta"
                 >
                     <i className="bi bi-bag-plus" /> Solicitar Pedido
                 </button>
