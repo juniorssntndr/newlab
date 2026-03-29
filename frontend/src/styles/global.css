@@ -4692,8 +4692,8 @@ Rediseño UI: Nuevo Pedido Layout Base
   --odt-neutral-fill: #F8FAFC;
   --odt-neutral-stroke: #B8C2D1;
   --odt-groove: rgba(71, 85, 105, 0.56);
-  --odt-selected-fill: #22D3EE;
-  --odt-selected-stroke: #0891B2;
+  --odt-selected-fill: #9ADCE9;
+  --odt-selected-stroke: #4AA8C0;
   --odt-pillar-fill: #10B981;
   --odt-pillar-stroke: #047857;
   --odt-pontic-fill: #F97316;
@@ -5019,7 +5019,7 @@ Rediseño UI: Nuevo Pedido Layout Base
 
 .tooth-node.is-selected .tooth-fill {
   fill: var(--odt-selected-fill);
-  filter: drop-shadow(0 0 7px rgba(34, 211, 238, 0.5));
+  filter: drop-shadow(0 0 7px rgba(74, 168, 192, 0.28));
 }
 
 .tooth-node.is-selected .tooth-outline {
