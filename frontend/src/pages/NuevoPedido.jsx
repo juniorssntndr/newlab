@@ -192,16 +192,21 @@ const NuevoPedido = () => {
 
     return (
         <div className="animate-fade-in nuevo-pedido-page-shell">
-            <div className="page-header">
+            <div className="page-header nuevo-pedido-page-header">
                 <div className="page-header-left">
-                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/pedidos')}>
-                        <i className="bi bi-arrow-left"></i>
-                    </button>
                     <div>
                         <h1>Nuevo Pedido</h1>
                         <p>Prescripcion digital de trabajo dental</p>
                     </div>
                 </div>
+                <button
+                    className="btn btn-ghost btn-sm nuevo-pedido-header-back"
+                    onClick={() => navigate('/pedidos')}
+                    type="button"
+                >
+                    <i className="bi bi-arrow-left"></i>
+                    Volver a seguimiento
+                </button>
             </div>
 
             {error && (
