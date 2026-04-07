@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../state/AuthContext.jsx';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
-import { API_URL } from '../config.js';
+import { useDashboardStatsQuery } from '../modules/dashboard/queries/useDashboardStatsQuery.js';
+import { useDashboardFinanceQuery } from '../modules/dashboard/queries/useDashboardFinanceQuery.js';
+import '../styles/dashboard-ui-consistency.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -11,7 +12,20 @@ const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
     en_produccion: 'En Producción', terminado: 'Terminado', enviado: 'Enviado'
 };
-const statusColors = ['#F59E0B', '#8B5CF6', '#3B82F6', '#0891B2', '#10B981', '#6B7280'];
+const dashboardPalette = {
+    blue: 'rgba(37, 99, 235, 0.72)',
+    sky: 'rgba(14, 165, 233, 0.72)',
+    cyan: 'rgba(8, 145, 178, 0.72)',
+    teal: 'rgba(20, 184, 166, 0.72)',
+    emerald: 'rgba(16, 185, 129, 0.72)',
+    amber: 'rgba(245, 158, 11, 0.72)',
+    violet: 'rgba(139, 92, 246, 0.72)',
+    red: 'rgba(239, 68, 68, 0.72)',
+    orange: 'rgba(249, 115, 22, 0.72)',
+    gray: 'rgba(107, 114, 128, 0.72)'
+};
+const dashboardGridColor = 'rgba(0,0,0,0.05)';
+const statusColors = [dashboardPalette.amber, dashboardPalette.violet, dashboardPalette.blue, dashboardPalette.cyan, dashboardPalette.emerald, dashboardPalette.gray];
 
 const formatCurrency = (value) => {
     const number = parseFloat(value || 0);
@@ -56,12 +70,7 @@ const toMonthKey = (value) => {
 };
 
 const Dashboard = () => {
-    const { getHeaders } = useAuth();
     const navigate = useNavigate();
-    const [stats, setStats] = useState(null);
-    const [financeStats, setFinanceStats] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [loadingFinance, setLoadingFinance] = useState(true);
     const [activeView, setActiveView] = useState('operativo');
     const [financeView, setFinanceView] = useState('resumen');
     const [strategicTopN, setStrategicTopN] = useState(5);
@@ -73,35 +82,26 @@ const Dashboard = () => {
         to: todayIso()
     });
 
-    useEffect(() => {
-        fetch(`${API_URL}/dashboard/stats`, { headers: getHeaders() })
-            .then(r => r.json())
-            .then(data => { setStats(data); setLoading(false); })
-            .catch(() => setLoading(false));
-    }, [getHeaders]);
-
-    useEffect(() => {
-        if (activeView !== 'financiero') return;
-        const params = new URLSearchParams();
-        if (filters.from) params.set('from', filters.from);
-        if (filters.to) params.set('to', filters.to);
-
-        setLoadingFinance(true);
-        fetch(`${API_URL}/dashboard/finance?${params.toString()}`, { headers: getHeaders() })
-            .then((r) => r.json())
-            .then((data) => {
-                setFinanceStats(data);
-                setLoadingFinance(false);
-            })
-            .catch(() => setLoadingFinance(false));
-    }, [filters, getHeaders, activeView]);
+    const financeRange = useMemo(() => ({
+        from: filters.from,
+        to: filters.to
+    }), [filters.from, filters.to]);
+    const dashboardStatsQuery = useDashboardStatsQuery();
+    const dashboardFinanceQuery = useDashboardFinanceQuery({
+        range: financeRange,
+        enabled: activeView === 'financiero'
+    });
+    const stats = dashboardStatsQuery.data || null;
+    const financeStats = dashboardFinanceQuery.data || null;
+    const loading = dashboardStatsQuery.isLoading;
+    const loadingFinance = dashboardFinanceQuery.isLoading && !dashboardFinanceQuery.data;
 
     if (loading) {
         return (
-            <div>
+            <div className="dashboard-page">
                 <div className="page-header"><div className="page-header-left"><h1>Dashboard</h1></div></div>
-                <div className="grid grid-cols-5">
-                    {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton" style={{ height: 120, borderRadius: 12 }} />)}
+                <div className="dashboard-loading-grid grid grid-cols-5">
+                    {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton dashboard-loading-card" />)}
                 </div>
             </div>
         );
@@ -123,14 +123,14 @@ const Dashboard = () => {
     const estrategicosKpis = estrategicos?.kpis || {};
 
     const kpiCardsMesNumericos = [
-        { label: 'Pedidos del mes', value: kpis.pedidos_mes, icon: 'bi-calendar2-week', color: '#0891B2', bg: 'rgba(8,145,178,0.1)', detail: 'Registrados este mes' },
-        { label: 'Nuevos clientes con pedido', value: kpis.nuevos_clientes_mes, icon: 'bi-person-plus', color: '#6366F1', bg: 'rgba(99,102,241,0.1)', detail: 'Clínicas nuevas con actividad' },
-        { label: 'Reprocesos en el mes', value: kpis.retrocesos_mes, icon: 'bi-arrow-counterclockwise', color: '#EF4444', bg: 'rgba(239,68,68,0.12)', detail: 'Pedidos que volvieron de etapa' }
+        { label: 'Pedidos del mes', value: kpis.pedidos_mes, icon: 'bi-calendar2-week', detail: 'Registrados este mes' },
+        { label: 'Nuevos clientes con pedido', value: kpis.nuevos_clientes_mes, icon: 'bi-person-plus', detail: 'Clínicas nuevas con actividad' },
+        { label: 'Reprocesos en el mes', value: kpis.retrocesos_mes, icon: 'bi-arrow-counterclockwise', detail: 'Pedidos que volvieron de etapa' }
     ];
 
     const kpiCardsMesDatos = [
-        { label: 'Producto top del mes', value: topProductoMes?.producto || 'Sin pedidos', detail: `${topProductoMes?.cantidad || 0} pedidos`, icon: 'bi-award', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
-        { label: 'Clínica top del mes', value: topClinicaMes?.clinica || 'Sin pedidos', detail: `${topClinicaMes?.pedidos || 0} pedidos`, icon: 'bi-building-check', color: '#10B981', bg: 'rgba(16,185,129,0.1)' }
+        { label: 'Producto top del mes', value: topProductoMes?.producto || 'Sin pedidos', detail: `${topProductoMes?.cantidad || 0} pedidos`, icon: 'bi-award' },
+        { label: 'Clínica top del mes', value: topClinicaMes?.clinica || 'Sin pedidos', detail: `${topClinicaMes?.pedidos || 0} pedidos`, icon: 'bi-building-check' }
     ];
 
     const kpiCardsOperacion = [
@@ -138,32 +138,24 @@ const Dashboard = () => {
             label: 'Trabajos por terminar',
             value: kpis.trabajos_por_terminar,
             icon: 'bi-hourglass-split',
-            color: '#F59E0B',
-            bg: 'rgba(245,158,11,0.1)',
             detail: 'Pendientes de cerrar'
         },
         {
             label: 'Trabajos en producción',
             value: kpis.en_produccion,
             icon: 'bi-gear',
-            color: '#8B5CF6',
-            bg: 'rgba(139,92,246,0.1)',
             detail: 'Pedidos fabricándose ahora'
         },
         {
             label: 'Pedidos retrasados',
             value: kpis.retrasados,
             icon: 'bi-alarm',
-            color: '#EF4444',
-            bg: 'rgba(239,68,68,0.12)',
             detail: 'Con fecha de entrega vencida'
         },
         {
             label: 'Clínicas activas',
             value: kpis.clinicas_activas,
             icon: 'bi-building',
-            color: '#10B981',
-            bg: 'rgba(16,185,129,0.1)',
             detail: 'Con actividad vigente'
         }
     ];
@@ -189,14 +181,14 @@ const Dashboard = () => {
             {
                 label: 'Pedidos',
                 data: historicoOperativoSlice.map((item) => toNumber(item.pedidos)),
-                backgroundColor: 'rgba(8, 145, 178, 0.72)',
+                backgroundColor: dashboardPalette.cyan,
                 borderRadius: 6,
                 borderSkipped: false
             },
             {
                 label: 'Nuevos clientes con pedido',
                 data: historicoOperativoSlice.map((item) => toNumber(item.nuevos_clientes)),
-                backgroundColor: 'rgba(99, 102, 241, 0.72)',
+                backgroundColor: dashboardPalette.violet,
                 borderRadius: 6,
                 borderSkipped: false
             }
@@ -210,14 +202,14 @@ const Dashboard = () => {
             {
                 label: 'Ingresos cobrados',
                 data: financeSeries.map((item) => toNumber(item?.ingresos)),
-                backgroundColor: 'rgba(16, 185, 129, 0.72)',
+                backgroundColor: dashboardPalette.emerald,
                 borderRadius: 6,
                 borderSkipped: false
             },
             {
                 label: 'Egresos',
                 data: financeSeries.map((item) => toNumber(item?.egresos)),
-                backgroundColor: 'rgba(239, 68, 68, 0.72)',
+                backgroundColor: dashboardPalette.red,
                 borderRadius: 6,
                 borderSkipped: false
             }
@@ -229,7 +221,14 @@ const Dashboard = () => {
         labels: gastoCategoriasTop.map((row) => (row?.categoria || 'sin categoria').split('_').join(' ')),
         datasets: [{
             data: gastoCategoriasTop.map((row) => toNumber(row?.total)),
-            backgroundColor: ['#EF4444', '#F97316', '#F59E0B', '#0EA5E9', '#6366F1', '#22C55E'],
+            backgroundColor: [
+                dashboardPalette.red,
+                dashboardPalette.orange,
+                dashboardPalette.amber,
+                dashboardPalette.sky,
+                dashboardPalette.violet,
+                dashboardPalette.emerald
+            ],
             borderWidth: 0,
             borderRadius: 4
         }]
@@ -248,7 +247,7 @@ const Dashboard = () => {
             {
                 label: 'Ingresos por clínica',
                 data: topClinicasEstrategico.map((row) => getStrategicValue(row)),
-                backgroundColor: 'rgba(14, 116, 144, 0.78)',
+                backgroundColor: dashboardPalette.cyan,
                 borderRadius: 8,
                 borderSkipped: false
             }
@@ -261,7 +260,7 @@ const Dashboard = () => {
             {
                 label: 'Ingresos por producto/servicio',
                 data: topProductosEstrategico.map((row) => getStrategicValue(row)),
-                backgroundColor: 'rgba(37, 99, 235, 0.78)',
+                backgroundColor: dashboardPalette.blue,
                 borderRadius: 8,
                 borderSkipped: false
             }
@@ -304,14 +303,14 @@ const Dashboard = () => {
             {
                 label: 'Top clínicas (suma mensual)',
                 data: historyRows.map((row) => row.clinicas),
-                backgroundColor: 'rgba(14, 116, 144, 0.72)',
+                backgroundColor: dashboardPalette.cyan,
                 borderRadius: 8,
                 borderSkipped: false
             },
             {
                 label: 'Top productos (suma mensual)',
                 data: historyRows.map((row) => row.productos),
-                backgroundColor: 'rgba(37, 99, 235, 0.72)',
+                backgroundColor: dashboardPalette.blue,
                 borderRadius: 8,
                 borderSkipped: false
             }
@@ -319,17 +318,17 @@ const Dashboard = () => {
     };
 
     const liquidityCards = [
-        { label: 'Saldo en caja', value: formatCurrency(liquidez.saldo_caja), icon: 'bi-safe2', color: '#0EA5E9', bg: 'rgba(14,165,233,0.1)', detail: 'Fondos disponibles en caja' },
-        { label: 'Saldo en bancos', value: formatCurrency(liquidez.saldo_bancos), icon: 'bi-bank', color: '#1D4ED8', bg: 'rgba(29,78,216,0.1)', detail: 'Fondos disponibles en bancos' },
-        { label: 'Flujo del día', value: formatCurrency(liquidez.flujo_dia), icon: 'bi-lightning', color: '#10B981', bg: 'rgba(16,185,129,0.1)', detail: 'Ingreso neto de hoy' },
-        { label: 'Flujo del mes', value: formatCurrency(liquidez.flujo_mes), icon: 'bi-calendar-check', color: '#14B8A6', bg: 'rgba(20,184,166,0.12)', detail: 'Ingreso neto del mes' }
+        { label: 'Saldo en caja', value: formatCurrency(liquidez.saldo_caja), icon: 'bi-safe2', detail: 'Fondos disponibles en caja' },
+        { label: 'Saldo en bancos', value: formatCurrency(liquidez.saldo_bancos), icon: 'bi-bank', detail: 'Fondos disponibles en bancos' },
+        { label: 'Flujo del día', value: formatCurrency(liquidez.flujo_dia), icon: 'bi-lightning', detail: 'Ingreso neto de hoy' },
+        { label: 'Flujo del mes', value: formatCurrency(liquidez.flujo_mes), icon: 'bi-calendar-check', detail: 'Ingreso neto del mes' }
     ];
 
     const businessCards = [
-        { label: 'Ingresos del mes', value: formatCurrency(ingresosFin.mes), icon: 'bi-currency-dollar', color: '#16A34A', bg: 'rgba(22,163,74,0.12)', detail: 'Cobrado en el período actual' },
-        { label: 'Ingresos mes en caja', value: formatCurrency(ingresosFin.mes_caja), icon: 'bi-wallet', color: '#0EA5E9', bg: 'rgba(14,165,233,0.12)', detail: 'Disponible en caja' },
-        { label: 'Ingresos mes en bancos', value: formatCurrency(ingresosFin.mes_banco), icon: 'bi-credit-card', color: '#2563EB', bg: 'rgba(37,99,235,0.12)', detail: 'Disponible en bancos' },
-        { label: 'Gastos totales del mes', value: formatCurrency(gastosFin.mes_total), icon: 'bi-receipt-cutoff', color: '#DC2626', bg: 'rgba(220,38,38,0.12)', detail: 'Egresos acumulados del mes' }
+        { label: 'Ingresos del mes', value: formatCurrency(ingresosFin.mes), icon: 'bi-currency-dollar', detail: 'Cobrado en el período actual' },
+        { label: 'Ingresos mes en caja', value: formatCurrency(ingresosFin.mes_caja), icon: 'bi-wallet', detail: 'Disponible en caja' },
+        { label: 'Ingresos mes en bancos', value: formatCurrency(ingresosFin.mes_banco), icon: 'bi-credit-card', detail: 'Disponible en bancos' },
+        { label: 'Gastos totales del mes', value: formatCurrency(gastosFin.mes_total), icon: 'bi-receipt-cutoff', detail: 'Egresos acumulados del mes' }
     ];
 
     const renderDashboardMetricCard = (kpi, i, options = {}) => {
@@ -340,13 +339,13 @@ const Dashboard = () => {
         ].filter(Boolean).join(' ');
 
         return (
-            <div key={options.key || i} className={`card kpi-card dashboard-kpi-card ${options.className || ''}`.trim()} style={options.style}>
+            <div key={options.key || i} className={`card kpi-card dashboard-kpi-card ${options.className || ''}`.trim()}>
                 <div className="dashboard-kpi-shell">
                     <div className="dashboard-kpi-row">
                         <div className="dashboard-kpi-heading-group">
                             <div className="dashboard-kpi-heading">{kpi.label}</div>
                         </div>
-                        <div className="kpi-icon dashboard-kpi-icon-right" style={{ background: kpi.bg, color: kpi.color }}>
+                        <div className="kpi-icon dashboard-kpi-icon-right">
                             <i className={`bi ${kpi.icon}`}></i>
                         </div>
                     </div>
@@ -358,7 +357,7 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in dashboard-page">
             <div className="page-header">
                 <div className="page-header-left">
                     <h1>Dashboard</h1>
@@ -366,17 +365,15 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: 'var(--space-5)', borderBottom: '1px solid var(--border-color)' }}>
+            <div className="dashboard-view-switcher">
                 <button
-                    className={`btn ${activeView === 'operativo' ? 'btn-primary' : 'btn-ghost'}`}
-                    style={{ borderRadius: '8px 8px 0 0', padding: '0.75rem 1.5rem' }}
+                    className={`btn dashboard-view-tab ${activeView === 'operativo' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveView('operativo')}
                 >
                     <i className="bi bi-clipboard-data"></i> Operativo
                 </button>
                 <button
-                    className={`btn ${activeView === 'financiero' ? 'btn-primary' : 'btn-ghost'}`}
-                    style={{ borderRadius: '8px 8px 0 0', padding: '0.75rem 1.5rem' }}
+                    className={`btn dashboard-view-tab ${activeView === 'financiero' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveView('financiero')}
                 >
                     <i className="bi bi-cash-coin"></i> Financiero BI
@@ -385,9 +382,9 @@ const Dashboard = () => {
 
             {activeView === 'financiero' && (
                 <>
-            <div className="card dashboard-filters-card" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className="card dashboard-filters-card">
                 <div className="dashboard-filters-grid">
-                    <div className="form-group" style={{ marginBottom: 0 }}>
+                    <div className="form-group">
                         <label className="form-label">Desde</label>
                         <input
                             type="date"
@@ -396,7 +393,7 @@ const Dashboard = () => {
                             onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))}
                         />
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
+                    <div className="form-group">
                         <label className="form-label">Hasta</label>
                         <input
                             type="date"
@@ -406,15 +403,15 @@ const Dashboard = () => {
                         />
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
+                <div className="dashboard-filters-actions">
                     <button className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(30), to: todayIso() }))}>Últimos 30 días</button>
                     <button className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(60), to: todayIso() }))}>Últimos 60 días</button>
                     <button className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(90), to: todayIso() }))}>Últimos 90 días</button>
                 </div>
             </div>
 
-            <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-3)' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div className="card dashboard-toolbar-card dashboard-toolbar-card--padded">
+                <div className="dashboard-toolbar-group">
                     <button className={`btn btn-sm ${financeView === 'resumen' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFinanceView('resumen')}>
                         <i className="bi bi-grid"></i> Resumen financiero
                     </button>
@@ -427,59 +424,57 @@ const Dashboard = () => {
             {financeView === 'resumen' && (
                 <>
 
-            <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
+            <div className="card dashboard-stack">
+                <div className="card-header dashboard-card-header">
                     <div>
                         <h3 className="card-title">Indicadores de liquidez</h3>
                         <p className="card-subtitle">Control de caja y flujo en tiempo real</p>
                     </div>
                 </div>
                 {loadingFinance ? (
-                    <div className="grid dashboard-kpi-grid-liquid">
-                        {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton" style={{ height: 120, borderRadius: 12 }} />)}
+                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
+                        {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton dashboard-loading-card" />)}
                     </div>
                 ) : (
-                    <div className="grid dashboard-kpi-grid-liquid">
+                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
                         {liquidityCards.map((kpi, i) => (
                             renderDashboardMetricCard(kpi, i, {
                                 currency: true,
-                                className: 'animate-slide-up',
-                                style: { animationDelay: `${i * 80}ms` }
+                                className: 'animate-slide-up'
                             })
                         ))}
                     </div>
                 )}
             </div>
 
-            <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
+            <div className="card dashboard-stack">
+                <div className="card-header dashboard-card-header">
                     <div>
                         <h3 className="card-title">Control de ingresos y gastos</h3>
                         <p className="card-subtitle">Indicadores clave mensuales para decisiones rápidas</p>
                     </div>
                 </div>
                 {loadingFinance ? (
-                    <div className="grid dashboard-kpi-grid-liquid">
-                        {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton" style={{ height: 120, borderRadius: 12 }} />)}
+                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
+                        {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton dashboard-loading-card" />)}
                     </div>
                 ) : (
-                    <div className="grid dashboard-kpi-grid-liquid">
+                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
                         {businessCards.map((kpi, i) => (
                             renderDashboardMetricCard(kpi, i, {
                                 currency: true,
-                                className: 'animate-slide-up',
-                                style: { animationDelay: `${i * 80}ms` }
+                                className: 'animate-slide-up'
                             })
                         ))}
                     </div>
                 )}
             </div>
 
-            <div className="grid grid-cols-3" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className="grid grid-cols-3 dashboard-stack">
                 <div className="card col-span-2">
                     <div className="card-header"><h3 className="card-title">BI mensual: ingresos vs egresos</h3></div>
                     {loadingFinance ? (
-                        <div className="skeleton" style={{ height: 280, borderRadius: 12 }} />
+                        <div className="skeleton dashboard-chart-shell dashboard-loading-chart-card" />
                     ) : financeSeries.length > 0 ? (
                         <Bar
                             data={financeBarData}
@@ -488,7 +483,7 @@ const Dashboard = () => {
                                 plugins: { legend: { display: true } },
                                 scales: {
                                     x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                                    y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } }
+                                    y: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } }
                                 }
                             }}
                         />
@@ -499,7 +494,7 @@ const Dashboard = () => {
                 <div className="card">
                     <div className="card-header"><h3 className="card-title">Gastos por categoría</h3></div>
                     {loadingFinance ? (
-                        <div className="skeleton" style={{ height: 280, borderRadius: 12 }} />
+                        <div className="skeleton dashboard-chart-shell dashboard-loading-chart-card" />
                     ) : gastoCategoriasTop.length > 0 ? (
                         <Doughnut
                             data={gastosDonutData}
@@ -519,13 +514,13 @@ const Dashboard = () => {
 
             {financeView === 'estrategicos' && (
                 <>
-                    <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-4)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div className="card dashboard-stack dashboard-toolbar-card--padded">
+                        <div className="dashboard-toolbar-row">
                             <div>
                                 <h3 className="card-title">Centro Estratégico</h3>
                                 <p className="card-subtitle">Identifica rápidamente qué clínica y qué producto impulsan tus ingresos</p>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <div className="dashboard-toolbar-group">
                                 <button className={`btn btn-sm ${strategicTopN === 5 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(5)}>Top 5</button>
                                 <button className={`btn btn-sm ${strategicTopN === 10 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(10)}>Top 10</button>
                                 <button className={`btn btn-sm ${strategicMetric === 'monto' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStrategicMetric('monto')}>S/.</button>
@@ -534,42 +529,34 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <div className="grid dashboard-kpi-grid-liquid" style={{ marginBottom: 'var(--space-6)' }}>
+                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid dashboard-stack">
                         {renderDashboardMetricCard({
                             label: 'Clínica líder del período',
                             value: topClinicaActual ? topClinicaActual.clinica : 'Sin datos',
                             detail: topClinicaActual ? formatCurrency(topClinicaActual.total) : 'S/. 0.00',
-                            icon: 'bi-building-check',
-                            color: '#0F766E',
-                            bg: 'rgba(20,184,166,0.12)'
+                            icon: 'bi-building-check'
                         }, 'strategic-clinic', { className: 'strategic-kpi-card' })}
                         {renderDashboardMetricCard({
                             label: 'Producto líder del período',
                             value: topProductoActual ? topProductoActual.producto : 'Sin datos',
                             detail: topProductoActual ? formatCurrency(topProductoActual.total) : 'S/. 0.00',
-                            icon: 'bi-box-seam',
-                            color: '#7C3AED',
-                            bg: 'rgba(139,92,246,0.12)'
+                            icon: 'bi-box-seam'
                         }, 'strategic-product', { className: 'strategic-kpi-card' })}
                         {renderDashboardMetricCard({
                             label: 'Concentración top 3 clínicas',
                             value: formatPercent(estrategicosKpis.concentracion_top3_clinicas_pct),
                             detail: 'Participación sobre ingresos',
-                            icon: 'bi-pie-chart',
-                            color: '#2563EB',
-                            bg: 'rgba(37,99,235,0.12)'
+                            icon: 'bi-pie-chart'
                         }, 'strategic-clinics-pct', { className: 'strategic-kpi-card', currency: true })}
                         {renderDashboardMetricCard({
                             label: 'Concentración top 3 productos',
                             value: formatPercent(estrategicosKpis.concentracion_top3_productos_pct),
                             detail: 'Participación sobre ingresos',
-                            icon: 'bi-bar-chart',
-                            color: '#EA580C',
-                            bg: 'rgba(249,115,22,0.12)'
+                            icon: 'bi-bar-chart'
                         }, 'strategic-products-pct', { className: 'strategic-kpi-card', currency: true })}
                     </div>
 
-                    <div className="grid strategic-bento-main" style={{ marginBottom: 'var(--space-6)' }}>
+                    <div className="grid strategic-bento-main dashboard-stack">
                         <div className="card">
                             <div className="card-header"><h3 className="card-title">Ranking de clínicas</h3></div>
                             {topClinicasEstrategico.length > 0 ? (
@@ -582,7 +569,7 @@ const Dashboard = () => {
                                             maintainAspectRatio: false,
                                             plugins: { legend: { display: false } },
                                             scales: {
-                                                x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } },
+                                                x: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } },
                                                 y: { grid: { display: false }, ticks: { font: { size: 11 } } }
                                             }
                                         }}
@@ -604,7 +591,7 @@ const Dashboard = () => {
                                             maintainAspectRatio: false,
                                             plugins: { legend: { display: false } },
                                             scales: {
-                                                x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } },
+                                                x: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } },
                                                 y: { grid: { display: false }, ticks: { font: { size: 11 } } }
                                             }
                                         }}
@@ -616,7 +603,7 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+                    <div className="card dashboard-stack">
                         <div className="card-header"><h3 className="card-title">Histórico estratégico mensual</h3></div>
                         {historyRows.length > 0 ? (
                             <div className="strategic-chart-shell strategic-chart-shell--short">
@@ -628,7 +615,7 @@ const Dashboard = () => {
                                         plugins: { legend: { display: true } },
                                         scales: {
                                             x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                                            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } }
+                                            y: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } }
                                         }
                                     }}
                                 />
@@ -646,15 +633,15 @@ const Dashboard = () => {
             {/* KPIs */}
             {activeView === 'operativo' && (
                 <>
-            <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div className="card dashboard-stack">
+                <div className="dashboard-toolbar-row">
+                    <div className="dashboard-toolbar-group">
                         <button className={`btn btn-sm ${operativeView === 'produccion' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('produccion')}>Producción</button>
                         <button className={`btn btn-sm ${operativeView === 'resumen' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('resumen')}>Resumen del mes</button>
                         <button className={`btn btn-sm ${operativeView === 'historico' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('historico')}>Histórico</button>
                         <button className={`btn btn-sm ${operativeView === 'tops' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('tops')}>Tops</button>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div className="dashboard-toolbar-group">
                         <button className={`btn btn-sm ${operativeRange === '3m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('3m')}>3m</button>
                         <button className={`btn btn-sm ${operativeRange === '6m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('6m')}>6m</button>
                         <button className={`btn btn-sm ${operativeRange === '12m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('12m')}>12m</button>
@@ -664,8 +651,8 @@ const Dashboard = () => {
 
             {operativeView === 'resumen' && (
                 <>
-                    <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                        <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
+                    <div className="card dashboard-stack">
+                        <div className="card-header dashboard-card-header">
                             <div>
                                 <h3 className="card-title">Indicadores comerciales del mes</h3>
                                 <p className="card-subtitle">Separa métricas numéricas de los datos destacados del mes</p>
@@ -674,25 +661,23 @@ const Dashboard = () => {
                         <div className="dashboard-summary-groups">
                             <div>
                                 <div className="dashboard-summary-group-title">Métricas numéricas</div>
-                                <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-numeric">
+                                <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-numeric dashboard-staggered-grid">
                                     {kpiCardsMesNumericos.map((kpi, i) => (
                                         renderDashboardMetricCard(kpi, i, {
-                                            className: 'animate-slide-up dashboard-kpi-card-numeric',
-                                            style: { animationDelay: `${i * 80}ms` }
+                                            className: 'animate-slide-up dashboard-kpi-card-numeric'
                                         })
                                     ))}
                                 </div>
                             </div>
                             <div>
                                 <div className="dashboard-summary-group-title">Datos destacados</div>
-                                <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-featured">
+                                <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-featured dashboard-staggered-grid">
                                     {kpiCardsMesDatos.map((kpi, i) => (
                                         renderDashboardMetricCard(kpi, i, {
                                             key: `featured-${i}`,
                                             className: 'animate-slide-up dashboard-kpi-card-featured',
                                             valueClassName: 'dashboard-kpi-main-value-featured',
-                                            noteClassName: 'dashboard-kpi-note-featured',
-                                            style: { animationDelay: `${(i + kpiCardsMesNumericos.length) * 80}ms` }
+                                            noteClassName: 'dashboard-kpi-note-featured'
                                         })
                                     ))}
                                 </div>
@@ -700,7 +685,7 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2" style={{ marginBottom: 'var(--space-6)' }}>
+                    <div className="grid grid-cols-2 dashboard-stack">
                         <div className="card">
                             <div className="card-header">
                                 <div>
@@ -747,7 +732,7 @@ const Dashboard = () => {
             )}
 
             {operativeView === 'historico' && (
-                <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+                <div className="card dashboard-stack">
                     <div className="card-header"><h3 className="card-title">Histórico {selectedMonths} meses: pedidos y nuevos clientes</h3></div>
                     {historicoOperativoSlice.length > 0 ? (
                         <Bar data={operativoBarDataSlice} options={{
@@ -755,7 +740,7 @@ const Dashboard = () => {
                             plugins: { legend: { display: true } },
                             scales: {
                                 x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                                y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 } } }
+                                y: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } }
                             }
                         }} />
                     ) : (
@@ -765,7 +750,7 @@ const Dashboard = () => {
             )}
 
             {operativeView === 'tops' && (
-                <div className="grid grid-cols-3" style={{ marginBottom: 'var(--space-6)' }}>
+                <div className="grid grid-cols-3 dashboard-stack">
                     <div className="card col-span-1">
                         <div className="card-header"><h3 className="card-title">Top producto por mes</h3></div>
                         {historicoTopProductoSlice.length > 0 ? (
@@ -801,7 +786,7 @@ const Dashboard = () => {
             )}
 
             {operativeView === 'produccion' && (
-                <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+                <div className="card dashboard-stack">
                     <div className="card-header">
                         <div>
                             <h3 className="card-title">Operación del laboratorio</h3>
@@ -817,9 +802,9 @@ const Dashboard = () => {
             )}
 
             {operativeView === 'produccion' && (
-                <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+                <div className="card dashboard-stack">
                     <div className="card-header"><h3 className="card-title">Pedidos por Estado</h3></div>
-                    <div style={{ maxWidth: 280, margin: '0 auto' }}>
+                    <div className="dashboard-chart-donut-shell">
                         {(stats?.por_estado || []).length > 0 ? (
                             <Doughnut data={doughnutData} options={{
                                 plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } } },
@@ -833,14 +818,14 @@ const Dashboard = () => {
             )}
 
             {operativeView === 'produccion' && (
-                <div className="card" style={{ marginTop: 'var(--space-6)' }}>
+                <div className="card dashboard-stack">
                     <div className="card-header">
                         <h3 className="card-title">Pedidos Recientes</h3>
                         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/pedidos')}>Ver todos →</button>
                     </div>
                     {(stats?.recientes || []).length > 0 ? (
                         <>
-                            <div className="data-table-wrapper desktop-only" style={{ border: 'none' }}>
+                            <div className="data-table-wrapper desktop-only dashboard-data-table-shell">
                             <table className="data-table">
                                 <thead>
                                     <tr>
@@ -849,7 +834,7 @@ const Dashboard = () => {
                                 </thead>
                                 <tbody>
                                     {stats.recientes.map(p => (
-                                        <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/pedidos/${p.id}`)}>
+                                        <tr key={p.id} className="dashboard-clickable-row" onClick={() => navigate(`/pedidos/${p.id}`)}>
                                             <td><strong>{p.codigo}</strong></td>
                                             <td>{p.paciente_nombre}</td>
                                             <td>{p.clinica_nombre}</td>
@@ -863,7 +848,7 @@ const Dashboard = () => {
                             </div>
                             <div className="mobile-cards mobile-only recent-orders-mobile">
                                 {stats.recientes.map(p => (
-                                    <div key={p.id} className="mobile-card recent-order-card" onClick={() => navigate(`/pedidos/${p.id}`)} style={{ cursor: 'pointer' }}>
+                                    <div key={p.id} className="mobile-card recent-order-card dashboard-mobile-card" onClick={() => navigate(`/pedidos/${p.id}`)}>
                                         <div className="mobile-card-head">
                                             <div className="mobile-card-title">{p.codigo}</div>
                                             <span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span>

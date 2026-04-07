@@ -1,10 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../state/AuthContext.jsx';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../config.js';
-import Modal from '../components/Modal.jsx';
+import { useAuth } from '../state/AuthContext.jsx';
 import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
-import { buildItemSelection, formatDentalSelection } from '../utils/odontograma.js';
+import OrderClinicalPanel from '../components/orders/OrderClinicalPanel.jsx';
+import OrderCatalogPane from '../components/orders/OrderCatalogPane.jsx';
+import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
+import { useOrderComposerState } from '../modules/orders/composer/useOrderComposerState.js';
+import { apiClient } from '../services/http/apiClient.js';
+
+const BACKEND_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace(/\/api\/?$/, '');
+
+const resolveImageUrl = (imageUrl) => {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+    return `${BACKEND_BASE}${imageUrl}`;
+};
+
+const formatDateForInput = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const calculateEstimatedDeliveryDate = (product, isUrgent) => {
+    if (!product) return '';
+    const rawDays = Number(product.tiempo_estimado_dias);
+    const baseDays = Number.isFinite(rawDays) && rawDays > 0 ? Math.trunc(rawDays) : 5;
+    const estimatedDays = isUrgent ? Math.max(1, Math.floor(baseDays / 2)) : baseDays;
+    const deliveryDate = new Date();
+    deliveryDate.setDate(deliveryDate.getDate() + estimatedDays);
+    return formatDateForInput(deliveryDate);
+};
 
 const NuevoPedido = () => {
     const { getHeaders, user } = useAuth();
@@ -12,382 +39,390 @@ const NuevoPedido = () => {
     const [clinicas, setClinicas] = useState([]);
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
-    const [form, setForm] = useState({ clinica_id: '', paciente_nombre: '', fecha_entrega: '', observaciones: '' });
-    const [items, setItems] = useState([]);
+    const [clinicSearch, setClinicSearch] = useState('');
+    const [form, setForm] = useState({
+        clinica_id: '',
+        paciente_nombre: '',
+        fecha_entrega: '',
+        observaciones: ''
+    });
+    const [isExpressOrder, setIsExpressOrder] = useState(false);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
-    const [step, setStep] = useState(1);
-    const [odontogramaItemIndex, setOdontogramaItemIndex] = useState(null);
+    const [selectedImageError, setSelectedImageError] = useState(false);
+    const createOrderMutation = useCreateOrderMutation();
+    const {
+        items,
+        total,
+        selectedItem,
+        selectedItemId,
+        addProduct,
+        removeItem,
+        replaceItems,
+        selectItem,
+        updateItemField,
+        updateQuantity,
+        updateDentalSelection
+    } = useOrderComposerState();
 
     useEffect(() => {
         Promise.all([
-            fetch(`${API_URL}/clinicas`, { headers: getHeaders() }).then(r => r.json()),
-            fetch(`${API_URL}/productos`, { headers: getHeaders() }).then(r => r.json()),
-            fetch(`${API_URL}/categorias`, { headers: getHeaders() }).then(r => r.json())
-        ]).then(([c, p, cat]) => {
-            setClinicas(c);
-            setProductos(p);
-            setCategorias(cat);
-            // If client, auto-select their clinic
-            if (user?.clinica_id) setForm(f => ({ ...f, clinica_id: user.clinica_id }));
+            apiClient('/clinicas', { headers: getHeaders() }),
+            apiClient('/productos', { headers: getHeaders() }),
+            apiClient('/categorias', { headers: getHeaders() })
+        ]).then(([clinics, products, categories]) => {
+            setClinicas(clinics);
+            setProductos(products);
+            setCategorias(categories);
+            if (user?.clinica_id) {
+                setForm((prevForm) => ({ ...prevForm, clinica_id: user.clinica_id }));
+            }
         });
     }, []);
 
+    useEffect(() => {
+        if (!selectedItemId && items.length > 0) {
+            selectItem(items[0].id);
+        }
+    }, [items, selectedItemId, selectItem]);
+
     const addItem = (producto) => {
-        const nextItem = {
-            producto_id: producto.id,
-            nombre: producto.nombre,
-            categoria_nombre: producto.categoria_nombre,
-            categoria_tipo: producto.categoria_tipo,
-            cantidad: 1,
-            precio_unitario: parseFloat(producto.precio_base),
-            color_vita: '',
-            material: producto.material_nombre || producto.material_default || '',
-            notas: '',
-            ...buildItemSelection([], false)
-        };
-        const nextItems = [...items, nextItem];
-        setItems(nextItems);
-        setOdontogramaItemIndex(nextItems.length - 1);
-    };
-
-    const updateItem = (idx, field, value) => {
-        setItems(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-    };
-
-    const removeItem = (idx) => {
-        setItems(items.filter((_, i) => i !== idx));
-        setOdontogramaItemIndex((current) => {
-            if (current === null) return null;
-            if (current === idx) return null;
-            if (current > idx) return current - 1;
-            return current;
+        const existingItem = items.find((item) => {
+            const itemProductId = item.product?.id || item.product_id || item.id_producto;
+            return itemProductId === producto.id;
         });
+
+        if (existingItem) {
+            setError('');
+            selectItem(existingItem.id);
+            return;
+        }
+
+        if (items.length > 0) {
+            replaceItems([]);
+        }
+
+        const itemId = addProduct(producto);
+        setError('');
+        selectItem(itemId);
+        if (isExpressOrder) {
+            updateItemField(itemId, 'es_urgente', true);
+        }
     };
 
-    const total = items.reduce((sum, i) => sum + (i.cantidad * i.precio_unitario), 0);
+    const removeOrderItem = (itemId) => {
+        removeItem(itemId);
+        if (selectedItemId === itemId) {
+            const nextSelected = items.find((item) => item.id !== itemId);
+            selectItem(nextSelected?.id || null);
+        }
+    };
+
+    const hasMissingDentalSelection = items.some((item) => {
+        return item.requiresDentalSelection && (!item.piezas_dentales || item.piezas_dentales.length === 0);
+    });
 
     const handleSubmit = async () => {
         if (!form.clinica_id || !form.paciente_nombre || !form.fecha_entrega || items.length === 0) {
-            setError('Completa clínica, paciente, fecha de entrega y agrega al menos un producto.');
+            setError('Completa clinica, paciente, fecha de entrega y agrega al menos un producto.');
             return;
         }
-        if (items.some(item => !item.piezas_dentales || item.piezas_dentales.length === 0)) {
-            setError('Cada item debe tener al menos una pieza seleccionada en el odontograma.');
+
+        if (hasMissingDentalSelection) {
+            setError('Cada item clinico debe tener al menos una pieza seleccionada en el odontograma.');
             return;
         }
+
         setSaving(true);
         setError('');
+
         try {
-            const res = await fetch(`${API_URL}/pedidos`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    ...form,
-                    items: items.map(i => ({
-                        producto_id: i.producto_id,
-                        cantidad: i.cantidad,
-                        precio_unitario: i.precio_unitario,
-                        piezas_dentales: i.piezas_dentales || [],
-                        es_puente: !!i.es_puente,
-                        pieza_inicio: i.pieza_inicio || null,
-                        pieza_fin: i.pieza_fin || null,
-                        color_vita: i.color_vita,
-                        material: i.material,
-                        notas: i.notas
-                    }))
-                })
+            const pedido = await createOrderMutation.mutateAsync({
+                ...form,
+                items
             });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Error al crear pedido');
-            }
-            const pedido = await res.json();
             navigate(`/pedidos/${pedido.id}`);
-        } catch (err) {
-            setError(err.message);
+        } catch (submitError) {
+            setError(submitError.message);
         } finally {
             setSaving(false);
         }
     };
 
+    const selectedItemNeedsOdontograma = !!selectedItem?.requiresDentalSelection;
+    const clinicalPanelForm = selectedItem || {
+        piezas_dentales: [],
+        color_vita: '',
+        notas: ''
+    };
+    const selectedProductImage = selectedItem?.product?.image_url || selectedItem?.image_url || '';
+    const selectedClinic = useMemo(() => {
+        return clinicas.find((clinic) => String(clinic.id) === String(form.clinica_id)) || null;
+    }, [clinicas, form.clinica_id]);
+    const clinicSearchValue = clinicSearch.trim().toLowerCase();
+    const filteredClinicas = useMemo(() => {
+        if (!clinicSearchValue) return clinicas;
+        return clinicas.filter((clinic) => clinic.nombre?.toLowerCase().includes(clinicSearchValue));
+    }, [clinicas, clinicSearchValue]);
+    const clinicOptions = useMemo(() => {
+        if (user?.clinica_id && selectedClinic) return [selectedClinic];
+        return filteredClinicas;
+    }, [user?.clinica_id, selectedClinic, filteredClinicas]);
+    const estimatedDeliveryDate = useMemo(() => {
+        const selectedProduct = selectedItem?.product || selectedItem || items[0]?.product || items[0] || null;
+        return calculateEstimatedDeliveryDate(selectedProduct, isExpressOrder);
+    }, [selectedItem, items, isExpressOrder]);
+
+    useEffect(() => {
+        setSelectedImageError(false);
+    }, [selectedProductImage, selectedItem?.id]);
+
+    useEffect(() => {
+        if (user?.clinica_id && selectedClinic?.nombre) {
+            setClinicSearch(selectedClinic.nombre);
+        }
+    }, [user?.clinica_id, selectedClinic?.nombre]);
+
+    useEffect(() => {
+        setForm((prevForm) => {
+            if (prevForm.fecha_entrega === estimatedDeliveryDate) return prevForm;
+            return { ...prevForm, fecha_entrega: estimatedDeliveryDate };
+        });
+    }, [estimatedDeliveryDate]);
+
     return (
-        <div className="animate-fade-in">
-            <div className="page-header">
+        <div className="animate-fade-in nuevo-pedido-page-shell">
+            <div className="page-header nuevo-pedido-page-header">
                 <div className="page-header-left">
-                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/pedidos')}>
-                        <i className="bi bi-arrow-left"></i>
-                    </button>
                     <div>
                         <h1>Nuevo Pedido</h1>
-                        <p>Prescripción digital de trabajo dental</p>
+                        <p>Prescripcion digital de trabajo dental</p>
                     </div>
                 </div>
+                <button
+                    className="btn btn-ghost btn-sm nuevo-pedido-header-back"
+                    onClick={() => navigate('/pedidos')}
+                    type="button"
+                >
+                    <i className="bi bi-arrow-left"></i>
+                    Volver a seguimiento
+                </button>
             </div>
 
             {error && (
-                <div className="login-error" style={{ marginBottom: 'var(--space-4)', maxWidth: '100%' }}>
+                <div className="login-error order-composer-error-banner">
                     <i className="bi bi-exclamation-circle"></i> {error}
                 </div>
             )}
 
-            {/* Step indicators */}
-            <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-6)', flexWrap: 'wrap' }}>
-                {['Datos del Paciente', 'Productos', 'Resumen'].map((label, i) => (
-                    <button key={i}
-                        className={`btn ${step === i + 1 ? 'btn-primary' : i + 1 < step ? 'btn-accent' : 'btn-ghost'} btn-sm`}
-                        onClick={() => setStep(i + 1)}
-                        style={{ flex: '1 1 160px', whiteSpace: 'normal', textAlign: 'left' }}>
-                        <span style={{ marginRight: 6, fontWeight: 700 }}>{i + 1}</span> {label}
-                    </button>
-                ))}
-            </div>
+            <div className="animate-slide-up nuevo-pedido-layout">
+                <aside className="nuevo-pedido-sidebar">
+                    <OrderCatalogPane
+                        categorias={categorias}
+                        productos={productos}
+                        items={items}
+                        selectedItemId={selectedItemId}
+                        onAddProduct={addItem}
+                        onSelectItem={selectItem}
+                        onRemoveItem={removeOrderItem}
+                        hideOrderItems
+                    />
+                </aside>
 
-            {/* Step 1: Patient Data */}
-            {step === 1 && (
-                <div className="card animate-slide-up">
-                    <div className="card-header"><h3 className="card-title">Datos del Paciente</h3></div>
-                    <div className="grid grid-cols-2">
-                        <div className="form-group">
-                            <label className="form-label">Clínica *</label>
-                            <select className="form-select" value={form.clinica_id}
-                                onChange={e => setForm({ ...form, clinica_id: e.target.value })}
-                                disabled={!!user?.clinica_id}>
-                                <option value="">Seleccionar clínica...</option>
-                                {clinicas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Nombre del Paciente *</label>
-                            <input className="form-input" placeholder="Nombre completo del paciente"
-                                value={form.paciente_nombre} onChange={e => setForm({ ...form, paciente_nombre: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Fecha de Entrega *</label>
-                            <input className="form-input" type="date" value={form.fecha_entrega}
-                                onChange={e => setForm({ ...form, fecha_entrega: e.target.value })} />
-                        </div>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Observaciones Generales</label>
-                        <textarea className="form-textarea" rows={3} value={form.observaciones}
-                            onChange={e => setForm({ ...form, observaciones: e.target.value })} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
-                        <button className="btn btn-primary" onClick={() => setStep(2)}
-                            disabled={!form.paciente_nombre || !form.clinica_id || !form.fecha_entrega}>
-                            Siguiente <i className="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Step 2: Select Products */}
-            {step === 2 && (
-                <div className="animate-slide-up">
-                    <div className="grid grid-cols-2" style={{ gap: 'var(--space-6)' }}>
-                        {/* Product catalog */}
-                        <div className="card" style={{ maxHeight: 500, overflowY: 'auto' }}>
-                            <div className="card-header"><h3 className="card-title">Catálogo</h3></div>
-                            {categorias.map(cat => {
-                                const catProds = productos.filter(p => p.categoria_id === cat.id);
-                                if (catProds.length === 0) return null;
-                                return (
-                                    <div key={cat.id} style={{ marginBottom: 'var(--space-4)' }}>
-                                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>
-                                            {cat.nombre}
+                <section className="nuevo-pedido-main">
+                    <article className="card nuevo-pedido-admin-card">
+                        {selectedItem ? (
+                            <article className="nuevo-pedido-selected-product-card">
+                                <div className="nuevo-pedido-selected-product-media">
+                                    {selectedProductImage && !selectedImageError ? (
+                                        <img
+                                            src={resolveImageUrl(selectedProductImage)}
+                                            alt={selectedItem.nombre}
+                                            onError={() => setSelectedImageError(true)}
+                                        />
+                                    ) : (
+                                        <div className="nuevo-pedido-selected-product-fallback">
+                                            <i className="bi bi-box-seam"></i>
                                         </div>
-                                        {catProds.map(p => (
-                                            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.625rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                                                <div>
-                                                    <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{p.nombre}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>S/. {parseFloat(p.precio_base).toFixed(2)}</div>
-                                                </div>
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => addItem(p)}>
-                                                    <i className="bi bi-plus-circle"></i>
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Selected items */}
-                        <div className="card">
-                            <div className="card-header">
-                                <h3 className="card-title">Items del Pedido ({items.length})</h3>
-                            </div>
-                            {items.length === 0 ? (
-                                <div className="empty-state" style={{ padding: '2rem' }}>
-                                    <i className="bi bi-cart empty-state-icon" style={{ fontSize: '2rem' }}></i>
-                                    <p className="empty-state-text">Agrega productos del catálogo</p>
+                                    )}
                                 </div>
-                            ) : (
-                                items.map((item, idx) => (
-                                    <div key={idx} style={{ padding: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', marginBottom: 'var(--space-3)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
-                                            <strong style={{ fontSize: '0.875rem' }}>{item.nombre}</strong>
-                                            <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                                                <button className="btn btn-ghost btn-sm" onClick={() => setOdontogramaItemIndex(idx)}>
-                                                    <i className="bi bi-grid"></i> Odontograma
-                                                </button>
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => removeItem(idx)}
-                                                    style={{ color: '#EF4444' }}><i className="bi bi-trash"></i></button>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-3" style={{ gap: 'var(--space-2)' }}>
-                                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Cantidad</label>
-                                                <input className="form-input" type="number" min={1} value={item.cantidad}
-                                                    onChange={e => updateItem(idx, 'cantidad', parseInt(e.target.value) || 1)} />
-                                            </div>
-                                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Selección dental</label>
-                                                <input className="form-input" value={formatDentalSelection(item)} readOnly />
-                                            </div>
-                                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.6875rem' }}>Color VITA</label>
-                                                <input className="form-input" placeholder="Ej: A2"
-                                                    value={item.color_vita} onChange={e => updateItem(idx, 'color_vita', e.target.value)} />
-                                            </div>
-                                        </div>
-                                        <div className="form-group" style={{ marginBottom: 0, marginTop: 'var(--space-2)' }}>
-                                            <label className="form-label" style={{ fontSize: '0.6875rem' }}>Notas del item</label>
-                                            <input className="form-input" placeholder="Instrucciones de la restauración"
-                                                value={item.notas || ''} onChange={e => updateItem(idx, 'notas', e.target.value)} />
-                                        </div>
-                                        {item.piezas_dentales?.length > 0 && (
-                                            <div className="dental-summary-line">
-                                                <span className="dental-summary-chip">{item.piezas_dentales.length} piezas</span>
-                                                {item.es_puente && <span className="dental-summary-chip">Puente {item.pieza_inicio}-{item.pieza_fin}</span>}
-                                            </div>
-                                        )}
-                                        <div style={{ textAlign: 'right', marginTop: 'var(--space-2)', fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                                            {item.cantidad} × S/. {item.precio_unitario.toFixed(2)} = <strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                            <div style={{ borderTop: '2px solid var(--color-border)', paddingTop: 'var(--space-3)', textAlign: 'right', fontSize: '1.125rem', fontWeight: 700 }}>
-                                Total: S/. {total.toFixed(2)}
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-4)' }}>
-                        <button className="btn btn-ghost" onClick={() => setStep(1)}>
-                            <i className="bi bi-arrow-left"></i> Anterior
-                        </button>
-                        <button className="btn btn-primary" onClick={() => setStep(3)} disabled={items.length === 0}>
-                            Siguiente <i className="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Step 3: Summary */}
-            {step === 3 && (
-                <div className="card animate-slide-up">
-                    <div className="card-header"><h3 className="card-title">Resumen del Pedido</h3></div>
-                    <div className="grid grid-cols-2" style={{ marginBottom: 'var(--space-4)' }}>
-                        <div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Clínica</div>
-                            <div style={{ fontWeight: 600 }}>{clinicas.find(c => c.id == form.clinica_id)?.nombre}</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Paciente</div>
-                            <div style={{ fontWeight: 600 }}>{form.paciente_nombre}</div>
-                        </div>
-                        {form.fecha_entrega && <div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Fecha de Entrega</div>
-                            <div style={{ fontWeight: 600 }}>{form.fecha_entrega}</div>
-                        </div>}
-                    </div>
-
-                    <div className="data-table-wrapper table-scroll-dense desktop-only" style={{ marginBottom: 'var(--space-4)' }}>
-                        <table className="data-table">
-                            <thead><tr><th>Producto</th><th>Pieza</th><th>Color</th><th>Cant.</th><th>P.U.</th><th>Subtotal</th></tr></thead>
-                            <tbody>
-                                {items.map((item, i) => (
-                                    <tr key={i}>
-                                        <td>{item.nombre}</td>
-                                        <td>{formatDentalSelection(item)}</td>
-                                        <td>{item.color_vita || '—'}</td>
-                                        <td>{item.cantidad}</td>
-                                        <td>S/. {item.precio_unitario.toFixed(2)}</td>
-                                        <td><strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="mobile-cards mobile-only" style={{ marginBottom: 'var(--space-4)' }}>
-                        {items.map((item, i) => (
-                            <article className="mobile-card" key={`resumen-item-${i}`}>
-                                <div className="mobile-card-head">
-                                    <div className="mobile-card-title">{item.nombre}</div>
-                                    <span className="badge badge-enviado">{item.cantidad}</span>
+                                <div className="nuevo-pedido-selected-product-copy">
+                                    <span>Producto seleccionado</span>
+                                    <strong>{selectedItem.nombre}</strong>
                                 </div>
-                                    <div className="mobile-card-grid">
-                                        <div className="mobile-field">
-                                            <span className="mobile-field-label">Pieza</span>
-                                            <span className="mobile-field-value">{formatDentalSelection(item)}</span>
-                                        </div>
-                                        <div className="mobile-field">
-                                            <span className="mobile-field-label">Color</span>
-                                            <span className="mobile-field-value">{item.color_vita || '—'}</span>
-                                        </div>
-                                    <div className="mobile-field">
-                                        <span className="mobile-field-label">Precio unitario</span>
-                                        <span className="mobile-field-value">S/. {item.precio_unitario.toFixed(2)}</span>
-                                    </div>
-                                    <div className="mobile-field">
-                                        <span className="mobile-field-label">Subtotal</span>
-                                        <span className="mobile-field-value"><strong>S/. {(item.cantidad * item.precio_unitario).toFixed(2)}</strong></span>
-                                    </div>
+                                <div className="nuevo-pedido-selected-product-side">
+                                    <strong>S/. {Number(selectedItem?.precio_unitario || 0).toFixed(2)}</strong>
+                                    <button type="button" className="btn btn-ghost btn-sm nuevo-pedido-selected-product-remove" onClick={() => removeOrderItem(selectedItem.id)}>
+                                        <i className="bi bi-trash"></i> Quitar
+                                    </button>
                                 </div>
                             </article>
-                        ))}
-                    </div>
-                    <div style={{ textAlign: 'right', fontSize: '1.25rem', fontWeight: 700 }}>
-                        Total: S/. {total.toFixed(2)}
-                    </div>
+                        ) : null}
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-6)' }}>
-                        <button className="btn btn-ghost" onClick={() => setStep(2)}>
-                            <i className="bi bi-arrow-left"></i> Anterior
-                        </button>
-                        <button className="btn btn-accent" onClick={handleSubmit} disabled={saving}>
-                            {saving ? 'Creando...' : '✓ Crear Pedido'}
-                        </button>
-                    </div>
-                </div>
-            )}
+                        <div className="nuevo-pedido-section-heading">
+                            <div>
+                                <h6 className="order-composer-section-title"><i className="bi bi-person-lines-fill"></i> Datos administrativos</h6>
+                                <p className="nuevo-pedido-section-copy">La informacion general del caso queda siempre visible y estable.</p>
+                            </div>
+                        </div>
 
-            <Modal
-                open={odontogramaItemIndex !== null}
-                onClose={() => setOdontogramaItemIndex(null)}
-                size="2xl"
-                title={`Asignación dental • ${items[odontogramaItemIndex]?.nombre || ''}`}
-                footer={(
-                    <>
-                        <button className="btn btn-ghost" onClick={() => setOdontogramaItemIndex(null)}>
-                            Cerrar
-                        </button>
-                    </>
-                )}
-            >
-                {odontogramaItemIndex !== null && items[odontogramaItemIndex] && (
-                    <OdontogramaInteractive
-                        product={items[odontogramaItemIndex]}
-                        selection={items[odontogramaItemIndex]}
-                        onChange={(dentalData) => {
-                            setItems(prev => prev.map((item, idx) => idx === odontogramaItemIndex ? { ...item, ...dentalData } : item));
-                        }}
-                        title="Selecciona las piezas del producto"
-                    />
-                )}
-            </Modal>
+                        <div className="order-composer-fields-grid nuevo-pedido-admin-reference-grid nuevo-pedido-admin-clinic-row">
+                            <div className="form-group order-composer-field-reset">
+                                <label className="form-label">Clinica *</label>
+                                <div className="nuevo-pedido-clinic-search">
+                                    <i className="bi bi-search" aria-hidden="true"></i>
+                                    <input
+                                        className="form-input nuevo-pedido-clinic-search-input"
+                                        placeholder="Buscar clinica..."
+                                        value={clinicSearch}
+                                        onChange={(event) => setClinicSearch(event.target.value)}
+                                        disabled={!!user?.clinica_id}
+                                    />
+                                </div>
+                                <select
+                                    className="form-select"
+                                    value={form.clinica_id}
+                                    onChange={(event) => setForm({ ...form, clinica_id: event.target.value })}
+                                    disabled={!!user?.clinica_id}
+                                >
+                                    <option value="">Seleccionar clinica...</option>
+                                    {clinicOptions.map((clinic) => (
+                                        <option key={clinic.id} value={clinic.id}>{clinic.nombre}</option>
+                                    ))}
+                                </select>
+                                {!user?.clinica_id && clinicSearchValue && clinicOptions.length === 0 && (
+                                    <small className="nuevo-pedido-clinic-empty">No hay clinicas que coincidan con tu busqueda.</small>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="order-composer-fields-grid nuevo-pedido-admin-reference-grid">
+                            <div className="form-group order-composer-field-reset">
+                                <label className="form-label">Nombre del paciente *</label>
+                                <input
+                                    className="form-input"
+                                    placeholder="Nombre completo"
+                                    value={form.paciente_nombre}
+                                    onChange={(event) => setForm({ ...form, paciente_nombre: event.target.value })}
+                                />
+                            </div>
+                            <div className="form-group order-composer-field-reset">
+                                <label className="form-label">Fecha de entrega estimada</label>
+                                <input
+                                    className="form-input"
+                                    type="date"
+                                    value={form.fecha_entrega}
+                                    readOnly
+                                    disabled
+                                />
+                            </div>
+                        </div>
+
+                        <div className={`nuevo-pedido-express-toggle-wrapper ${isExpressOrder ? 'is-express' : ''}`}>
+                            <i className={isExpressOrder ? "bi bi-lightning-charge-fill" : "bi bi-lightning-charge"}></i>
+                            <div className="nuevo-pedido-express-toggle-info">
+                                <strong>Pedido Express ⚡</strong>
+                                <p>Marca esta opcion si el trabajo requiere prioridad maxima en laboratorio.</p>
+                            </div>
+                            <div className="nuevo-pedido-express-switch">
+                                <input
+                                    type="checkbox"
+                                    id="expressOrderToggle"
+                                    className="toggle-switch-input"
+                                    checked={isExpressOrder}
+                                    onChange={(e) => {
+                                        const nextExpress = e.target.checked;
+                                        setIsExpressOrder(nextExpress);
+                                        items.forEach((item) => updateItemField(item.id, 'es_urgente', nextExpress));
+                                    }}
+                                />
+                                <label htmlFor="expressOrderToggle" className="toggle-switch-label"></label>
+                            </div>
+                        </div>
+
+                        <div className="nuevo-pedido-clinical-stack">
+                            <OrderClinicalPanel
+                                className="nuevo-pedido-clinical-card"
+                                form={clinicalPanelForm}
+                                resolvedCantidad={selectedItem?.cantidad || 0}
+                                requiresDentalSelection={selectedItem ? selectedItem.requiresDentalSelection : true}
+                                showDerivedFields={false}
+                                disabled={!selectedItem}
+                                onColorChange={(color_vita) => {
+                                    if (selectedItem) updateItemField(selectedItem.id, 'color_vita', color_vita);
+                                }}
+                                onNotesChange={(notas) => {
+                                    if (selectedItem) updateItemField(selectedItem.id, 'notas', notas);
+                                }}
+                                onQuantityChange={(cantidad_manual) => {
+                                    if (selectedItem) updateQuantity(selectedItem.id, parseInt(cantidad_manual, 10) || 1);
+                                }}
+                            />
+
+                            <article className="card nuevo-pedido-case-summary-card">
+                                <h6 className="order-composer-section-title"><i className="bi bi-receipt"></i> Resumen del caso</h6>
+                                <div className="nuevo-pedido-case-summary-row">
+                                    <span>Precio unitario</span>
+                                    <strong>S/. {Number(selectedItem?.precio_unitario || 0).toFixed(2)}</strong>
+                                </div>
+                                <div className="nuevo-pedido-case-summary-row">
+                                    <span>Piezas seleccionadas</span>
+                                    <strong>{selectedItem?.piezas_dentales?.length || 0}</strong>
+                                </div>
+                                <div className="nuevo-pedido-case-summary-total-row">
+                                    <span>TOTAL PEDIDO</span>
+                                    <strong>S/. {Number(total || 0).toFixed(2)}</strong>
+                                </div>
+                                <div className="nuevo-pedido-case-summary-actions">
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-crear-pedido"
+                                        onClick={handleSubmit}
+                                        disabled={saving}
+                                    >
+                                        {saving ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                Guardando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-check-circle-fill"></i>
+                                                Crear Pedido
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+
+                    </article>
+
+                </section>
+
+                <aside className="nuevo-pedido-odontograma-column">
+                    <section className="card nuevo-pedido-odontograma-pane">
+                        <div className="nuevo-pedido-odontograma-body">
+                            <div className="order-composer-odontograma-slot nuevo-pedido-odontograma-slot">
+                                <OdontogramaInteractive
+                                    product={selectedItem?.product || selectedItem || null}
+                                    selection={selectedItem || { piezas_dentales: [] }}
+                                    onChange={(dentalData) => {
+                                        if (selectedItem) updateDentalSelection(selectedItem.id, dentalData);
+                                    }}
+                                    title="Selecciona las piezas del producto"
+                                    showSidePanel={false}
+                                    showProductPill={false}
+                                    showHeader={false}
+                                    preserveAspectRatio="xMidYMid meet"
+                                    disabled={!selectedItem}
+                                />
+                            </div>
+                        </div>
+                    </section>
+                </aside>
+            </div>
+
         </div>
     );
 };

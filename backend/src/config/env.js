@@ -40,4 +40,18 @@ export const getSentryConfig = () => ({
     environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development'
 });
 
+const parseBooleanEnv = (rawValue, variableName, defaultValue = false) => {
+    if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') {
+        return defaultValue;
+    }
+
+    const normalized = String(rawValue).trim().toLowerCase();
+    if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+    if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+
+    throw new Error(`Invalid boolean environment variable ${variableName}: ${rawValue}. Use true|false.`);
+};
+
+export const getUseNewBillingAcl = () => parseBooleanEnv(process.env.USE_NEW_BILLING_ACL, 'USE_NEW_BILLING_ACL', false);
+
 export const isProd = () => isProduction;

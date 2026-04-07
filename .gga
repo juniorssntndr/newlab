@@ -1,0 +1,7 @@
+# Gentleman Guardian Angel Configuration
+PROVIDER="opencode"
+FILE_PATTERNS="frontend/src/components/orders/*.jsx,frontend/src/modules/orders/composer/*.js"
+EXCLUDE_PATTERNS="*.test.js,*.spec.js,*.test.jsx,*.spec.jsx,*.d.ts"
+RULES_FILE="AGENTS.md"
+STRICT_MODE="true"
+TIMEOUT="300"

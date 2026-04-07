@@ -1,14 +1,34 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext.jsx';
-import { API_URL } from '../config.js';
+import { apiClient } from '../services/http/apiClient.js';
 
 const NotificationContext = createContext(null);
 export const useNotifications = () => useContext(NotificationContext);
 
+const notificationsKeys = {
+    all: ['notifications'],
+    inbox: (userId) => [...notificationsKeys.all, 'inbox', userId]
+};
+
+const fetchNotificationsRequest = async (token) => {
+    try {
+        const data = await apiClient('/notificaciones', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        return {
+            items: Array.isArray(data.items) ? data.items : [],
+            unreadCount: Number(data.no_leidas) || 0
+        };
+    } catch {
+        throw new Error('Error al obtener notificaciones');
+    }
+};
+
 export const NotificationProvider = ({ children }) => {
     const { token, user } = useAuth();
-    const [notifications, setNotifications] = useState([]);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const queryClient = useQueryClient();
     const [panelOpen, setPanelOpen] = useState(false);
     const [toasts, setToasts] = useState([]);
     const knownIdsRef = useRef(new Set());
@@ -91,32 +111,56 @@ export const NotificationProvider = ({ children }) => {
         });
     }, [dismissToast]);
 
+    const notificationsUserId = user?.id || 'anonymous';
+    const notificationsQuery = useQuery({
+        queryKey: notificationsKeys.inbox(notificationsUserId),
+        queryFn: () => fetchNotificationsRequest(token),
+        enabled: Boolean(token && user)
+    });
+
+    const notifications = notificationsQuery.data?.items || [];
+    const unreadCount = notificationsQuery.data?.unreadCount || 0;
+
     const fetchNotifications = useCallback(async () => {
-        if (!token) return;
-        try {
-            const res = await fetch(`${API_URL}/notificaciones`, {
-                headers: { Authorization: `Bearer ${token}` },
-                cache: 'no-store'
-            });
-            if (res.ok) {
-                const data = await res.json();
-                const items = Array.isArray(data.items) ? data.items : [];
-                setNotifications(items);
-                setUnreadCount(Number(data.no_leidas) || 0);
+        if (!token || !user) return;
+        await queryClient.invalidateQueries({
+            queryKey: notificationsKeys.inbox(notificationsUserId),
+            exact: true,
+            refetchType: 'active'
+        });
+    }, [notificationsUserId, queryClient, token, user]);
 
-                if (hasLoadedRef.current) {
-                    const newUnread = items.filter(n => !n.leida && !knownIdsRef.current.has(n.id));
-                    if (newUnread.length > 0) {
-                        pushToasts(newUnread);
-                        playNotificationTone();
-                    }
-                }
-
-                knownIdsRef.current = new Set(items.map(item => item.id));
-                hasLoadedRef.current = true;
+    const markAsReadMutation = useMutation({
+        mutationFn: async (id) => {
+            try {
+                await apiClient(`/notificaciones/${id}/leer`, {
+                    method: 'PATCH',
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            } catch {
+                throw new Error('Error al marcar notificación');
             }
-        } catch (e) { /* silent */ }
-    }, [token, playNotificationTone, pushToasts]);
+        },
+        onSuccess: async () => {
+            await fetchNotifications();
+        }
+    });
+
+    const markAllReadMutation = useMutation({
+        mutationFn: async () => {
+            try {
+                await apiClient('/notificaciones/leer-todas', {
+                    method: 'PATCH',
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            } catch {
+                throw new Error('Error al marcar todas las notificaciones');
+            }
+        },
+        onSuccess: async () => {
+            await fetchNotifications();
+        }
+    });
 
     useEffect(() => {
         const unlockAudio = () => {
@@ -136,31 +180,31 @@ export const NotificationProvider = ({ children }) => {
 
     useEffect(() => {
         if (!user) {
-            setNotifications([]);
-            setUnreadCount(0);
             setToasts([]);
             knownIdsRef.current = new Set();
             hasLoadedRef.current = false;
             clearToastTimeouts();
+            queryClient.removeQueries({ queryKey: notificationsKeys.all });
             return;
         }
 
         fetchNotifications();
-        const interval = setInterval(fetchNotifications, 5000);
-        const onFocus = () => { fetchNotifications(); };
-        const onVisibility = () => {
-            if (document.visibilityState === 'visible') fetchNotifications();
-        };
+    }, [fetchNotifications, queryClient, user]);
 
-        window.addEventListener('focus', onFocus);
-        document.addEventListener('visibilitychange', onVisibility);
+    useEffect(() => {
+        if (!user) return;
 
-        return () => {
-            clearInterval(interval);
-            window.removeEventListener('focus', onFocus);
-            document.removeEventListener('visibilitychange', onVisibility);
-        };
-    }, [user, fetchNotifications]);
+        if (hasLoadedRef.current) {
+            const newUnread = notifications.filter((item) => !item.leida && !knownIdsRef.current.has(item.id));
+            if (newUnread.length > 0) {
+                pushToasts(newUnread);
+                playNotificationTone();
+            }
+        }
+
+        knownIdsRef.current = new Set(notifications.map((item) => item.id));
+        hasLoadedRef.current = true;
+    }, [notifications, playNotificationTone, pushToasts, user]);
 
     useEffect(() => () => {
         clearToastTimeouts();
@@ -168,22 +212,18 @@ export const NotificationProvider = ({ children }) => {
 
     const markAsRead = async (id) => {
         try {
-            await fetch(`${API_URL}/notificaciones/${id}/leer`, {
-                method: 'PATCH',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchNotifications();
-        } catch (e) { /* silent */ }
+            await markAsReadMutation.mutateAsync(id);
+        } catch (e) {
+            // silent
+        }
     };
 
     const markAllRead = async () => {
         try {
-            await fetch(`${API_URL}/notificaciones/leer-todas`, {
-                method: 'PATCH',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchNotifications();
-        } catch (e) { /* silent */ }
+            await markAllReadMutation.mutateAsync();
+        } catch (e) {
+            // silent
+        }
     };
 
     return (

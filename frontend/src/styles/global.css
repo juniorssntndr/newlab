@@ -1701,6 +1701,7 @@ h4 {
   margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1775,6 +1776,7 @@ h4 {
   color: var(--color-text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -2748,7 +2750,19 @@ h4 {
   overflow: hidden;
 }
 
+.order-composer-modal {
+  max-width: 1160px;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .order-modal-compact .modal-header {
+  padding: var(--space-5);
+}
+
+.order-composer-modal .modal-header {
   padding: var(--space-5);
 }
 
@@ -2759,11 +2773,38 @@ h4 {
   min-height: 0;
 }
 
+.order-composer-modal .modal-body {
+  padding: var(--space-3) var(--space-4);
+  overflow: auto;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .order-modal-compact .modal-footer {
   padding: var(--space-2) var(--space-4);
   position: static;
   background: var(--color-surface);
   z-index: 2;
+}
+
+.order-composer-modal .modal-footer {
+  padding: var(--space-2) var(--space-4);
+  position: static;
+  background: var(--color-surface);
+  z-index: 2;
+}
+
+.order-composer-modal-form {
+  display: grid;
+  gap: var(--space-3);
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.order-composer-modal-body {
+  padding: var(--space-3) var(--space-4);
 }
 
 .order-modal-notes-grid {
@@ -2787,7 +2828,8 @@ h4 {
   align-items: center;
 }
 
-.order-form-section {
+.order-form-section,
+.order-composer-clinical-panel {
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: var(--radius-lg);
@@ -2796,7 +2838,8 @@ h4 {
   backdrop-filter: blur(8px);
 }
 
-.order-section-title {
+.order-section-title,
+.order-composer-section-title {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -2811,7 +2854,8 @@ h4 {
   margin-bottom: var(--space-3);
 }
 
-.order-section-title i {
+.order-section-title i,
+.order-composer-section-title i {
   color: var(--color-primary);
   font-size: 0.95rem;
 }
@@ -2861,7 +2905,8 @@ h4 {
     gap: var(--space-4);
   }
 
-  .order-modal-compact .modal-body {
+  .order-modal-compact .modal-body,
+  .order-composer-modal .modal-body {
     display: block !important;
     overflow-y: auto !important;
   }
@@ -2932,10 +2977,1639 @@ h4 {
   min-height: 86px;
 }
 
-.order-fields-grid-v2 {
+.order-fields-grid-v2,
+.order-composer-fields-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
+}
+
+.catalog-order-admin-grid {
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.catalog-order-admin-grid .form-group {
+  margin-bottom: 0;
+}
+
+.catalog-order-admin-grid .form-input,
+.catalog-order-admin-grid .form-select {
+  min-height: 42px;
+}
+
+.order-composer-status-strip {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, 0.75);
+  margin-top: 0;
+  min-height: 42px;
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.order-composer-status-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.order-composer-status-icon {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.order-composer-vita-pill {
+  border-radius: var(--radius-full);
+  border: 1px dashed rgba(148, 163, 184, 0.6);
+  background: rgba(248, 250, 252, 0.95);
+  color: var(--color-text-secondary);
+  padding: 0.18rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.order-composer-vita-pill.is-selected {
+  border-style: solid;
+  border-color: rgba(var(--color-primary-rgb), 0.45);
+  background: rgba(var(--color-primary-rgb), 0.12);
+  color: var(--color-primary-hover);
+}
+
+.order-composer-vita-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.32rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.order-composer-vita-select {
+  padding: 0.2rem 1.8rem 0.2rem 0.6rem;
+  min-height: 30px;
+  font-size: 0.8rem;
+  width: auto;
+  border-color: transparent;
+  background: transparent;
+}
+
+.order-composer-vita-select:focus {
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: var(--color-surface);
+}
+
+@media (max-width: 560px) {
+  .order-composer-status-strip {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .order-composer-vita-select-wrap {
+    width: 100%;
+  }
+
+  .order-composer-vita-select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.order-composer-field-reset {
+  margin-bottom: 0;
+}
+
+.order-composer-error-banner {
+  margin-bottom: var(--space-4);
+  max-width: 100%;
+}
+
+.order-composer-stepper {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.order-composer-stepper .btn {
+  flex: 1 1 170px;
+  white-space: normal;
+  text-align: left;
+}
+
+.order-composer-stepper .btn span {
+  margin-right: 6px;
+  font-weight: 700;
+}
+
+.order-composer-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.order-composer-shell {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.order-composer-modal .order-composer-shell {
+  min-height: 0;
+  height: 100%;
+}
+
+.order-composer-mobile-switcher {
+  display: none;
+  gap: var(--space-2);
+}
+
+.order-composer-mobile-switcher .btn {
+  flex: 1;
+}
+
+.order-composer-desktop-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(420px, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.order-composer-modal .order-composer-desktop-grid {
+  min-height: 0;
+  height: 100%;
+  align-items: stretch;
+}
+
+.order-composer-pane {
+  min-width: 0;
+}
+
+.order-composer-modal .order-composer-pane {
+  min-height: 0;
+}
+
+.order-composer-catalog-pane {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.order-composer-catalog-pane > .card {
+  position: relative;
+}
+
+.order-composer-catalog-pane > .card + .card::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-3) * -0.5);
+  left: var(--space-3);
+  right: var(--space-3);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.45), transparent);
+}
+
+.order-composer-catalog-card {
+  max-height: 580px;
+  overflow: hidden;
+}
+
+.order-composer-catalog-list {
+  overflow-y: auto;
+  max-height: 500px;
+  padding-right: 4px;
+}
+
+.order-composer-catalog-group {
+  margin-bottom: var(--space-4);
+}
+
+.order-composer-catalog-group-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+.order-composer-catalog-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.order-composer-catalog-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.order-composer-catalog-item-price {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.order-composer-empty-state {
+  padding: 2rem;
+}
+
+.order-composer-selected-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.order-composer-selected-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.order-composer-selected-item.is-selected {
+  border-color: rgba(var(--color-primary-rgb), 0.5);
+  background: rgba(var(--color-primary-rgb), 0.06);
+}
+
+.order-composer-selected-content {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+}
+
+.order-composer-selected-content strong {
+  font-size: 0.86rem;
+}
+
+.order-composer-selected-meta {
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+}
+
+.order-composer-clinical-pane {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.nuevo-pedido-page,
+.nuevo-pedido-page-shell {
+  min-width: 0;
+}
+
+.nuevo-pedido-page,
+.nuevo-pedido-page-shell {
+  --nuevo-pedido-panel-surface: var(--color-surface);
+  --nuevo-pedido-panel-surface-strong: var(--color-surface-hover);
+  --nuevo-pedido-panel-border: var(--color-border);
+}
+
+[data-theme="dark"] .nuevo-pedido-page,
+[data-theme="dark"] .nuevo-pedido-page-shell {
+  --nuevo-pedido-panel-surface: #1E293B;
+  --nuevo-pedido-panel-surface-strong: #253449;
+  --nuevo-pedido-panel-border: rgba(148, 163, 184, 0.18);
+}
+
+.nuevo-pedido-page-header {
+  align-items: flex-start;
+}
+
+.nuevo-pedido-page-header .page-header-left {
+  display: flex;
+  align-items: flex-start;
+}
+
+.nuevo-pedido-header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.06);
+  font-weight: 600;
+}
+
+.nuevo-pedido-header-back i {
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 320px) minmax(520px, 1.25fr) minmax(400px, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.nuevo-pedido-shell {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(520px, 1.15fr) minmax(400px, 0.95fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.nuevo-pedido-sidebar,
+.nuevo-pedido-main,
+.nuevo-pedido-catalog-column,
+.nuevo-pedido-main-column,
+.nuevo-pedido-odontograma-column,
+.nuevo-pedido-composer-pane {
+  min-width: 0;
+}
+
+.nuevo-pedido-catalog-card {
+  background: var(--nuevo-pedido-panel-surface);
+  border-color: var(--nuevo-pedido-panel-border);
+}
+
+.nuevo-pedido-catalog-copy {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-catalog-card .card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text);
+}
+
+.nuevo-pedido-catalog-card .card-title i {
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.nuevo-pedido-catalog-search {
+  position: relative;
+  margin-bottom: var(--space-3);
+}
+
+.nuevo-pedido-catalog-search i {
+  position: absolute;
+  top: 50%;
+  left: 0.9rem;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-catalog-search-input {
+  padding-left: 2.5rem;
+  background: var(--nuevo-pedido-panel-surface);
+  border-color: var(--nuevo-pedido-panel-border);
+}
+
+.nuevo-pedido-catalog-item {
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--nuevo-pedido-panel-border);
+  border-bottom: 1px solid var(--nuevo-pedido-panel-border);
+  background: var(--nuevo-pedido-panel-surface);
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 0.5rem;
+}
+
+.nuevo-pedido-catalog-item:hover {
+  background: var(--nuevo-pedido-panel-surface-strong);
+  border-color: rgba(var(--color-primary-rgb), 0.22);
+  box-shadow: var(--shadow-xs);
+}
+
+.nuevo-pedido-catalog-item-main {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nuevo-pedido-catalog-item-main .order-composer-catalog-item-name {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.nuevo-pedido-catalog-item-main .order-composer-catalog-item-price {
+  color: var(--color-text-tertiary);
+}
+
+.nuevo-pedido-catalog-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: rgba(var(--color-primary-rgb), 0.12);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+
+.nuevo-pedido-catalog-action.is-add {
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-catalog-action.is-remove {
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-catalog-action.is-add:hover,
+.nuevo-pedido-catalog-action.is-remove:hover {
+  background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.nuevo-pedido-catalog-empty-search {
+  padding: 0.9rem;
+  border: 1px dashed var(--nuevo-pedido-panel-border);
+  border-radius: var(--radius-md);
+  background: var(--nuevo-pedido-panel-surface-strong);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.nuevo-pedido-sidebar,
+.nuevo-pedido-catalog-sticky,
+.nuevo-pedido-odontograma-pane {
+  position: sticky;
+  top: var(--space-4);
+}
+
+.nuevo-pedido-main,
+.nuevo-pedido-main-column,
+.nuevo-pedido-admin-card,
+.nuevo-pedido-summary-card,
+.nuevo-pedido-case-summary-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.nuevo-pedido-selected-product-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--nuevo-pedido-panel-border);
+  border-radius: var(--radius-lg);
+  background: var(--nuevo-pedido-panel-surface-strong);
+}
+
+.nuevo-pedido-selected-product-media {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  background: rgba(241, 245, 249, 0.95);
+}
+
+.nuevo-pedido-selected-product-media img,
+.nuevo-pedido-selected-product-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.nuevo-pedido-selected-product-media img {
+  object-fit: cover;
+}
+
+.nuevo-pedido-selected-product-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--color-primary);
+  font-size: 1.2rem;
+}
+
+.nuevo-pedido-selected-product-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.nuevo-pedido-selected-product-copy span {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-selected-product-copy strong {
+  font-size: 1.15rem;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+.nuevo-pedido-selected-product-side {
+  display: grid;
+  justify-items: end;
+  gap: 0.65rem;
+  text-align: right;
+}
+
+.nuevo-pedido-selected-product-side strong {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-selected-product-remove {
+  color: var(--color-danger);
+}
+
+.nuevo-pedido-selected-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-color: var(--nuevo-pedido-panel-border);
+  background: var(--nuevo-pedido-panel-surface-strong);
+}
+
+.nuevo-pedido-selected-copy {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.nuevo-pedido-selected-copy h3 {
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.nuevo-pedido-selected-meta-block {
+  min-width: 180px;
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+  text-align: right;
+}
+
+.nuevo-pedido-selected-meta-block strong {
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-selected-meta-block span:last-child {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.nuevo-pedido-section-head .order-composer-section-title,
+.nuevo-pedido-summary-header .card-title {
+  margin-bottom: 0.35rem;
+}
+
+.nuevo-pedido-admin-copy {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.nuevo-pedido-clinical-card {
+  margin-top: 0;
+  background: var(--nuevo-pedido-panel-surface);
+  border-color: var(--nuevo-pedido-panel-border);
+}
+
+[data-theme="dark"] .nuevo-pedido-clinical-card.order-composer-clinical-panel {
+  background: var(--nuevo-pedido-panel-surface);
+  border-color: var(--nuevo-pedido-panel-border);
+}
+
+.nuevo-pedido-intro-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-color: var(--nuevo-pedido-panel-border);
+  background: var(--nuevo-pedido-panel-surface-strong);
+}
+
+.nuevo-pedido-intro-copy {
+  min-width: 0;
+}
+
+.nuevo-pedido-intro-copy h2 {
+  font-size: 1.2rem;
+  line-height: 1.25;
+  margin-bottom: 0.45rem;
+}
+
+.nuevo-pedido-intro-copy p,
+.nuevo-pedido-section-copy,
+.nuevo-pedido-selection-hint,
+.nuevo-pedido-empty-panel p {
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.nuevo-pedido-eyebrow {
+  display: inline-block;
+  margin-bottom: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-intro-stats {
+  min-width: 220px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.nuevo-pedido-intro-stats div {
+  padding: 0.85rem 0.9rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--nuevo-pedido-panel-border);
+  background: var(--nuevo-pedido-panel-surface);
+}
+
+.nuevo-pedido-intro-stats span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-intro-stats strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.nuevo-pedido-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.nuevo-pedido-section-heading-tight {
+  margin-bottom: 0;
+}
+
+.nuevo-pedido-admin-grid-compact {
+  align-items: start;
+}
+
+.nuevo-pedido-admin-reference-grid {
+  margin-bottom: var(--space-2);
+}
+
+.nuevo-pedido-admin-clinic-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.nuevo-pedido-clinic-search {
+  position: relative;
+  margin-bottom: var(--space-2);
+}
+
+.nuevo-pedido-clinic-search i {
+  position: absolute;
+  top: 50%;
+  left: 0.9rem;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.nuevo-pedido-clinic-search-input {
+  padding-left: 2.5rem;
+}
+
+.nuevo-pedido-clinic-empty {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+}
+
+.nuevo-pedido-express-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  margin-bottom: 1.5rem;
+  transition: 0.3s;
+}
+.nuevo-pedido-express-toggle-wrapper.is-express {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+.nuevo-pedido-express-toggle-wrapper i {
+  font-size: 1.5rem;
+  color: #f59e0b;
+}
+.nuevo-pedido-express-toggle-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nuevo-pedido-express-toggle-info strong {
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+.nuevo-pedido-express-toggle-info p {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+.nuevo-pedido-express-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+.toggle-switch-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-switch-label {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-border);
+  transition: .4s;
+  border-radius: 34px;
+}
+.toggle-switch-label:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.toggle-switch-input:checked + .toggle-switch-label {
+  background-color: #f59e0b;
+}
+.toggle-switch-input:checked + .toggle-switch-label:before {
+  transform: translateX(20px);
+}
+
+.nuevo-pedido-clinical-stack {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.nuevo-pedido-case-summary-card {
+  gap: 0.6rem;
+  padding: var(--space-4);
+  border-color: var(--nuevo-pedido-panel-border);
+  background: var(--nuevo-pedido-panel-surface);
+}
+
+.nuevo-pedido-case-summary-row,
+.nuevo-pedido-case-summary-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nuevo-pedido-case-summary-row span {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.nuevo-pedido-case-summary-row strong {
+  font-size: 0.98rem;
+  color: var(--color-text);
+}
+
+.nuevo-pedido-case-summary-total-row {
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--nuevo-pedido-panel-border);
+}
+
+.nuevo-pedido-case-summary-total-row span {
+  color: var(--color-text-secondary);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.nuevo-pedido-case-summary-total-row strong {
+  font-size: 1.55rem;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-case-summary-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.35rem;
+}
+
+.btn-crear-pedido {
+  min-width: 160px;
+}
+
+.nuevo-pedido-clinical-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.nuevo-pedido-case-column {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.nuevo-pedido-case-card,
+.nuevo-pedido-empty-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.nuevo-pedido-active-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.86));
+}
+
+.nuevo-pedido-active-item-main,
+.nuevo-pedido-active-item-side {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.nuevo-pedido-active-item-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.nuevo-pedido-active-item-main strong,
+.nuevo-pedido-active-item-side strong {
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.nuevo-pedido-active-item-side {
+  justify-items: end;
+  text-align: right;
+}
+
+.nuevo-pedido-active-item-side span {
+  font-size: 0.76rem;
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-selection-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.nuevo-pedido-selection-hint i {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  flex-shrink: 0;
+}
+
+.nuevo-pedido-empty-panel {
+  border-style: dashed;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.nuevo-pedido-summary-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.5), transparent);
+}
+
+.nuevo-pedido-summary-item.is-active {
+  border-color: rgba(var(--color-primary-rgb), 0.34);
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.nuevo-pedido-summary-item-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nuevo-pedido-empty-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  align-items: center;
+  border-style: dashed;
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.nuevo-pedido-empty-card i {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.nuevo-pedido-empty-card h3 {
+  margin-bottom: 0.2rem;
+  font-size: 1rem;
+}
+
+.nuevo-pedido-empty-card p,
+.nuevo-pedido-case-summary-detail p,
+.nuevo-pedido-case-summary-notes p,
+.nuevo-pedido-summary-item p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-summary-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.nuevo-pedido-summary-context span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.7rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--nuevo-pedido-panel-border);
+  background: var(--nuevo-pedido-panel-surface-strong);
+  color: var(--color-text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.nuevo-pedido-summary-context i {
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-case-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.nuevo-pedido-case-summary-detail,
+.nuevo-pedido-case-summary-notes {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--nuevo-pedido-panel-border);
+  background: var(--nuevo-pedido-panel-surface-strong);
+}
+
+.nuevo-pedido-case-summary-detail-wide {
+  grid-column: 1 / -1;
+}
+
+.nuevo-pedido-case-summary-notes {
+  min-height: 94px;
+}
+
+.nuevo-pedido-case-summary-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  font-weight: 800;
+}
+
+.nuevo-pedido-case-summary-detail strong {
+  font-size: 0.94rem;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.odonto-status-pill.is-muted {
+  opacity: 0.78;
+}
+
+.nuevo-pedido-summary-title-block {
+  min-width: 0;
+}
+
+.nuevo-pedido-summary-status-pill {
+  flex-shrink: 0;
+}
+
+.nuevo-pedido-summary-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-summary-empty-note {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  background: rgba(248, 250, 252, 0.55);
+}
+
+.nuevo-pedido-summary-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.nuevo-pedido-summary-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.86));
+}
+
+.nuevo-pedido-summary-item > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.nuevo-pedido-summary-item strong,
+.nuevo-pedido-summary-item b {
+  display: block;
+}
+
+.nuevo-pedido-summary-item-side {
+  min-width: 140px;
+  text-align: right;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.nuevo-pedido-summary-item-side span {
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+}
+
+.nuevo-pedido-summary-item-side strong {
+  font-size: 0.84rem;
+  color: var(--color-text);
+}
+
+.nuevo-pedido-summary-item-side b {
+  font-size: 0.95rem;
+  color: var(--color-primary);
+}
+
+.nuevo-pedido-submit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(var(--color-primary-rgb), 0.14);
+}
+
+.nuevo-pedido-submit-row .btn {
+  min-width: 180px;
+}
+
+.nuevo-pedido-total-block {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.nuevo-pedido-total-block span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.nuevo-pedido-total-block strong {
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.order-composer-item-focus-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.order-composer-item-focus-card-premium {
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.order-composer-item-focus-media {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(145deg, rgba(248, 250, 252, 0.92), rgba(241, 245, 249, 0.62));
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.order-composer-item-focus-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.order-composer-item-focus-media i {
+  font-size: 1.4rem;
+  color: rgba(var(--color-primary-rgb), 0.65);
+}
+
+.order-composer-item-focus-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-composer-item-focus-main h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.order-composer-item-focus-aside {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.order-composer-item-focus-kicker {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.2rem;
+}
+
+.order-composer-item-focus-price {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.order-composer-odontograma-slot {
+  min-width: 0;
+}
+
+/*
+============================================
+Rediseño UI: Nuevo Pedido Layout Base
+============================================
+*/
+.nuevo-pedido-workspace {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+  width: 100%;
+  position: relative;
+}
+
+.nuevo-pedido-odontograma-column {
+  min-width: 0;
+}
+
+.nuevo-pedido-odontograma-pane {
+  display: grid;
+  gap: 0;
+  align-content: start;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.nuevo-pedido-odontograma-body {
+  min-width: 0;
+  min-height: clamp(540px, 72vh, 760px);
+  border: 1px solid var(--nuevo-pedido-panel-border);
+  border-radius: calc(var(--radius-lg) + 2px);
+  background: var(--nuevo-pedido-panel-surface);
+  padding: 0;
+  display: flex;
+}
+
+.nuevo-pedido-odontograma-slot {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.nuevo-pedido-odontograma-slot .odontograma-bento,
+.nuevo-pedido-odontograma-slot .odontograma-bento-single,
+.nuevo-pedido-odontograma-slot .odontograma-shell {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.nuevo-pedido-odontograma-slot .odontograma-panel {
+  align-items: stretch;
+  width: 100%;
+  padding: 0;
+}
+
+.nuevo-pedido-odontograma-slot .odontograma-stage {
+  width: 100%;
+  height: 100%;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.nuevo-pedido-odontograma-empty {
+  flex: 1;
+  min-height: clamp(360px, 48vh, 620px);
+  padding: var(--space-4);
+  border: 1px dashed var(--nuevo-pedido-panel-border);
+  border-radius: var(--radius-lg);
+  background: var(--nuevo-pedido-panel-surface-strong);
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+@media (min-width: 861px) {
+  .order-composer-modal .order-composer-desktop-grid {
+    grid-template-columns: minmax(430px, 1.2fr) minmax(360px, 0.9fr);
+    min-height: clamp(540px, 72vh, 760px);
+  }
+
+  .nuevo-pedido-catalog-card {
+    min-height: clamp(540px, 72vh, 760px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .nuevo-pedido-catalog-card .order-composer-catalog-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .nuevo-pedido-odontograma-slot .odontograma-bento,
+  .nuevo-pedido-odontograma-slot .odontograma-stage,
+  .nuevo-pedido-odontograma-slot .odontograma-panel {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .nuevo-pedido-odontograma-slot .odontograma-svg {
+    height: 100% !important;
+    max-height: none;
+    width: 100% !important;
+    min-width: 100%;
+    max-width: none;
+    display: block;
+  }
+
+  .nuevo-pedido-odontograma-slot .odontograma-bento {
+    grid-template-columns: minmax(0, 4fr) minmax(190px, 1fr);
+    gap: var(--space-3);
+  }
+
+  .nuevo-pedido-odontograma-slot .odontograma-panel,
+  .nuevo-pedido-odontograma-slot .odontograma-side {
+    padding: var(--space-2);
+  }
+
+  .order-composer-modal .quick-order-left-pane {
+    max-height: clamp(540px, 72vh, 760px);
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: var(--space-2);
+  }
+
+  .order-composer-modal .quick-order-odonto-pane,
+  .order-composer-modal .quick-order-odonto-slot {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    display: flex;
+  }
+
+  .order-composer-modal .quick-order-odonto-slot .odontograma-shell {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .order-composer-modal .quick-order-odonto-slot .odontograma-bento,
+  .order-composer-modal .quick-order-odonto-slot .odontograma-stage {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  .order-composer-modal .quick-order-odonto-slot .odontograma-panel {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  .order-composer-modal .quick-order-odonto-slot .odontograma-svg {
+    height: auto;
+    max-height: min(72vh, 760px);
+  }
+}
+
+@media (max-width: 1320px) {
+  .nuevo-pedido-layout,
+  .nuevo-pedido-shell {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  }
+
+  .nuevo-pedido-odontograma-column {
+    grid-column: 1 / -1;
+  }
+
+  .nuevo-pedido-sidebar,
+  .nuevo-pedido-catalog-sticky,
+  .nuevo-pedido-odontograma-pane {
+    position: static;
+  }
+
+  .nuevo-pedido-clinical-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nuevo-pedido-odontograma-body {
+    min-height: clamp(460px, 62vh, 640px);
+  }
+}
+
+@media (max-width: 860px) {
+  .nuevo-pedido-page-header {
+    align-items: flex-start;
+  }
+
+  .nuevo-pedido-header-back {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .nuevo-pedido-layout,
+  .nuevo-pedido-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .nuevo-pedido-intro-card,
+  .nuevo-pedido-selected-card,
+  .nuevo-pedido-section-heading,
+  .nuevo-pedido-section-head,
+  .nuevo-pedido-active-item,
+  .nuevo-pedido-summary-item-button,
+  .nuevo-pedido-summary-item,
+  .nuevo-pedido-submit-row {
+    flex-direction: column;
+  }
+
+  .nuevo-pedido-intro-stats {
+    min-width: 0;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .nuevo-pedido-case-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nuevo-pedido-selected-meta-block,
+  .nuevo-pedido-active-item-side,
+  .nuevo-pedido-summary-item-side {
+    justify-items: start;
+    text-align: left;
+    min-width: 0;
+  }
+
+  .nuevo-pedido-summary-context span {
+    width: 100%;
+  }
+
+  .nuevo-pedido-summary-status-pill,
+  .nuevo-pedido-submit-row .btn {
+    width: 100%;
+  }
+
+  .nuevo-pedido-case-summary-actions {
+    justify-content: flex-start;
+  }
+
+  .nuevo-pedido-case-summary-actions .btn {
+    width: 100%;
+  }
+
+  .nuevo-pedido-odontograma-body {
+    min-height: clamp(360px, 50vh, 560px);
+  }
+}
+
+.order-composer-pricing {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.24);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(155deg, rgba(var(--color-primary-rgb), 0.08), rgba(var(--color-primary-rgb), 0.03));
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.order-composer-pricing-title {
+  margin: 0;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(var(--color-primary-rgb), 0.9);
+  font-weight: 800;
+}
+
+.order-composer-pricing-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.order-composer-pricing-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.order-composer-pricing-value {
+  font-size: 0.92rem;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.order-composer-pricing-value-extra-charge {
+  color: var(--color-error);
+}
+
+.order-composer-pricing-row-subtotal {
+  padding-bottom: 0.55rem;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.6);
+}
+
+.order-composer-pricing-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(var(--color-primary-rgb), 0.2);
+}
+
+.order-composer-pricing-total-label {
+  font-size: 0.82rem;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.order-composer-pricing-total strong {
+  font-size: 1.22rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-primary);
+}
+
+.order-composer-pricing-empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.order-composer-empty-clinical {
+  min-height: 320px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: var(--space-2);
+}
+
+.order-composer-empty-clinical i {
+  font-size: 2rem;
+  color: var(--color-primary);
+}
+
+.order-composer-empty-clinical p {
+  color: var(--color-text-secondary);
+  max-width: 48ch;
+}
+
+.order-composer-actions-between {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-4);
 }
 
 .order-status-card-v2 {
@@ -3015,21 +4689,21 @@ h4 {
 /* Odontograma Interactive                      */
 /* ============================================ */
 .odontograma-shell {
-  --odt-neutral-fill: #D1D5DB;
-  --odt-neutral-stroke: #E5E7EB;
-  --odt-groove: rgba(51, 65, 85, 0.62);
-  --odt-selected-fill: #22D3EE;
-  --odt-selected-stroke: #0891B2;
+  --odt-neutral-fill: #F8FAFC;
+  --odt-neutral-stroke: #B8C2D1;
+  --odt-groove: rgba(71, 85, 105, 0.56);
+  --odt-selected-fill: #9ADCE9;
+  --odt-selected-stroke: #4AA8C0;
   --odt-pillar-fill: #10B981;
   --odt-pillar-stroke: #047857;
   --odt-pontic-fill: #F97316;
   --odt-pontic-stroke: #C2410C;
-  --odt-disabled-fill: rgba(100, 116, 139, 0.22);
-  --odt-disabled-stroke: rgba(100, 116, 139, 0.55);
-  --odt-label: #FFFFFF;
+  --odt-disabled-fill: rgba(100, 116, 139, 0.26);
+  --odt-disabled-stroke: rgba(100, 116, 139, 0.62);
+  --odt-label: #F8FAFC;
   border: 1px solid rgba(var(--color-primary-rgb), 0.2);
   border-radius: var(--radius-xl);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.92));
+  background: linear-gradient(145deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96));
   backdrop-filter: blur(12px);
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.45);
   padding: var(--space-5);
@@ -3145,50 +4819,61 @@ h4 {
   max-height: min(50vh, 520px);
   user-select: none;
   touch-action: none;
-  background: radial-gradient(circle at 50% 50%, rgba(241, 245, 249, 0.95), rgba(226, 232, 240, 0.95));
+  background: radial-gradient(circle at 50% 50%, rgba(226, 232, 240, 0.98), rgba(203, 213, 225, 0.98));
   border-radius: var(--radius-lg);
 }
 
-.order-modal-compact .odontograma-shell {
+.order-modal-compact .odontograma-shell,
+.order-composer-modal .odontograma-shell {
   padding: var(--space-2);
 }
 
-.order-modal-compact .odontograma-header {
+.order-modal-compact .odontograma-header,
+.order-composer-modal .odontograma-header {
   margin-bottom: var(--space-1);
 }
 
-.order-modal-compact .odontograma-header h4 {
+.order-modal-compact .odontograma-header h4,
+.order-composer-modal .odontograma-header h4 {
   font-size: 0.97rem;
 }
 
-.order-modal-compact .odontograma-header p {
+.order-modal-compact .odontograma-header p,
+.order-composer-modal .odontograma-header p {
   font-size: 0.73rem;
 }
 
-.order-modal-compact .odontograma-bento {
+.order-modal-compact .odontograma-bento,
+.order-composer-modal .odontograma-bento {
   grid-template-columns: minmax(0, 4fr) minmax(190px, 1fr);
   gap: var(--space-3);
 }
 
-.order-modal-compact .odontograma-bento.odontograma-bento-single {
+.order-modal-compact .odontograma-bento.odontograma-bento-single,
+.order-composer-modal .odontograma-bento.odontograma-bento-single {
   grid-template-columns: 1fr;
 }
 
-.order-modal-compact .odontograma-panel {
+.order-modal-compact .odontograma-panel,
+.order-composer-modal .odontograma-panel {
   padding: var(--space-2);
 }
 
-.order-modal-compact .odontograma-side {
+.order-modal-compact .odontograma-side,
+.order-composer-modal .odontograma-side {
   padding: var(--space-2);
   gap: var(--space-2);
 }
 
 .order-modal-compact .odontograma-stat,
-.order-modal-compact .odontograma-legend {
+.order-modal-compact .odontograma-legend,
+.order-composer-modal .odontograma-stat,
+.order-composer-modal .odontograma-legend {
   padding: var(--space-2);
 }
 
-.order-modal-compact .odontograma-svg {
+.order-modal-compact .odontograma-svg,
+.order-composer-modal .odontograma-svg {
   height: clamp(300px, 50vh, 520px);
   max-height: 50vh;
 }
@@ -3269,7 +4954,8 @@ h4 {
 }
 
 @media (max-width: 1220px) {
-  .order-modal-compact {
+  .order-modal-compact,
+  .order-composer-modal {
     max-width: 1040px;
   }
 
@@ -3284,10 +4970,18 @@ h4 {
   transition: transform var(--transition-fast), opacity var(--transition-fast), filter var(--transition-fast);
 }
 
+.odontograma-shell.is-readonly .odontograma-svg {
+  pointer-events: none;
+}
+
+.odontograma-shell.is-readonly .tooth-node {
+  cursor: default;
+}
+
 .tooth-outline {
   fill: none;
   stroke: var(--odt-neutral-stroke);
-  stroke-width: 2.2;
+  stroke-width: 2.1;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -3301,7 +4995,7 @@ h4 {
 .tooth-groove {
   fill: none;
   stroke: var(--odt-groove);
-  stroke-width: 1.2;
+  stroke-width: 1.15;
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none;
@@ -3311,10 +5005,7 @@ h4 {
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font-mono);
-  fill: var(--odt-label);
-  stroke: rgba(15, 23, 42, 0.9);
-  stroke-width: 1.6;
-  paint-order: stroke;
+  fill: #334155;
   pointer-events: none;
 }
 
@@ -3328,7 +5019,7 @@ h4 {
 
 .tooth-node.is-selected .tooth-fill {
   fill: var(--odt-selected-fill);
-  filter: drop-shadow(0 0 7px rgba(34, 211, 238, 0.5));
+  filter: drop-shadow(0 0 7px rgba(74, 168, 192, 0.28));
 }
 
 .tooth-node.is-selected .tooth-outline {
@@ -3418,6 +5109,19 @@ h4 {
   max-width: 100%;
 }
 
+.catalog-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.catalog-search-input {
+  padding-left: 2.5rem;
+}
+
 .catalog-filters-scrollable {
   display: flex;
   gap: 0.5rem;
@@ -3432,6 +5136,515 @@ h4 {
 
 .catalog-filters-scrollable::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
+}
+
+.catalog-filter-chip {
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.catalog-empty-state {
+  padding: 4rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.catalog-empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+  color: var(--color-primary);
+}
+
+.catalog-group {
+  margin-bottom: 2.5rem;
+}
+
+.catalog-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid rgba(var(--color-primary-rgb), 0.2);
+}
+
+.catalog-group-accent {
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  background: var(--color-primary);
+}
+
+.catalog-group-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.catalog-group-count {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.catalog-products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.catalog-product-skeleton {
+  border-radius: 16px;
+  height: 280px;
+}
+
+.catalog-order-express-btn {
+  width: 100%;
+  margin-top: var(--space-3);
+}
+
+.catalog-order-admin-card .catalog-order-express-wrapper {
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+  padding: 0.95rem 1rem;
+  align-items: flex-start;
+}
+
+.catalog-order-admin-card .catalog-order-express-wrapper .nuevo-pedido-express-toggle-info strong {
+  font-size: 0.92rem;
+}
+
+.catalog-order-admin-card .catalog-order-express-wrapper .nuevo-pedido-express-toggle-info p {
+  font-size: 0.8rem;
+}
+
+.catalog-product-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  cursor: default;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.catalog-product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.25);
+}
+
+.catalog-product-card-media {
+  height: 160px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--color-bg-alt) 0%, var(--color-surface) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.catalog-product-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.catalog-product-card-media-fallback {
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.catalog-product-card-media-fallback i {
+  font-size: 2.5rem;
+  opacity: 0.4;
+}
+
+.catalog-product-card-category {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.catalog-product-card-content {
+  padding: 1.25rem;
+}
+
+.catalog-product-card-title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.catalog-product-card-material {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.catalog-product-card-material i {
+  font-size: 0.75rem;
+}
+
+.catalog-product-card-description {
+  margin: 0 0 1rem;
+  font-size: 0.825rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.catalog-product-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.catalog-product-card-price {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.catalog-product-card-time {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-alt);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+}
+
+.catalog-product-card-cta {
+  width: 100%;
+  margin-top: 0.85rem;
+  font-size: 0.875rem;
+  gap: 0.4rem;
+}
+
+/* ============================================ */
+/* Productos page consistency                   */
+/* ============================================ */
+.productos-filters-card {
+  margin-bottom: var(--space-6);
+}
+
+.productos-filters-row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.productos-search-box {
+  flex: 1;
+  min-width: 200px;
+}
+
+.productos-filter-chips {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.productos-filter-chip {
+  border-left: 3px solid var(--tipo-accent, rgba(var(--color-primary-rgb), 0.3));
+}
+
+.productos-skeleton-card {
+  height: 140px;
+  border-radius: 12px;
+}
+
+.productos-group {
+  margin-bottom: 2.5rem;
+}
+
+.productos-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--tipo-accent, var(--color-border));
+}
+
+.productos-group-accent {
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  background: var(--tipo-accent, var(--color-primary));
+}
+
+.productos-group-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.productos-group-count {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.productos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+.productos-card {
+  background: var(--color-bg-card, var(--color-bg-alt));
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 1;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.productos-card.is-hidden {
+  opacity: 0.55;
+}
+
+.productos-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.25);
+}
+
+.productos-card-media {
+  height: 150px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(135deg, var(--color-bg-alt) 0%, var(--color-surface, var(--color-bg)) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.productos-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.productos-card-media-icon {
+  font-size: 2.5rem;
+  opacity: 0.25;
+  color: var(--color-text-secondary);
+}
+
+.productos-card-category-chip {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+}
+
+.productos-card-visibility-chip {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 0.65rem;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.productos-card-switch {
+  margin: 0;
+  transform: scale(0.8);
+}
+
+.productos-card-visibility-text {
+  font-size: 0.65rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.productos-card-content {
+  padding: 1rem;
+}
+
+.productos-card-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.productos-card-material {
+  margin: 0 0 0.3rem;
+  font-size: 0.775rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.productos-card-material i {
+  font-size: 0.7rem;
+}
+
+.productos-card-description {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.productos-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.productos-card-price {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.productos-card-time {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-alt);
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+}
+
+.productos-modal-delete-btn {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.productos-modal-alert {
+  margin-bottom: var(--space-4);
+}
+
+.productos-material-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.productos-material-label {
+  margin-bottom: 0;
+}
+
+.productos-material-empty {
+  color: var(--color-text-secondary);
+}
+
+.productos-hidden-file-input {
+  display: none;
+}
+
+.productos-image-picker {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 76px;
+}
+
+.productos-image-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.productos-image-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-secondary);
+}
+
+.productos-image-picker-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.productos-image-name {
+  color: var(--color-text-secondary);
+}
+
+.productos-visible-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.productos-visible-label {
+  margin: 0;
+}
+
+.productos-visible-switch {
+  margin: 0;
 }
 
 @media (max-width: 768px) {
@@ -3451,6 +5664,32 @@ h4 {
     width: 100%;
     margin: 0; 
     padding: 0 0 0.5rem 0;
+  }
+
+  .catalog-empty-state {
+    padding: 2.5rem 1.25rem;
+  }
+
+  .catalog-product-card-content {
+    padding: 1rem;
+  }
+
+  .productos-filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .productos-search-box {
+    width: 100%;
+  }
+
+  .productos-filter-chips {
+    width: 100%;
+  }
+
+  .productos-grid,
+  .catalog-products-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -3501,8 +5740,13 @@ h4 {
 }
 
 [data-theme="dark"] .odontograma-shell {
-  border: 1px solid rgba(103, 232, 249, 0.22);
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.48));
+  --odt-neutral-fill: #CBD5E1;
+  --odt-neutral-stroke: #E2E8F0;
+  --odt-groove: rgba(148, 163, 184, 0.7);
+  --odt-disabled-fill: rgba(148, 163, 184, 0.16);
+  --odt-disabled-stroke: rgba(148, 163, 184, 0.48);
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.84), rgba(15, 23, 42, 0.58));
   backdrop-filter: blur(18px);
   box-shadow: 0 20px 45px rgba(3, 7, 18, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
@@ -3514,8 +5758,8 @@ h4 {
 
 [data-theme="dark"] .odontograma-panel,
 [data-theme="dark"] .odontograma-side {
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(15, 23, 42, 0.46);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.58);
   backdrop-filter: blur(8px);
 }
 
@@ -3524,8 +5768,38 @@ h4 {
   border-color: rgba(103, 232, 249, 0.15);
 }
 
+[data-theme="dark"] .order-composer-status-strip {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(103, 232, 249, 0.15);
+}
+
+[data-theme="dark"] .order-composer-vita-pill {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.42);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .order-composer-vita-pill.is-selected {
+  border-color: rgba(103, 232, 249, 0.45);
+  background: rgba(8, 145, 178, 0.2);
+  color: #CFFAFE;
+}
+
+[data-theme="dark"] .order-composer-vita-select-wrap {
+  border-color: rgba(103, 232, 249, 0.25);
+  background: rgba(15, 23, 42, 0.62);
+}
+
+[data-theme="dark"] .order-composer-vita-select {
+  color: var(--color-text);
+}
+
 [data-theme="dark"] .odontograma-svg {
-  background: transparent;
+  background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.84), rgba(15, 23, 42, 0.9));
+}
+
+[data-theme="dark"] .tooth-code {
+  fill: #F8FAFC;
 }
 
 [data-theme="dark"] .odontograma-stat {
@@ -3537,7 +5811,17 @@ h4 {
   border-color: rgba(103, 232, 249, 0.15);
 }
 
+[data-theme="dark"] .order-composer-clinical-panel {
+  background: var(--nuevo-pedido-panel-surface);
+  border-color: var(--nuevo-pedido-panel-border);
+}
+
 [data-theme="dark"] .order-section-title {
+  color: #94A3B8;
+  border-bottom-color: rgba(34, 211, 238, 0.2);
+}
+
+[data-theme="dark"] .order-composer-section-title {
   color: #94A3B8;
   border-bottom-color: rgba(34, 211, 238, 0.2);
 }
@@ -3554,6 +5838,24 @@ h4 {
 [data-theme="dark"] .odonto-status-strip {
   background: rgba(15, 23, 42, 0.58);
   border-color: rgba(148, 163, 184, 0.28);
+}
+
+[data-theme="dark"] .order-composer-pricing {
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.42));
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+
+[data-theme="dark"] .order-composer-pricing-row-subtotal {
+  border-bottom-color: rgba(148, 163, 184, 0.45);
+}
+
+[data-theme="dark"] .order-composer-pricing-total {
+  border-top-color: rgba(148, 163, 184, 0.28);
+}
+
+[data-theme="dark"] .order-composer-pricing-total-label {
+  color: #E2E8F0;
 }
 
 [data-theme="dark"] .odonto-status-pill {
@@ -3653,6 +5955,42 @@ h4 {
     grid-template-columns: 1fr;
   }
 
+  .order-composer-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-composer-mobile-switcher {
+    display: flex;
+  }
+
+  .order-composer-desktop-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-composer-mobile-hidden {
+    display: none;
+  }
+
+  .order-composer-catalog-card {
+    max-height: none;
+  }
+
+  .order-composer-catalog-list {
+    max-height: none;
+  }
+
+  .order-composer-actions-between {
+    gap: var(--space-2);
+  }
+
+  .nuevo-pedido-workspace {
+    flex-direction: column;
+  }
+
+  .nuevo-pedido-admin-header {
+    flex-direction: column;
+  }
+
   .odontograma-bento {
     grid-template-columns: 1fr;
   }
@@ -3671,7 +6009,8 @@ h4 {
     max-height: min(460px, 60vh);
   }
 
-  .order-modal-compact .odontograma-svg {
+  .order-modal-compact .odontograma-svg,
+  .order-composer-modal .odontograma-svg {
     width: 100%;
     height: auto;
     max-height: min(420px, 52vh);
@@ -3694,7 +6033,6 @@ h4 {
   .tooth-code {
     font-size: 11px;
     font-weight: 600;
-    stroke-width: 1.35;
   }
 }
 

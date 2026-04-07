@@ -7,9 +7,13 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "test:odontograma": "node src/utils/odontograma.test.js"
+        "test:odontograma": "node src/utils/odontograma.test.js",
+        "test:register-payment-optimistic": "node src/modules/finance/mutations/registerPayment.optimistic.test.js",
+        "test:order-payment-invoice-flow": "node src/modules/cache/orderPaymentInvoiceFlow.test.js"
     },
     "dependencies": {
+        "@newlab/contracts": "file:../packages/contracts",
+        "@tanstack/react-query": "^5.90.3",
         "@fullcalendar/core": "^5.11.3",
         "@fullcalendar/daygrid": "^5.11.3",
         "@fullcalendar/interaction": "^5.11.3",
