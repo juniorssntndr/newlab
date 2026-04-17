@@ -43,7 +43,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     return (
         <>
             {mobileOpen && <div className="sidebar-overlay" onClick={onMobileClose} />}
-            <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
+            <aside id="app-sidebar" className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-brand">
                     <div className="brand-logo">N</div>
                     <div className="brand-text">

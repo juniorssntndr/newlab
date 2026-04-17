@@ -204,14 +204,14 @@ const NuevoPedido = () => {
                     onClick={() => navigate('/pedidos')}
                     type="button"
                 >
-                    <i className="bi bi-arrow-left"></i>
+                    <i className="bi bi-arrow-left" aria-hidden="true"></i>
                     Volver a seguimiento
                 </button>
             </div>
 
             {error && (
-                <div className="login-error order-composer-error-banner">
-                    <i className="bi bi-exclamation-circle"></i> {error}
+                <div className="login-error order-composer-error-banner" id="nuevo-pedido-error" role="alert" aria-live="assertive">
+                    <i className="bi bi-exclamation-circle" aria-hidden="true"></i> {error}
                 </div>
             )}
 
@@ -242,7 +242,7 @@ const NuevoPedido = () => {
                                         />
                                     ) : (
                                         <div className="nuevo-pedido-selected-product-fallback">
-                                            <i className="bi bi-box-seam"></i>
+                                            <i className="bi bi-box-seam" aria-hidden="true"></i>
                                         </div>
                                     )}
                                 </div>
@@ -252,8 +252,13 @@ const NuevoPedido = () => {
                                 </div>
                                 <div className="nuevo-pedido-selected-product-side">
                                     <strong>S/. {Number(selectedItem?.precio_unitario || 0).toFixed(2)}</strong>
-                                    <button type="button" className="btn btn-ghost btn-sm nuevo-pedido-selected-product-remove" onClick={() => removeOrderItem(selectedItem.id)}>
-                                        <i className="bi bi-trash"></i> Quitar
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm nuevo-pedido-selected-product-remove"
+                                        onClick={() => removeOrderItem(selectedItem.id)}
+                                        aria-label={`Quitar ${selectedItem.nombre} del pedido`}
+                                    >
+                                        <i className="bi bi-trash" aria-hidden="true"></i> Quitar
                                     </button>
                                 </div>
                             </article>
@@ -261,29 +266,36 @@ const NuevoPedido = () => {
 
                         <div className="nuevo-pedido-section-heading">
                             <div>
-                                <h6 className="order-composer-section-title"><i className="bi bi-person-lines-fill"></i> Datos administrativos</h6>
+                                <h6 className="order-composer-section-title"><i className="bi bi-person-lines-fill" aria-hidden="true"></i> Datos administrativos</h6>
                                 <p className="nuevo-pedido-section-copy">La informacion general del caso queda siempre visible y estable.</p>
                             </div>
                         </div>
 
                         <div className="order-composer-fields-grid nuevo-pedido-admin-reference-grid nuevo-pedido-admin-clinic-row">
                             <div className="form-group order-composer-field-reset">
-                                <label className="form-label">Clinica *</label>
+                                <label className="form-label" htmlFor="nuevo-pedido-clinica">Clinica *</label>
                                 <div className="nuevo-pedido-clinic-search">
                                     <i className="bi bi-search" aria-hidden="true"></i>
                                     <input
+                                        id="nuevo-pedido-clinica-search"
                                         className="form-input nuevo-pedido-clinic-search-input"
                                         placeholder="Buscar clinica..."
+                                        aria-label="Buscar clinica por nombre"
+                                        aria-describedby={!user?.clinica_id && clinicSearchValue && clinicOptions.length === 0 ? 'nuevo-pedido-clinica-empty' : undefined}
                                         value={clinicSearch}
                                         onChange={(event) => setClinicSearch(event.target.value)}
                                         disabled={!!user?.clinica_id}
                                     />
                                 </div>
                                 <select
+                                    id="nuevo-pedido-clinica"
                                     className="form-select"
                                     value={form.clinica_id}
                                     onChange={(event) => setForm({ ...form, clinica_id: event.target.value })}
                                     disabled={!!user?.clinica_id}
+                                    required
+                                    aria-invalid={!!error && !form.clinica_id}
+                                    aria-describedby={error && !form.clinica_id ? 'nuevo-pedido-error' : undefined}
                                 >
                                     <option value="">Seleccionar clinica...</option>
                                     {clinicOptions.map((clinic) => (
@@ -291,38 +303,45 @@ const NuevoPedido = () => {
                                     ))}
                                 </select>
                                 {!user?.clinica_id && clinicSearchValue && clinicOptions.length === 0 && (
-                                    <small className="nuevo-pedido-clinic-empty">No hay clinicas que coincidan con tu busqueda.</small>
+                                    <small className="nuevo-pedido-clinic-empty" id="nuevo-pedido-clinica-empty">No hay clinicas que coincidan con tu busqueda.</small>
                                 )}
                             </div>
                         </div>
 
                         <div className="order-composer-fields-grid nuevo-pedido-admin-reference-grid">
                             <div className="form-group order-composer-field-reset">
-                                <label className="form-label">Nombre del paciente *</label>
+                                <label className="form-label" htmlFor="nuevo-pedido-paciente">Nombre del paciente *</label>
                                 <input
+                                    id="nuevo-pedido-paciente"
                                     className="form-input"
                                     placeholder="Nombre completo"
                                     value={form.paciente_nombre}
                                     onChange={(event) => setForm({ ...form, paciente_nombre: event.target.value })}
+                                    required
+                                    aria-invalid={!!error && !form.paciente_nombre}
+                                    aria-describedby={error && !form.paciente_nombre ? 'nuevo-pedido-error' : undefined}
                                 />
                             </div>
                             <div className="form-group order-composer-field-reset">
-                                <label className="form-label">Fecha de entrega estimada</label>
+                                <label className="form-label" htmlFor="nuevo-pedido-fecha-entrega">Fecha de entrega estimada</label>
                                 <input
+                                    id="nuevo-pedido-fecha-entrega"
                                     className="form-input"
                                     type="date"
                                     value={form.fecha_entrega}
                                     readOnly
                                     disabled
+                                    aria-describedby="nuevo-pedido-fecha-ayuda"
                                 />
+                                <small className="form-help" id="nuevo-pedido-fecha-ayuda">Se calcula automaticamente segun el producto y la prioridad.</small>
                             </div>
                         </div>
 
                         <div className={`nuevo-pedido-express-toggle-wrapper ${isExpressOrder ? 'is-express' : ''}`}>
-                            <i className={isExpressOrder ? "bi bi-lightning-charge-fill" : "bi bi-lightning-charge"}></i>
+                            <i className={isExpressOrder ? "bi bi-lightning-charge-fill" : "bi bi-lightning-charge"} aria-hidden="true"></i>
                             <div className="nuevo-pedido-express-toggle-info">
                                 <strong>Pedido Express ⚡</strong>
-                                <p>Marca esta opcion si el trabajo requiere prioridad maxima en laboratorio.</p>
+                                <p id="nuevo-pedido-express-help">Marca esta opcion si el trabajo requiere prioridad maxima en laboratorio.</p>
                             </div>
                             <div className="nuevo-pedido-express-switch">
                                 <input
@@ -330,6 +349,7 @@ const NuevoPedido = () => {
                                     id="expressOrderToggle"
                                     className="toggle-switch-input"
                                     checked={isExpressOrder}
+                                    aria-describedby="nuevo-pedido-express-help"
                                     onChange={(e) => {
                                         const nextExpress = e.target.checked;
                                         setIsExpressOrder(nextExpress);
@@ -360,7 +380,7 @@ const NuevoPedido = () => {
                             />
 
                             <article className="card nuevo-pedido-case-summary-card">
-                                <h6 className="order-composer-section-title"><i className="bi bi-receipt"></i> Resumen del caso</h6>
+                                <h6 className="order-composer-section-title"><i className="bi bi-receipt" aria-hidden="true"></i> Resumen del caso</h6>
                                 <div className="nuevo-pedido-case-summary-row">
                                     <span>Precio unitario</span>
                                     <strong>S/. {Number(selectedItem?.precio_unitario || 0).toFixed(2)}</strong>
@@ -379,15 +399,17 @@ const NuevoPedido = () => {
                                         className="btn btn-primary btn-crear-pedido"
                                         onClick={handleSubmit}
                                         disabled={saving}
+                                        aria-busy={saving}
+                                        aria-describedby={error ? 'nuevo-pedido-error' : undefined}
                                     >
                                         {saving ? (
                                             <>
-                                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                                Guardando...
+                                                <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                                <span aria-live="polite">Guardando...</span>
                                             </>
                                         ) : (
                                             <>
-                                                <i className="bi bi-check-circle-fill"></i>
+                                                <i className="bi bi-check-circle-fill" aria-hidden="true"></i>
                                                 Crear Pedido
                                             </>
                                         )}

@@ -365,18 +365,22 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <div className="dashboard-view-switcher">
+            <div className="dashboard-view-switcher" role="group" aria-label="Vista principal del dashboard">
                 <button
+                    type="button"
                     className={`btn dashboard-view-tab ${activeView === 'operativo' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveView('operativo')}
+                    aria-pressed={activeView === 'operativo'}
                 >
-                    <i className="bi bi-clipboard-data"></i> Operativo
+                    <i className="bi bi-clipboard-data" aria-hidden="true"></i> Operativo
                 </button>
                 <button
+                    type="button"
                     className={`btn dashboard-view-tab ${activeView === 'financiero' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveView('financiero')}
+                    aria-pressed={activeView === 'financiero'}
                 >
-                    <i className="bi bi-cash-coin"></i> Financiero BI
+                    <i className="bi bi-cash-coin" aria-hidden="true"></i> Financiero BI
                 </button>
             </div>
 
@@ -403,20 +407,20 @@ const Dashboard = () => {
                         />
                     </div>
                 </div>
-                <div className="dashboard-filters-actions">
-                    <button className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(30), to: todayIso() }))}>Últimos 30 días</button>
-                    <button className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(60), to: todayIso() }))}>Últimos 60 días</button>
-                    <button className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(90), to: todayIso() }))}>Últimos 90 días</button>
+                <div className="dashboard-filters-actions" role="group" aria-label="Rangos rapidos del dashboard financiero">
+                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(30), to: todayIso() }))}>Últimos 30 días</button>
+                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(60), to: todayIso() }))}>Últimos 60 días</button>
+                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(90), to: todayIso() }))}>Últimos 90 días</button>
                 </div>
             </div>
 
             <div className="card dashboard-toolbar-card dashboard-toolbar-card--padded">
-                <div className="dashboard-toolbar-group">
-                    <button className={`btn btn-sm ${financeView === 'resumen' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFinanceView('resumen')}>
-                        <i className="bi bi-grid"></i> Resumen financiero
+                <div className="dashboard-toolbar-group" role="group" aria-label="Vista financiera">
+                    <button type="button" aria-pressed={financeView === 'resumen'} className={`btn btn-sm ${financeView === 'resumen' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFinanceView('resumen')}>
+                        <i className="bi bi-grid" aria-hidden="true"></i> Resumen financiero
                     </button>
-                    <button className={`btn btn-sm ${financeView === 'estrategicos' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFinanceView('estrategicos')}>
-                        <i className="bi bi-bar-chart-line"></i> Estratégicos
+                    <button type="button" aria-pressed={financeView === 'estrategicos'} className={`btn btn-sm ${financeView === 'estrategicos' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFinanceView('estrategicos')}>
+                        <i className="bi bi-bar-chart-line" aria-hidden="true"></i> Estratégicos
                     </button>
                 </div>
             </div>
@@ -520,11 +524,11 @@ const Dashboard = () => {
                                 <h3 className="card-title">Centro Estratégico</h3>
                                 <p className="card-subtitle">Identifica rápidamente qué clínica y qué producto impulsan tus ingresos</p>
                             </div>
-                            <div className="dashboard-toolbar-group">
-                                <button className={`btn btn-sm ${strategicTopN === 5 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(5)}>Top 5</button>
-                                <button className={`btn btn-sm ${strategicTopN === 10 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(10)}>Top 10</button>
-                                <button className={`btn btn-sm ${strategicMetric === 'monto' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStrategicMetric('monto')}>S/.</button>
-                                <button className={`btn btn-sm ${strategicMetric === 'pct' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStrategicMetric('pct')}>%</button>
+                            <div className="dashboard-toolbar-group" role="group" aria-label="Opciones del centro estrategico">
+                                <button type="button" aria-pressed={strategicTopN === 5} className={`btn btn-sm ${strategicTopN === 5 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(5)}>Top 5</button>
+                                <button type="button" aria-pressed={strategicTopN === 10} className={`btn btn-sm ${strategicTopN === 10 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(10)}>Top 10</button>
+                                <button type="button" aria-pressed={strategicMetric === 'monto'} aria-label="Ver montos en soles" className={`btn btn-sm ${strategicMetric === 'monto' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStrategicMetric('monto')}>S/.</button>
+                                <button type="button" aria-pressed={strategicMetric === 'pct'} aria-label="Ver porcentajes" className={`btn btn-sm ${strategicMetric === 'pct' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStrategicMetric('pct')}>%</button>
                             </div>
                         </div>
                     </div>
@@ -635,16 +639,16 @@ const Dashboard = () => {
                 <>
             <div className="card dashboard-stack">
                 <div className="dashboard-toolbar-row">
-                    <div className="dashboard-toolbar-group">
-                        <button className={`btn btn-sm ${operativeView === 'produccion' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('produccion')}>Producción</button>
-                        <button className={`btn btn-sm ${operativeView === 'resumen' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('resumen')}>Resumen del mes</button>
-                        <button className={`btn btn-sm ${operativeView === 'historico' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('historico')}>Histórico</button>
-                        <button className={`btn btn-sm ${operativeView === 'tops' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('tops')}>Tops</button>
+                    <div className="dashboard-toolbar-group" role="group" aria-label="Vista operativa">
+                        <button type="button" aria-pressed={operativeView === 'produccion'} className={`btn btn-sm ${operativeView === 'produccion' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('produccion')}>Producción</button>
+                        <button type="button" aria-pressed={operativeView === 'resumen'} className={`btn btn-sm ${operativeView === 'resumen' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('resumen')}>Resumen del mes</button>
+                        <button type="button" aria-pressed={operativeView === 'historico'} className={`btn btn-sm ${operativeView === 'historico' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('historico')}>Histórico</button>
+                        <button type="button" aria-pressed={operativeView === 'tops'} className={`btn btn-sm ${operativeView === 'tops' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('tops')}>Tops</button>
                     </div>
-                    <div className="dashboard-toolbar-group">
-                        <button className={`btn btn-sm ${operativeRange === '3m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('3m')}>3m</button>
-                        <button className={`btn btn-sm ${operativeRange === '6m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('6m')}>6m</button>
-                        <button className={`btn btn-sm ${operativeRange === '12m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('12m')}>12m</button>
+                    <div className="dashboard-toolbar-group" role="group" aria-label="Rango operativo">
+                        <button type="button" aria-pressed={operativeRange === '3m'} aria-label="Ultimos 3 meses" className={`btn btn-sm ${operativeRange === '3m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('3m')}>3m</button>
+                        <button type="button" aria-pressed={operativeRange === '6m'} aria-label="Ultimos 6 meses" className={`btn btn-sm ${operativeRange === '6m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('6m')}>6m</button>
+                        <button type="button" aria-pressed={operativeRange === '12m'} aria-label="Ultimos 12 meses" className={`btn btn-sm ${operativeRange === '12m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('12m')}>12m</button>
                     </div>
                 </div>
             </div>
@@ -821,7 +825,7 @@ const Dashboard = () => {
                 <div className="card dashboard-stack">
                     <div className="card-header">
                         <h3 className="card-title">Pedidos Recientes</h3>
-                        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/pedidos')}>Ver todos →</button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/pedidos')}>Ver todos →</button>
                     </div>
                     {(stats?.recientes || []).length > 0 ? (
                         <>

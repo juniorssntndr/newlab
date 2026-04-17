@@ -5,3 +5,6 @@ dist/
 .DS_Store
 uploads/
 backend/uploads/
+.agent/skills/**/__pycache__/
+.agent/skills/**/*.pyc
+.agents/skills/ui-ux-pro-max-skill/

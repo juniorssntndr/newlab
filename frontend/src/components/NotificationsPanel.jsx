@@ -25,17 +25,17 @@ const NotificationsPanel = () => {
     };
 
     return (
-        <div className="notifications-panel">
+        <div className="notifications-panel" id="notifications-panel" role="region" aria-label="Notificaciones">
             <div className="notifications-header">
                 <h4 style={{ fontSize: '0.9375rem', fontWeight: 600 }}>
                     Notificaciones {unreadCount > 0 && <span className="badge badge-pendiente" style={{ marginLeft: 8 }}>{unreadCount}</span>}
                 </h4>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {unreadCount > 0 && (
-                        <button className="btn btn-ghost btn-sm" onClick={markAllRead}>Marcar todas</button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={markAllRead}>Marcar todas</button>
                     )}
-                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setPanelOpen(false)}>
-                        <i className="bi bi-x-lg"></i>
+                    <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setPanelOpen(false)} aria-label="Cerrar notificaciones">
+                        <i className="bi bi-x-lg" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
