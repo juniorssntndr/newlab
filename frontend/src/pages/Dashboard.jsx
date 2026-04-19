@@ -172,8 +172,8 @@ const Dashboard = () => {
     const monthsMap = { '3m': 3, '6m': 6, '12m': 12 };
     const selectedMonths = monthsMap[operativeRange] || 12;
     const historicoOperativoSlice = historicoOperativo.slice(-selectedMonths);
-    const historicoTopProductoSlice = historicoTopProducto.slice(-selectedMonths);
-    const historicoTopClinicaSlice = historicoTopClinica.slice(-selectedMonths);
+    const historicoTopProductoSlice = historicoTopProducto.slice(-12);
+    const historicoTopClinicaSlice = historicoTopClinica.slice(-12);
 
     const operativoBarDataSlice = {
         labels: historicoOperativoSlice.map((item) => toMonthLabel(item.periodo)),
@@ -645,11 +645,6 @@ const Dashboard = () => {
                         <button type="button" aria-pressed={operativeView === 'historico'} className={`btn btn-sm ${operativeView === 'historico' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('historico')}>Histórico</button>
                         <button type="button" aria-pressed={operativeView === 'tops'} className={`btn btn-sm ${operativeView === 'tops' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('tops')}>Tops</button>
                     </div>
-                    <div className="dashboard-toolbar-group" role="group" aria-label="Rango operativo">
-                        <button type="button" aria-pressed={operativeRange === '3m'} aria-label="Ultimos 3 meses" className={`btn btn-sm ${operativeRange === '3m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('3m')}>3m</button>
-                        <button type="button" aria-pressed={operativeRange === '6m'} aria-label="Ultimos 6 meses" className={`btn btn-sm ${operativeRange === '6m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('6m')}>6m</button>
-                        <button type="button" aria-pressed={operativeRange === '12m'} aria-label="Ultimos 12 meses" className={`btn btn-sm ${operativeRange === '12m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('12m')}>12m</button>
-                    </div>
                 </div>
             </div>
 
@@ -737,7 +732,17 @@ const Dashboard = () => {
 
             {operativeView === 'historico' && (
                 <div className="card dashboard-stack">
-                    <div className="card-header"><h3 className="card-title">Histórico {selectedMonths} meses: pedidos y nuevos clientes</h3></div>
+                    <div className="card-header dashboard-card-header dashboard-card-header--split">
+                        <div>
+                            <h3 className="card-title">Histórico {selectedMonths} meses: pedidos y nuevos clientes</h3>
+                            <p className="card-subtitle">El rango aplica solo al histórico operativo</p>
+                        </div>
+                        <div className="dashboard-toolbar-group dashboard-range-group" role="group" aria-label="Rango del histórico operativo">
+                            <button type="button" aria-pressed={operativeRange === '3m'} aria-label="Últimos 3 meses" className={`btn btn-sm ${operativeRange === '3m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('3m')}>3m</button>
+                            <button type="button" aria-pressed={operativeRange === '6m'} aria-label="Últimos 6 meses" className={`btn btn-sm ${operativeRange === '6m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('6m')}>6m</button>
+                            <button type="button" aria-pressed={operativeRange === '12m'} aria-label="Últimos 12 meses" className={`btn btn-sm ${operativeRange === '12m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('12m')}>12m</button>
+                        </div>
+                    </div>
                     {historicoOperativoSlice.length > 0 ? (
                         <Bar data={operativoBarDataSlice} options={{
                             responsive: true,
@@ -754,37 +759,74 @@ const Dashboard = () => {
             )}
 
             {operativeView === 'tops' && (
-                <div className="grid grid-cols-3 dashboard-stack">
-                    <div className="card col-span-1">
-                        <div className="card-header"><h3 className="card-title">Top producto por mes</h3></div>
+                <div className="dashboard-tops-grid dashboard-stack">
+                    <div className="card dashboard-top-card dashboard-top-card--hero">
+                        <div className="card-header">
+                            <div>
+                                <h3 className="card-title">Top actual del mes</h3>
+                                <p className="card-subtitle">Los líderes que más pesan en la operación actual</p>
+                            </div>
+                        </div>
+                        <div className="dashboard-top-current-list">
+                            <div className="dashboard-top-current-item">
+                                <span className="dashboard-top-eyebrow">Producto líder</span>
+                                <strong className="dashboard-top-current-value">{topProductoMes ? topProductoMes.producto : 'Sin pedidos'}</strong>
+                                <span className="dashboard-top-current-badge">{topProductoMes ? `${topProductoMes.cantidad} pedidos` : '0 pedidos'}</span>
+                            </div>
+                            <div className="dashboard-top-current-item">
+                                <span className="dashboard-top-eyebrow">Clínica líder</span>
+                                <strong className="dashboard-top-current-value">{topClinicaMes ? topClinicaMes.clinica : 'Sin pedidos'}</strong>
+                                <span className="dashboard-top-current-badge">{topClinicaMes ? `${topClinicaMes.pedidos} pedidos` : '0 pedidos'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="card dashboard-top-card">
+                        <div className="card-header">
+                            <div>
+                                <h3 className="card-title">Top producto por mes</h3>
+                                <p className="card-subtitle">Lectura histórica de últimos 12 meses</p>
+                            </div>
+                        </div>
                         {historicoTopProductoSlice.length > 0 ? (
-                            <div className="dashboard-list compact">
-                                {historicoTopProductoSlice.map((row) => (
-                                    <div key={`${row.periodo}-${row.producto}`} className="dashboard-list-item"><span>{toMonthLabel(row.periodo)} · {row.producto}</span><strong>{row.cantidad}</strong></div>
+                            <div className="dashboard-list compact dashboard-top-history-list">
+                                {historicoTopProductoSlice.map((row, index) => (
+                                    <div key={`${row.periodo}-${row.producto}`} className="dashboard-list-item dashboard-top-history-item">
+                                        <span className="dashboard-top-rank">{index + 1}</span>
+                                        <span className="dashboard-top-label">
+                                            <span className="dashboard-top-month">{toMonthLabel(row.periodo)}</span>
+                                            {row.producto}
+                                        </span>
+                                        <strong>{row.cantidad}</strong>
+                                    </div>
                                 ))}
                             </div>
                         ) : (
                             <div className="empty-state"><p className="empty-state-text">Sin datos de producto top</p></div>
                         )}
                     </div>
-                    <div className="card col-span-1">
-                        <div className="card-header"><h3 className="card-title">Top clínica por mes</h3></div>
+                    <div className="card dashboard-top-card">
+                        <div className="card-header">
+                            <div>
+                                <h3 className="card-title">Top clínica por mes</h3>
+                                <p className="card-subtitle">Lectura histórica de últimos 12 meses</p>
+                            </div>
+                        </div>
                         {historicoTopClinicaSlice.length > 0 ? (
-                            <div className="dashboard-list compact">
-                                {historicoTopClinicaSlice.map((row) => (
-                                    <div key={`${row.periodo}-${row.clinica}`} className="dashboard-list-item"><span>{toMonthLabel(row.periodo)} · {row.clinica}</span><strong>{row.pedidos}</strong></div>
+                            <div className="dashboard-list compact dashboard-top-history-list">
+                                {historicoTopClinicaSlice.map((row, index) => (
+                                    <div key={`${row.periodo}-${row.clinica}`} className="dashboard-list-item dashboard-top-history-item">
+                                        <span className="dashboard-top-rank">{index + 1}</span>
+                                        <span className="dashboard-top-label">
+                                            <span className="dashboard-top-month">{toMonthLabel(row.periodo)}</span>
+                                            {row.clinica}
+                                        </span>
+                                        <strong>{row.pedidos}</strong>
+                                    </div>
                                 ))}
                             </div>
                         ) : (
                             <div className="empty-state"><p className="empty-state-text">Sin datos de clínica top</p></div>
                         )}
-                    </div>
-                    <div className="card col-span-1">
-                        <div className="card-header"><h3 className="card-title">Top actual del mes</h3></div>
-                        <div className="dashboard-list compact">
-                            <div className="dashboard-list-item"><span>Producto líder</span><strong>{topProductoMes ? `${topProductoMes.producto} (${topProductoMes.cantidad})` : 'Sin pedidos'}</strong></div>
-                            <div className="dashboard-list-item"><span>Clínica líder</span><strong>{topClinicaMes ? `${topClinicaMes.clinica} (${topClinicaMes.pedidos})` : 'Sin pedidos'}</strong></div>
-                        </div>
                     </div>
                 </div>
             )}
