@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, Outlet } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './state/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
+import { canAccessFinancialModules, isAdminRole, isClientRole } from './utils/accessControl.js';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Clinicas from './pages/Clinicas.jsx';
@@ -41,21 +42,28 @@ const ProtectedRoute = ({ children }) => {
 const LabOnlyRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
-    if (user?.tipo === 'cliente') return <Navigate to="/pedidos" replace />;
+    if (isClientRole(user)) return <Navigate to="/pedidos" replace />;
     return children;
 };
 
 const AdminOnlyRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
-    if (user?.tipo !== 'admin') return <Navigate to="/dashboard" replace />;
+    if (!isAdminRole(user)) return <Navigate to="/dashboard" replace />;
+    return children;
+};
+
+const FinancialAccessRoute = ({ children }) => {
+    const { user, loading } = useAuth();
+    if (loading) return <LoadingScreen />;
+    if (!canAccessFinancialModules(user)) return <Navigate to="/dashboard" replace />;
     return children;
 };
 
 const HomeRedirect = () => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
-    return <Navigate to={user?.tipo === 'cliente' ? '/pedidos' : '/dashboard'} replace />;
+    return <Navigate to={isClientRole(user) ? '/pedidos' : '/dashboard'} replace />;
 };
 
 const App = () => {
@@ -73,10 +81,10 @@ const App = () => {
                     <Route path="pedidos" element={<Pedidos />} />
                     <Route path="pedidos/nuevo" element={<NuevoPedido />} />
                     <Route path="pedidos/:id" element={<DetallePedido />} />
-                    <Route path="finanzas" element={<LabOnlyRoute><Finanzas /></LabOnlyRoute>} />
-                    <Route path="caja-gastos" element={<LabOnlyRoute><CajaGastos /></LabOnlyRoute>} />
-                    <Route path="finanzas/:id" element={<LabOnlyRoute><DetalleFinanza /></LabOnlyRoute>} />
-                    <Route path="finanzas/:id/facturar" element={<LabOnlyRoute><FacturarPedido /></LabOnlyRoute>} />
+                    <Route path="finanzas" element={<FinancialAccessRoute><Finanzas /></FinancialAccessRoute>} />
+                    <Route path="caja-gastos" element={<FinancialAccessRoute><CajaGastos /></FinancialAccessRoute>} />
+                    <Route path="finanzas/:id" element={<FinancialAccessRoute><DetalleFinanza /></FinancialAccessRoute>} />
+                    <Route path="finanzas/:id/facturar" element={<FinancialAccessRoute><FacturarPedido /></FinancialAccessRoute>} />
                     <Route path="calendario" element={<LabOnlyRoute><Calendario /></LabOnlyRoute>} />
                     <Route path="mi-calendario" element={<CalendarioCliente />} />
                     <Route path="catalogo" element={<CatalogoCliente />} />

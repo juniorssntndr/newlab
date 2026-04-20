@@ -1,0 +1,288 @@
+.expenses-page-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.expenses-page-header {
+  margin-bottom: 0;
+}
+
+.expenses-panel-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0284c7;
+}
+
+.expenses-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.expenses-create-card,
+.expenses-table-card {
+  border-radius: 24px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+}
+
+.expenses-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.expenses-panel-head .card-title {
+  margin-top: 0.4rem;
+  font-size: 1.4rem;
+}
+
+.expenses-panel-head .card-subtitle {
+  max-width: 34rem;
+  margin-top: 0.45rem;
+}
+
+.expenses-form-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.expense-origin-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.expense-origin-chip {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.expense-origin-chip:hover {
+  border-color: rgba(14, 165, 233, 0.3);
+  color: #0f172a;
+}
+
+.expense-origin-chip.is-active {
+  background: linear-gradient(135deg, #0891b2, #0ea5e9);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 12px 22px rgba(14, 165, 233, 0.28);
+}
+
+.expense-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.expense-form-grid-span {
+  grid-column: 1 / -1;
+}
+
+.expense-field-help {
+  margin-top: 0.45rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.expense-amount-input {
+  font-variant-numeric: tabular-nums;
+}
+
+.expenses-form-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.expenses-edit-copy p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+}
+
+.expenses-submit-btn {
+  width: 100%;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+}
+
+.expenses-panel-head--table {
+  align-items: center;
+}
+
+.expenses-table-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.expenses-table-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.expenses-table-pill {
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.expenses-search-box {
+  width: min(100%, 340px);
+}
+
+.expenses-table-wrapper {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.expenses-table thead th {
+  background: linear-gradient(180deg, #f8fbff, #eff6ff);
+}
+
+.expenses-table tbody tr {
+  transition: background-color 160ms ease;
+}
+
+.expenses-table tbody tr:hover {
+  background: rgba(14, 165, 233, 0.04);
+}
+
+.expenses-date-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.expenses-date-cell span {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.expenses-origin-badge,
+.expenses-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.expenses-origin-badge.is-cash {
+  background: rgba(249, 115, 22, 0.1);
+  color: #c2410c;
+}
+
+.expenses-origin-badge.is-bank {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0369a1;
+}
+
+.expenses-category-badge {
+  background: rgba(15, 23, 42, 0.06);
+  color: #334155;
+}
+
+.expenses-detail-cell {
+  max-width: 22rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.expenses-amount-cell {
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+
+.expenses-action-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.expenses-action-btn {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 12px;
+}
+
+.expenses-action-btn.is-danger {
+  color: #dc2626;
+}
+
+.expenses-action-btn.is-danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.expenses-empty-state {
+  min-height: 320px;
+}
+
+.expenses-edit-modal .modal-body {
+  padding-top: var(--space-4);
+}
+
+@media (max-width: 1200px) {
+  .expenses-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .expenses-table-toolbar,
+  .expenses-table-pills {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .expense-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .expenses-panel-head,
+  .expenses-panel-head--table {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .expenses-search-box {
+    width: 100%;
+  }
+
+  .expenses-table {
+    min-width: 760px;
+  }
+}

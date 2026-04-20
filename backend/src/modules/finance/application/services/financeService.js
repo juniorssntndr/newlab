@@ -1,5 +1,5 @@
-const GASTOS_OPERATIVOS = ['alquiler', 'servicios', 'sueldos', 'marketing', 'mantenimiento'];
-const COSTOS_DIRECTOS = ['insumos', 'materiales', 'laboratorio', 'logistica'];
+const GASTOS_OPERATIVOS = ['alquiler', 'servicios', 'sueldos', 'logistica', 'marketing'];
+const COSTOS_DIRECTOS = ['materiales'];
 
 const normalizePago = (pago) => ({
     ...pago,
@@ -91,6 +91,78 @@ export const makeFinanceService = ({ financeRepository }) => ({
                 grupo_gasto: body?.grupo_gasto || null,
                 cuenta_id: cuentaResolution.cuentaId,
                 tipo_fondo: tipoFondo
+            }
+        };
+    },
+    updateMovimiento: async ({ user, movementId, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const montoNumber = parseFloat(body?.monto);
+        if (Number.isNaN(montoNumber) || montoNumber <= 0) {
+            return { ok: false, status: 400, error: 'Monto invalido' };
+        }
+
+        const tipoFondo = body?.tipo_fondo || 'banco';
+        const cuentaResolution = await financeRepository.resolveCuentaFinanciera({
+            cuentaId: body?.cuenta_id || null,
+            tipoFondo
+        });
+        if (cuentaResolution.error) {
+            return { ok: false, status: 400, error: cuentaResolution.error };
+        }
+
+        const movement = await financeRepository.updateMovement({
+            movementId,
+            movementInput: {
+                ...body,
+                monto: montoNumber,
+                tipo_fondo: tipoFondo,
+                cuenta_id: cuentaResolution.cuentaId
+            }
+        });
+
+        if (!movement) {
+            return { ok: false, status: 404, error: 'Movimiento no encontrado' };
+        }
+
+        return {
+            ok: true,
+            status: 200,
+            data: normalizeMovimiento(movement),
+            meta: {
+                movimiento_id: Number(movementId),
+                tipo: body?.tipo,
+                monto: montoNumber,
+                categoria_gasto: body?.categoria_gasto || null,
+                grupo_gasto: body?.grupo_gasto || null,
+                cuenta_id: cuentaResolution.cuentaId,
+                tipo_fondo: tipoFondo
+            }
+        };
+    },
+    deleteMovimiento: async ({ user, movementId }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const movement = await financeRepository.deleteMovement({ movementId });
+        if (!movement) {
+            return { ok: false, status: 404, error: 'Movimiento no encontrado' };
+        }
+
+        return {
+            ok: true,
+            status: 200,
+            data: normalizeMovimiento(movement),
+            meta: {
+                movimiento_id: Number(movementId),
+                tipo: movement.tipo,
+                monto: parseFloat(movement.monto || 0),
+                categoria_gasto: movement.categoria_gasto || null,
+                grupo_gasto: movement.grupo_gasto || null,
+                tipo_fondo: movement.tipo_fondo || null
             }
         };
     },

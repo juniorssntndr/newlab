@@ -181,6 +181,62 @@ export const makeFinancePgRepository = ({ pool }) => ({
 
         return result.rows[0];
     },
+    updateMovement: async ({ movementId, movementInput }) => {
+        const {
+            tipo,
+            tipo_fondo,
+            cuenta_id,
+            fecha_movimiento,
+            monto,
+            grupo_gasto,
+            categoria_gasto,
+            producto_id,
+            clinica_id,
+            descripcion,
+            referencia
+        } = movementInput;
+
+        const result = await pool.query(
+            `UPDATE nl_fin_movimientos
+             SET tipo = $2,
+                 tipo_fondo = $3,
+                 cuenta_id = $4,
+                 fecha_movimiento = COALESCE($5::date, CURRENT_DATE),
+                 monto = $6,
+                 grupo_gasto = $7,
+                 categoria_gasto = $8,
+                 producto_id = $9,
+                 clinica_id = $10,
+                 descripcion = $11,
+                 referencia = $12
+             WHERE id = $1
+             RETURNING *`,
+            [
+                movementId,
+                tipo,
+                tipo_fondo,
+                cuenta_id,
+                fecha_movimiento || null,
+                monto,
+                grupo_gasto || null,
+                categoria_gasto || null,
+                producto_id || null,
+                clinica_id || null,
+                descripcion || null,
+                referencia || null
+            ]
+        );
+
+        return result.rows[0] || null;
+    },
+    deleteMovement: async ({ movementId }) => {
+        const result = await pool.query(
+            'DELETE FROM nl_fin_movimientos WHERE id = $1 RETURNING *',
+            [movementId]
+        );
+
+        return result.rows[0] || null;
+    },
     getOrderByIdWithClinic: async ({ orderId }) => {
         const result = await pool.query(
             `SELECT p.*, c.nombre as clinica_nombre, c.ruc as clinica_ruc, c.direccion as clinica_direccion

@@ -83,6 +83,51 @@ export const makeFinanceController = ({ financeService }) => ({
             next(error);
         }
     },
+    updateMovimiento: async (req, res, next) => {
+        try {
+            const result = await financeService.updateMovimiento({
+                user: req.user,
+                movementId: req.params.movimientoId,
+                body: req.body
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'movimiento_financiero',
+                    entidadId: result.data.id,
+                    accion: 'movimiento_financiero_updated',
+                    descripcion: `${result.meta.tipo === 'egreso' ? 'Egreso' : 'Ingreso'} actualizado`,
+                    metadata: result.meta
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    deleteMovimiento: async (req, res, next) => {
+        try {
+            const result = await financeService.deleteMovimiento({
+                user: req.user,
+                movementId: req.params.movimientoId
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'movimiento_financiero',
+                    entidadId: req.params.movimientoId,
+                    accion: 'movimiento_financiero_deleted',
+                    descripcion: `${result.meta.tipo === 'egreso' ? 'Egreso' : 'Ingreso'} eliminado`,
+                    metadata: result.meta
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
     getOrderFinanceDetail: async (req, res, next) => {
         try {
             const result = await financeService.getOrderFinanceDetail({

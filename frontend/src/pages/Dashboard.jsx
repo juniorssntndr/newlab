@@ -2,8 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
+import { useAuth } from '../state/AuthContext.jsx';
 import { useDashboardStatsQuery } from '../modules/dashboard/queries/useDashboardStatsQuery.js';
 import { useDashboardFinanceQuery } from '../modules/dashboard/queries/useDashboardFinanceQuery.js';
+import { canAccessFinancialModules } from '../utils/accessControl.js';
 import '../styles/dashboard-ui-consistency.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -71,6 +73,8 @@ const toMonthKey = (value) => {
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const canAccessFinance = canAccessFinancialModules(user);
     const [activeView, setActiveView] = useState('operativo');
     const [financeView, setFinanceView] = useState('resumen');
     const [strategicTopN, setStrategicTopN] = useState(5);
@@ -89,7 +93,7 @@ const Dashboard = () => {
     const dashboardStatsQuery = useDashboardStatsQuery();
     const dashboardFinanceQuery = useDashboardFinanceQuery({
         range: financeRange,
-        enabled: activeView === 'financiero'
+        enabled: canAccessFinance && activeView === 'financiero'
     });
     const stats = dashboardStatsQuery.data || null;
     const financeStats = dashboardFinanceQuery.data || null;
@@ -361,7 +365,7 @@ const Dashboard = () => {
             <div className="page-header">
                 <div className="page-header-left">
                     <h1>Dashboard</h1>
-                    <p>Liquidez, ingresos, gastos y operación del laboratorio</p>
+                    <p>{canAccessFinance ? 'Liquidez, ingresos, gastos y operación del laboratorio' : 'Seguimiento operativo del laboratorio'}</p>
                 </div>
             </div>
 
@@ -374,14 +378,16 @@ const Dashboard = () => {
                 >
                     <i className="bi bi-clipboard-data" aria-hidden="true"></i> Operativo
                 </button>
-                <button
-                    type="button"
-                    className={`btn dashboard-view-tab ${activeView === 'financiero' ? 'btn-primary' : 'btn-ghost'}`}
-                    onClick={() => setActiveView('financiero')}
-                    aria-pressed={activeView === 'financiero'}
-                >
-                    <i className="bi bi-cash-coin" aria-hidden="true"></i> Financiero BI
-                </button>
+                {canAccessFinance ? (
+                    <button
+                        type="button"
+                        className={`btn dashboard-view-tab ${activeView === 'financiero' ? 'btn-primary' : 'btn-ghost'}`}
+                        onClick={() => setActiveView('financiero')}
+                        aria-pressed={activeView === 'financiero'}
+                    >
+                        <i className="bi bi-cash-coin" aria-hidden="true"></i> Financiero BI
+                    </button>
+                ) : null}
             </div>
 
             {activeView === 'financiero' && (

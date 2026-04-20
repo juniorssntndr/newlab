@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, forbidRole } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -16,6 +16,6 @@ const delegateToDashboard = (controllerMethod) => async (req, res, next) => {
 };
 
 router.get('/stats', delegateToDashboard('getStats'));
-router.get('/finance', delegateToDashboard('getFinance'));
+router.get('/finance', forbidRole('tecnico'), delegateToDashboard('getFinance'));
 
 export default router;

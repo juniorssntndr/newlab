@@ -1,19 +1,23 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
+import { canAccessFinancialModules, isAdminRole, isClientRole } from '../utils/accessControl.js';
 
 const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const { user, logout } = useAuth();
     const location = useLocation();
-    const isClient = user?.tipo === 'cliente';
+    const isClient = isClientRole(user);
+    const canAccessFinance = canAccessFinancialModules(user);
 
     const labLinks = [
         {
             section: 'Principal', items: [
                 { to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' },
                 { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Seguimiento de pedidos' },
-                { to: '/finanzas', icon: 'bi-cash-stack', label: 'Finanzas' },
-                { to: '/caja-gastos', icon: 'bi-wallet2', label: 'Caja y Gastos' },
+                ...(canAccessFinance ? [
+                    { to: '/finanzas', icon: 'bi-cash-stack', label: 'Finanzas' },
+                    { to: '/caja-gastos', icon: 'bi-wallet2', label: 'Caja y Gastos' }
+                ] : []),
                 { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
             ]
         },
@@ -22,7 +26,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                 { to: '/clinicas', icon: 'bi-building', label: 'Clientes / CRM' },
                 { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo de Productos' },
                 { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
-                ...(user?.tipo === 'admin' ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : [])
+                ...(isAdminRole(user) ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : [])
             ]
         },
     ];

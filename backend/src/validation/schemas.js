@@ -70,3 +70,5 @@ export const createMovimientoFinancieroSchema = z.object({
         });
     }
 });
+
+export const updateMovimientoFinancieroSchema = createMovimientoFinancieroSchema;

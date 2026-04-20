@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, forbidRole } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
-import { createMovimientoFinancieroSchema, createPagoSchema } from '../validation/schemas.js';
+import { createMovimientoFinancieroSchema, createPagoSchema, updateMovimientoFinancieroSchema } from '../validation/schemas.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -17,14 +17,16 @@ const delegateToFinance = (controllerMethod) => async (req, res, next) => {
     return financeController[controllerMethod](req, res, next);
 };
 
-router.get('/', delegateToFinance('listFinanceOrders'));
-router.get('/catalogos', delegateToFinance('getCatalogos'));
-router.get('/movimientos', delegateToFinance('listMovimientos'));
-router.post('/movimientos', validateBody(createMovimientoFinancieroSchema), delegateToFinance('createMovimiento'));
-router.get('/:id', delegateToFinance('getOrderFinanceDetail'));
-router.post('/:id/pagos', validateBody(createPagoSchema), delegateToFinance('registerPago'));
+router.get('/', forbidRole('tecnico'), delegateToFinance('listFinanceOrders'));
+router.get('/catalogos', forbidRole('tecnico'), delegateToFinance('getCatalogos'));
+router.get('/movimientos', forbidRole('tecnico'), delegateToFinance('listMovimientos'));
+router.post('/movimientos', forbidRole('tecnico'), validateBody(createMovimientoFinancieroSchema), delegateToFinance('createMovimiento'));
+router.put('/movimientos/:movimientoId', forbidRole('tecnico'), validateBody(updateMovimientoFinancieroSchema), delegateToFinance('updateMovimiento'));
+router.delete('/movimientos/:movimientoId', forbidRole('tecnico'), delegateToFinance('deleteMovimiento'));
+router.get('/:id', forbidRole('tecnico'), delegateToFinance('getOrderFinanceDetail'));
+router.post('/:id/pagos', forbidRole('tecnico'), validateBody(createPagoSchema), delegateToFinance('registerPago'));
 router.get('/estado-cuenta/:clinica_id', delegateToFinance('getEstadoCuentaByClinica'));
-router.post('/pagos-masivos', delegateToFinance('registerPagosMasivos'));
-router.patch('/pagos/:pagoId/conciliar', delegateToFinance('conciliarPago'));
+router.post('/pagos-masivos', forbidRole('tecnico'), delegateToFinance('registerPagosMasivos'));
+router.patch('/pagos/:pagoId/conciliar', forbidRole('tecnico'), delegateToFinance('conciliarPago'));
 
 export default router;

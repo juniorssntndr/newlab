@@ -161,3 +161,14 @@ export const createFinanceMovement = ({ payload, headers }) => apiClient('/finan
     headers,
     body: payload
 });
+
+export const updateFinanceMovement = ({ movementId, payload, headers }) => apiClient(`/finanzas/movimientos/${movementId}`, {
+    method: 'PUT',
+    headers,
+    body: payload
+});
+
+export const deleteFinanceMovement = ({ movementId, headers }) => apiClient(`/finanzas/movimientos/${movementId}`, {
+    method: 'DELETE',
+    headers
+});
