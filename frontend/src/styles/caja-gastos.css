@@ -16,7 +16,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0284c7;
+  color: var(--color-primary);
 }
 
 .expenses-layout {
@@ -28,8 +28,8 @@
 
 .expenses-create-card,
 .expenses-table-card {
-  border-radius: 24px;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
 }
 
 .expenses-panel-head {
@@ -41,13 +41,8 @@
 }
 
 .expenses-panel-head .card-title {
-  margin-top: 0.4rem;
-  font-size: 1.4rem;
-}
-
-.expenses-panel-head .card-subtitle {
-  max-width: 34rem;
-  margin-top: 0.45rem;
+  margin-top: var(--space-2);
+  font-size: 1.25rem;
 }
 
 .expenses-form-card {
@@ -68,25 +63,25 @@
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 16px;
-  background: #f8fafc;
-  color: #334155;
-  font-weight: 700;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-weight: 600;
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
 .expense-origin-chip:hover {
-  border-color: rgba(14, 165, 233, 0.3);
-  color: #0f172a;
+  background: var(--color-bg-alt);
+  color: var(--color-text);
 }
 
 .expense-origin-chip.is-active {
-  background: linear-gradient(135deg, #0891b2, #0ea5e9);
-  border-color: transparent;
-  color: #ffffff;
-  box-shadow: 0 12px 22px rgba(14, 165, 233, 0.28);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-text-inverse);
+  box-shadow: none;
 }
 
 .expense-form-grid {
@@ -99,12 +94,6 @@
   grid-column: 1 / -1;
 }
 
-.expense-field-help {
-  margin-top: 0.45rem;
-  font-size: 0.8125rem;
-  color: #64748b;
-}
-
 .expense-amount-input {
   font-variant-numeric: tabular-nums;
 }
@@ -114,7 +103,7 @@
   flex-direction: column;
   gap: var(--space-3);
   padding-top: var(--space-2);
-  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  border-top: 1px solid var(--color-border-light);
 }
 
 .expenses-edit-copy p {
@@ -150,12 +139,13 @@
 }
 
 .expenses-table-pill {
-  padding: 0.5rem 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--color-bg-alt);
+  color: var(--color-text-secondary);
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .expenses-search-box {
@@ -163,13 +153,13 @@
 }
 
 .expenses-table-wrapper {
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 20px;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
 }
 
 .expenses-table thead th {
-  background: linear-gradient(180deg, #f8fbff, #eff6ff);
+  background: var(--color-bg-alt);
 }
 
 .expenses-table tbody tr {
@@ -177,7 +167,7 @@
 }
 
 .expenses-table tbody tr:hover {
-  background: rgba(14, 165, 233, 0.04);
+  background: var(--color-surface-hover);
 }
 
 .expenses-date-cell {
@@ -188,7 +178,7 @@
 
 .expenses-date-cell span {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--color-text-tertiary);
 }
 
 .expenses-origin-badge,
@@ -199,33 +189,41 @@
   padding: 0.45rem 0.7rem;
   border-radius: 999px;
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .expenses-origin-badge.is-cash {
-  background: rgba(249, 115, 22, 0.1);
-  color: #c2410c;
+  background: var(--color-warning-bg);
+  color: #92400e;
 }
 
 .expenses-origin-badge.is-bank {
-  background: rgba(14, 165, 233, 0.1);
-  color: #0369a1;
+  background: var(--color-primary-ultra-light);
+  color: var(--color-primary-hover);
+}
+
+[data-theme="dark"] .expenses-origin-badge.is-cash {
+  color: var(--color-warning);
+}
+
+[data-theme="dark"] .expenses-origin-badge.is-bank {
+  color: var(--color-primary);
 }
 
 .expenses-category-badge {
-  background: rgba(15, 23, 42, 0.06);
-  color: #334155;
+  background: var(--color-bg-alt);
+  color: var(--color-text);
 }
 
 .expenses-detail-cell {
   max-width: 22rem;
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.5;
 }
 
 .expenses-amount-cell {
   font-variant-numeric: tabular-nums;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .expenses-action-row {
@@ -236,15 +234,15 @@
 .expenses-action-btn {
   min-width: 40px;
   min-height: 40px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .expenses-action-btn.is-danger {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .expenses-action-btn.is-danger:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.08);
+  background: var(--color-error-bg);
 }
 
 .expenses-empty-state {

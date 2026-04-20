@@ -110,7 +110,6 @@ const ExpenseFormFields = ({ form, setForm, categoryOptions, mode = 'create' }) 
                             <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                     </select>
-                    <p className="expense-field-help">La categoría alimenta dashboards, filtros y reportes PDF.</p>
                 </div>
 
                 <div className="form-group expense-form-grid-span">
@@ -289,7 +288,6 @@ const CajaGastos = () => {
                         <div>
                             <span className="expenses-panel-kicker">Registro directo</span>
                             <h2 className="card-title">Nuevo gasto</h2>
-                            <p className="card-subtitle">Captura el gasto sin abrir ventanas adicionales.</p>
                         </div>
                     </div>
 
@@ -315,7 +313,6 @@ const CajaGastos = () => {
                         <div>
                             <span className="expenses-panel-kicker">Historial reciente</span>
                             <h2 className="card-title">Gastos registrados</h2>
-                            <p className="card-subtitle">Revisa, corrige o elimina gastos sin salir del mismo módulo.</p>
                         </div>
 
                         <div className="expenses-table-toolbar">

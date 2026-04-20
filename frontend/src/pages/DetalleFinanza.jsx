@@ -813,7 +813,7 @@ const DetalleFinanza = () => {
                             <i className="bi bi-cash-coin detail-finanza-form-label-icon"></i> Monto <span className="detail-finanza-required">*</span>
                         </label>
                         <div className="detail-finanza-currency-wrap">
-                            <span className="detail-finanza-currency-prefix">S/.</span>
+                            <span className="detail-finanza-currency-prefix" aria-hidden="true">S/.</span>
                             <input
                                 className="form-input detail-finanza-currency-input"
                                 type="number"
