@@ -3,8 +3,10 @@ import {
     normalizeToothCode,
     buildBridgeRange,
     buildItemSelection,
+    getBridgeParts,
     isMolarTooth,
     isVeneerProduct,
+    normalizeBridgePillars,
     sortTeethByArchOrder
 } from './odontograma.js';
 
@@ -26,6 +28,22 @@ const run = () => {
     assert.equal(bridgeSelection.es_puente, true);
     assert.equal(bridgeSelection.pieza_inicio, '13');
     assert.equal(bridgeSelection.pieza_fin, '11');
+    assert.deepEqual(bridgeSelection.pilares_dentales, ['13', '11']);
+
+    const multiPillarBridge = buildItemSelection(['23', '27'], true, ['23', '25', '27']);
+    assert.deepEqual(multiPillarBridge.piezas_dentales, ['23', '24', '25', '26', '27']);
+    assert.deepEqual(multiPillarBridge.pilares_dentales, ['23', '25', '27']);
+
+    assert.deepEqual(normalizeBridgePillars(['23', '24', '25', '26', '27'], ['23', '25', '27']), ['23', '25', '27']);
+    assert.deepEqual(normalizeBridgePillars(['23', '24', '25', '26', '27'], []), ['23', '27']);
+
+    const bridgeParts = getBridgeParts({
+        es_puente: true,
+        piezas_dentales: ['23', '24', '25', '26', '27'],
+        pilares_dentales: ['23', '25', '27']
+    });
+    assert.deepEqual(bridgeParts.pilares, ['23', '25', '27']);
+    assert.deepEqual(bridgeParts.ponticos, ['24', '26']);
 
     const singleToothBridge = buildItemSelection(['11'], true);
     assert.equal(singleToothBridge.es_puente, false);

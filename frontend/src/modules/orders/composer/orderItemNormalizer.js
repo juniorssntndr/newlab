@@ -1,4 +1,4 @@
-import { sortTeethByArchOrder } from '../../../utils/odontograma.js';
+import { normalizeBridgePillars, sortTeethByArchOrder } from '../../../utils/odontograma.js';
 
 const DENTAL_TYPES = new Set(['fija', 'implante']);
 const NON_DENTAL_TYPES = new Set(['removible', 'especialidad']);
@@ -88,6 +88,13 @@ export const buildContractRawState = (item = {}) => {
             ? existingRawState.piezas_dentales
             : [];
     const piezas_dentales = sortTeethByArchOrder(rawPieces);
+    const rawBridgePillars = Array.isArray(item.pilares_dentales)
+        ? item.pilares_dentales
+        : Array.isArray(existingRawState.pilares_dentales)
+            ? existingRawState.pilares_dentales
+            : [];
+    const es_puente = Boolean(item.es_puente ?? existingRawState.es_puente);
+    const pilares_dentales = es_puente ? normalizeBridgePillars(piezas_dentales, rawBridgePillars) : [];
 
     const inferredRequiresOdontogram = checkRequiresOdontogram(item.product || item);
     const requiresDentalSelection =
@@ -121,6 +128,7 @@ export const buildContractRawState = (item = {}) => {
         subtotal: subtotalNormalizado,
         precio_unitario: precioUnitarioInput,
         piezas_dentales,
+        pilares_dentales,
         requiresDentalSelection
     };
 };
@@ -134,6 +142,9 @@ export const normalizeOrderItem = (item = {}) => {
         typeof inferredRequiresOdontogram === 'boolean'
             ? inferredRequiresOdontogram
             : normalizedPieces.length > 0;
+    const normalizedBridgePillars = item.es_puente
+        ? normalizeBridgePillars(normalizedPieces, rawState.pilares_dentales ?? item.pilares_dentales ?? [])
+        : [];
     const cantidadManual = toPositiveInt(rawState.cantidadManual ?? item.cantidadManual ?? item.cantidad_manual ?? item.cantidad ?? 1, 1);
     const cantidad = requiresDentalSelection ? normalizedPieces.length : cantidadManual;
     const subtotal = Number((cantidad * unitPrice).toFixed(2));
@@ -142,6 +153,7 @@ export const normalizeOrderItem = (item = {}) => {
         ...item,
         rawState,
         piezas_dentales: normalizedPieces,
+        pilares_dentales: normalizedBridgePillars,
         requiresDentalSelection,
         cantidadEditable: !requiresDentalSelection,
         cantidadManual,

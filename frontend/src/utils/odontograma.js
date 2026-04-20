@@ -45,14 +45,35 @@ export const buildBridgeRange = (startTooth, endTooth) => {
     return arch.slice(from, to + 1);
 };
 
-export const buildItemSelection = (teeth = [], isBridge = false) => {
+export const getDefaultBridgePillars = (bridgeTeeth = []) => {
+    const range = sortTeethByArchOrder(bridgeTeeth);
+    if (range.length < 2) return [];
+    return [range[0], range[range.length - 1]];
+};
+
+export const normalizeBridgePillars = (bridgeTeeth = [], pillars = []) => {
+    const range = sortTeethByArchOrder(bridgeTeeth);
+    if (range.length < 2) return [];
+
+    const bridgeSet = new Set(range);
+    const explicitPillars = sortTeethByArchOrder(pillars).filter((tooth) => bridgeSet.has(tooth));
+
+    if (explicitPillars.length >= 2) {
+        return explicitPillars;
+    }
+
+    return getDefaultBridgePillars(range);
+};
+
+export const buildItemSelection = (teeth = [], isBridge = false, pillars = []) => {
     const sorted = sortTeethByArchOrder(teeth);
     if (!isBridge || sorted.length === 0) {
         return {
             piezas_dentales: sorted,
             es_puente: false,
             pieza_inicio: null,
-            pieza_fin: null
+            pieza_fin: null,
+            pilares_dentales: []
         };
     }
 
@@ -64,12 +85,14 @@ export const buildItemSelection = (teeth = [], isBridge = false) => {
     const bridgeStart = sameArch[0];
     const bridgeEnd = sameArch[sameArch.length - 1];
     const range = buildBridgeRange(bridgeStart, bridgeEnd);
+    const normalizedPillars = normalizeBridgePillars(range, pillars);
 
     return {
         piezas_dentales: range,
         es_puente: range.length > 1,
         pieza_inicio: range[0] || null,
-        pieza_fin: range[range.length - 1] || null
+        pieza_fin: range[range.length - 1] || null,
+        pilares_dentales: range.length > 1 ? normalizedPillars : []
     };
 };
 
@@ -102,7 +125,9 @@ export const formatDentalSelection = (item) => {
     if (!item) return '—';
     const piezas = sortTeethByArchOrder(item.piezas_dentales || []);
     if (item.es_puente && item.pieza_inicio && item.pieza_fin) {
-        return `Puente ${item.pieza_inicio}-${item.pieza_fin}`;
+        const pilares = normalizeBridgePillars(piezas, item.pilares_dentales || []);
+        const pillarSummary = pilares.length > 2 ? ` | Pilares: ${pilares.join(', ')}` : '';
+        return `Puente ${item.pieza_inicio}-${item.pieza_fin}${pillarSummary}`;
     }
     if (piezas.length > 0) {
         return piezas.join(', ');
@@ -116,8 +141,12 @@ export const formatDentalSelection = (item) => {
 export const getBridgeParts = (item) => {
     const teeth = sortTeethByArchOrder(item?.piezas_dentales || []);
     if (!item?.es_puente || teeth.length < 2) return { pilares: [], ponticos: [] };
+
+    const pilares = normalizeBridgePillars(teeth, item?.pilares_dentales || []);
+    const pillarSet = new Set(pilares);
+
     return {
-        pilares: [teeth[0], teeth[teeth.length - 1]],
-        ponticos: teeth.slice(1, -1)
+        pilares,
+        ponticos: teeth.filter((tooth) => !pillarSet.has(tooth))
     };
 };

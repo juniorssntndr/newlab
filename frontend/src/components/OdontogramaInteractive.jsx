@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ARCH_ORDER,
     sortTeethByArchOrder,
     buildBridgeRange,
     buildItemSelection,
+    normalizeBridgePillars,
     isBridgeProduct,
     isVeneerProduct,
     isMolarTooth,
@@ -25,6 +26,9 @@ const OdontogramaInteractive = ({
     const [isDragging, setIsDragging] = useState(false);
     const [dragSelectValue, setDragSelectValue] = useState(true);
     const [bridgeAnchor, setBridgeAnchor] = useState(null);
+    const [bridgePointerMode, setBridgePointerMode] = useState(null);
+    const [bridgePointerStart, setBridgePointerStart] = useState(null);
+    const [bridgeDidDrag, setBridgeDidDrag] = useState(false);
     const [bridgeHint, setBridgeHint] = useState('');
     const toothCenters = useMemo(() => buildToothCenters(), []);
 
@@ -39,11 +43,40 @@ const OdontogramaInteractive = ({
         [isVeneer]
     );
 
+    const toggleBridgePillar = useCallback((tooth) => {
+        if (!isBridge || disabled || disabledTeeth.has(tooth)) return;
+        if (!selection?.es_puente || currentTeeth.length < 2 || !selectedSet.has(tooth)) return;
+
+        const currentPillars = normalizeBridgePillars(currentTeeth, selection?.pilares_dentales || []);
+        const isActivePillar = currentPillars.includes(tooth);
+        let nextPillars;
+
+        if (isActivePillar) {
+            nextPillars = currentPillars.filter((value) => value !== tooth);
+            if (nextPillars.length < 2) {
+                setBridgeHint('El puente debe conservar al menos 2 pilares activos.');
+                return;
+            }
+        } else {
+            nextPillars = sortTeethByArchOrder([...currentPillars, tooth]);
+        }
+
+        setBridgeHint('');
+        onChange(buildItemSelection(currentTeeth, true, nextPillars));
+    }, [currentTeeth, disabled, disabledTeeth, isBridge, onChange, selectedSet, selection?.es_puente, selection?.pilares_dentales]);
+
     React.useEffect(() => {
         const stopDragging = () => {
+            if (isBridge && bridgePointerMode === 'toggle' && !bridgeDidDrag && bridgePointerStart) {
+                toggleBridgePillar(bridgePointerStart);
+            }
+
             setIsDragging(false);
             setDragSelectValue(true);
             setBridgeAnchor(null);
+            setBridgePointerMode(null);
+            setBridgePointerStart(null);
+            setBridgeDidDrag(false);
         };
 
         window.addEventListener('pointerup', stopDragging, { passive: true });
@@ -53,7 +86,7 @@ const OdontogramaInteractive = ({
             window.removeEventListener('pointerup', stopDragging);
             window.removeEventListener('pointercancel', stopDragging);
         };
-    }, []);
+    }, [bridgeDidDrag, bridgePointerMode, bridgePointerStart, isBridge, toggleBridgePillar]);
 
     const commitSelection = (nextTeeth) => {
         const payload = buildItemSelection(nextTeeth, isBridge);
@@ -77,7 +110,15 @@ const OdontogramaInteractive = ({
         } else {
             setBridgeHint('');
         }
-        commitSelection(range);
+
+        const preservedPillars = normalizeBridgePillars(currentTeeth, selection?.pilares_dentales || [])
+            .filter((tooth) => range.includes(tooth));
+
+        const nextPillars = range.length > 1
+            ? sortTeethByArchOrder([...preservedPillars, range[0], range[range.length - 1]])
+            : [];
+
+        onChange(buildItemSelection(range, true, nextPillars));
     };
 
     const handlePointerDown = (event, tooth) => {
@@ -86,14 +127,28 @@ const OdontogramaInteractive = ({
         if (disabledTeeth.has(tooth)) return;
 
         if (isBridge) {
-            const isSingleSelected = currentTeeth.length === 1 && currentTeeth[0] === tooth;
+            const isSingleSelected = !selection?.es_puente && currentTeeth.length === 1 && currentTeeth[0] === tooth;
             if (isSingleSelected) {
                 commitSelection([]);
                 setBridgeAnchor(null);
+                setBridgePointerMode(null);
+                setBridgePointerStart(null);
+                setBridgeDidDrag(false);
                 return;
             }
+
             setBridgeAnchor(tooth);
+            setBridgePointerStart(tooth);
+            setBridgeDidDrag(false);
             setIsDragging(true);
+
+            const isInsideCurrentBridge = selection?.es_puente && currentTeeth.length > 1 && selectedSet.has(tooth);
+            if (isInsideCurrentBridge) {
+                setBridgePointerMode('toggle');
+                return;
+            }
+
+            setBridgePointerMode('range');
             applyBridgeRange(tooth, tooth);
             return;
         }
@@ -108,6 +163,18 @@ const OdontogramaInteractive = ({
         if (disabled || !isDragging || disabledTeeth.has(tooth)) return;
 
         if (isBridge && bridgeAnchor) {
+            if (bridgePointerMode === 'toggle') {
+                if (tooth !== bridgePointerStart) {
+                    setBridgePointerMode('range');
+                    setBridgeDidDrag(true);
+                    applyBridgeRange(bridgeAnchor, tooth);
+                }
+                return;
+            }
+
+            if (tooth !== bridgePointerStart) {
+                setBridgeDidDrag(true);
+            }
             applyBridgeRange(bridgeAnchor, tooth);
             return;
         }
@@ -154,7 +221,11 @@ const OdontogramaInteractive = ({
                 <div className="odontograma-header">
                     <div>
                         <h4>{title}</h4>
-                        <p>Modo sello activo. Haz clic o arrastra (o desliza con el dedo) sobre las piezas para asignar el producto.</p>
+                        <p>
+                            {isBridge
+                                ? 'Arrastra para definir el tramo del puente y luego haz clic en cualquier pieza del tramo para alternar pilar o póntico.'
+                                : 'Modo sello activo. Haz clic o arrastra (o desliza con el dedo) sobre las piezas para asignar el producto.'}
+                        </p>
                         {bridgeHint && <p className="odontograma-hint">{bridgeHint}</p>}
                     </div>
                     {showProductPill && <span className="odontograma-product-pill">{product?.nombre || 'Producto seleccionado'}</span>}
@@ -261,7 +332,7 @@ const OdontogramaInteractive = ({
                             <p>{currentTeeth.length ? currentTeeth.join(', ') : 'Aun sin seleccion'}</p>
                             <p className="odontograma-help-text">
                                 {isBridge
-                                    ? 'Puente: extremos = pilares, intermedios = ponticos.'
+                                    ? 'Arrastra para definir el tramo. Luego haz clic en una pieza del tramo para alternar pilar o pontico.'
                                     : 'Click para una pieza, arrastra para varias.'}
                             </p>
                         </article>
@@ -271,9 +342,10 @@ const OdontogramaInteractive = ({
                                 <span>Puente detectado</span>
                                 <strong>{selection.pieza_inicio} - {selection.pieza_fin}</strong>
                                 <p>
-                                    Pilares: {bridgeParts.pilares.join(' y ') || '—'}
+                                    Pilares: {bridgeParts.pilares.join(', ') || '—'}
                                     {bridgeParts.ponticos.length > 0 ? ` | Ponticos: ${bridgeParts.ponticos.join(', ')}` : ''}
                                 </p>
+                                <p className="odontograma-help-text">El puente debe conservar al menos 2 pilares activos.</p>
                             </article>
                         )}
 

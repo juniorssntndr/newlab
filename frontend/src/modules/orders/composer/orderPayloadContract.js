@@ -1,3 +1,4 @@
+import { normalizeBridgePillars } from '../../../utils/odontograma.js';
 import { buildContractRawState, normalizeOrderItem } from './orderItemNormalizer.js';
 
 const isPositiveInt = (value) => Number.isInteger(value) && value >= 1;
@@ -29,6 +30,7 @@ export const validateOrderPayloadContract = ({ items = [] } = {}) => {
         const contractRaw = readContractRawState(rawItem);
         const itemLabel = `Item ${index + 1}`;
         const rawPieces = Array.isArray(contractRaw.piezas_dentales) ? contractRaw.piezas_dentales : [];
+        const rawBridgePillars = Array.isArray(contractRaw.pilares_dentales) ? contractRaw.pilares_dentales : [];
         const rawCantidad = toNullableInt(contractRaw.cantidad);
         const rawPrecioUnitario = toFiniteNumber(contractRaw.precio_unitario);
         const rawSubtotal = toFiniteNumber(contractRaw.subtotal);
@@ -43,6 +45,25 @@ export const validateOrderPayloadContract = ({ items = [] } = {}) => {
             }
             if (rawCantidad === null || rawCantidad !== rawPieces.length) {
                 errors.push(buildContractError(item, `${itemLabel}: cantidad dental inconsistente con piezas seleccionadas.`));
+            }
+            if (item.es_puente) {
+                if (rawPieces.length < 2) {
+                    errors.push(buildContractError(item, `${itemLabel}: un puente debe cubrir al menos dos piezas en el mismo tramo.`));
+                }
+
+                const invalidPillars = rawBridgePillars.filter((tooth) => !rawPieces.includes(tooth));
+                if (invalidPillars.length > 0) {
+                    errors.push(buildContractError(item, `${itemLabel}: hay pilares fuera del tramo del puente.`));
+                }
+
+                if (rawBridgePillars.length === 1) {
+                    errors.push(buildContractError(item, `${itemLabel}: un puente debe tener al menos dos pilares.`));
+                }
+
+                const effectivePillars = normalizeBridgePillars(rawPieces, rawBridgePillars);
+                if (effectivePillars.length < 2) {
+                    errors.push(buildContractError(item, `${itemLabel}: un puente debe conservar al menos dos pilares.`));
+                }
             }
         } else {
             if (rawCantidad === null || !isPositiveInt(rawCantidad)) {
@@ -85,6 +106,7 @@ export const buildOrderPayload = (draft = {}) => {
                 es_puente: !!item.es_puente,
                 pieza_inicio: item.pieza_inicio || null,
                 pieza_fin: item.pieza_fin || null,
+                pilares_dentales: item.es_puente ? (item.pilares_dentales || []) : [],
                 color_vita: item.color_vita || '',
                 material: item.material || '',
                 notas: item.notas || '',
@@ -93,7 +115,8 @@ export const buildOrderPayload = (draft = {}) => {
                     cantidad: rawState.cantidad,
                     precio_unitario: rawState.precio_unitario,
                     subtotal: rawState.subtotal,
-                    piezas_dentales: Array.isArray(rawState.piezas_dentales) ? rawState.piezas_dentales : piezas
+                    piezas_dentales: Array.isArray(rawState.piezas_dentales) ? rawState.piezas_dentales : piezas,
+                    pilares_dentales: Array.isArray(rawState.pilares_dentales) ? rawState.pilares_dentales : (item.pilares_dentales || [])
                 }
             };
         })

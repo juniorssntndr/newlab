@@ -18,6 +18,7 @@ export const createPedidoSchema = z.object({
     items: z.array(z.object({
         producto_id: z.coerce.number().int().positive().optional().nullable(),
         piezas_dentales: z.array(z.string()).optional().default([]),
+        pilares_dentales: z.array(z.string()).optional().default([]),
         es_puente: z.boolean().optional().default(false),
         pieza_inicio: z.string().trim().max(20).optional().nullable(),
         pieza_fin: z.string().trim().max(20).optional().nullable(),

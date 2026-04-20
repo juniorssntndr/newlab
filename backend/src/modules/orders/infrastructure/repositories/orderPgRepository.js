@@ -124,13 +124,14 @@ export const makeOrderPgRepository = ({ pool }) => ({
                     const itemTotal = (item.precio_unitario || 0) * (item.cantidad || 1);
 
                     await client.query(
-                        `INSERT INTO nl_pedido_items (pedido_id, producto_id, piezas_dentales, es_puente, pieza_inicio, pieza_fin,
+                        `INSERT INTO nl_pedido_items (pedido_id, producto_id, piezas_dentales, pilares_dentales, es_puente, pieza_inicio, pieza_fin,
                          material, color_vita, color_munon, textura, oclusion, notas, cantidad, precio_unitario, subtotal)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
                         [
                             pedido.id,
                             item.producto_id,
                             item.piezas_dentales || [],
+                            item.pilares_dentales || [],
                             item.es_puente || false,
                             item.pieza_inicio,
                             item.pieza_fin,

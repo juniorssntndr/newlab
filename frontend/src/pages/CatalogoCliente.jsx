@@ -88,7 +88,8 @@ const CatalogoCliente = () => {
             piezas_dentales: [],
             es_puente: false,
             pieza_inicio: null,
-            pieza_fin: null
+            pieza_fin: null,
+            pilares_dentales: []
         });
 
         setOrderProduct(producto);
