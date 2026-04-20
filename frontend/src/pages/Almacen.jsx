@@ -43,6 +43,9 @@ const Almacen = () => {
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
+    const [restoringId, setRestoringId] = useState(null);
+    const [confirmDeleteMaterial, setConfirmDeleteMaterial] = useState(null);
     const [form, setForm] = useState({
         nombre: '',
         flujo: 'digital',
@@ -56,10 +59,11 @@ const Almacen = () => {
     });
     const [search, setSearch] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('');
+    const [materialView, setMaterialView] = useState('activos');
 
     const fetchMateriales = () => {
         setLoading(true);
-        fetch(`${API_URL}/inventory`, { headers: getHeaders() })
+        fetch(`${API_URL}/inventory?estado=todos`, { headers: getHeaders() })
             .then(r => r.json())
             .then(data => {
                 setMateriales(data);
@@ -177,17 +181,78 @@ const Almacen = () => {
         }
     };
 
+    const confirmRemoveMaterial = async () => {
+        const material = confirmDeleteMaterial;
+        if (!material) return;
+        setDeletingId(material.id);
+
+        try {
+            const res = await fetch(`${API_URL}/inventory/${material.id}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'No se pudo eliminar el material');
+            }
+
+            if (editing?.id === material.id) {
+                setModalOpen(false);
+                setEditing(null);
+            }
+
+            setConfirmDeleteMaterial(null);
+            fetchMateriales();
+        } catch (error) {
+            alert(error.message || 'Error al eliminar material');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const restoreMaterial = async (material) => {
+        setRestoringId(material.id);
+
+        try {
+            const res = await fetch(`${API_URL}/inventory/${material.id}/restore`, {
+                method: 'PATCH',
+                headers: getHeaders()
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'No se pudo restaurar el material');
+            }
+
+            fetchMateriales();
+        } catch (error) {
+            alert(error.message || 'Error al restaurar material');
+        } finally {
+            setRestoringId(null);
+        }
+    };
+
+    const activeMaterials = materiales.filter((m) => m.activo !== false);
+    const inactiveMaterials = materiales.filter((m) => m.activo === false);
+
     const filteredMateriales = materiales.filter(m => {
+        const matchesView = materialView === 'todos'
+            ? true
+            : materialView === 'inactivos'
+                ? m.activo === false
+                : m.activo !== false;
         const nombre = (m.nombre || '').toLowerCase();
         const matchesSearch = !search || nombre.includes(search.toLowerCase());
         const lowStock = m.alerta_bajo_stock !== false && parseFloat(m.stock_actual) < parseFloat(m.stock_minimo);
         const matchesEstado = !filtroEstado || (filtroEstado === 'low' ? lowStock : !lowStock);
-        return matchesSearch && matchesEstado;
+        return matchesView && matchesSearch && matchesEstado;
     });
 
-    const totalMateriales = materiales.length;
-    const totalLowStock = materiales.filter(m => m.alerta_bajo_stock !== false && parseFloat(m.stock_actual) < parseFloat(m.stock_minimo)).length;
-    const totalStock = materiales.reduce((acc, m) => acc + (parseFloat(m.stock_actual) || 0), 0);
+    const totalMateriales = activeMaterials.length;
+    const totalInactive = inactiveMaterials.length;
+    const totalLowStock = activeMaterials.filter(m => m.alerta_bajo_stock !== false && parseFloat(m.stock_actual) < parseFloat(m.stock_minimo)).length;
+    const totalStock = activeMaterials.reduce((acc, m) => acc + (parseFloat(m.stock_actual) || 0), 0);
     const totalUnidades = new Set(materiales.map(m => m.unidad)).size;
 
     return (
@@ -226,10 +291,10 @@ const Almacen = () => {
                 </div>
                 <div className="card kpi-card">
                     <div className="kpi-icon" style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--color-info)' }}>
-                        <i className="bi bi-rulers"></i>
+                        <i className="bi bi-arrow-counterclockwise"></i>
                     </div>
-                    <div className="kpi-value">{totalUnidades}</div>
-                    <div className="kpi-label">Unidades</div>
+                    <div className="kpi-value">{totalInactive}</div>
+                    <div className="kpi-label">Inactivos</div>
                 </div>
             </div>
 
@@ -245,9 +310,21 @@ const Almacen = () => {
                         />
                     </div>
                     <div className="inventory-filters">
+                        <button className={`btn btn-sm ${materialView === 'activos' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setMaterialView('activos')}>
+                            Activos
+                        </button>
+                        <button className={`btn btn-sm ${materialView === 'inactivos' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setMaterialView('inactivos')}>
+                            Inactivos
+                        </button>
+                        <button className={`btn btn-sm ${materialView === 'todos' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setMaterialView('todos')}>
+                            Todos
+                        </button>
                         <button className={`btn btn-sm ${!filtroEstado ? 'btn-primary' : 'btn-secondary'}`}
                             onClick={() => setFiltroEstado('')}>
-                            Todos
+                            Stock: todos
                         </button>
                         <button className={`btn btn-sm ${filtroEstado === 'low' ? 'btn-primary' : 'btn-secondary'}`}
                             onClick={() => setFiltroEstado(filtroEstado === 'low' ? '' : 'low')}>
@@ -286,7 +363,7 @@ const Almacen = () => {
                                     const maxValue = parseFloat(m.stock_minimo) || 0;
                                     const percent = maxValue > 0 ? Math.min((parseFloat(m.stock_actual) / maxValue) * 100, 100) : 100;
                                     return (
-                                        <tr key={m.id} className={lowStock ? 'inventory-row-low' : ''}>
+                                        <tr key={m.id} className={`${lowStock ? 'inventory-row-low' : ''} ${m.activo === false ? 'inventory-row-inactive' : ''}`.trim()}>
                                             <td>
                                                 <div className="inventory-name">{m.nombre}</div>
                                             </td>
@@ -304,7 +381,9 @@ const Almacen = () => {
                                             <td>{m.stock_minimo}</td>
                                             <td><span className="unit-pill">{m.unidad}</span></td>
                                             <td>
-                                                {lowStock ? (
+                                                {m.activo === false ? (
+                                                    <span className="badge badge-inactive">Inactivo</span>
+                                                ) : lowStock ? (
                                                     <span className="badge badge-error">Bajo stock</span>
                                                 ) : (
                                                     <span className="badge badge-success">Normal</span>
@@ -312,9 +391,30 @@ const Almacen = () => {
                                             </td>
                                             <td>
                                                 <div className="table-actions">
-                                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(m)} title="Editar material">
+                                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(m)} title="Editar material" aria-label={`Editar ${m.nombre}`}>
                                                         <i className="bi bi-pencil"></i>
                                                     </button>
+                                                    {m.activo === false ? (
+                                                        <button
+                                                            className="btn btn-ghost btn-sm btn-icon"
+                                                            onClick={() => restoreMaterial(m)}
+                                                            title="Restaurar material"
+                                                            aria-label={`Restaurar ${m.nombre}`}
+                                                            disabled={restoringId === m.id}
+                                                        >
+                                                            <i className="bi bi-arrow-counterclockwise"></i>
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            className="btn btn-ghost btn-sm btn-icon"
+                                                            onClick={() => setConfirmDeleteMaterial(m)}
+                                                            title="Eliminar material"
+                                                            aria-label={`Eliminar ${m.nombre}`}
+                                                            disabled={deletingId === m.id}
+                                                        >
+                                                            <i className="bi bi-trash"></i>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -338,7 +438,9 @@ const Almacen = () => {
                                 <div key={m.id} className="mobile-card">
                                     <div className="mobile-card-head">
                                         <div className="mobile-card-title">{m.nombre}</div>
-                                        {lowStock ? (
+                                        {m.activo === false ? (
+                                            <span className="badge badge-inactive">Inactivo</span>
+                                        ) : lowStock ? (
                                             <span className="badge badge-error">Bajo stock</span>
                                         ) : (
                                             <span className="badge badge-success">Normal</span>
@@ -356,6 +458,15 @@ const Almacen = () => {
                                         <button className="btn btn-ghost btn-sm" onClick={() => openEdit(m)}>
                                             Editar <i className="bi bi-pencil"></i>
                                         </button>
+                                        {m.activo === false ? (
+                                            <button className="btn btn-ghost btn-sm" onClick={() => restoreMaterial(m)} disabled={restoringId === m.id}>
+                                                Restaurar <i className="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        ) : (
+                                            <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDeleteMaterial(m)} disabled={deletingId === m.id}>
+                                                Eliminar <i className="bi bi-trash"></i>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -449,6 +560,26 @@ const Almacen = () => {
                     <label className="form-label">Notas</label>
                     <textarea className="form-textarea" value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} placeholder="Compatibilidad, tono, observaciones técnicas..." />
                 </div>
+            </Modal>
+
+            <Modal
+                open={!!confirmDeleteMaterial}
+                onClose={() => setConfirmDeleteMaterial(null)}
+                title="Eliminar material"
+                size="lg"
+                footer={
+                    <>
+                        <button className="btn btn-secondary" onClick={() => setConfirmDeleteMaterial(null)} disabled={!!deletingId}>Cancelar</button>
+                        <button className="btn btn-danger" onClick={confirmRemoveMaterial} disabled={!!deletingId}>
+                            <i className="bi bi-trash"></i> Confirmar eliminación
+                        </button>
+                    </>
+                }
+            >
+                <p style={{ margin: 0, color: 'var(--color-text)' }}>
+                    ¿Eliminar el material <strong>{confirmDeleteMaterial?.nombre}</strong>? Se ocultará del inventario activo,
+                    pero podrá restaurarse más adelante desde la vista de inactivos.
+                </p>
             </Modal>
         </div>
     );

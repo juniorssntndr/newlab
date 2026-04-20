@@ -133,6 +133,7 @@ const CajaGastos = () => {
     const [searchInput, setSearchInput] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingMovement, setEditingMovement] = useState(null);
+    const [movementToDelete, setMovementToDelete] = useState(null);
 
     const catalogosQuery = useFinanceCatalogsQuery();
     const movementsFilters = useMemo(() => ({
@@ -262,12 +263,10 @@ const CajaGastos = () => {
     };
 
     const handleDeleteMovimiento = async (movement) => {
-        const accepted = window.confirm(`¿Eliminar definitivamente el gasto de ${formatCurrency(movement.monto)} en ${prettifyLabel(movement.categoria_gasto)}?`);
-        if (!accepted) return;
-
         try {
             await deleteMovementMutation.mutateAsync(movement.id);
             toast.success('Gasto eliminado correctamente.');
+            setMovementToDelete(null);
         } catch (error) {
             toast.error(error.message || 'No se pudo eliminar el gasto.');
         }
@@ -383,7 +382,7 @@ const CajaGastos = () => {
                                                     <button type="button" className="btn btn-ghost btn-sm btn-icon expenses-action-btn" title="Editar gasto" aria-label="Editar gasto" onClick={() => openEditModal(movimiento)}>
                                                         <i className="bi bi-pencil-square" aria-hidden="true"></i>
                                                     </button>
-                                                    <button type="button" className="btn btn-ghost btn-sm btn-icon expenses-action-btn is-danger" title="Eliminar gasto" aria-label="Eliminar gasto" onClick={() => handleDeleteMovimiento(movimiento)} disabled={deleteMovementMutation.isPending}>
+                                                    <button type="button" className="btn btn-ghost btn-sm btn-icon expenses-action-btn is-danger" title="Eliminar gasto" aria-label="Eliminar gasto" onClick={() => setMovementToDelete(movimiento)} disabled={deleteMovementMutation.isPending}>
                                                         <i className="bi bi-trash" aria-hidden="true"></i>
                                                     </button>
                                                 </div>
@@ -425,6 +424,36 @@ const CajaGastos = () => {
                         mode="edit"
                     />
                 </form>
+            </Modal>
+
+            <Modal
+                open={!!movementToDelete}
+                onClose={() => setMovementToDelete(null)}
+                title="Eliminar gasto"
+                size="lg"
+                footer={(
+                    <>
+                        <button type="button" className="btn btn-ghost" onClick={() => setMovementToDelete(null)} disabled={deleteMovementMutation.isPending}>
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={() => movementToDelete && handleDeleteMovimiento(movementToDelete)}
+                            disabled={deleteMovementMutation.isPending}
+                        >
+                            <i className="bi bi-trash" aria-hidden="true"></i>
+                            {deleteMovementMutation.isPending ? 'Eliminando...' : 'Confirmar eliminación'}
+                        </button>
+                    </>
+                )}
+            >
+                <div className="expenses-edit-copy">
+                    <p>
+                        ¿Eliminar definitivamente el gasto de <strong>{movementToDelete ? formatCurrency(movementToDelete.monto) : 'S/. 0.00'}</strong>
+                        {movementToDelete ? ` en ${prettifyLabel(movementToDelete.categoria_gasto)}` : ''}? Esta acción no podrá deshacerse.
+                    </p>
+                </div>
             </Modal>
         </div>
     );

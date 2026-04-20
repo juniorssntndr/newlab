@@ -25,9 +25,16 @@ const toBoolean = (value, fallback = false) => {
 router.get('/', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { flujo, categoria } = req.query;
+        const { flujo, categoria, estado } = req.query;
         const params = [];
-        let query = 'SELECT * FROM nl_materiales WHERE activo = true';
+        let query = 'SELECT * FROM nl_materiales WHERE 1=1';
+
+        const normalizedEstado = String(estado || 'activos').trim().toLowerCase();
+        if (normalizedEstado === 'inactivos') {
+            query += ' AND activo = false';
+        } else if (normalizedEstado !== 'todos') {
+            query += ' AND activo = true';
+        }
 
         if (flujo) {
             params.push(flujo);
@@ -46,7 +53,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/inventory - Create material
-router.post('/', requireRole('admin'), async (req, res, next) => {
+router.post('/', requireRole('admin', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { nombre, stock_actual, stock_minimo, unidad, flujo, categoria, color, alerta_bajo_stock, notas } = req.body;
@@ -74,7 +81,7 @@ router.post('/', requireRole('admin'), async (req, res, next) => {
 });
 
 // PUT /api/inventory/:id - Update material
-router.put('/:id', requireRole('admin'), async (req, res, next) => {
+router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { nombre, stock_actual, stock_minimo, unidad, activo, flujo, categoria, color, alerta_bajo_stock, notas } = req.body;
@@ -108,6 +115,40 @@ router.put('/:id', requireRole('admin'), async (req, res, next) => {
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Material no encontrado' });
         res.json(result.rows[0]);
+    } catch (err) { next(err); }
+});
+
+// DELETE /api/inventory/:id - Soft delete material
+router.delete('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const result = await pool.query(
+            `UPDATE nl_materiales
+             SET activo = false
+             WHERE id = $1 AND activo = true
+             RETURNING *`,
+            [req.params.id]
+        );
+
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Material no encontrado o ya inactivo' });
+        res.json({ success: true, material: result.rows[0] });
+    } catch (err) { next(err); }
+});
+
+// PATCH /api/inventory/:id/restore - Restore soft deleted material
+router.patch('/:id/restore', requireRole('admin', 'tecnico'), async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const result = await pool.query(
+            `UPDATE nl_materiales
+             SET activo = true
+             WHERE id = $1 AND activo = false
+             RETURNING *`,
+            [req.params.id]
+        );
+
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Material no encontrado o ya activo' });
+        res.json({ success: true, material: result.rows[0] });
     } catch (err) { next(err); }
 });
 
