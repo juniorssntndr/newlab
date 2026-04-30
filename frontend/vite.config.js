@@ -5,6 +5,8 @@ export default defineConfig({
     plugins: [react()],
     server: {
         port: 5173,
+        /** Abre el navegador en la landing al ejecutar `npm run dev`. */
+        open: '/',
         proxy: {
             '/api': {
                 target: 'http://localhost:3001',

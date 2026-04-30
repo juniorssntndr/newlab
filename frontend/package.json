@@ -12,22 +12,24 @@
         "test:order-payment-invoice-flow": "node src/modules/cache/orderPaymentInvoiceFlow.test.js"
     },
     "dependencies": {
-        "@newlab/contracts": "file:../packages/contracts",
-        "@tanstack/react-query": "^5.90.3",
         "@fullcalendar/core": "^5.11.3",
         "@fullcalendar/daygrid": "^5.11.3",
         "@fullcalendar/interaction": "^5.11.3",
         "@fullcalendar/list": "^5.11.3",
         "@fullcalendar/react": "^5.11.3",
         "@fullcalendar/timegrid": "^5.11.3",
+        "@newlab/contracts": "file:../packages/contracts",
         "@sentry/react": "^10.20.0",
+        "@tanstack/react-query": "^5.90.3",
         "axios": "^1.13.6",
         "chart.js": "^4.4.1",
+        "framer-motion": "^11.18.2",
         "react": "^18.2.0",
         "react-chartjs-2": "^5.2.0",
         "react-dom": "^18.2.0",
         "react-hot-toast": "^2.6.0",
-        "react-router-dom": "^6.22.2"
+        "react-router-dom": "^6.22.2",
+        "swiper": "^12.1.4"
     },
     "devDependencies": {
         "@vitejs/plugin-react": "^4.2.1",

@@ -1,10 +1,11 @@
 import React from 'react';
-import { Navigate, Route, Routes, Outlet } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './state/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import { canAccessFinancialModules, isAdminRole, isClientRole } from './utils/accessControl.js';
 import Login from './pages/Login.jsx';
+import AffinixLanding from './pages/AffinixLanding.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Clinicas from './pages/Clinicas.jsx';
 import Productos from './pages/Productos.jsx';
@@ -60,20 +61,14 @@ const FinancialAccessRoute = ({ children }) => {
     return children;
 };
 
-const HomeRedirect = () => {
-    const { user, loading } = useAuth();
-    if (loading) return <LoadingScreen />;
-    return <Navigate to={isClientRole(user) ? '/pedidos' : '/dashboard'} replace />;
-};
-
 const App = () => {
     return (
         <>
             <Toaster position="top-right" />
             <Routes>
+                <Route path="/" element={<AffinixLanding />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                    <Route index element={<HomeRedirect />} />
+                <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />
                     <Route path="clinicas" element={<LabOnlyRoute><Clinicas /></LabOnlyRoute>} />
                     <Route path="productos" element={<LabOnlyRoute><Productos /></LabOnlyRoute>} />
