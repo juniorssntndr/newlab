@@ -6,6 +6,7 @@
     "scripts": {
         "start": "node src/index.js",
         "server": "node src/index.js",
+        "dev": "node --watch src/index.js",
         "migrate": "node src/db/run_migration.js",
         "bootstrap:clean": "node src/db/bootstrap_clean.js",
         "seed:small": "node src/db/seed_small.js",

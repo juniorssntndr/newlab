@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="760" viewBox="0 0 1040 760" role="img" aria-labelledby="title desc">
+  <title id="title">Vista previa del portal clínico Affinix LAB</title>
+  <desc id="desc">Mock estático de un dashboard con casos clínicos, estados de producción y aprobación 3D.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#071827"/>
+      <stop offset="1" stop-color="#0e1a2b"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#c9fbff"/>
+      <stop offset="1" stop-color="#19d7ff"/>
+    </linearGradient>
+    <linearGradient id="sidebar" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#06111f"/>
+      <stop offset="1" stop-color="#0b2033"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#00101f" flood-opacity="0.36"/>
+    </filter>
+    <radialGradient id="glow" cx="72%" cy="16%" r="70%">
+      <stop offset="0" stop-color="#10d7ff" stop-opacity="0.28"/>
+      <stop offset="0.48" stop-color="#10d7ff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#10d7ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1040" height="760" rx="42" fill="url(#bg)"/>
+  <rect width="1040" height="760" rx="42" fill="url(#glow)"/>
+  <rect x="1" y="1" width="1038" height="758" rx="41" fill="none" stroke="#24435b" stroke-opacity="0.82"/>
+
+  <g filter="url(#softShadow)">
+    <rect x="60" y="54" width="920" height="652" rx="34" fill="#0c1828" stroke="#2c4961"/>
+    <rect x="60" y="54" width="256" height="652" rx="34" fill="url(#sidebar)"/>
+    <path d="M316 54v652" stroke="#1d3448"/>
+  </g>
+
+  <g font-family="Inter, Arial, sans-serif">
+    <g transform="translate(92 92)">
+      <rect width="48" height="48" rx="16" fill="url(#cyan)"/>
+      <text x="62" y="20" fill="#f8fbff" font-size="24" font-weight="800">AFFINIX</text>
+      <text x="168" y="20" fill="#19d7ff" font-size="24" font-weight="800">LAB</text>
+      <text x="62" y="42" fill="#8aa3b8" font-size="15" font-weight="600">Portal para clínicas</text>
+      <text x="18" y="31" fill="#062033" font-size="23" font-weight="900">A</text>
+    </g>
+
+    <g transform="translate(92 190)" font-size="18" font-weight="800">
+      <rect width="164" height="56" rx="16" fill="#d7fbff"/>
+      <text x="26" y="36" fill="#06111f">Dashboard</text>
+      <text x="26" y="104" fill="#bdd0df">Mis casos</text>
+      <text x="26" y="172" fill="#bdd0df">Nuevo caso</text>
+      <text x="26" y="240" fill="#bdd0df">Mensajes</text>
+    </g>
+
+    <g transform="translate(356 92)">
+      <text x="0" y="30" fill="#f8fbff" font-size="28" font-weight="850">Mis casos</text>
+      <rect x="616" y="0" width="188" height="54" rx="27" fill="none" stroke="#2a4861"/>
+      <text x="646" y="24" fill="#d6e7f2" font-size="15" font-weight="700">Todos los</text>
+      <text x="646" y="42" fill="#d6e7f2" font-size="15" font-weight="700">estados</text>
+    </g>
+
+    <g transform="translate(356 176)">
+      <rect width="398" height="138" rx="20" fill="#19283a" stroke="#38556d"/>
+      <text x="28" y="36" fill="#ffffff" font-size="24" font-weight="850">AFL-2024-1258</text>
+      <text x="28" y="73" fill="#b9c9d8" font-size="20" font-weight="650">Maria Lopez / Zirconia</text>
+      <rect x="28" y="93" width="154" height="30" rx="15" fill="#184b5f"/>
+      <text x="46" y="114" fill="#b8f3ff" font-size="14" font-weight="850">Archivo recibido</text>
+      <text x="320" y="82" fill="#c4d4e2" font-size="17" font-weight="800">06 May</text>
+    </g>
+
+    <g transform="translate(356 338)">
+      <rect width="398" height="138" rx="20" fill="#172637" stroke="#38556d"/>
+      <text x="28" y="36" fill="#ffffff" font-size="24" font-weight="850">AFL-2024-1257</text>
+      <text x="28" y="73" fill="#b9c9d8" font-size="20" font-weight="650">Carlos Rojas / Puente</text>
+      <rect x="28" y="93" width="116" height="30" rx="15" fill="#5f4216"/>
+      <text x="46" y="114" fill="#ffe1a3" font-size="14" font-weight="850">En diseño</text>
+      <text x="320" y="82" fill="#c4d4e2" font-size="17" font-weight="800">05 May</text>
+    </g>
+
+    <g transform="translate(356 500)">
+      <rect width="398" height="138" rx="20" fill="#162436" stroke="#38556d"/>
+      <text x="28" y="36" fill="#ffffff" font-size="24" font-weight="850">AFL-2024-1256</text>
+      <text x="28" y="73" fill="#b9c9d8" font-size="20" font-weight="650">Lucia Fernandez / Guia</text>
+      <rect x="28" y="93" width="142" height="30" rx="15" fill="#143f68"/>
+      <text x="46" y="114" fill="#c8e7ff" font-size="14" font-weight="850">En producción</text>
+      <text x="320" y="82" fill="#c4d4e2" font-size="17" font-weight="800">03 May</text>
+    </g>
+
+    <g transform="translate(790 176)">
+      <text x="0" y="38" fill="#ffffff" font-size="25" font-weight="850">AFL-2024-1257</text>
+      <text x="178" y="38" fill="#bdd0df" font-size="20" font-weight="700">En línea</text>
+      <rect x="0" y="112" width="224" height="156" rx="24" fill="#d8c8a2"/>
+      <path d="M28 188c38-50 70-72 112-68 32 3 58 24 72 58-24 38-58 58-102 58-39 0-66-16-82-48z" fill="#f0e7d4" opacity="0.95"/>
+      <path d="M48 184c28-28 56-42 84-40 25 2 45 16 60 42-30 19-58 28-86 27-23-1-42-10-58-29z" fill="#ffffff" opacity="0.58"/>
+      <path d="M18 268h236" stroke="#304b62"/>
+      <text x="0" y="332" fill="#c7d6e2" font-size="20" font-weight="750">Aprobación 3D lista</text>
+      <text x="0" y="360" fill="#c7d6e2" font-size="20" font-weight="750">para revisión clínica.</text>
+    </g>
+
+    <g transform="translate(716 648)">
+      <rect width="252" height="58" rx="20" fill="#f7fbff" opacity="0.96"/>
+      <circle cx="31" cy="29" r="11" fill="none" stroke="#19d3b5" stroke-width="4"/>
+      <path d="M25 29l5 5 9-12" fill="none" stroke="#19d3b5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="54" y="36" fill="#071827" font-size="18" font-weight="850">Diseño actualizado</text>
+    </g>
+  </g>
+</svg>

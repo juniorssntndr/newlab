@@ -10,6 +10,7 @@ Copiadas desde `fotos landing/` con nombres estables para uso en React:
 - `hero-production.jpg`
 - `hero-equipment.jpg`
 - `equipment-milling.jpg`
+- `portal-preview.svg`
 - `service-hybrid-real.jpg`
 - `service-implant-real.jpg`
 - `service-provisional-real.jpg`
