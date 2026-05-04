@@ -91,7 +91,7 @@ const heroButtonMotion = (reduced, isActive, delay = 0) =>
             transition: { duration: 0.76, delay, ease: HERO_EASE },
         };
 
-export function LandingNavbar({ reduceMotion }) {
+export function LandingNavbar({ reduceMotion, themeToggle = null }) {
     return (
         <>
             <motion.div className="affinix-topbar" aria-label="Canales de contacto" {...headerEntranceMotion(reduceMotion, 0.04)}>
@@ -165,6 +165,7 @@ export function LandingNavbar({ reduceMotion }) {
                             </a>
                         ))}
                     </nav>
+                    {themeToggle}
                     <Link className="affinix-login-link" to={CLINIC_LOGIN_PATH}>
                         <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
                         Entrar al portal
@@ -309,7 +310,7 @@ export function HeroCarousel({ reduceMotion }) {
                                         alt=""
                                         loading={index === 0 ? 'eager' : 'lazy'}
                                         decoding="async"
-                                        fetchPriority={index === 0 ? 'high' : 'low'}
+                                        fetchpriority={index === 0 ? 'high' : 'low'}
                                     />
                                 </motion.div>
                                 <div className="affinix-hero-overlay"></div>

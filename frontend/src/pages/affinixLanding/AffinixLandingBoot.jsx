@@ -39,7 +39,7 @@ function waitForBelowFoldChunk() {
  * Pantalla de arranque: espera recursos críticos y el chunk inferior para que el primer scroll no compita
  * con hidratación pesada (Swiper, motion, workflow con scroll link).
  */
-export function AffinixLandingBoot({ reduceMotion, children }) {
+export function AffinixLandingBoot({ reduceMotion, theme = 'dark', children }) {
     const [phase, setPhase] = useState(reduceMotion ? 'done' : 'boot');
 
     useEffect(() => {
@@ -107,6 +107,7 @@ export function AffinixLandingBoot({ reduceMotion, children }) {
             {showOverlay ? (
                 <div
                     className={`affinix-boot-overlay${phase === 'exit' ? ' affinix-boot-overlay--exit' : ''}`}
+                    data-theme={theme}
                     role="status"
                     aria-live="polite"
                     aria-busy={phase === 'boot'}
