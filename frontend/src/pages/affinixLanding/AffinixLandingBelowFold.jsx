@@ -216,8 +216,8 @@ function ServicesCarousel({ reduceMotion }) {
     );
 }
 
-function WorkflowDetailCard({ step, reduceMotion, className = '', mobileAccordion = false }) {
-    const useMobileMotion = mobileAccordion && !reduceMotion;
+function WorkflowDetailCard({ step, reduceMotion, className = '', mobilePopover = false }) {
+    const useMobileMotion = mobilePopover && !reduceMotion;
     return (
         <motion.article
             key={step.id}
@@ -275,11 +275,10 @@ function WorkflowDetailCard({ step, reduceMotion, className = '', mobileAccordio
 function WorkflowTimeline({ reduceMotion }) {
     const workflowRef = useRef(null);
     const workflowStageRef = useRef(null);
-    const workflowStepElRefs = useRef([]);
-    const skipMobileScrollIntoViewRef = useRef(true);
     const [workflowActiveStep, setWorkflowActiveStep] = useState(0);
     const [workflowProgress, setWorkflowProgress] = useState(0);
     const [isMobileWorkflow, setIsMobileWorkflow] = useState(false);
+    const [mobilePopoverStep, setMobilePopoverStep] = useState(null);
     const { scrollYProgress } = useScroll({
         target: workflowStageRef,
         offset: ['start 0.14', 'end 0.18'],
@@ -307,29 +306,25 @@ function WorkflowTimeline({ reduceMotion }) {
     }, [reduceMotion, isMobileWorkflow]);
 
     useEffect(() => {
-        if (isMobileWorkflow) {
-            skipMobileScrollIntoViewRef.current = true;
+        if (!isMobileWorkflow) {
+            setMobilePopoverStep(null);
         }
     }, [isMobileWorkflow]);
 
     useEffect(() => {
-        if (!isMobileWorkflow) {
+        if (!isMobileWorkflow || mobilePopoverStep === null) {
             return undefined;
         }
-        if (skipMobileScrollIntoViewRef.current) {
-            skipMobileScrollIntoViewRef.current = false;
-            return undefined;
-        }
-        const el = workflowStepElRefs.current[workflowActiveStep];
-        if (el) {
-            el.scrollIntoView({
-                behavior: reduceMotion ? 'auto' : 'smooth',
-                block: 'center',
-                inline: 'nearest',
-            });
-        }
-        return undefined;
-    }, [workflowActiveStep, isMobileWorkflow, reduceMotion]);
+
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                setMobilePopoverStep(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [isMobileWorkflow, mobilePopoverStep]);
 
     useMotionValueEvent(scrollYProgress, 'change', (latest) => {
         if (reduceMotion) {
@@ -337,6 +332,12 @@ function WorkflowTimeline({ reduceMotion }) {
         }
 
         if (isMobileWorkflow) {
+            const mobileStart = 0.14;
+            const mobileEnd = 0.84;
+            const clamped = Math.min(1, Math.max(0, (latest - mobileStart) / (mobileEnd - mobileStart)));
+            const step = Math.min(workflow.length - 1, Math.max(0, Math.floor(clamped * workflow.length)));
+            setWorkflowProgress((current) => (Math.abs(current - clamped) < 0.001 ? current : clamped));
+            setWorkflowActiveStep((current) => (current === step ? current : step));
             return;
         }
 
@@ -348,6 +349,7 @@ function WorkflowTimeline({ reduceMotion }) {
 
     const activeWorkflow = workflow[workflowActiveStep] ?? workflow[0];
     const workflowStepProgress = workflow.length > 1 ? workflowProgress : 1;
+    const mobilePopoverWorkflow = mobilePopoverStep === null ? null : workflow[mobilePopoverStep] ?? null;
 
     return (
         <MotionSection
@@ -382,6 +384,18 @@ function WorkflowTimeline({ reduceMotion }) {
                             </div>
                         ) : null}
 
+                        {isMobileWorkflow ? (
+                            <div className="affinix-workflow-progress" aria-hidden="true">
+                                <div
+                                    className="affinix-workflow-progress-fill"
+                                    style={{
+                                        transform: `scaleY(${Math.max(0.08, workflowStepProgress)})`,
+                                        transition: reduceMotion ? 'none' : 'transform 0.22s linear',
+                                    }}
+                                />
+                            </div>
+                        ) : null}
+
                         <ol className="affinix-workflow-grid" aria-label="Etapas del flujo digital">
                             {workflow.map((step, index) => {
                                 const stepState =
@@ -395,54 +409,81 @@ function WorkflowTimeline({ reduceMotion }) {
                                     <li
                                         className={`affinix-workflow-card ${stepState}`}
                                         key={step.id}
-                                        ref={(node) => {
-                                            workflowStepElRefs.current[index] = node;
-                                        }}
                                         aria-current={index === workflowActiveStep ? 'step' : undefined}
                                     >
-                                        <button
-                                            type="button"
-                                            className="affinix-workflow-step-button"
-                                            onClick={() => {
-                                                setWorkflowActiveStep(index);
-                                                if (!isMobileWorkflow) {
-                                                    setWorkflowProgress(workflow.length > 1 ? index / (workflow.length - 1) : 1);
-                                                }
-                                            }}
-                                            aria-label={`Ver paso ${step.number}: ${step.title}`}
-                                        >
-                                            <span className="affinix-workflow-card-head">
-                                                <span className="affinix-workflow-step-num">{step.number}</span>
-                                                {index < workflowActiveStep ? (
-                                                    <span className="affinix-workflow-step-check" aria-hidden="true">
-                                                        <i className="bi bi-check-lg"></i>
+                                        {isMobileWorkflow ? (
+                                            <div className="affinix-workflow-mobile-row">
+                                                <button
+                                                    type="button"
+                                                    className="affinix-workflow-step-icon-button"
+                                                    onClick={() => setMobilePopoverStep((current) => (current === index ? null : index))}
+                                                    aria-expanded={mobilePopoverStep === index}
+                                                    aria-controls={mobilePopoverStep === index ? `workflow-mobile-popover-${step.id}` : undefined}
+                                                    aria-label={`Ver detalle del paso ${step.number}: ${step.title}`}
+                                                >
+                                                    <span className="affinix-workflow-step-icon" aria-hidden="true">
+                                                        <i className={`bi ${step.icon}`}></i>
                                                     </span>
-                                                ) : null}
-                                            </span>
-                                            <span className="affinix-workflow-step-icon" aria-hidden="true">
-                                                <i className={`bi ${step.icon}`}></i>
-                                            </span>
-                                            <h3>{step.title}</h3>
-                                            <p>{step.status}</p>
-                                            <i className="bi bi-chevron-down affinix-workflow-step-chevron" aria-hidden="true"></i>
-                                        </button>
-                                        <div className="affinix-workflow-mobile-detail">
-                                            <AnimatePresence initial={false} mode="sync">
-                                                {index === workflowActiveStep ? (
-                                                    <WorkflowDetailCard
-                                                        key={step.id}
-                                                        step={step}
-                                                        reduceMotion={reduceMotion}
-                                                        mobileAccordion
-                                                        className="affinix-workflow-detail-card--mobile"
-                                                    />
-                                                ) : null}
-                                            </AnimatePresence>
-                                        </div>
+                                                </button>
+                                                <div className="affinix-workflow-step-copy">
+                                                    <span className="affinix-workflow-step-num">{step.number}</span>
+                                                    <h3>{step.title}</h3>
+                                                    <p>{step.status}</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="affinix-workflow-step-button"
+                                                onClick={() => {
+                                                    setWorkflowActiveStep(index);
+                                                    setWorkflowProgress(workflow.length > 1 ? index / (workflow.length - 1) : 1);
+                                                }}
+                                                aria-label={`Ver paso ${step.number}: ${step.title}`}
+                                            >
+                                                <span className="affinix-workflow-card-head">
+                                                    <span className="affinix-workflow-step-num">{step.number}</span>
+                                                    {index < workflowActiveStep ? (
+                                                        <span className="affinix-workflow-step-check" aria-hidden="true">
+                                                            <i className="bi bi-check-lg"></i>
+                                                        </span>
+                                                    ) : null}
+                                                </span>
+                                                <span className="affinix-workflow-step-icon" aria-hidden="true">
+                                                    <i className={`bi ${step.icon}`}></i>
+                                                </span>
+                                                <h3>{step.title}</h3>
+                                                <p>{step.status}</p>
+                                            </button>
+                                        )}
                                     </li>
                                 );
                             })}
                         </ol>
+
+                        {isMobileWorkflow ? (
+                            <AnimatePresence initial={false} mode="sync">
+                                {mobilePopoverWorkflow ? (
+                                    <div className="affinix-workflow-mobile-popover-shell" id={`workflow-mobile-popover-${mobilePopoverWorkflow.id}`}>
+                                        <button
+                                            type="button"
+                                            className="affinix-workflow-mobile-popover-close"
+                                            onClick={() => setMobilePopoverStep(null)}
+                                            aria-label="Cerrar detalle del paso"
+                                        >
+                                            <i className="bi bi-x-lg" aria-hidden="true"></i>
+                                        </button>
+                                        <WorkflowDetailCard
+                                            key={mobilePopoverWorkflow.id}
+                                            step={mobilePopoverWorkflow}
+                                            reduceMotion={reduceMotion}
+                                            mobilePopover
+                                            className="affinix-workflow-detail-card--popover"
+                                        />
+                                    </div>
+                                ) : null}
+                            </AnimatePresence>
+                        ) : null}
 
                         <div className="affinix-workflow-detail-shell">
                             <AnimatePresence initial={false} mode="wait">
