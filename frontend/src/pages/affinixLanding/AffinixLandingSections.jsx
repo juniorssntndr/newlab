@@ -19,6 +19,11 @@ const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 const WHATSAPP_CHANNEL = contactChannels.find((channel) => channel.label === 'WhatsApp') ?? contactChannels[0];
 const LOCATION_CHANNEL = contactChannels.find((channel) => channel.label === 'Ver ubicación');
 const HEADER_ICON_LINKS = [LOCATION_CHANNEL, ...socialLinks].filter(Boolean);
+const HEADER_MENU_LINKS = [
+    { href: '#servicios', label: 'Servicios' },
+    { href: '#nosotros', label: 'Para tu clínica' },
+    { href: '#flujo', label: 'Flujo digital' },
+];
 const HERO_EASE = [0.16, 1, 0.3, 1];
 const TRACKING_CHECK_SETTLE_MS = 140;
 const TRACKING_CHECK_STAGGER_MS = 620;
@@ -91,7 +96,48 @@ const heroButtonMotion = (reduced, isActive, delay = 0) =>
             transition: { duration: 0.76, delay, ease: HERO_EASE },
         };
 
+function useMatchMedia(query) {
+    const [matches, setMatches] = useState(() =>
+        typeof window !== 'undefined' ? window.matchMedia(query).matches : false,
+    );
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const mq = window.matchMedia(query);
+        const handler = () => setMatches(mq.matches);
+        handler();
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, [query]);
+    return matches;
+}
+
 export function LandingNavbar({ reduceMotion, themeToggle = null }) {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    useEffect(() => {
+        const closeMenuOnDesktop = () => {
+            if (window.innerWidth > 860) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+
+        const closeMenuOnEscape = (event) => {
+            if (event.key === 'Escape') {
+                setIsMobileMenuOpen(false);
+            }
+        };
+
+        window.addEventListener('resize', closeMenuOnDesktop);
+        window.addEventListener('keydown', closeMenuOnEscape);
+
+        return () => {
+            window.removeEventListener('resize', closeMenuOnDesktop);
+            window.removeEventListener('keydown', closeMenuOnEscape);
+        };
+    }, []);
+
+    const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
     return (
         <>
             <motion.div className="affinix-topbar" aria-label="Canales de contacto" {...headerEntranceMotion(reduceMotion, 0.04)}>
@@ -127,7 +173,11 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                     </div>
                 </div>
             </motion.div>
-            <motion.header className="affinix-navbar" aria-label="Navegación principal" {...headerEntranceMotion(reduceMotion, 0.12)}>
+            <motion.header
+                className={`affinix-navbar ${isMobileMenuOpen ? 'is-mobile-menu-open' : ''}`}
+                aria-label="Navegación principal"
+                {...headerEntranceMotion(reduceMotion, 0.12)}
+            >
                 <a className="affinix-brand" href="#inicio" aria-label="Affinix LAB, inicio (landing para clínicas)">
                     <span className="affinix-brand-mark">A</span>
                     <span>
@@ -151,6 +201,17 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                         <i className={`bi ${WHATSAPP_CHANNEL.icon}`} aria-hidden="true"></i>
                         <span>Más info</span>
                     </a>
+                    {LOCATION_CHANNEL ? (
+                        <a
+                            className="affinix-header-location"
+                            href={LOCATION_CHANNEL.href}
+                            target={LOCATION_CHANNEL.external ? '_blank' : undefined}
+                            rel={LOCATION_CHANNEL.external ? 'noopener noreferrer' : undefined}
+                            aria-label={LOCATION_CHANNEL.label}
+                        >
+                            <i className={`bi ${LOCATION_CHANNEL.icon}`} aria-hidden="true"></i>
+                        </a>
+                    ) : null}
                     <nav className="affinix-header-socials" aria-label="Ubicación y redes sociales">
                         {HEADER_ICON_LINKS.map((item) => (
                             <a
@@ -165,6 +226,16 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                             </a>
                         ))}
                     </nav>
+                    <button
+                        type="button"
+                        className="affinix-mobile-menu-toggle"
+                        aria-expanded={isMobileMenuOpen}
+                        aria-controls="affinix-mobile-menu"
+                        aria-label={isMobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+                        onClick={() => setIsMobileMenuOpen((current) => !current)}
+                    >
+                        <i className={`bi ${isMobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`} aria-hidden="true"></i>
+                    </button>
                     {themeToggle}
                     <Link className="affinix-login-link" to={CLINIC_LOGIN_PATH}>
                         <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
@@ -173,17 +244,51 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                 </div>
                 <nav className="affinix-mobile-quicknav" aria-label="Accesos rápidos">
                     {mobileQuickLinks.map((link) => (
-                        <a key={link.href} href={link.href}>
+                        <a key={link.href} href={link.href} onClick={closeMobileMenu}>
                             {link.label}
                         </a>
                     ))}
                 </nav>
+                <div
+                    className={`affinix-mobile-menu-panel ${isMobileMenuOpen ? 'is-open' : ''}`}
+                    id="affinix-mobile-menu"
+                    aria-label="Menú móvil"
+                >
+                    <nav className="affinix-mobile-menu-links" aria-label="Secciones principales">
+                        {HEADER_MENU_LINKS.map((link) => (
+                            <a key={link.href} href={link.href} onClick={closeMobileMenu}>
+                                {link.label}
+                            </a>
+                        ))}
+                    </nav>
+                    <div className="affinix-mobile-menu-utility-row">
+                        <div className="affinix-mobile-menu-socials" aria-label="Redes sociales y ubicación">
+                            {HEADER_ICON_LINKS.map((item) => (
+                                <a
+                                    key={item.label}
+                                    href={item.href}
+                                    target={item.external ? '_blank' : undefined}
+                                    rel={item.external ? 'noopener noreferrer' : undefined}
+                                    aria-label={item.label}
+                                    onClick={closeMobileMenu}
+                                >
+                                    <i className={`bi ${item.icon}`} aria-hidden="true"></i>
+                                </a>
+                            ))}
+                        </div>
+                        {themeToggle ? <div className="affinix-mobile-menu-theme">{React.cloneElement(themeToggle)}</div> : null}
+                    </div>
+                    <Link className="affinix-mobile-menu-login" to={CLINIC_LOGIN_PATH} onClick={closeMobileMenu}>
+                        <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+                        Entrar al portal
+                    </Link>
+                </div>
             </motion.header>
         </>
     );
 }
 
-function HeroTrackingWidget({ reduceMotion }) {
+function HeroTrackingWidget({ reduceMotion, className = '' }) {
     const [completedStep, setCompletedStep] = useState(reduceMotion ? heroTrackingSteps.length - 1 : -1);
     const [trackingReady, setTrackingReady] = useState(reduceMotion);
 
@@ -215,7 +320,7 @@ function HeroTrackingWidget({ reduceMotion }) {
 
     return (
         <motion.aside
-            className="affinix-hero-tracking"
+            className={`affinix-hero-tracking ${className}`.trim()}
             aria-label="Seguimiento de caso sin retrasos"
             {...(reduceMotion
                 ? {}
@@ -267,16 +372,17 @@ function HeroTrackingWidget({ reduceMotion }) {
 
 export function HeroCarousel({ reduceMotion }) {
     const [activeSlide, setActiveSlide] = useState(0);
+    const heroStackLayout = useMatchMedia('(max-width: 640px)');
 
     return (
         <section className="affinix-hero" id="inicio" aria-label="Presentación: servicios digitales para clínicas">
             <div className="affinix-hero-stage">
                 <Swiper
-                    className="affinix-hero-swiper"
+                    className={`affinix-hero-swiper${heroStackLayout ? ' affinix-hero-swiper--stack' : ''}`}
                     modules={[A11y, Autoplay, EffectFade, Pagination]}
                     effect="fade"
                     fadeEffect={{ crossFade: true }}
-                    autoHeight={false}
+                    autoHeight={heroStackLayout}
                     pagination={{ clickable: true }}
                     loop={false}
                     rewind={!reduceMotion}
@@ -396,11 +502,12 @@ export function HeroCarousel({ reduceMotion }) {
                                         </div>
                                     </motion.div>
                                 </div>
+                                <HeroTrackingWidget reduceMotion={reduceMotion} className="affinix-hero-tracking--mobile" />
                             </article>
                         </SwiperSlide>
                     ))}
                 </Swiper>
-                <HeroTrackingWidget reduceMotion={reduceMotion} />
+                <HeroTrackingWidget reduceMotion={reduceMotion} className="affinix-hero-tracking--desktop" />
             </div>
         </section>
     );
