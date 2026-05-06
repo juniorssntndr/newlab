@@ -12,16 +12,16 @@ jobs:
       run:
         working-directory: backend
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Check secrets
         id: check
+        working-directory: .
         run: |
           if [ -z "${{ secrets.STAGING_BACKEND_URL }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
-
-      - name: Checkout
-        if: steps.check.outputs.skip != 'true'
-        uses: actions/checkout@v4
 
       - name: Setup Node
         if: steps.check.outputs.skip != 'true'
@@ -48,16 +48,16 @@ jobs:
       run:
         working-directory: backend
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Check secrets
         id: check
+        working-directory: .
         run: |
           if [ -z "${{ secrets.PROD_BACKEND_URL }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
-
-      - name: Checkout
-        if: steps.check.outputs.skip != 'true'
-        uses: actions/checkout@v4
 
       - name: Setup Node
         if: steps.check.outputs.skip != 'true'
