@@ -1,0 +1,102 @@
+{
+  "consoleMessages": [
+    {
+      "viewport": "desktop",
+      "type": "warning",
+      "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+    },
+    {
+      "viewport": "mobile",
+      "type": "warning",
+      "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+    }
+  ],
+  "results": [
+    {
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-review-fixed\\desktop-landing-final.png",
+      "audit": {
+        "h1Count": 1,
+        "hasHorizontalScroll": false,
+        "brokenImages": 0,
+        "titleText": "Control digital en cada restauracion, desde el primer archivo.",
+        "titleOverflow": true,
+        "leadOverflow": false,
+        "titleLineClamp": "none",
+        "metric": {
+          "left": 982,
+          "top": 506,
+          "right": 1242,
+          "bottom": 627,
+          "width": 260,
+          "height": 121
+        },
+        "actions": {
+          "left": 184,
+          "top": 552,
+          "right": 904,
+          "bottom": 627,
+          "width": 720,
+          "height": 75
+        },
+        "pagination": {
+          "left": 208,
+          "top": 653,
+          "right": 334,
+          "bottom": 657,
+          "width": 126,
+          "height": 4
+        },
+        "metricOverlapsAction": false,
+        "metricOverlapsPagination": false
+      }
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-review-fixed\\mobile-landing-final.png",
+      "audit": {
+        "h1Count": 1,
+        "hasHorizontalScroll": false,
+        "brokenImages": 0,
+        "titleText": "Control digital en cada restauracion, desde el primer archivo.",
+        "titleOverflow": false,
+        "leadOverflow": false,
+        "titleLineClamp": "none",
+        "metric": {
+          "left": 31,
+          "top": 637,
+          "right": 347,
+          "bottom": 697,
+          "width": 317,
+          "height": 59
+        },
+        "actions": {
+          "left": 31,
+          "top": 494,
+          "right": 347,
+          "bottom": 616,
+          "width": 317,
+          "height": 122
+        },
+        "pagination": {
+          "left": 41,
+          "top": 718,
+          "right": 167,
+          "bottom": 722,
+          "width": 126,
+          "height": 4
+        },
+        "metricOverlapsAction": false,
+        "metricOverlapsPagination": false
+      }
+    }
+  ]
+}

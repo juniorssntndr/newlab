@@ -1,0 +1,812 @@
+[
+  {
+    "viewport": {
+      "name": "mobile-375",
+      "width": 375,
+      "height": 667,
+      "screenshot": false,
+      "isMobile": true
+    },
+    "screenshotPath": null,
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 375,
+      "clientWidth": 375,
+      "scrollHeight": 7875,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "x": 6,
+        "y": 7.1875,
+        "w": 363,
+        "h": 125.8125
+      },
+      "brand": {
+        "x": 12.109375,
+        "y": 13.296875,
+        "w": 142.0625,
+        "h": 50,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "AAffinix LABLaboratorio dental digital"
+      },
+      "navLinks": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0,
+        "display": "none",
+        "overflowX": "visible",
+        "text": "ServiciosNosotrosFlujo digitalPortal"
+      },
+      "navActions": {
+        "x": 240.28125,
+        "y": 13.953125,
+        "w": 122.609375,
+        "h": 48.6875,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "quicknav": {
+        "x": 12.109375,
+        "y": 72.890625,
+        "w": 350.78125,
+        "h": 54,
+        "display": "flex",
+        "overflowX": "auto",
+        "text": "ServiciosFlujoPortal"
+      },
+      "login": {
+        "x": 318.890625,
+        "y": 13.953125,
+        "w": 44,
+        "h": 48.6875,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "smallTargets": [
+        {
+          "text": "Servicios",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Nosotros",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Flujo digital",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Portal",
+          "w": 0,
+          "h": 0
+        }
+      ],
+      "overlaps": []
+    },
+    "focusMetrics": {
+      "tag": "A",
+      "className": "affinix-brand",
+      "text": "AAffinix LABLaboratorio dental digital",
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "rect": {
+        "x": 12.109375,
+        "y": 13.296875,
+        "w": 142.0625,
+        "h": 50
+      }
+    },
+    "anchorMetrics": [
+      {
+        "hash": "#servicios",
+        "sectionTop": -33.69921875,
+        "headerBottom": -1132,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "sectionTop": -33.264892578125,
+        "headerBottom": -2066,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "sectionTop": -33.569091796875,
+        "headerBottom": -3246,
+        "clear": true
+      }
+    ],
+    "horizontalScroll": false,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": false,
+      "noHeaderChildOverlap": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    }
+  },
+  {
+    "viewport": {
+      "name": "mobile-390",
+      "width": 390,
+      "height": 844,
+      "screenshot": true,
+      "isMobile": true
+    },
+    "screenshotPath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\header-dock-premium\\mobile-390.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 7785,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "x": 8,
+        "y": 7.1875,
+        "w": 374,
+        "h": 124.53125
+      },
+      "brand": {
+        "x": 14.109375,
+        "y": 13.296875,
+        "w": 145.328125,
+        "h": 50,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "AAffinix LABLaboratorio dental digital"
+      },
+      "navLinks": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0,
+        "display": "none",
+        "overflowX": "visible",
+        "text": "ServiciosNosotrosFlujo digitalPortal"
+      },
+      "navActions": {
+        "x": 213.5625,
+        "y": 16.296875,
+        "w": 162.328125,
+        "h": 44,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "quicknav": {
+        "x": 14.109375,
+        "y": 71.609375,
+        "w": 361.78125,
+        "h": 54,
+        "display": "flex",
+        "overflowX": "auto",
+        "text": "ServiciosFlujoPortal"
+      },
+      "login": {
+        "x": 293.296875,
+        "y": 16.296875,
+        "w": 82.59375,
+        "h": 44,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "smallTargets": [
+        {
+          "text": "Servicios",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Nosotros",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Flujo digital",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Portal",
+          "w": 0,
+          "h": 0
+        }
+      ],
+      "overlaps": []
+    },
+    "focusMetrics": {
+      "tag": "A",
+      "className": "affinix-brand",
+      "text": "AAffinix LABLaboratorio dental digital",
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "rect": {
+        "x": 14.109375,
+        "y": 13.296875,
+        "w": 145.328125,
+        "h": 50
+      }
+    },
+    "anchorMetrics": [
+      {
+        "hash": "#servicios",
+        "sectionTop": -33.4677734375,
+        "headerBottom": -1073.28125,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "sectionTop": -33.631591796875,
+        "headerBottom": -1984.28125,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "sectionTop": -33.992919921875,
+        "headerBottom": -3165.28125,
+        "clear": true
+      }
+    ],
+    "horizontalScroll": false,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": false,
+      "noHeaderChildOverlap": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    }
+  },
+  {
+    "viewport": {
+      "name": "mobile-430",
+      "width": 430,
+      "height": 932,
+      "screenshot": false,
+      "isMobile": true
+    },
+    "screenshotPath": null,
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 430,
+      "clientWidth": 430,
+      "scrollHeight": 7768,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "x": 8,
+        "y": 7.1875,
+        "w": 414,
+        "h": 124.53125
+      },
+      "brand": {
+        "x": 14.109375,
+        "y": 13.296875,
+        "w": 145.765625,
+        "h": 50,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "AAffinix LABLaboratorio dental digital"
+      },
+      "navLinks": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0,
+        "display": "none",
+        "overflowX": "visible",
+        "text": "ServiciosNosotrosFlujo digitalPortal"
+      },
+      "navActions": {
+        "x": 253.5625,
+        "y": 16.296875,
+        "w": 162.328125,
+        "h": 44,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "quicknav": {
+        "x": 14.109375,
+        "y": 71.609375,
+        "w": 401.78125,
+        "h": 54,
+        "display": "flex",
+        "overflowX": "auto",
+        "text": "ServiciosFlujoPortal"
+      },
+      "login": {
+        "x": 333.296875,
+        "y": 16.296875,
+        "w": 82.59375,
+        "h": 44,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "smallTargets": [
+        {
+          "text": "Servicios",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Nosotros",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Flujo digital",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Portal",
+          "w": 0,
+          "h": 0
+        }
+      ],
+      "overlaps": []
+    },
+    "focusMetrics": {
+      "tag": "A",
+      "className": "affinix-brand",
+      "text": "AAffinix LABLaboratorio dental digital",
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "rect": {
+        "x": 14.109375,
+        "y": 13.296875,
+        "w": 145.765625,
+        "h": 50
+      }
+    },
+    "anchorMetrics": [
+      {
+        "hash": "#servicios",
+        "sectionTop": -33.941650390625,
+        "headerBottom": -1112.28125,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "sectionTop": -34.024169921875,
+        "headerBottom": -2023.28125,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "sectionTop": -33.178955078125,
+        "headerBottom": -3207.28125,
+        "clear": true
+      }
+    ],
+    "horizontalScroll": false,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": false,
+      "noHeaderChildOverlap": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    }
+  },
+  {
+    "viewport": {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024,
+      "screenshot": true,
+      "isMobile": true
+    },
+    "screenshotPath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\header-dock-premium\\tablet-768.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "scrollHeight": 6515,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "x": 8,
+        "y": 7.1875,
+        "w": 752,
+        "h": 124.53125
+      },
+      "brand": {
+        "x": 14.109375,
+        "y": 13.296875,
+        "w": 191.609375,
+        "h": 50,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "AAffinix LABLaboratorio dental digital"
+      },
+      "navLinks": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0,
+        "display": "none",
+        "overflowX": "visible",
+        "text": "ServiciosNosotrosFlujo digitalPortal"
+      },
+      "navActions": {
+        "x": 576.796875,
+        "y": 14.296875,
+        "w": 177.09375,
+        "h": 48,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "quicknav": {
+        "x": 14.109375,
+        "y": 71.609375,
+        "w": 739.78125,
+        "h": 54,
+        "display": "flex",
+        "overflowX": "auto",
+        "text": "ServiciosFlujoPortal"
+      },
+      "login": {
+        "x": 659.09375,
+        "y": 14.296875,
+        "w": 94.796875,
+        "h": 48,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "smallTargets": [
+        {
+          "text": "Servicios",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Nosotros",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Flujo digital",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Portal",
+          "w": 0,
+          "h": 0
+        }
+      ],
+      "overlaps": []
+    },
+    "focusMetrics": {
+      "tag": "A",
+      "className": "affinix-brand",
+      "text": "AAffinix LABLaboratorio dental digital",
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "rect": {
+        "x": 14.109375,
+        "y": 13.296875,
+        "w": 191.609375,
+        "h": 50
+      }
+    },
+    "anchorMetrics": [
+      {
+        "hash": "#servicios",
+        "sectionTop": -33.5069580078125,
+        "headerBottom": -1078.28125,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "sectionTop": -33.329345703125,
+        "headerBottom": -2009.28125,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "sectionTop": -34.061767578125,
+        "headerBottom": -2969.28125,
+        "clear": true
+      }
+    ],
+    "horizontalScroll": false,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": false,
+      "noHeaderChildOverlap": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    }
+  },
+  {
+    "viewport": {
+      "name": "desktop-1366",
+      "width": 1366,
+      "height": 768,
+      "screenshot": false
+    },
+    "screenshotPath": null,
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 1360,
+      "clientWidth": 1360,
+      "scrollHeight": 4923,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "x": 90,
+        "y": 10.390625,
+        "w": 1180,
+        "h": 66.21875
+      },
+      "brand": {
+        "x": 96.59375,
+        "y": 18.5,
+        "w": 191.609375,
+        "h": 50,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "AAffinix LABLaboratorio dental digital"
+      },
+      "navLinks": {
+        "x": 492.359375,
+        "y": 16.984375,
+        "w": 375.265625,
+        "h": 53.03125,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "ServiciosNosotrosFlujo digitalPortal"
+      },
+      "navActions": {
+        "x": 1086.3125,
+        "y": 19.5,
+        "w": 177.09375,
+        "h": 48,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "quicknav": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0,
+        "display": "none",
+        "overflowX": "visible",
+        "text": "ServiciosFlujoPortal"
+      },
+      "login": {
+        "x": 1168.609375,
+        "y": 19.5,
+        "w": 94.796875,
+        "h": 48,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "smallTargets": [
+        {
+          "text": "Servicios",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Flujo",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Portal",
+          "w": 0,
+          "h": 0
+        }
+      ],
+      "overlaps": []
+    },
+    "focusMetrics": {
+      "tag": "A",
+      "className": "affinix-brand",
+      "text": "AAffinix LABLaboratorio dental digital",
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "rect": {
+        "x": 96.59375,
+        "y": 18.5,
+        "w": 191.609375,
+        "h": 50
+      }
+    },
+    "anchorMetrics": [
+      {
+        "hash": "#servicios",
+        "sectionTop": -34.10260009765625,
+        "headerBottom": -734.390625,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "sectionTop": -33.3271484375,
+        "headerBottom": -1712.390625,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "sectionTop": -33.780029296875,
+        "headerBottom": -2362.390625,
+        "clear": true
+      }
+    ],
+    "horizontalScroll": false,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": false,
+      "noHeaderChildOverlap": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    }
+  },
+  {
+    "viewport": {
+      "name": "desktop-1440",
+      "width": 1440,
+      "height": 900,
+      "screenshot": true
+    },
+    "screenshotPath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\header-dock-premium\\desktop-1440.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 1434,
+      "clientWidth": 1434,
+      "scrollHeight": 4936,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "x": 127,
+        "y": 10.390625,
+        "w": 1180,
+        "h": 66.21875
+      },
+      "brand": {
+        "x": 133.59375,
+        "y": 18.5,
+        "w": 191.609375,
+        "h": 50,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "AAffinix LABLaboratorio dental digital"
+      },
+      "navLinks": {
+        "x": 529.359375,
+        "y": 16.984375,
+        "w": 375.265625,
+        "h": 53.03125,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "ServiciosNosotrosFlujo digitalPortal"
+      },
+      "navActions": {
+        "x": 1123.3125,
+        "y": 19.5,
+        "w": 177.09375,
+        "h": 48,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "quicknav": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0,
+        "display": "none",
+        "overflowX": "visible",
+        "text": "ServiciosFlujoPortal"
+      },
+      "login": {
+        "x": 1205.609375,
+        "y": 19.5,
+        "w": 94.796875,
+        "h": 48,
+        "display": "flex",
+        "overflowX": "visible",
+        "text": "Entrar"
+      },
+      "smallTargets": [
+        {
+          "text": "Servicios",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Flujo",
+          "w": 0,
+          "h": 0
+        },
+        {
+          "text": "Portal",
+          "w": 0,
+          "h": 0
+        }
+      ],
+      "overlaps": []
+    },
+    "focusMetrics": {
+      "tag": "A",
+      "className": "affinix-brand",
+      "text": "AAffinix LABLaboratorio dental digital",
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "rect": {
+        "x": 133.59375,
+        "y": 18.5,
+        "w": 191.609375,
+        "h": 50
+      }
+    },
+    "anchorMetrics": [
+      {
+        "hash": "#servicios",
+        "sectionTop": -34.01654052734375,
+        "headerBottom": -734.390625,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "sectionTop": -33.397705078125,
+        "headerBottom": -1712.390625,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "sectionTop": -0.0625,
+        "headerBottom": -2332.390625,
+        "clear": true
+      }
+    ],
+    "horizontalScroll": false,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": false,
+      "noHeaderChildOverlap": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    }
+  }
+]

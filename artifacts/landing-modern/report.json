@@ -1,0 +1,492 @@
+[
+  {
+    "viewport": {
+      "name": "mobile-375",
+      "width": 375,
+      "height": 667
+    },
+    "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\mobile-375.png",
+    "messages": [
+      {
+        "type": "warning",
+        "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+      }
+    ],
+    "audit": {
+      "h1Count": 1,
+      "hasHorizontalScroll": false,
+      "scrollWidth": 369,
+      "clientWidth": 369,
+      "brokenImages": [],
+      "titleOverflow": false,
+      "leadOverflow": false,
+      "ctas": {
+        "left": 23,
+        "top": 535,
+        "right": 346,
+        "bottom": 656,
+        "width": 323,
+        "height": 122
+      },
+      "metric": {
+        "left": 23,
+        "top": 678,
+        "right": 346,
+        "bottom": 736,
+        "width": 323,
+        "height": 58
+      },
+      "pagination": {
+        "left": 107,
+        "top": 861,
+        "right": 263,
+        "bottom": 905,
+        "width": 156,
+        "height": 44
+      },
+      "ctasVisible": true,
+      "metricOverlapsCtas": false,
+      "metricOverlapsPagination": false,
+      "anchorResults": [
+        {
+          "id": "servicios",
+          "top": 0,
+          "navBottom": -771,
+          "covered": false
+        },
+        {
+          "id": "flujo",
+          "top": -2,
+          "navBottom": -1778,
+          "covered": false
+        },
+        {
+          "id": "portal",
+          "top": 0,
+          "navBottom": -2957,
+          "covered": false
+        }
+      ]
+    }
+  },
+  {
+    "viewport": {
+      "name": "mobile-390",
+      "width": 390,
+      "height": 844
+    },
+    "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\mobile-390.png",
+    "messages": [
+      {
+        "type": "warning",
+        "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+      }
+    ],
+    "audit": {
+      "h1Count": 1,
+      "hasHorizontalScroll": false,
+      "scrollWidth": 384,
+      "clientWidth": 384,
+      "brokenImages": [],
+      "titleOverflow": false,
+      "leadOverflow": false,
+      "ctas": {
+        "left": 31,
+        "top": 553,
+        "right": 353,
+        "bottom": 675,
+        "width": 323,
+        "height": 122
+      },
+      "metric": {
+        "left": 31,
+        "top": 697,
+        "right": 353,
+        "bottom": 756,
+        "width": 323,
+        "height": 59
+      },
+      "pagination": {
+        "left": 114,
+        "top": 910,
+        "right": 270,
+        "bottom": 954,
+        "width": 156,
+        "height": 44
+      },
+      "ctasVisible": true,
+      "metricOverlapsCtas": false,
+      "metricOverlapsPagination": false,
+      "anchorResults": [
+        {
+          "id": "servicios",
+          "top": 0,
+          "navBottom": -815,
+          "covered": false
+        },
+        {
+          "id": "flujo",
+          "top": -2,
+          "navBottom": -1790,
+          "covered": false
+        },
+        {
+          "id": "portal",
+          "top": -1,
+          "navBottom": -2970,
+          "covered": false
+        }
+      ]
+    }
+  },
+  {
+    "viewport": {
+      "name": "mobile-430",
+      "width": 430,
+      "height": 932
+    },
+    "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\mobile-430.png",
+    "messages": [
+      {
+        "type": "warning",
+        "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+      }
+    ],
+    "audit": {
+      "h1Count": 1,
+      "hasHorizontalScroll": false,
+      "scrollWidth": 424,
+      "clientWidth": 424,
+      "brokenImages": [],
+      "titleOverflow": false,
+      "leadOverflow": false,
+      "ctas": {
+        "left": 31,
+        "top": 546,
+        "right": 393,
+        "bottom": 668,
+        "width": 363,
+        "height": 122
+      },
+      "metric": {
+        "left": 31,
+        "top": 690,
+        "right": 393,
+        "bottom": 752,
+        "width": 363,
+        "height": 63
+      },
+      "pagination": {
+        "left": 134,
+        "top": 988,
+        "right": 290,
+        "bottom": 1032,
+        "width": 156,
+        "height": 44
+      },
+      "ctasVisible": true,
+      "metricOverlapsCtas": false,
+      "metricOverlapsPagination": false,
+      "anchorResults": [
+        {
+          "id": "servicios",
+          "top": 0,
+          "navBottom": -892,
+          "covered": false
+        },
+        {
+          "id": "flujo",
+          "top": -2,
+          "navBottom": -1845,
+          "covered": false
+        },
+        {
+          "id": "portal",
+          "top": -1,
+          "navBottom": -3030,
+          "covered": false
+        }
+      ]
+    }
+  },
+  {
+    "viewport": {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024
+    },
+    "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\tablet-768.png",
+    "messages": [
+      {
+        "type": "warning",
+        "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+      }
+    ],
+    "audit": {
+      "h1Count": 1,
+      "hasHorizontalScroll": false,
+      "scrollWidth": 762,
+      "clientWidth": 762,
+      "brokenImages": [],
+      "titleOverflow": true,
+      "leadOverflow": false,
+      "ctas": {
+        "left": 51,
+        "top": 600,
+        "right": 711,
+        "bottom": 675,
+        "width": 660,
+        "height": 75
+      },
+      "metric": {
+        "left": 63,
+        "top": 580,
+        "right": 323,
+        "bottom": 682,
+        "width": 260,
+        "height": 102
+      },
+      "pagination": {
+        "left": 63,
+        "top": 651,
+        "right": 219,
+        "bottom": 695,
+        "width": 156,
+        "height": 44
+      },
+      "ctasVisible": true,
+      "metricOverlapsCtas": true,
+      "metricOverlapsPagination": true,
+      "anchorResults": [
+        {
+          "id": "servicios",
+          "top": 0,
+          "navBottom": -643,
+          "covered": false
+        },
+        {
+          "id": "flujo",
+          "top": -5,
+          "navBottom": -1447,
+          "covered": false
+        },
+        {
+          "id": "portal",
+          "top": -4,
+          "navBottom": -2409,
+          "covered": false
+        }
+      ]
+    }
+  },
+  {
+    "viewport": {
+      "name": "desktop-1366",
+      "width": 1366,
+      "height": 768
+    },
+    "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\desktop-1366.png",
+    "messages": [
+      {
+        "type": "warning",
+        "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+      }
+    ],
+    "audit": {
+      "h1Count": 1,
+      "hasHorizontalScroll": false,
+      "scrollWidth": 1360,
+      "clientWidth": 1360,
+      "brokenImages": [],
+      "titleOverflow": true,
+      "leadOverflow": false,
+      "ctas": {
+        "left": 147,
+        "top": 512,
+        "right": 867,
+        "bottom": 587,
+        "width": 720,
+        "height": 75
+      },
+      "metric": {
+        "left": 945,
+        "top": 466,
+        "right": 1205,
+        "bottom": 587,
+        "width": 260,
+        "height": 121
+      },
+      "pagination": {
+        "left": 171,
+        "top": 573,
+        "right": 327,
+        "bottom": 617,
+        "width": 156,
+        "height": 44
+      },
+      "ctasVisible": true,
+      "metricOverlapsCtas": false,
+      "metricOverlapsPagination": false,
+      "anchorResults": [
+        {
+          "id": "servicios",
+          "top": 0,
+          "navBottom": -644,
+          "covered": false
+        },
+        {
+          "id": "flujo",
+          "top": -2,
+          "navBottom": -1507,
+          "covered": false
+        },
+        {
+          "id": "portal",
+          "top": -3,
+          "navBottom": -2157,
+          "covered": false
+        }
+      ]
+    }
+  },
+  {
+    "viewport": {
+      "name": "desktop-1440",
+      "width": 1440,
+      "height": 900
+    },
+    "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\desktop-1440.png",
+    "messages": [
+      {
+        "type": "warning",
+        "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+      }
+    ],
+    "audit": {
+      "h1Count": 1,
+      "hasHorizontalScroll": false,
+      "scrollWidth": 1434,
+      "clientWidth": 1434,
+      "brokenImages": [],
+      "titleOverflow": true,
+      "leadOverflow": false,
+      "ctas": {
+        "left": 184,
+        "top": 512,
+        "right": 904,
+        "bottom": 587,
+        "width": 720,
+        "height": 75
+      },
+      "metric": {
+        "left": 982,
+        "top": 466,
+        "right": 1242,
+        "bottom": 587,
+        "width": 260,
+        "height": 121
+      },
+      "pagination": {
+        "left": 208,
+        "top": 573,
+        "right": 364,
+        "bottom": 617,
+        "width": 156,
+        "height": 44
+      },
+      "ctasVisible": true,
+      "metricOverlapsCtas": false,
+      "metricOverlapsPagination": false,
+      "anchorResults": [
+        {
+          "id": "servicios",
+          "top": 0,
+          "navBottom": -610,
+          "covered": false
+        },
+        {
+          "id": "flujo",
+          "top": -1,
+          "navBottom": -1510,
+          "covered": false
+        },
+        {
+          "id": "portal",
+          "top": -5,
+          "navBottom": -2162,
+          "covered": false
+        }
+      ]
+    }
+  },
+  {
+    "viewport": {
+      "name": "desktop-1920",
+      "width": 1920,
+      "height": 1080
+    },
+    "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\desktop-1920.png",
+    "messages": [
+      {
+        "type": "warning",
+        "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+      }
+    ],
+    "audit": {
+      "h1Count": 1,
+      "hasHorizontalScroll": false,
+      "scrollWidth": 1914,
+      "clientWidth": 1914,
+      "brokenImages": [],
+      "titleOverflow": true,
+      "leadOverflow": false,
+      "ctas": {
+        "left": 424,
+        "top": 598,
+        "right": 1144,
+        "bottom": 673,
+        "width": 720,
+        "height": 75
+      },
+      "metric": {
+        "left": 1222,
+        "top": 552,
+        "right": 1482,
+        "bottom": 673,
+        "width": 260,
+        "height": 121
+      },
+      "pagination": {
+        "left": 448,
+        "top": 659,
+        "right": 604,
+        "bottom": 703,
+        "width": 156,
+        "height": 44
+      },
+      "ctasVisible": true,
+      "metricOverlapsCtas": false,
+      "metricOverlapsPagination": false,
+      "anchorResults": [
+        {
+          "id": "servicios",
+          "top": 0,
+          "navBottom": -697,
+          "covered": false
+        },
+        {
+          "id": "flujo",
+          "top": -5,
+          "navBottom": -1596,
+          "covered": false
+        },
+        {
+          "id": "portal",
+          "top": -6,
+          "navBottom": -2249,
+          "covered": false
+        }
+      ]
+    }
+  }
+]

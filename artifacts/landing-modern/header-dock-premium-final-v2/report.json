@@ -1,0 +1,338 @@
+[
+  {
+    "name": "mobile-375",
+    "screenshotPath": null,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": true,
+      "noHeaderChildOverlap": true,
+      "stickyWorks": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    },
+    "anchors": [
+      {
+        "hash": "#servicios",
+        "top": 147.173095703125,
+        "headerBottom": 133,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "top": 147.531982421875,
+        "headerBottom": 133,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "top": 147.25830078125,
+        "headerBottom": 133,
+        "sticky": true,
+        "clear": true
+      }
+    ],
+    "base": {
+      "scrollWidth": 375,
+      "clientWidth": 375,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "y": 7.1875,
+        "h": 125.8125,
+        "bottom": 133
+      },
+      "login": {
+        "w": 44,
+        "h": 48.6875
+      },
+      "smallTargets": [],
+      "overlaps": []
+    }
+  },
+  {
+    "name": "mobile-390",
+    "screenshotPath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\header-dock-premium-final-v2\\mobile-390.png",
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": true,
+      "noHeaderChildOverlap": true,
+      "stickyWorks": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    },
+    "anchors": [
+      {
+        "hash": "#servicios",
+        "top": 147.1348876953125,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "top": 147.309814453125,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "top": 146.5234375,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      }
+    ],
+    "base": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "y": 7.1875,
+        "h": 124.53125,
+        "bottom": 131.71875
+      },
+      "login": {
+        "w": 82.59375,
+        "h": 44
+      },
+      "smallTargets": [],
+      "overlaps": []
+    }
+  },
+  {
+    "name": "mobile-430",
+    "screenshotPath": null,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": true,
+      "noHeaderChildOverlap": true,
+      "stickyWorks": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    },
+    "anchors": [
+      {
+        "hash": "#servicios",
+        "top": 146.7119140625,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "top": 146.569580078125,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "top": 147.4462890625,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      }
+    ],
+    "base": {
+      "scrollWidth": 430,
+      "clientWidth": 430,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "y": 7.1875,
+        "h": 124.53125,
+        "bottom": 131.71875
+      },
+      "login": {
+        "w": 82.59375,
+        "h": 44
+      },
+      "smallTargets": [],
+      "overlaps": []
+    }
+  },
+  {
+    "name": "tablet-768",
+    "screenshotPath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\header-dock-premium-final-v2\\tablet-768.png",
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": true,
+      "noHeaderChildOverlap": true,
+      "stickyWorks": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    },
+    "anchors": [
+      {
+        "hash": "#servicios",
+        "top": 147.147705078125,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "top": 147.303955078125,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "top": 146.4814453125,
+        "headerBottom": 131.71875,
+        "sticky": true,
+        "clear": true
+      }
+    ],
+    "base": {
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "y": 7.1875,
+        "h": 124.53125,
+        "bottom": 131.71875
+      },
+      "login": {
+        "w": 94.796875,
+        "h": 48
+      },
+      "smallTargets": [],
+      "overlaps": []
+    }
+  },
+  {
+    "name": "desktop-1366",
+    "screenshotPath": null,
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": true,
+      "noHeaderChildOverlap": true,
+      "stickyWorks": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    },
+    "anchors": [
+      {
+        "hash": "#servicios",
+        "top": 86.76031494140625,
+        "headerBottom": 76.609375,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "top": 87.3699951171875,
+        "headerBottom": 76.609375,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "top": 86.8046875,
+        "headerBottom": 76.609375,
+        "sticky": true,
+        "clear": true
+      }
+    ],
+    "base": {
+      "scrollWidth": 1360,
+      "clientWidth": 1360,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "y": 10.390625,
+        "h": 66.21875,
+        "bottom": 76.609375
+      },
+      "login": {
+        "w": 94.796875,
+        "h": 48
+      },
+      "smallTargets": [],
+      "overlaps": []
+    }
+  },
+  {
+    "name": "desktop-1440",
+    "screenshotPath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\header-dock-premium-final-v2\\desktop-1440.png",
+    "pass": {
+      "noHorizontalScroll": true,
+      "noBrokenImages": true,
+      "oneH1": true,
+      "headerVisible": true,
+      "ctaVisible": true,
+      "noSmallTargets": true,
+      "noHeaderChildOverlap": true,
+      "stickyWorks": true,
+      "anchorsClear": true,
+      "focusVisible": true
+    },
+    "anchors": [
+      {
+        "hash": "#servicios",
+        "top": 86.6494140625,
+        "headerBottom": 76.609375,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#flujo",
+        "top": 87.3046875,
+        "headerBottom": 76.609375,
+        "sticky": true,
+        "clear": true
+      },
+      {
+        "hash": "#portal",
+        "top": 86.9921875,
+        "headerBottom": 76.609375,
+        "sticky": true,
+        "clear": true
+      }
+    ],
+    "base": {
+      "scrollWidth": 1434,
+      "clientWidth": 1434,
+      "h1Count": 1,
+      "brokenImages": [],
+      "header": {
+        "y": 10.390625,
+        "h": 66.21875,
+        "bottom": 76.609375
+      },
+      "login": {
+        "w": 94.796875,
+        "h": 48
+      },
+      "smallTargets": [],
+      "overlaps": []
+    }
+  }
+]

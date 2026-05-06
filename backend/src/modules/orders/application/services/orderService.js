@@ -1,15 +1,51 @@
+import { getIgvFactor } from '../../../config/env.js';
+
 export const makeOrderService = ({ orderRepository }) => {
     const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
+    const igvFactor = getIgvFactor();
+
+    const notifyLabAdmins = async (type, title, message, link) => {
+        const admins = await orderRepository.getActiveLabUsers();
+        for (const admin of admins) {
+            await orderRepository.addNotification({
+                userId: admin.id,
+                type,
+                title,
+                message,
+                link
+            });
+        }
+    };
+
+    const notifyClinicUsers = async (clinicId, type, title, message, link) => {
+        const users = await orderRepository.getActiveClinicUsers({ clinicId });
+        for (const user of users) {
+            await orderRepository.addNotification({
+                userId: user.id,
+                type,
+                title,
+                message,
+                link
+            });
+        }
+    };
 
     return {
-    listOrders: ({ user, filters }) => orderRepository.listOrders({ user, filters }),
+    listOrders: async ({ user, filters }) => {
+        const rows = await orderRepository.listOrders({ user, filters });
+        return {
+            ok: true,
+            type: 'SUCCESS',
+            data: rows
+        };
+    },
     getOrderDetail: async ({ user, orderId }) => {
         const order = await orderRepository.getOrderBaseById({ orderId });
 
         if (!order) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
         }
@@ -19,7 +55,7 @@ export const makeOrderService = ({ orderRepository }) => {
             if (!canAccess) {
                 return {
                     ok: false,
-                    status: 403,
+                    type: 'FORBIDDEN',
                     error: 'No autorizado'
                 };
             }
@@ -33,7 +69,7 @@ export const makeOrderService = ({ orderRepository }) => {
 
         return {
             ok: true,
-            status: 200,
+            type: 'SUCCESS',
             data: {
                 ...order,
                 items,
@@ -43,26 +79,49 @@ export const makeOrderService = ({ orderRepository }) => {
         };
     },
     createOrder: async ({ actorUserId, body }) => {
-        const { clinica_id, paciente_nombre, fecha_entrega } = body || {};
+        const { clinica_id, paciente_nombre, fecha_entrega, items } = body || {};
         if (!clinica_id || !paciente_nombre || !fecha_entrega) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: 'Clínica, paciente y fecha de entrega son requeridos'
             };
         }
 
+        const total = Array.isArray(items)
+            ? items.reduce((sum, item) => sum + ((item.precio_unitario || 0) * (item.cantidad || 1)), 0)
+            : 0;
+        const subtotal = Number((total / igvFactor).toFixed(2));
+        const igv = Number((total - subtotal).toFixed(2));
+
         const created = await orderRepository.createOrder({
             orderInput: body,
+            totals: { total, subtotal, igv },
             actorUserId
         });
 
+        // Side effects
+        await orderRepository.addTimelineEntry({
+            orderId: created.pedido.id,
+            previousStatus: null,
+            nextStatus: 'pendiente',
+            userId: actorUserId,
+            comment: 'Pedido creado'
+        });
+
+        await notifyLabAdmins(
+            'nuevo_pedido',
+            'Nuevo Pedido Recibido',
+            `Pedido ${created.pedido.codigo} de ${paciente_nombre}`,
+            `/pedidos/${created.pedido.id}`
+        );
+
         return {
             ok: true,
-            status: 201,
+            type: 'CREATED',
             data: created.pedido,
             meta: {
-                total: created.totals.total,
+                total,
                 clinica_id,
                 paciente_nombre,
                 codigo: created.pedido.codigo
@@ -73,7 +132,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (user?.tipo === 'cliente') {
             return {
                 ok: false,
-                status: 403,
+                type: 'FORBIDDEN',
                 error: 'No autorizado'
             };
         }
@@ -82,7 +141,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (!estado) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: 'Estado es requerido'
             };
         }
@@ -90,7 +149,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (!statusFlow.includes(estado)) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: `Estado "${estado}" no válido`
             };
         }
@@ -99,7 +158,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (!current) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
         }
@@ -111,7 +170,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (isSameState && !(estado === 'esperando_aprobacion' && link_exocad)) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: 'El pedido ya está en ese estado'
             };
         }
@@ -129,21 +188,21 @@ export const makeOrderService = ({ orderRepository }) => {
             if (!validTransitions[current.estado]?.includes(estado) && !isForced) {
                 return {
                     ok: false,
-                    status: 400,
+                    type: 'BAD_REQUEST',
                     error: `Transición de "${current.estado}" a "${estado}" no permitida`
                 };
             }
             if (estado === 'esperando_aprobacion' && !link_exocad) {
                 return {
                     ok: false,
-                    status: 400,
+                    type: 'BAD_REQUEST',
                     error: 'Link de Exocad es requerido para aprobación'
                 };
             }
             if (isForced && (!comentario || !comentario.trim())) {
                 return {
                     ok: false,
-                    status: 400,
+                    type: 'BAD_REQUEST',
                     error: 'Motivo es requerido para forzar avance'
                 };
             }
@@ -151,7 +210,7 @@ export const makeOrderService = ({ orderRepository }) => {
             if (!comentario || !comentario.trim()) {
                 return {
                     ok: false,
-                    status: 400,
+                    type: 'BAD_REQUEST',
                     error: 'Motivo es requerido para retroceder estado'
                 };
             }
@@ -161,23 +220,51 @@ export const makeOrderService = ({ orderRepository }) => {
             orderId,
             estado,
             sub_estado,
-            comentario,
-            responsable_id,
-            link_exocad,
-            actorUserId: user.id
+            responsable_id
         });
 
         if (updated.notFound) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
         }
 
+        // If transitioning to "esperando_aprobacion", we must create the approval link
+        if (estado === 'esperando_aprobacion' && link_exocad) {
+            await orderRepository.createOrderApprovalLink({
+                orderId,
+                link_exocad
+            });
+        }
+
+        // Add timeline entry
+        await orderRepository.addTimelineEntry({
+            orderId,
+            previousStatus: updated.previousOrder.estado,
+            nextStatus: estado,
+            userId: user.id,
+            comment: comentario || (isSameState ? 'Actualización de diseño' : `Cambio a ${estado}`)
+        });
+
+        // Notifications
+        const clientNotifMap = {
+            en_diseno: { tipo: 'estado_diseno', titulo: 'Pedido en Diseño', mensaje: `Tu pedido ${current.codigo} ha comenzado el proceso de diseño.` },
+            esperando_aprobacion: { tipo: 'aprobacion', titulo: '⭐ Diseño listo para aprobar', mensaje: `Pedido ${current.codigo} tiene un diseño listo para que lo revises.` },
+            en_produccion: { tipo: 'estado_produccion', titulo: 'Pedido en Producción', mensaje: `Tu pedido ${current.codigo} ha pasado a la etapa de producción.` },
+            terminado: { tipo: 'estado_terminado', titulo: '✅ Pedido Terminado', mensaje: `Tu pedido ${current.codigo} está listo. Pronto será enviado.` },
+            enviado: { tipo: 'enviado', titulo: '🚀 Pedido Enviado', mensaje: `Tu pedido ${current.codigo} ha sido enviado. ¡Gracias por confiar en nosotros!` }
+        };
+
+        const notifInfo = clientNotifMap[estado];
+        if (notifInfo) {
+            await notifyClinicUsers(current.clinica_id, notifInfo.tipo, notifInfo.titulo, notifInfo.mensaje, `/pedidos/${orderId}`);
+        }
+
         return {
             ok: true,
-            status: 200,
+            type: 'SUCCESS',
             data: updated.pedido,
             meta: {
                 estado_anterior: updated.previousOrder.estado,
@@ -191,7 +278,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (user?.tipo === 'cliente') {
             return {
                 ok: false,
-                status: 403,
+                type: 'FORBIDDEN',
                 error: 'No autorizado'
             };
         }
@@ -200,29 +287,35 @@ export const makeOrderService = ({ orderRepository }) => {
         if (!link_exocad) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: 'Link de Exocad es requerido'
             };
         }
 
         const result = await orderRepository.createOrderApprovalLink({
             orderId,
-            link_exocad,
-            actorUserId: user.id,
-            comentario
+            link_exocad
         });
 
         if (result.notFound) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
         }
 
+        await orderRepository.addTimelineEntry({
+            orderId,
+            previousStatus: null,
+            nextStatus: null,
+            userId: user.id,
+            comment: comentario || 'Nuevo link de aprobación generado'
+        });
+
         return {
             ok: true,
-            status: 201,
+            type: 'CREATED',
             data: result.approval
         };
     },
@@ -230,7 +323,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (user?.tipo === 'cliente') {
             return {
                 ok: false,
-                status: 403,
+                type: 'FORBIDDEN',
                 error: 'No autorizado'
             };
         }
@@ -238,15 +331,13 @@ export const makeOrderService = ({ orderRepository }) => {
         const { responsable_id, comentario } = body || {};
         const result = await orderRepository.updateOrderResponsible({
             orderId,
-            responsable_id,
-            actorUserId: user.id,
-            comentario
+            responsable_id
         });
 
         if (result.invalidResponsible) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: 'Responsable no valido'
             };
         }
@@ -254,14 +345,22 @@ export const makeOrderService = ({ orderRepository }) => {
         if (result.notFound) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
         }
 
+        await orderRepository.addTimelineEntry({
+            orderId,
+            previousStatus: null,
+            nextStatus: null,
+            userId: user.id,
+            comment: comentario || `Responsable asignado: ${result.pedido.responsable_id || 'Ninguno'}`
+        });
+
         return {
             ok: true,
-            status: 200,
+            type: 'SUCCESS',
             data: result.pedido
         };
     },
@@ -269,7 +368,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (user?.tipo === 'cliente') {
             return {
                 ok: false,
-                status: 403,
+                type: 'FORBIDDEN',
                 error: 'No autorizado'
             };
         }
@@ -278,29 +377,49 @@ export const makeOrderService = ({ orderRepository }) => {
         if (!fecha_entrega) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: 'Fecha de entrega requerida'
             };
         }
 
         const result = await orderRepository.updateOrderDeliveryDate({
             orderId,
-            fecha_entrega,
-            actorUserId: user.id,
-            comentario
+            fecha_entrega
         });
 
         if (result.notFound) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
         }
 
+        const fechaFormateada = new Date(fecha_entrega).toLocaleDateString('es-PE', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+
+        await notifyClinicUsers(
+            result.pedido.clinica_id,
+            'fecha_actualizada',
+            '📅 Fecha de entrega actualizada',
+            `La fecha de entrega de ${result.pedido.codigo} fue actualizada al ${fechaFormateada}.`,
+            `/pedidos/${result.pedido.id}`
+        );
+
+        await orderRepository.addTimelineEntry({
+            orderId,
+            previousStatus: null,
+            nextStatus: null,
+            userId: user.id,
+            comment: comentario || `Nueva fecha de entrega: ${fechaFormateada}`
+        });
+
         return {
             ok: true,
-            status: 200,
+            type: 'SUCCESS',
             data: result.pedido
         };
     },
@@ -308,7 +427,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (user?.tipo !== 'cliente') {
             return {
                 ok: false,
-                status: 403,
+                type: 'FORBIDDEN',
                 error: 'No autorizado'
             };
         }
@@ -317,7 +436,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (!['aprobado', 'ajuste_solicitado'].includes(estado)) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: 'Estado de aprobacion no valido'
             };
         }
@@ -326,7 +445,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (estado === 'ajuste_solicitado' && !comentarioCliente) {
             return {
                 ok: false,
-                status: 400,
+                type: 'BAD_REQUEST',
                 error: 'Comentario de ajustes requerido'
             };
         }
@@ -335,7 +454,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (!order) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
         }
@@ -344,7 +463,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (!canAccess) {
             return {
                 ok: false,
-                status: 403,
+                type: 'FORBIDDEN',
                 error: 'No autorizado'
             };
         }
@@ -360,7 +479,7 @@ export const makeOrderService = ({ orderRepository }) => {
         if (result.notFound) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
         }
@@ -368,14 +487,41 @@ export const makeOrderService = ({ orderRepository }) => {
         if (result.approvalNotFound) {
             return {
                 ok: false,
-                status: 404,
+                type: 'NOT_FOUND',
                 error: 'Aprobacion no encontrada'
             };
         }
 
+        // Notifications
+        if (estado === 'aprobado') {
+            await notifyLabAdmins(
+                'aprobacion_aprobada',
+                'Diseño aprobado',
+                `Cliente aprobó el diseño de ${result.pedido.codigo}`,
+                `/pedidos/${result.pedido.id}`
+            );
+        } else if (estado === 'ajuste_solicitado') {
+            await notifyLabAdmins(
+                'ajuste_solicitado',
+                'Ajustes solicitados',
+                `Cliente solicitó ajustes para ${result.pedido.codigo}`,
+                `/pedidos/${result.pedido.id}`
+            );
+        }
+
+        // Add timeline entry
+        await orderRepository.addTimelineEntry({
+            orderId,
+            previousStatus: order.estado,
+            nextStatus: order.estado, // El estado del pedido no cambia automáticamente aquí según la lógica previa, 
+                                      // pero se registra la respuesta
+            userId: user.id,
+            comment: `Diseño ${estado === 'aprobado' ? 'APROBADO' : 'CON AJUSTES'}. ${comentarioCliente}`
+        });
+
         return {
             ok: true,
-            status: 200,
+            type: 'SUCCESS',
             data: result.approval
         };
     }

@@ -1,21 +1,30 @@
 import { writeAuditEvent } from '../../../../services/audit.js';
 
 const sendServiceResult = (res, result) => {
+    const typeToStatus = {
+        'SUCCESS': 200,
+        'CREATED': 201,
+        'BAD_REQUEST': 400,
+        'UNAUTHORIZED': 401,
+        'FORBIDDEN': 403,
+        'NOT_FOUND': 404,
+        'CONFLICT': 409,
+        'INTERNAL_ERROR': 500
+    };
+
+    const status = typeToStatus[result.type] || (result.ok ? 200 : 500);
+
     if (!result.ok) {
-        return res.status(result.status).json({ error: result.error });
+        return res.status(status).json({ error: result.error || 'Ocurrió un error inesperado' });
     }
 
-    if (result.status === 201) {
-        return res.status(201).json(result.data);
-    }
-
-    return res.json(result.data);
+    return res.status(status).json(result.data);
 };
 
 export const makeOrderController = ({ orderService }) => ({
     listOrders: async (req, res, next) => {
         try {
-            const rows = await orderService.listOrders({
+            const result = await orderService.listOrders({
                 user: req.user,
                 filters: {
                     estado: req.query.estado,
@@ -24,8 +33,8 @@ export const makeOrderController = ({ orderService }) => ({
                     responsable_id: req.query.responsable_id
                 }
             });
-
-            res.json(rows);
+            
+            return sendServiceResult(res, result);
         } catch (error) {
             next(error);
         }

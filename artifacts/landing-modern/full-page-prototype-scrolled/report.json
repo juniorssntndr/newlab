@@ -1,0 +1,103 @@
+[
+  {
+    "viewport": {
+      "name": "desktop-full-1440",
+      "width": 1440,
+      "height": 900
+    },
+    "filePath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\full-page-prototype-scrolled\\desktop-full-1440.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "url": "http://localhost:5173/",
+      "scrollWidth": 1434,
+      "clientWidth": 1434,
+      "scrollHeight": 4735,
+      "h1Count": 1,
+      "brokenImages": [],
+      "visibleSections": [
+        {
+          "id": "inicio",
+          "height": 610,
+          "text": "CAD/CAM de alta precisionControl digital en cada restauracion, desde el primer a"
+        },
+        {
+          "id": "servicios",
+          "height": 866,
+          "text": "Catalogo interactivoServicios digitales con trazabilidad clinica real.Desliza ho"
+        },
+        {
+          "id": "flujo",
+          "height": 654,
+          "text": "Flujo digitalDel archivo clinico a la entrega, cada paso queda visible.Avance de"
+        },
+        {
+          "id": "portal",
+          "height": 1192,
+          "text": "Portal para clinicasPortal clinico para controlar ordenes.Los odontologos pueden"
+        },
+        {
+          "id": "nosotros",
+          "height": 694,
+          "text": "NosotrosLaboratorio digital con control total.Affinix LAB conecta criterio clini"
+        },
+        {
+          "id": "affinix-footer affinix-final-cta",
+          "height": 321,
+          "text": "Agenda tu flujo digitalConvierte cada pedido en un proceso visibleCalidad, preci"
+        }
+      ]
+    },
+    "horizontalScroll": false
+  },
+  {
+    "viewport": {
+      "name": "mobile-full-390",
+      "width": 390,
+      "height": 844,
+      "isMobile": true
+    },
+    "filePath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\full-page-prototype-scrolled\\mobile-full-390.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "url": "http://localhost:5173/",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 7627,
+      "h1Count": 1,
+      "brokenImages": [],
+      "visibleSections": [
+        {
+          "id": "inicio",
+          "height": 679,
+          "text": "CAD/CAM de alta precisionControl digital en cada restauracion, desde el primer a"
+        },
+        {
+          "id": "servicios",
+          "height": 975,
+          "text": "Catalogo interactivoServicios digitales con trazabilidad clinica real.Desliza ho"
+        },
+        {
+          "id": "flujo",
+          "height": 1181,
+          "text": "Flujo digitalDel archivo clinico a la entrega, cada paso queda visible.Avance de"
+        },
+        {
+          "id": "portal",
+          "height": 1779,
+          "text": "Portal para clinicasPortal clinico para controlar ordenes.Los odontologos pueden"
+        },
+        {
+          "id": "nosotros",
+          "height": 1684,
+          "text": "NosotrosLaboratorio digital con control total.Affinix LAB conecta criterio clini"
+        },
+        {
+          "id": "affinix-footer affinix-final-cta",
+          "height": 402,
+          "text": "Agenda tu flujo digitalConvierte cada pedido en un proceso visibleCalidad, preci"
+        }
+      ]
+    },
+    "horizontalScroll": false
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "viewport": {
+      "name": "desktop-full-1440",
+      "width": 1440,
+      "height": 900
+    },
+    "filePath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\full-page-prototype-final-v2\\desktop-full-1440.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 1434,
+      "clientWidth": 1434,
+      "scrollHeight": 4735,
+      "h1Count": 1,
+      "brokenImages": [],
+      "serviceCardsVisible": 6,
+      "serviceCardsVisibleInFrame": 5
+    },
+    "horizontalScroll": false
+  },
+  {
+    "viewport": {
+      "name": "mobile-full-390",
+      "width": 390,
+      "height": 844,
+      "isMobile": true
+    },
+    "filePath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\full-page-prototype-final-v2\\mobile-full-390.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 7627,
+      "h1Count": 1,
+      "brokenImages": [],
+      "serviceCardsVisible": 6,
+      "serviceCardsVisibleInFrame": 3
+    },
+    "horizontalScroll": false
+  }
+]

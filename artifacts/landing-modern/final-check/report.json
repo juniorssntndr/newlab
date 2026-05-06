@@ -1,0 +1,156 @@
+{
+  "results": [
+    {
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\final-check\\mobile-390.png",
+      "messages": [
+        {
+          "type": "warning",
+          "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+        }
+      ],
+      "audit": {
+        "h1Count": 1,
+        "hasHorizontalScroll": false,
+        "brokenImages": 0,
+        "titleOverflow": false,
+        "leadOverflow": false,
+        "ctas": {
+          "left": 31,
+          "top": 525,
+          "right": 353,
+          "bottom": 647,
+          "width": 323,
+          "height": 122
+        },
+        "metric": {
+          "left": 31,
+          "top": 669,
+          "right": 353,
+          "bottom": 728,
+          "width": 323,
+          "height": 59
+        },
+        "pagination": {
+          "left": 114,
+          "top": 778,
+          "right": 270,
+          "bottom": 822,
+          "width": 156,
+          "height": 44
+        },
+        "badgeColor": "rgb(11, 91, 124)",
+        "badgeBackground": "rgba(16, 215, 255, 0.16)",
+        "metricOverlapsCtas": false,
+        "metricOverlapsPagination": false
+      }
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\final-check\\tablet-768.png",
+      "messages": [
+        {
+          "type": "warning",
+          "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+        }
+      ],
+      "audit": {
+        "h1Count": 1,
+        "hasHorizontalScroll": false,
+        "brokenImages": 0,
+        "titleOverflow": false,
+        "leadOverflow": false,
+        "ctas": {
+          "left": 51,
+          "top": 377,
+          "right": 711,
+          "bottom": 452,
+          "width": 660,
+          "height": 75
+        },
+        "metric": {
+          "left": 51,
+          "top": 486,
+          "right": 371,
+          "bottom": 588,
+          "width": 320,
+          "height": 102
+        },
+        "pagination": {
+          "left": 63,
+          "top": 709,
+          "right": 219,
+          "bottom": 753,
+          "width": 156,
+          "height": 44
+        },
+        "badgeColor": "rgb(11, 91, 124)",
+        "badgeBackground": "rgba(16, 215, 255, 0.16)",
+        "metricOverlapsCtas": false,
+        "metricOverlapsPagination": false
+      }
+    },
+    {
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "screenshot": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\final-check\\desktop-1440.png",
+      "messages": [
+        {
+          "type": "warning",
+          "text": "Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly."
+        }
+      ],
+      "audit": {
+        "h1Count": 1,
+        "hasHorizontalScroll": false,
+        "brokenImages": 0,
+        "titleOverflow": false,
+        "leadOverflow": false,
+        "ctas": {
+          "left": 184,
+          "top": 512,
+          "right": 904,
+          "bottom": 587,
+          "width": 720,
+          "height": 75
+        },
+        "metric": {
+          "left": 982,
+          "top": 466,
+          "right": 1242,
+          "bottom": 587,
+          "width": 260,
+          "height": 121
+        },
+        "pagination": {
+          "left": 208,
+          "top": 573,
+          "right": 364,
+          "bottom": 617,
+          "width": 156,
+          "height": 44
+        },
+        "badgeColor": "rgb(11, 91, 124)",
+        "badgeBackground": "rgba(16, 215, 255, 0.16)",
+        "metricOverlapsCtas": false,
+        "metricOverlapsPagination": false
+      }
+    }
+  ],
+  "reducedAudit": {
+    "partnerAnimation": "none",
+    "heroAutoplayRunning": false,
+    "serviceAutoplayRunning": false
+  }
+}

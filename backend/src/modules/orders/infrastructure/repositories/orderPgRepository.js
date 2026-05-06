@@ -75,7 +75,7 @@ export const makeOrderPgRepository = ({ pool }) => ({
 
         return result.rows;
     },
-    createOrder: async ({ orderInput, actorUserId }) => {
+    createOrder: async ({ orderInput, totals, actorUserId }) => {
         const {
             clinica_id,
             paciente_nombre,
@@ -85,15 +85,11 @@ export const makeOrderPgRepository = ({ pool }) => ({
             items
         } = orderInput;
 
+        const { total, subtotal, igv } = totals;
+
         const nextIdResult = await pool.query("SELECT nextval(pg_get_serial_sequence('nl_pedidos','id')) as id");
         const nextPedidoId = Number.parseInt(nextIdResult.rows[0].id, 10);
         const codigo = `NL-${String(nextPedidoId).padStart(5, '0')}`;
-
-        const total = Array.isArray(items)
-            ? items.reduce((sum, item) => sum + ((item.precio_unitario || 0) * (item.cantidad || 1)), 0)
-            : 0;
-        const subtotal = Number((total / 1.18).toFixed(2));
-        const igv = Number((total - subtotal).toFixed(2));
 
         const client = await pool.connect();
 
@@ -149,21 +145,6 @@ export const makeOrderPgRepository = ({ pool }) => ({
                 }
             }
 
-            await client.query(
-                `INSERT INTO nl_pedido_timeline (pedido_id, estado_nuevo, usuario_id, comentario)
-                 VALUES ($1, 'pendiente', $2, 'Pedido creado')`,
-                [pedido.id, actorUserId]
-            );
-
-            const admins = await client.query("SELECT id FROM nl_usuarios WHERE tipo IN ('admin','tecnico') AND estado='activo'");
-            for (const admin of admins.rows) {
-                await client.query(
-                    `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
-                     VALUES ($1, 'nuevo_pedido', 'Nuevo Pedido Recibido', $2, $3)`,
-                    [admin.id, `Pedido ${codigo} de ${paciente_nombre}`, `/pedidos/${pedido.id}`]
-                );
-            }
-
             await client.query('COMMIT');
 
             return {
@@ -181,7 +162,7 @@ export const makeOrderPgRepository = ({ pool }) => ({
             client.release();
         }
     },
-    updateOrderStatus: async ({ orderId, estado, sub_estado, comentario, responsable_id, link_exocad, actorUserId }) => {
+    updateOrderStatus: async ({ orderId, estado, sub_estado, responsable_id }) => {
         const current = await pool.query('SELECT * FROM nl_pedidos WHERE id = $1', [orderId]);
         if (current.rows.length === 0) {
             return { notFound: true };
@@ -207,52 +188,13 @@ export const makeOrderPgRepository = ({ pool }) => ({
         const updated = await pool.query(updateQuery, updateParams);
         const pedido = updated.rows[0];
 
-        if (estado === 'esperando_aprobacion' && link_exocad) {
-            await pool.query(
-                'INSERT INTO nl_pedido_aprobaciones (pedido_id, link_exocad) VALUES ($1, $2)',
-                [orderId, link_exocad]
-            );
-        }
-
-        const timelineComment = comentario || (estado === 'esperando_aprobacion' && link_exocad ? 'Diseno enviado a aprobacion' : null);
-
-        await pool.query(
-            `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [orderId, previousOrder.estado, estado, actorUserId, timelineComment]
-        );
-
-        const clientNotifMap = {
-            en_diseno: { tipo: 'estado_diseno', titulo: 'Pedido en Diseño', mensaje: `Tu pedido ${previousOrder.codigo} ha comenzado el proceso de diseño.` },
-            esperando_aprobacion: { tipo: 'aprobacion', titulo: '⭐ Diseño listo para aprobar', mensaje: `Pedido ${previousOrder.codigo} tiene un diseño listo para que lo revises.` },
-            en_produccion: { tipo: 'estado_produccion', titulo: 'Pedido en Producción', mensaje: `Tu pedido ${previousOrder.codigo} ha pasado a la etapa de producción.` },
-            terminado: { tipo: 'estado_terminado', titulo: '✅ Pedido Terminado', mensaje: `Tu pedido ${previousOrder.codigo} está listo. Pronto será enviado.` },
-            enviado: { tipo: 'enviado', titulo: '🚀 Pedido Enviado', mensaje: `Tu pedido ${previousOrder.codigo} ha sido enviado. ¡Gracias por confiar en nosotros!` }
-        };
-
-        const notifInfo = clientNotifMap[estado];
-        if (notifInfo) {
-            const clientUsers = await pool.query(
-                "SELECT id FROM nl_usuarios WHERE clinica_id = $1 AND tipo = 'cliente' AND estado = 'activo'",
-                [previousOrder.clinica_id]
-            );
-
-            for (const clientUser of clientUsers.rows) {
-                await pool.query(
-                    `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
-                     VALUES ($1, $2, $3, $4, $5)`,
-                    [clientUser.id, notifInfo.tipo, notifInfo.titulo, notifInfo.mensaje, `/pedidos/${orderId}`]
-                );
-            }
-        }
-
         return {
             notFound: false,
             pedido,
             previousOrder
         };
     },
-    createOrderApprovalLink: async ({ orderId, link_exocad, actorUserId, comentario }) => {
+    createOrderApprovalLink: async ({ orderId, link_exocad }) => {
         const pedidoResult = await pool.query('SELECT id FROM nl_pedidos WHERE id = $1', [orderId]);
         if (pedidoResult.rows.length === 0) {
             return { notFound: true };
@@ -263,20 +205,12 @@ export const makeOrderPgRepository = ({ pool }) => ({
             [orderId, link_exocad]
         );
 
-        await pool.query(
-            `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
-             VALUES ($1, 'esperando_aprobacion', 'esperando_aprobacion', $2, $3)`,
-            [orderId, actorUserId, comentario || 'Link de diseno actualizado']
-        );
-
         return {
             notFound: false,
             approval: result.rows[0]
         };
     },
-    updateOrderResponsible: async ({ orderId, responsable_id, actorUserId, comentario }) => {
-        let responsableNombre = null;
-
+    updateOrderResponsible: async ({ orderId, responsable_id }) => {
         if (responsable_id) {
             const responsable = await pool.query(
                 "SELECT id, nombre FROM nl_usuarios WHERE id = $1 AND tipo IN ('admin','tecnico') AND estado = 'activo'",
@@ -286,8 +220,6 @@ export const makeOrderPgRepository = ({ pool }) => ({
             if (responsable.rows.length === 0) {
                 return { invalidResponsible: true };
             }
-
-            responsableNombre = responsable.rows[0].nombre;
         }
 
         const result = await pool.query(
@@ -299,22 +231,13 @@ export const makeOrderPgRepository = ({ pool }) => ({
             return { notFound: true };
         }
 
-        const pedido = result.rows[0];
-        const timelineComment = comentario || (responsableNombre ? `Responsable asignado: ${responsableNombre}` : 'Responsable liberado');
-
-        await pool.query(
-            `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [orderId, pedido.estado, pedido.estado, actorUserId, timelineComment]
-        );
-
         return {
             notFound: false,
             invalidResponsible: false,
-            pedido
+            pedido: result.rows[0]
         };
     },
-    updateOrderDeliveryDate: async ({ orderId, fecha_entrega, actorUserId, comentario }) => {
+    updateOrderDeliveryDate: async ({ orderId, fecha_entrega }) => {
         const result = await pool.query(
             'UPDATE nl_pedidos SET fecha_entrega = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
             [fecha_entrega, orderId]
@@ -324,49 +247,16 @@ export const makeOrderPgRepository = ({ pool }) => ({
             return { notFound: true };
         }
 
-        const pedido = result.rows[0];
-
-        await pool.query(
-            `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [orderId, pedido.estado, pedido.estado, actorUserId, comentario || 'Fecha de entrega actualizada']
-        );
-
-        const fechaFormateada = new Date(fecha_entrega).toLocaleDateString('es-PE', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        });
-
-        const clientUsers = await pool.query(
-            "SELECT id FROM nl_usuarios WHERE clinica_id = $1 AND tipo = 'cliente' AND estado = 'activo'",
-            [pedido.clinica_id]
-        );
-
-        for (const clientUser of clientUsers.rows) {
-            await pool.query(
-                `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
-                 VALUES ($1, 'fecha_actualizada', '📅 Fecha de entrega actualizada', $2, $3)`,
-                [
-                    clientUser.id,
-                    `La fecha de entrega de ${pedido.codigo} fue actualizada al ${fechaFormateada}.`,
-                    `/pedidos/${pedido.id}`
-                ]
-            );
-        }
-
         return {
             notFound: false,
-            pedido
+            pedido: result.rows[0]
         };
     },
-    respondOrderApproval: async ({ orderId, approvalId, estado, comentarioCliente, actorUserId }) => {
-        const pedidoResult = await pool.query('SELECT id, codigo, clinica_id FROM nl_pedidos WHERE id = $1', [orderId]);
+    respondOrderApproval: async ({ orderId, approvalId, estado, comentarioCliente }) => {
+        const pedidoResult = await pool.query('SELECT id, codigo, clinica_id, estado FROM nl_pedidos WHERE id = $1', [orderId]);
         if (pedidoResult.rows.length === 0) {
             return { notFound: true };
         }
-
-        const pedido = pedidoResult.rows[0];
 
         const result = await pool.query(
             `UPDATE nl_pedido_aprobaciones SET estado=$1, comentario_cliente=$2, respondido_at=NOW()
@@ -378,49 +268,42 @@ export const makeOrderPgRepository = ({ pool }) => ({
             return {
                 notFound: false,
                 approvalNotFound: true,
-                pedido
+                pedido: pedidoResult.rows[0]
             };
-        }
-
-        const labUsers = await pool.query("SELECT id FROM nl_usuarios WHERE tipo IN ('admin','tecnico') AND estado='activo'");
-
-        if (estado === 'aprobado') {
-            await pool.query("UPDATE nl_pedidos SET estado='en_produccion', updated_at=NOW() WHERE id=$1", [orderId]);
-            await pool.query(
-                `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
-                 VALUES ($1, 'esperando_aprobacion', 'en_produccion', $2, 'Diseño aprobado por el cliente')`,
-                [orderId, actorUserId]
-            );
-
-            for (const labUser of labUsers.rows) {
-                await pool.query(
-                    `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
-                     VALUES ($1, 'aprobacion_aprobada', 'Diseño aprobado', $2, $3)`,
-                    [labUser.id, `Cliente aprobó el diseño de ${pedido.codigo}`, `/pedidos/${pedido.id}`]
-                );
-            }
-        } else if (estado === 'ajuste_solicitado') {
-            await pool.query("UPDATE nl_pedidos SET estado='en_diseno', updated_at=NOW() WHERE id=$1", [orderId]);
-            await pool.query(
-                `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
-                 VALUES ($1, 'esperando_aprobacion', 'en_diseno', $2, $3)`,
-                [orderId, actorUserId, `Ajuste solicitado: ${comentarioCliente}`]
-            );
-
-            for (const labUser of labUsers.rows) {
-                await pool.query(
-                    `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
-                     VALUES ($1, 'ajuste_solicitado', 'Ajustes solicitados', $2, $3)`,
-                    [labUser.id, `Cliente solicitó ajustes para ${pedido.codigo}`, `/pedidos/${pedido.id}`]
-                );
-            }
         }
 
         return {
             notFound: false,
             approvalNotFound: false,
-            pedido,
+            pedido: pedidoResult.rows[0],
             approval: result.rows[0]
         };
+    },
+    addTimelineEntry: async ({ orderId, previousStatus, nextStatus, userId, comment }) => {
+        await pool.query(
+            `INSERT INTO nl_pedido_timeline (pedido_id, estado_anterior, estado_nuevo, usuario_id, comentario)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [orderId, previousStatus, nextStatus, userId, comment]
+        );
+    },
+    addNotification: async ({ userId, type, title, message, link }) => {
+        await pool.query(
+            `INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [userId, type, title, message, link]
+        );
+    },
+    getActiveLabUsers: async () => {
+        const result = await pool.query(
+            "SELECT id FROM nl_usuarios WHERE tipo IN ('admin','tecnico') AND estado='activo'"
+        );
+        return result.rows;
+    },
+    getActiveClinicUsers: async ({ clinicId }) => {
+        const result = await pool.query(
+            "SELECT id FROM nl_usuarios WHERE clinica_id = $1 AND tipo = 'cliente' AND estado = 'activo'",
+            [clinicId]
+        );
+        return result.rows;
     }
 });

@@ -1,0 +1,139 @@
+[
+  {
+    "viewport": {
+      "name": "desktop-full-1440",
+      "width": 1440,
+      "height": 900
+    },
+    "filePath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\full-page-prototype-final\\desktop-full-1440.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 1434,
+      "clientWidth": 1434,
+      "scrollHeight": 4735,
+      "h1Count": 1,
+      "brokenImages": [],
+      "serviceCardsVisibleAfterReturnTop": 4,
+      "serviceCards": [
+        {
+          "text": "ZIR-MONOZirconia monoliticaResis",
+          "opacity": "1",
+          "x": -272,
+          "y": 1016,
+          "w": 383,
+          "h": 440
+        },
+        {
+          "text": "E.MAX-CADDisilicato / e.maxEstet",
+          "opacity": "1",
+          "x": 127,
+          "y": 1016,
+          "w": 383,
+          "h": 440
+        },
+        {
+          "text": "SURG-GUIDEGuias quirurgicasPlani",
+          "opacity": "1",
+          "x": 526,
+          "y": 1016,
+          "w": 383,
+          "h": 440
+        },
+        {
+          "text": "HYB-CAMProtesis hibridasEstructu",
+          "opacity": "1",
+          "x": 924,
+          "y": 1016,
+          "w": 383,
+          "h": 440
+        },
+        {
+          "text": "CROWN-BRIDGECoronas y puentesPro",
+          "opacity": "0",
+          "x": 1323,
+          "y": 1038,
+          "w": 383,
+          "h": 440
+        },
+        {
+          "text": "CAD-REVIEWDiseno digital 3DRevis",
+          "opacity": "0",
+          "x": 1722,
+          "y": 1038,
+          "w": 383,
+          "h": 440
+        }
+      ]
+    },
+    "horizontalScroll": false
+  },
+  {
+    "viewport": {
+      "name": "mobile-full-390",
+      "width": 390,
+      "height": 844,
+      "isMobile": true
+    },
+    "filePath": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\full-page-prototype-final\\mobile-full-390.png",
+    "metrics": {
+      "title": "Affinix LAB | Laboratorio Dental Digital",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 7627,
+      "h1Count": 1,
+      "brokenImages": [],
+      "serviceCardsVisibleAfterReturnTop": 2,
+      "serviceCards": [
+        {
+          "text": "ZIR-MONOZirconia monoliticaResis",
+          "opacity": "1",
+          "x": -696,
+          "y": 1143,
+          "w": 342,
+          "h": 594
+        },
+        {
+          "text": "E.MAX-CADDisilicato / e.maxEstet",
+          "opacity": "1",
+          "x": -338,
+          "y": 1143,
+          "w": 342,
+          "h": 594
+        },
+        {
+          "text": "SURG-GUIDEGuias quirurgicasPlani",
+          "opacity": "0",
+          "x": 20,
+          "y": 1165,
+          "w": 342,
+          "h": 620
+        },
+        {
+          "text": "HYB-CAMProtesis hibridasEstructu",
+          "opacity": "0",
+          "x": 378,
+          "y": 1165,
+          "w": 342,
+          "h": 594
+        },
+        {
+          "text": "CROWN-BRIDGECoronas y puentesPro",
+          "opacity": "0",
+          "x": 736,
+          "y": 1165,
+          "w": 342,
+          "h": 594
+        },
+        {
+          "text": "CAD-REVIEWDiseno digital 3DRevis",
+          "opacity": "0",
+          "x": 1094,
+          "y": 1165,
+          "w": 342,
+          "h": 620
+        }
+      ]
+    },
+    "horizontalScroll": false
+  }
+]

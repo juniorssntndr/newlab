@@ -1,0 +1,71 @@
+[
+  {
+    "viewport": "mobile-390",
+    "image": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\fullwidth-footer-check\\mobile-390.png",
+    "metrics": {
+      "root": {
+        "w": 390
+      },
+      "hero": {
+        "x": 10.515625,
+        "w": 368.9375
+      },
+      "section": {
+        "x": 10.515625,
+        "w": 368.9375
+      },
+      "footerBasic": {
+        "x": 10.515625,
+        "w": 368.9375,
+        "h": 168.875
+      },
+      "horizontalScroll": false
+    }
+  },
+  {
+    "viewport": "tablet-768",
+    "image": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\fullwidth-footer-check\\tablet-768.png",
+    "metrics": {
+      "root": {
+        "w": 768
+      },
+      "hero": {
+        "x": 21.5,
+        "w": 724.984375
+      },
+      "section": {
+        "x": 21.5,
+        "w": 724.984375
+      },
+      "footerBasic": {
+        "x": 21.5,
+        "w": 724.984375,
+        "h": 168.875
+      },
+      "horizontalScroll": false
+    }
+  },
+  {
+    "viewport": "desktop-1440",
+    "image": "D:\\Archivos personales\\Antigravity\\NEWLAB\\artifacts\\landing-modern\\fullwidth-footer-check\\desktop-1440.png",
+    "metrics": {
+      "root": {
+        "w": 1434
+      },
+      "hero": {
+        "x": 40.3125,
+        "w": 1353.359375
+      },
+      "section": {
+        "x": 40.3125,
+        "w": 1353.359375
+      },
+      "footerBasic": {
+        "x": 40.3125,
+        "w": 1353.359375,
+        "h": 72.375
+      },
+      "horizontalScroll": false
+    }
+  }
+]

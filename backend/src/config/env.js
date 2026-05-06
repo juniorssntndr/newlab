@@ -54,4 +54,6 @@ const parseBooleanEnv = (rawValue, variableName, defaultValue = false) => {
 
 export const getUseNewBillingAcl = () => parseBooleanEnv(process.env.USE_NEW_BILLING_ACL, 'USE_NEW_BILLING_ACL', false);
 
+export const getIgvFactor = () => parseFloat(process.env.IGV_FACTOR || '1.18');
+
 export const isProd = () => isProduction;
