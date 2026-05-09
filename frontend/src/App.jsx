@@ -5,7 +5,7 @@ import { useAuth } from './state/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import { canAccessFinancialModules, isAdminRole, isClientRole } from './utils/accessControl.js';
 import Login from './pages/Login.jsx';
-import AffinixLanding from './pages/AffinixLanding.jsx';
+import AfinixLanding from './pages/AfinixLanding.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Clinicas from './pages/Clinicas.jsx';
 import Productos from './pages/Productos.jsx';
@@ -66,7 +66,7 @@ const App = () => {
         <>
             <Toaster position="top-right" />
             <Routes>
-                <Route path="/" element={<AffinixLanding />} />
+                <Route path="/" element={<AfinixLanding />} />
                 <Route path="/login" element={<Login />} />
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />

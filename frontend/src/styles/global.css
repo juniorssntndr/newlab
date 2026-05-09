@@ -3,15 +3,15 @@
 /* Premium Dental Lab Platform                   */
 /* ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* Primary - Dental Teal */
-  --color-primary: #0891B2;
-  --color-primary-hover: #0E7490;
-  --color-primary-light: #CFFAFE;
-  --color-primary-ultra-light: #ECFEFF;
-  --color-primary-rgb: 8, 145, 178;
+  /* Primary - Azul Conexión */
+  --color-primary: #007BFF;
+  --color-primary-hover: #0062CC;
+  --color-primary-light: rgba(0, 123, 255, 0.15);
+  --color-primary-ultra-light: rgba(0, 123, 255, 0.08);
+  --color-primary-rgb: 0, 123, 255;
 
   /* Accent - Emerald */
   --color-accent: #059669;
@@ -37,25 +37,25 @@
   --status-enviado: #6B7280;
 
   /* Neutrals */
-  --color-bg: #F8FAFC;
-  --color-bg-alt: #F1F5F9;
+  --color-bg: #E6ECF2; /* Gris Nube */
+  --color-bg-alt: #F8FAFC;
   --color-surface: #FFFFFF;
   --color-surface-hover: #F8FAFC;
   --color-surface-elevated: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-border-light: #F1F5F9;
-  --color-text: #0F172A;
-  --color-text-secondary: #64748B;
+  --color-border: #D1D9E6;
+  --color-border-light: #E2E8F0;
+  --color-text: #0A1B33; /* Azul Afinix Profundo */
+  --color-text-secondary: #475569;
   --color-text-tertiary: #94A3B8;
   --color-text-inverse: #FFFFFF;
 
-  /* Sidebar */
-  --sidebar-bg: #0F172A;
+  /* Sidebar - Azul Afinix Profundo */
+  --sidebar-bg: #0A1B33;
   --sidebar-text: #CBD5E1;
   --sidebar-text-active: #FFFFFF;
   --sidebar-hover: rgba(255, 255, 255, 0.06);
-  --sidebar-active: rgba(8, 145, 178, 0.2);
-  --sidebar-accent: #22D3EE;
+  --sidebar-active: rgba(0, 123, 255, 0.2);
+  --sidebar-accent: #007BFF;
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 72px;
 
@@ -87,6 +87,7 @@
   --radius-full: 9999px;
 
   /* Typography */
+  --font-brand: 'Sora', sans-serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
@@ -194,6 +195,7 @@ h3,
 h4,
 h5,
 h6 {
+  font-family: var(--font-brand);
   font-weight: 600;
   line-height: 1.3;
   color: var(--color-text);
@@ -6077,7 +6079,7 @@ Rediseño UI: Nuevo Pedido Layout Base
 }
 
 /* ============================================ */
-/* Affinix Login Refresh                        */
+/* Afinix Login Refresh                        */
 /* ============================================ */
 .login-page {
   min-height: 100dvh;
@@ -6246,15 +6248,27 @@ Rediseño UI: Nuevo Pedido Layout Base
   max-width: none;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 30px;
-  padding: clamp(1.35rem, 4vw, 2.5rem);
+  padding-block: clamp(1rem, 2.5vw, 1.5rem);
+  padding-inline: clamp(1.35rem, 4vw, 2.5rem);
   background: rgba(9, 24, 39, 0.78);
   backdrop-filter: blur(24px);
   box-shadow: 0 32px 90px rgba(0, 0, 0, 0.38);
 }
 
 .login-logo {
-  justify-content: flex-start;
-  margin-bottom: var(--space-7);
+  justify-content: center;
+  margin-bottom: var(--space-5);
+}
+
+.login-logo > * {
+  width: min(100%, 340px) !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.login-logo img {
+  width: 100% !important;
+  height: auto !important;
 }
 
 .login-logo-icon {

@@ -16,7 +16,8 @@ import {
     services,
     socialLinks,
     workflow,
-} from './affinixLandingContent.js';
+} from './afinixLandingContent.js';
+import AfinixLogo from '../../components/AfinixLogo';
 
 const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 const MotionSection = motion.section;
@@ -104,18 +105,18 @@ const aboutGalleryMotion = (reduced, index = 0) =>
 function ServicesCarousel({ reduceMotion }) {
     return (
         <MotionSection
-            className="affinix-section affinix-services affinix-services--showcase"
+            className="afinix-section afinix-services afinix-services--showcase"
             id="servicios"
             {...sectionMotion(reduceMotion)}
         >
-            <div className="affinix-section-heading affinix-services-heading">
-                <motion.span className="affinix-services-eyebrow" {...servicesHeadingMotion(reduceMotion, 0)}>
+            <div className="afinix-section-heading afinix-services-heading">
+                <motion.span className="afinix-services-eyebrow" {...servicesHeadingMotion(reduceMotion, 0)}>
                     Para tu equipo y tus pacientes
                 </motion.span>
-                <motion.h2 className="affinix-services-title" {...servicesHeadingMotion(reduceMotion, 1)}>
+                <motion.h2 className="afinix-services-title" {...servicesHeadingMotion(reduceMotion, 1)}>
                     Servicios
                     <br />
-                    <span className="affinix-services-title-accent">digitales</span>
+                    <span className="afinix-services-title-accent">digitales</span>
                     <br />
                     que encajan en
                     {' '}tu forma de trabajar
@@ -126,20 +127,20 @@ function ServicesCarousel({ reduceMotion }) {
                 </motion.p>
             </div>
             <div
-                className="affinix-services-shell"
+                className="afinix-services-shell"
                 role="region"
                 aria-label="Carrusel de servicios. Usa las flechas, paginación o desliza en móvil."
             >
                 <button
                     type="button"
-                    className="affinix-service-nav affinix-service-nav--prev"
+                    className="afinix-service-nav afinix-service-nav--prev"
                     aria-label="Servicio anterior"
                 >
                     <i className="bi bi-chevron-left" aria-hidden="true"></i>
                 </button>
-                <div className="affinix-services-carousel" tabIndex={0}>
+                <div className="afinix-services-carousel" tabIndex={0}>
                     <Swiper
-                        className="affinix-services-swiper"
+                        className="afinix-services-swiper"
                         modules={[A11y, Autoplay, Keyboard, Navigation, Pagination]}
                         loop={!reduceMotion}
                         rewind={false}
@@ -147,8 +148,8 @@ function ServicesCarousel({ reduceMotion }) {
                         spaceBetween={24}
                         centeredSlides={true}
                         navigation={{
-                            prevEl: '.affinix-service-nav--prev',
-                            nextEl: '.affinix-service-nav--next',
+                            prevEl: '.afinix-service-nav--prev',
+                            nextEl: '.afinix-service-nav--next',
                         }}
                         pagination={{ clickable: true }}
                         autoplay={
@@ -170,12 +171,12 @@ function ServicesCarousel({ reduceMotion }) {
                         {services.map((service, index) => (
                             <SwiperSlide key={service.name}>
                                 <motion.article
-                                    className="affinix-service-card"
+                                    className="afinix-service-card"
                                     tabIndex={0}
                                     aria-label={`${service.name}: ${service.detail}`}
                                     {...serviceCardMotion(reduceMotion, index)}
                                 >
-                                    <div className="affinix-service-card-media">
+                                    <div className="afinix-service-card-media">
                                         <img
                                             src={service.image}
                                             alt={`Muestra de ${service.name}`}
@@ -184,17 +185,17 @@ function ServicesCarousel({ reduceMotion }) {
                                             draggable={false}
                                         />
                                     </div>
-                                    <div className="affinix-service-card-body">
+                                    <div className="afinix-service-card-body">
                                         <h3>{service.name}</h3>
                                         <p>{service.detail}</p>
-                                        <ul className="affinix-service-tags" aria-label="Variantes y familias">
+                                        <ul className="afinix-service-tags" aria-label="Variantes y familias">
                                             {service.tags.map((tag) => (
                                                 <li key={tag}>{tag}</li>
                                             ))}
                                         </ul>
                                     </div>
-                                    <div className="affinix-service-card-foot">
-                                        <span className="affinix-service-foot-meta">
+                                    <div className="afinix-service-card-foot">
+                                        <span className="afinix-service-foot-meta">
                                             <i className="bi bi-clock" aria-hidden="true"></i>
                                             Entrega: <strong>{service.leadTime}</strong>
                                         </span>
@@ -206,7 +207,7 @@ function ServicesCarousel({ reduceMotion }) {
                 </div>
                 <button
                     type="button"
-                    className="affinix-service-nav affinix-service-nav--next"
+                    className="afinix-service-nav afinix-service-nav--next"
                     aria-label="Servicio siguiente"
                 >
                     <i className="bi bi-chevron-right" aria-hidden="true"></i>
@@ -221,7 +222,7 @@ function WorkflowDetailCard({ step, reduceMotion, className = '', mobilePopover 
     return (
         <motion.article
             key={step.id}
-            className={`affinix-workflow-detail-card ${className}`.trim()}
+            className={`afinix-workflow-detail-card ${className}`.trim()}
             initial={
                 reduceMotion
                     ? false
@@ -251,22 +252,22 @@ function WorkflowDetailCard({ step, reduceMotion, className = '', mobilePopover 
                         : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }
             }
         >
-            <div className="affinix-workflow-hud-main">
-                <div className="affinix-workflow-detail-head">
-                    <div className="affinix-workflow-detail-icon" aria-hidden="true">
+            <div className="afinix-workflow-hud-main">
+                <div className="afinix-workflow-detail-head">
+                    <div className="afinix-workflow-detail-icon" aria-hidden="true">
                         <i className={`bi ${step.icon}`}></i>
                     </div>
                     <div>
-                        <span className="affinix-workflow-detail-step">Paso {step.number}</span>
+                        <span className="afinix-workflow-detail-step">Paso {step.number}</span>
                         <h3>{step.title}</h3>
                     </div>
                 </div>
                 <p>{step.text}</p>
             </div>
-            <div className="affinix-workflow-hud-status" aria-label="Estado operativo del paso activo">
-                <span className="affinix-workflow-hud-label">Estado</span>
+            <div className="afinix-workflow-hud-status" aria-label="Estado operativo del paso activo">
+                <span className="afinix-workflow-hud-label">Estado</span>
                 <strong>{step.status}</strong>
-                <span className="affinix-workflow-hud-scan" aria-hidden="true" />
+                <span className="afinix-workflow-hud-scan" aria-hidden="true" />
             </div>
         </motion.article>
     );
@@ -354,28 +355,28 @@ function WorkflowTimeline({ reduceMotion }) {
     return (
         <MotionSection
             ref={workflowRef}
-            className="affinix-section affinix-workflow"
+            className="afinix-section afinix-workflow"
             id="flujo"
             {...workflowSectionMotion(reduceMotion)}
         >
             <div
-                className={`affinix-workflow-scroll-stage${reduceMotion ? ' is-reduced-motion' : ''}`}
+                className={`afinix-workflow-scroll-stage${reduceMotion ? ' is-reduced-motion' : ''}`}
                 ref={workflowStageRef}
             >
-                <div className="affinix-workflow-sticky-shell">
-                    <div className="affinix-section-heading affinix-workflow-heading">
+                <div className="afinix-workflow-sticky-shell">
+                    <div className="afinix-section-heading afinix-workflow-heading">
                         <span>Flujo digital</span>
                         <h2>De tu archivo a la entrega: cada paso visible para tu equipo.</h2>
                     </div>
-                    <div className="affinix-workflow-stage-panel">
+                    <div className="afinix-workflow-stage-panel">
                         {!isMobileWorkflow ? (
-                            <div className="affinix-workflow-progress" aria-hidden="true">
-                                <div className="affinix-workflow-progress-meta">
+                            <div className="afinix-workflow-progress" aria-hidden="true">
+                                <div className="afinix-workflow-progress-meta">
                                     <strong>Paso {activeWorkflow.number} de {String(workflow.length).padStart(2, '0')}</strong>
                                     <span>{Math.round(workflowStepProgress * 100)}% completado</span>
                                 </div>
                                 <div
-                                    className="affinix-workflow-progress-fill"
+                                    className="afinix-workflow-progress-fill"
                                     style={{
                                         transform: `scaleX(${Math.max(0.04, workflowStepProgress)})`,
                                         transition: reduceMotion ? 'none' : 'transform 0.22s linear',
@@ -385,9 +386,9 @@ function WorkflowTimeline({ reduceMotion }) {
                         ) : null}
 
                         {isMobileWorkflow ? (
-                            <div className="affinix-workflow-progress" aria-hidden="true">
+                            <div className="afinix-workflow-progress" aria-hidden="true">
                                 <div
-                                    className="affinix-workflow-progress-fill"
+                                    className="afinix-workflow-progress-fill"
                                     style={{
                                         transform: `scaleY(${Math.max(0.08, workflowStepProgress)})`,
                                         transition: reduceMotion ? 'none' : 'transform 0.22s linear',
@@ -396,7 +397,7 @@ function WorkflowTimeline({ reduceMotion }) {
                             </div>
                         ) : null}
 
-                        <ol className="affinix-workflow-grid" aria-label="Etapas del flujo digital">
+                        <ol className="afinix-workflow-grid" aria-label="Etapas del flujo digital">
                             {workflow.map((step, index) => {
                                 const stepState =
                                     index === workflowActiveStep
@@ -407,26 +408,26 @@ function WorkflowTimeline({ reduceMotion }) {
 
                                 return (
                                     <li
-                                        className={`affinix-workflow-card ${stepState}`}
+                                        className={`afinix-workflow-card ${stepState}`}
                                         key={step.id}
                                         aria-current={index === workflowActiveStep ? 'step' : undefined}
                                     >
                                         {isMobileWorkflow ? (
-                                            <div className="affinix-workflow-mobile-row">
+                                            <div className="afinix-workflow-mobile-row">
                                                 <button
                                                     type="button"
-                                                    className="affinix-workflow-step-icon-button"
+                                                    className="afinix-workflow-step-icon-button"
                                                     onClick={() => setMobilePopoverStep((current) => (current === index ? null : index))}
                                                     aria-expanded={mobilePopoverStep === index}
                                                     aria-controls={mobilePopoverStep === index ? `workflow-mobile-popover-${step.id}` : undefined}
                                                     aria-label={`Ver detalle del paso ${step.number}: ${step.title}`}
                                                 >
-                                                    <span className="affinix-workflow-step-icon" aria-hidden="true">
+                                                    <span className="afinix-workflow-step-icon" aria-hidden="true">
                                                         <i className={`bi ${step.icon}`}></i>
                                                     </span>
                                                 </button>
-                                                <div className="affinix-workflow-step-copy">
-                                                    <span className="affinix-workflow-step-num">{step.number}</span>
+                                                <div className="afinix-workflow-step-copy">
+                                                    <span className="afinix-workflow-step-num">{step.number}</span>
                                                     <h3>{step.title}</h3>
                                                     <p>{step.status}</p>
                                                 </div>
@@ -434,22 +435,22 @@ function WorkflowTimeline({ reduceMotion }) {
                                         ) : (
                                             <button
                                                 type="button"
-                                                className="affinix-workflow-step-button"
+                                                className="afinix-workflow-step-button"
                                                 onClick={() => {
                                                     setWorkflowActiveStep(index);
                                                     setWorkflowProgress(workflow.length > 1 ? index / (workflow.length - 1) : 1);
                                                 }}
                                                 aria-label={`Ver paso ${step.number}: ${step.title}`}
                                             >
-                                                <span className="affinix-workflow-card-head">
-                                                    <span className="affinix-workflow-step-num">{step.number}</span>
+                                                <span className="afinix-workflow-card-head">
+                                                    <span className="afinix-workflow-step-num">{step.number}</span>
                                                     {index < workflowActiveStep ? (
-                                                        <span className="affinix-workflow-step-check" aria-hidden="true">
+                                                        <span className="afinix-workflow-step-check" aria-hidden="true">
                                                             <i className="bi bi-check-lg"></i>
                                                         </span>
                                                     ) : null}
                                                 </span>
-                                                <span className="affinix-workflow-step-icon" aria-hidden="true">
+                                                <span className="afinix-workflow-step-icon" aria-hidden="true">
                                                     <i className={`bi ${step.icon}`}></i>
                                                 </span>
                                                 <h3>{step.title}</h3>
@@ -464,10 +465,10 @@ function WorkflowTimeline({ reduceMotion }) {
                         {isMobileWorkflow ? (
                             <AnimatePresence initial={false} mode="sync">
                                 {mobilePopoverWorkflow ? (
-                                    <div className="affinix-workflow-mobile-popover-shell" id={`workflow-mobile-popover-${mobilePopoverWorkflow.id}`}>
+                                    <div className="afinix-workflow-mobile-popover-shell" id={`workflow-mobile-popover-${mobilePopoverWorkflow.id}`}>
                                         <button
                                             type="button"
-                                            className="affinix-workflow-mobile-popover-close"
+                                            className="afinix-workflow-mobile-popover-close"
                                             onClick={() => setMobilePopoverStep(null)}
                                             aria-label="Cerrar detalle del paso"
                                         >
@@ -478,14 +479,14 @@ function WorkflowTimeline({ reduceMotion }) {
                                             step={mobilePopoverWorkflow}
                                             reduceMotion={reduceMotion}
                                             mobilePopover
-                                            className="affinix-workflow-detail-card--popover"
+                                            className="afinix-workflow-detail-card--popover"
                                         />
                                     </div>
                                 ) : null}
                             </AnimatePresence>
                         ) : null}
 
-                        <div className="affinix-workflow-detail-shell">
+                        <div className="afinix-workflow-detail-shell">
                             <AnimatePresence initial={false} mode="wait">
                                 <WorkflowDetailCard
                                     key={activeWorkflow.id}
@@ -504,8 +505,8 @@ function WorkflowTimeline({ reduceMotion }) {
 function PartnersAndMetrics({ reduceMotion }) {
     return (
         <>
-            <MotionSection className="affinix-section affinix-about" id="nosotros" {...sectionMotion(reduceMotion)}>
-                <div className="affinix-about-copy">
+            <MotionSection className="afinix-section afinix-about" id="nosotros" {...sectionMotion(reduceMotion)}>
+                <div className="afinix-about-copy">
                     <motion.span {...servicesHeadingMotion(reduceMotion, 0)}>Para tu clínica</motion.span>
                     <motion.h2 {...servicesHeadingMotion(reduceMotion, 1)}>Tu criterio, el diseño y la pieza: todo en el mismo hilo.</motion.h2>
                     <motion.p {...servicesHeadingMotion(reduceMotion, 2)}>
@@ -513,7 +514,7 @@ function PartnersAndMetrics({ reduceMotion }) {
                         y producción CAD/CAM con responsables y tiempos claros. La precisión en boca se sostiene con trazabilidad: sin
                         ella, cada caso es una apuesta.
                     </motion.p>
-                    <div className="affinix-proof-grid">
+                    <div className="afinix-proof-grid">
                         {aboutMetrics.map((metric, index) => (
                             <motion.article key={metric.value} {...aboutProofMotion(reduceMotion, index)}>
                                 <strong>{metric.value}</strong>
@@ -522,14 +523,14 @@ function PartnersAndMetrics({ reduceMotion }) {
                         ))}
                     </div>
                 </div>
-                <div className="affinix-about-gallery" aria-label="Muestras y equipamiento del laboratorio">
+                <div className="afinix-about-gallery" aria-label="Muestras y equipamiento del laboratorio">
                     {aboutGallery.map((image, index) => (
                         <motion.div
                             key={image.src}
                             className={
                                 index === 0
-                                    ? 'affinix-about-gallery__item affinix-about-gallery__item--span-rows'
-                                    : 'affinix-about-gallery__item'
+                                    ? 'afinix-about-gallery__item afinix-about-gallery__item--span-rows'
+                                    : 'afinix-about-gallery__item'
                             }
                             {...aboutGalleryMotion(reduceMotion, index)}
                         >
@@ -539,19 +540,19 @@ function PartnersAndMetrics({ reduceMotion }) {
                 </div>
             </MotionSection>
 
-            <section className="affinix-partners" aria-label="Clínicas partner">
+            <section className="afinix-partners" aria-label="Clínicas partner">
                 <p>Clínicas como la tuya que ya operan con trazabilidad digital</p>
-                <div className="affinix-partner-marquee">
-                    <div className="affinix-partner-track">
+                <div className="afinix-partner-marquee">
+                    <div className="afinix-partner-track">
                         {[...partnerClinics, ...partnerClinics].map(([initials, name], index) => (
-                            <span className="affinix-partner-logo" key={`${name}-${index}`}>
+                            <span className="afinix-partner-logo" key={`${name}-${index}`}>
                                 <strong>{initials}</strong>
                                 {name}
                             </span>
                         ))}
                     </div>
                 </div>
-                <div className="affinix-metrics-grid">
+                <div className="afinix-metrics-grid">
                     {landingMetrics.map((metric) => (
                         <article key={metric.label}>
                             <i className={`bi ${metric.icon}`} aria-hidden="true"></i>
@@ -565,12 +566,12 @@ function PartnersAndMetrics({ reduceMotion }) {
     );
 }
 
-function FinalCTA({ reduceMotion }) {
+function FinalCTA({ reduceMotion, theme = 'dark' }) {
     return (
-        <footer className="affinix-footer affinix-final-cta">
-            <motion.div className="affinix-final-cta__inner" {...sectionMotion(reduceMotion)}>
-                <div className="affinix-final-cta__panel">
-                    <div className="affinix-section-heading affinix-final-cta__heading">
+        <footer className="afinix-footer afinix-final-cta">
+            <motion.div className="afinix-final-cta__inner" {...sectionMotion(reduceMotion)}>
+                <div className="afinix-final-cta__panel">
+                    <div className="afinix-section-heading afinix-final-cta__heading">
                         <span>Da el siguiente paso</span>
                         <h2>Menos fricción entre tu criterio y la pieza terminada</h2>
                         <p>
@@ -578,31 +579,30 @@ function FinalCTA({ reduceMotion }) {
                             ganan puntualidad.
                         </p>
                     </div>
-                    <div className="affinix-footer-actions">
-                        <Link className="affinix-primary-action" to={CLINIC_LOGIN_PATH}>
+                    <div className="afinix-footer-actions">
+                        <Link className="afinix-primary-action" to={CLINIC_LOGIN_PATH}>
                             Solicitar acceso
                             <i className="bi bi-arrow-right" aria-hidden="true"></i>
                         </Link>
-                        <a className="affinix-secondary-action" href="#servicios">
+                        <a className="afinix-secondary-action" href="#servicios">
                             Ver servicios
                         </a>
                     </div>
                 </div>
             </motion.div>
-            <div className="affinix-footer-basic" aria-label="Footer legal y navegación">
-                <strong>Affinix LAB</strong>
-                <span>Laboratorio dental digital</span>
-                <nav aria-label="Enlaces de footer">
+            <div className="afinix-footer-basic" aria-label="Footer legal y navegación">
+                <AfinixLogo size={44} showText={true} theme={theme} />
+                <nav aria-label="Enlaces de footer" style={{ marginTop: '1rem' }}>
                     <a href="#servicios">Servicios</a>
                     <a href="#nosotros">Para tu clínica</a>
                 </nav>
-                <small>2026 Affinix LAB. Todos los derechos reservados.</small>
-                <div className="affinix-footer-channels">
+                <small style={{ marginTop: '1rem', display: 'block' }}>2026 Afinix Lab. Todos los derechos reservados.</small>
+                <div className="afinix-footer-channels">
                     {contactChannels.map((ch) => (
                         <a
                             key={ch.label}
                             href={ch.href}
-                            className="affinix-footer-chan"
+                            className="afinix-footer-chan"
                             target={ch.external ? '_blank' : undefined}
                             rel={ch.external ? 'noopener noreferrer' : undefined}
                         >
@@ -610,12 +610,12 @@ function FinalCTA({ reduceMotion }) {
                             <span>{ch.label}</span>
                         </a>
                     ))}
-                    <div className="affinix-footer-socials">
+                    <div className="afinix-footer-socials">
                         {socialLinks.map((s) => (
                             <a
                                 key={s.label}
                                 href={s.href}
-                                className="affinix-footer-chan"
+                                className="afinix-footer-chan"
                                 target={s.external ? '_blank' : undefined}
                                 rel={s.external ? 'noopener noreferrer' : undefined}
                                 aria-label={s.label}
@@ -632,13 +632,13 @@ function FinalCTA({ reduceMotion }) {
 }
 
 /** Bloque inferior diferido: reduce JS inicial y coste de hidratación del carrusel de servicios y del scroll-linked workflow. */
-export default function AffinixLandingBelowFold({ reduceMotion }) {
+export default function AfinixLandingBelowFold({ reduceMotion, theme = 'dark' }) {
     return (
         <>
             <ServicesCarousel reduceMotion={reduceMotion} />
             <WorkflowTimeline reduceMotion={reduceMotion} />
             <PartnersAndMetrics reduceMotion={reduceMotion} />
-            <FinalCTA reduceMotion={reduceMotion} />
+            <FinalCTA reduceMotion={reduceMotion} theme={theme} />
         </>
     );
 }

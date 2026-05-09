@@ -13,7 +13,8 @@ import {
     heroTrackingSteps,
     mobileQuickLinks,
     socialLinks,
-} from './affinixLandingContent.js';
+} from './afinixLandingContent.js';
+import AfinixLogo from '../../components/AfinixLogo';
 
 const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 const WHATSAPP_CHANNEL = contactChannels.find((channel) => channel.label === 'WhatsApp') ?? contactChannels[0];
@@ -111,7 +112,7 @@ function useMatchMedia(query) {
     return matches;
 }
 
-export function LandingNavbar({ reduceMotion, themeToggle = null }) {
+export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark' }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
@@ -140,14 +141,14 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
 
     return (
         <>
-            <motion.div className="affinix-topbar" aria-label="Canales de contacto" {...headerEntranceMotion(reduceMotion, 0.04)}>
-                <div className="affinix-topbar-inner">
-                    <div className="affinix-topbar-channels">
+            <motion.div className="afinix-topbar" aria-label="Canales de contacto" {...headerEntranceMotion(reduceMotion, 0.04)}>
+                <div className="afinix-topbar-inner">
+                    <div className="afinix-topbar-channels">
                         {contactChannels.map((ch) => (
                             <a
                                 key={ch.label}
                                 href={ch.href}
-                                className="affinix-topbar-chan"
+                                className="afinix-topbar-chan"
                                 target={ch.external ? '_blank' : undefined}
                                 rel={ch.external ? 'noopener noreferrer' : undefined}
                                 aria-label={ch.label}
@@ -157,12 +158,12 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                             </a>
                         ))}
                     </div>
-                    <div className="affinix-topbar-socials">
+                    <div className="afinix-topbar-socials">
                         {socialLinks.map((s) => (
                             <a
                                 key={s.label}
                                 href={s.href}
-                                className="affinix-topbar-chan"
+                                className="afinix-topbar-chan"
                                 target={s.external ? '_blank' : undefined}
                                 rel={s.external ? 'noopener noreferrer' : undefined}
                                 aria-label={s.label}
@@ -174,25 +175,21 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                 </div>
             </motion.div>
             <motion.header
-                className={`affinix-navbar ${isMobileMenuOpen ? 'is-mobile-menu-open' : ''}`}
+                className={`afinix-navbar ${isMobileMenuOpen ? 'is-mobile-menu-open' : ''}`}
                 aria-label="Navegación principal"
                 {...headerEntranceMotion(reduceMotion, 0.12)}
             >
-                <a className="affinix-brand" href="#inicio" aria-label="Affinix LAB, inicio (landing para clínicas)">
-                    <span className="affinix-brand-mark">A</span>
-                    <span>
-                        <strong>Affinix LAB</strong>
-                        <small>Laboratorio dental digital</small>
-                    </span>
+                <a className="afinix-brand" href="#inicio" aria-label="Afinix Lab, inicio (landing para clínicas)">
+                    <AfinixLogo size={54} showText={true} theme={theme} />
                 </a>
-                <nav className="affinix-nav-links" aria-label="Secciones de la landing">
+                <nav className="afinix-nav-links" aria-label="Secciones de la landing">
                     <a href="#servicios">Servicios</a>
                     <a href="#nosotros">Para tu clínica</a>
                     <a href="#flujo">Flujo digital</a>
                 </nav>
-                <div className="affinix-nav-actions">
+                <div className="afinix-nav-actions">
                     <a
-                        className="affinix-header-whatsapp"
+                        className="afinix-header-whatsapp"
                         href={WHATSAPP_CHANNEL.href}
                         target={WHATSAPP_CHANNEL.external ? '_blank' : undefined}
                         rel={WHATSAPP_CHANNEL.external ? 'noopener noreferrer' : undefined}
@@ -203,7 +200,7 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                     </a>
                     {LOCATION_CHANNEL ? (
                         <a
-                            className="affinix-header-location"
+                            className="afinix-header-location"
                             href={LOCATION_CHANNEL.href}
                             target={LOCATION_CHANNEL.external ? '_blank' : undefined}
                             rel={LOCATION_CHANNEL.external ? 'noopener noreferrer' : undefined}
@@ -212,12 +209,12 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                             <i className={`bi ${LOCATION_CHANNEL.icon}`} aria-hidden="true"></i>
                         </a>
                     ) : null}
-                    <nav className="affinix-header-socials" aria-label="Ubicación y redes sociales">
+                    <nav className="afinix-header-socials" aria-label="Ubicación y redes sociales">
                         {HEADER_ICON_LINKS.map((item) => (
                             <a
                                 key={item.label}
                                 href={item.href}
-                                className="affinix-header-icon-link"
+                                className="afinix-header-icon-link"
                                 target={item.external ? '_blank' : undefined}
                                 rel={item.external ? 'noopener noreferrer' : undefined}
                                 aria-label={item.label}
@@ -228,21 +225,21 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                     </nav>
                     <button
                         type="button"
-                        className="affinix-mobile-menu-toggle"
+                        className="afinix-mobile-menu-toggle"
                         aria-expanded={isMobileMenuOpen}
-                        aria-controls="affinix-mobile-menu"
+                        aria-controls="afinix-mobile-menu"
                         aria-label={isMobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
                         onClick={() => setIsMobileMenuOpen((current) => !current)}
                     >
                         <i className={`bi ${isMobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`} aria-hidden="true"></i>
                     </button>
                     {themeToggle}
-                    <Link className="affinix-login-link" to={CLINIC_LOGIN_PATH}>
+                    <Link className="afinix-login-link" to={CLINIC_LOGIN_PATH}>
                         <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
                         Entrar al portal
                     </Link>
                 </div>
-                <nav className="affinix-mobile-quicknav" aria-label="Accesos rápidos">
+                <nav className="afinix-mobile-quicknav" aria-label="Accesos rápidos">
                     {mobileQuickLinks.map((link) => (
                         <a key={link.href} href={link.href} onClick={closeMobileMenu}>
                             {link.label}
@@ -250,19 +247,19 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                     ))}
                 </nav>
                 <div
-                    className={`affinix-mobile-menu-panel ${isMobileMenuOpen ? 'is-open' : ''}`}
-                    id="affinix-mobile-menu"
+                    className={`afinix-mobile-menu-panel ${isMobileMenuOpen ? 'is-open' : ''}`}
+                    id="afinix-mobile-menu"
                     aria-label="Menú móvil"
                 >
-                    <nav className="affinix-mobile-menu-links" aria-label="Secciones principales">
+                    <nav className="afinix-mobile-menu-links" aria-label="Secciones principales">
                         {HEADER_MENU_LINKS.map((link) => (
                             <a key={link.href} href={link.href} onClick={closeMobileMenu}>
                                 {link.label}
                             </a>
                         ))}
                     </nav>
-                    <div className="affinix-mobile-menu-utility-row">
-                        <div className="affinix-mobile-menu-socials" aria-label="Redes sociales y ubicación">
+                    <div className="afinix-mobile-menu-utility-row">
+                        <div className="afinix-mobile-menu-socials" aria-label="Redes sociales y ubicación">
                             {HEADER_ICON_LINKS.map((item) => (
                                 <a
                                     key={item.label}
@@ -276,9 +273,9 @@ export function LandingNavbar({ reduceMotion, themeToggle = null }) {
                                 </a>
                             ))}
                         </div>
-                        {themeToggle ? <div className="affinix-mobile-menu-theme">{React.cloneElement(themeToggle)}</div> : null}
+                        {themeToggle ? <div className="afinix-mobile-menu-theme">{React.cloneElement(themeToggle)}</div> : null}
                     </div>
-                    <Link className="affinix-mobile-menu-login" to={CLINIC_LOGIN_PATH} onClick={closeMobileMenu}>
+                    <Link className="afinix-mobile-menu-login" to={CLINIC_LOGIN_PATH} onClick={closeMobileMenu}>
                         <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
                         Entrar al portal
                     </Link>
@@ -320,7 +317,7 @@ function HeroTrackingWidget({ reduceMotion, className = '' }) {
 
     return (
         <motion.aside
-            className={`affinix-hero-tracking ${className}`.trim()}
+            className={`afinix-hero-tracking ${className}`.trim()}
             aria-label="Seguimiento de caso sin retrasos"
             {...(reduceMotion
                 ? {}
@@ -331,37 +328,37 @@ function HeroTrackingWidget({ reduceMotion, className = '' }) {
                     onAnimationComplete: () => setTrackingReady(true),
                 })}
         >
-            <div className="affinix-hero-tracking-head">
-                <span className="affinix-hero-tracking-dot" aria-hidden="true"></span>
+            <div className="afinix-hero-tracking-head">
+                <span className="afinix-hero-tracking-dot" aria-hidden="true"></span>
                 <strong>Seguimiento en vivo</strong>
             </div>
-            <ol className="affinix-hero-tracking-steps" aria-live="polite">
+            <ol className="afinix-hero-tracking-steps" aria-live="polite">
                 {heroTrackingSteps.map((step, index) => {
                     const stepState = index <= completedStep ? 'is-done' : index === completedStep + 1 ? 'is-active' : 'is-pending';
                     return (
                         <li
                             key={step.id}
-                            className={`affinix-hero-tracking-step ${stepState}`}
+                            className={`afinix-hero-tracking-step ${stepState}`}
                             data-state={stepState.replace('is-', '')}
                         >
-                            <span className="affinix-hero-tracking-icon" aria-hidden="true">
+                            <span className="afinix-hero-tracking-icon" aria-hidden="true">
                                 {stepState === 'is-done' ? (
                                     <i className="bi bi-check-lg"></i>
                                 ) : stepState === 'is-active' ? (
-                                    <span className="affinix-hero-tracking-pulse"></span>
+                                    <span className="afinix-hero-tracking-pulse"></span>
                                 ) : null}
                             </span>
-                            <span className="affinix-hero-tracking-label">{step.label}</span>
+                            <span className="afinix-hero-tracking-label">{step.label}</span>
                         </li>
                     );
                 })}
             </ol>
-            <div className="affinix-hero-tracking-actions">
-                <p className="affinix-hero-tracking-alert" aria-label="Aviso: todo sin retrasos">
+            <div className="afinix-hero-tracking-actions">
+                <p className="afinix-hero-tracking-alert" aria-label="Aviso: todo sin retrasos">
                     <i className="bi bi-bell" aria-hidden="true"></i>
                     Todo sin retrasos
                 </p>
-                <Link className="affinix-hero-tracking-portal" to={CLINIC_LOGIN_PATH}>
+                <Link className="afinix-hero-tracking-portal" to={CLINIC_LOGIN_PATH}>
                     Ir al portal
                     <i className="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                 </Link>
@@ -375,10 +372,10 @@ export function HeroCarousel({ reduceMotion }) {
     const heroStackLayout = useMatchMedia('(max-width: 640px)');
 
     return (
-        <section className="affinix-hero" id="inicio" aria-label="Presentación: servicios digitales para clínicas">
-            <div className="affinix-hero-stage">
+        <section className="afinix-hero" id="inicio" aria-label="Presentación: servicios digitales para clínicas">
+            <div className="afinix-hero-stage">
                 <Swiper
-                    className={`affinix-hero-swiper${heroStackLayout ? ' affinix-hero-swiper--stack' : ''}`}
+                    className={`afinix-hero-swiper${heroStackLayout ? ' afinix-hero-swiper--stack' : ''}`}
                     modules={[A11y, Autoplay, EffectFade, Pagination]}
                     effect="fade"
                     fadeEffect={{ crossFade: true }}
@@ -405,9 +402,9 @@ export function HeroCarousel({ reduceMotion }) {
                 >
                     {heroSlides.map((slide, index) => (
                         <SwiperSlide key={slide.kicker}>
-                            <article className="affinix-hero-slide">
+                            <article className="afinix-hero-slide">
                                 <motion.div
-                                    className="affinix-hero-bg"
+                                    className="afinix-hero-bg"
                                     aria-hidden="true"
                                     {...heroBackgroundMotion(reduceMotion, activeSlide === index)}
                                 >
@@ -419,42 +416,42 @@ export function HeroCarousel({ reduceMotion }) {
                                         fetchpriority={index === 0 ? 'high' : 'low'}
                                     />
                                 </motion.div>
-                                <div className="affinix-hero-overlay"></div>
-                                <div className="affinix-hero-layout">
+                                <div className="afinix-hero-overlay"></div>
+                                <div className="afinix-hero-layout">
                                     <motion.div
-                                        className="affinix-hero-copy"
+                                        className="afinix-hero-copy"
                                         {...heroCopyMotion(reduceMotion, activeSlide === index)}
                                     >
-                                        <div className="affinix-hero-copy-text">
-                                            <motion.span className="affinix-kicker" {...heroLineMotion(reduceMotion, activeSlide === index, 0.32)}>
+                                        <div className="afinix-hero-copy-text">
+                                            <motion.span className="afinix-kicker" {...heroLineMotion(reduceMotion, activeSlide === index, 0.32)}>
                                                 {slide.kicker}
                                             </motion.span>
                                             {index === 0 ? (
-                                                <motion.h1 className="affinix-hero-title" {...heroLineMotion(reduceMotion, activeSlide === index, 0.46)}>
+                                                <motion.h1 className="afinix-hero-title" {...heroLineMotion(reduceMotion, activeSlide === index, 0.46)}>
                                                     {slide.titleBefore}
-                                                    <span className="affinix-hero-accent">{slide.titleHighlight}</span>
+                                                    <span className="afinix-hero-accent">{slide.titleHighlight}</span>
                                                     {slide.titleAfter}
                                                 </motion.h1>
                                             ) : (
-                                                <motion.h2 className="affinix-hero-title" {...heroLineMotion(reduceMotion, activeSlide === index, 0.46)}>
+                                                <motion.h2 className="afinix-hero-title" {...heroLineMotion(reduceMotion, activeSlide === index, 0.46)}>
                                                     {slide.titleBefore}
-                                                    <span className="affinix-hero-accent">{slide.titleHighlight}</span>
+                                                    <span className="afinix-hero-accent">{slide.titleHighlight}</span>
                                                     {slide.titleAfter}
                                                 </motion.h2>
                                             )}
-                                            <motion.p className="affinix-hero-lead" {...heroLineMotion(reduceMotion, activeSlide === index, 0.64)}>
+                                            <motion.p className="afinix-hero-lead" {...heroLineMotion(reduceMotion, activeSlide === index, 0.64)}>
                                                 {slide.copy}
                                             </motion.p>
                                         </div>
-                                        <div className="affinix-hero-actions">
+                                        <div className="afinix-hero-actions">
                                             <motion.div {...heroButtonMotion(reduceMotion, activeSlide === index, 0.84)}>
-                                                <Link className="affinix-hero-btn affinix-hero-btn--primary" to={CLINIC_LOGIN_PATH}>
+                                                <Link className="afinix-hero-btn afinix-hero-btn--primary" to={CLINIC_LOGIN_PATH}>
                                                     Enviar caso
                                                     <i className="bi bi-arrow-right" aria-hidden="true"></i>
                                                 </Link>
                                             </motion.div>
                                             <motion.div {...heroButtonMotion(reduceMotion, activeSlide === index, 0.98)}>
-                                                <a className="affinix-hero-btn affinix-hero-btn--ghost" href="#servicios">
+                                                <a className="afinix-hero-btn afinix-hero-btn--ghost" href="#servicios">
                                                     Ver servicios
                                                     <i className="bi bi-arrow-right" aria-hidden="true"></i>
                                                 </a>
@@ -462,39 +459,39 @@ export function HeroCarousel({ reduceMotion }) {
                                         </div>
                                     </motion.div>
                                     <motion.div
-                                        className="affinix-hero-visual"
+                                        className="afinix-hero-visual"
                                         aria-hidden="true"
                                         {...heroVisualMotion(reduceMotion, activeSlide === index)}
                                     >
-                                        <svg className="affinix-hero-lines" viewBox="0 0 320 420" preserveAspectRatio="none" aria-hidden="true">
+                                        <svg className="afinix-hero-lines" viewBox="0 0 320 420" preserveAspectRatio="none" aria-hidden="true">
                                             <path
-                                                className="affinix-hero-line-path"
+                                                className="afinix-hero-line-path"
                                                 d="M 12 72 L 140 96 L 220 52"
                                                 fill="none"
                                             />
                                             <path
-                                                className="affinix-hero-line-path"
+                                                className="afinix-hero-line-path"
                                                 d="M 8 210 L 155 198 L 248 175"
                                                 fill="none"
                                             />
                                             <path
-                                                className="affinix-hero-line-path"
+                                                className="afinix-hero-line-path"
                                                 d="M 18 348 L 148 312 L 235 290"
                                                 fill="none"
                                             />
                                         </svg>
-                                        <div className="affinix-hero-cards">
+                                        <div className="afinix-hero-cards">
                                             {slide.floatCards.map((card, cardIndex) => (
                                                 <motion.div
                                                     key={card.label}
-                                                    className="affinix-hero-float-card"
+                                                    className="afinix-hero-float-card"
                                                     {...heroFloatCardMotion(reduceMotion, activeSlide === index, cardIndex)}
                                                 >
-                                                    <span className="affinix-hero-float-icon">
+                                                    <span className="afinix-hero-float-icon">
                                                         <i className={`bi ${card.icon}`} aria-hidden="true"></i>
                                                     </span>
-                                                    <div className="affinix-hero-float-body">
-                                                        <span className="affinix-hero-float-label">{card.label}</span>
+                                                    <div className="afinix-hero-float-body">
+                                                        <span className="afinix-hero-float-label">{card.label}</span>
                                                         <strong>{card.value}</strong>
                                                     </div>
                                                 </motion.div>
@@ -502,12 +499,12 @@ export function HeroCarousel({ reduceMotion }) {
                                         </div>
                                     </motion.div>
                                 </div>
-                                <HeroTrackingWidget reduceMotion={reduceMotion} className="affinix-hero-tracking--mobile" />
+                                <HeroTrackingWidget reduceMotion={reduceMotion} className="afinix-hero-tracking--mobile" />
                             </article>
                         </SwiperSlide>
                     ))}
                 </Swiper>
-                <HeroTrackingWidget reduceMotion={reduceMotion} className="affinix-hero-tracking--desktop" />
+                <HeroTrackingWidget reduceMotion={reduceMotion} className="afinix-hero-tracking--desktop" />
             </div>
         </section>
     );

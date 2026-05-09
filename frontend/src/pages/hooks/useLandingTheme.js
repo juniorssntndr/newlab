@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'affinix-landing-theme';
+const STORAGE_KEY = 'afinix-landing-theme';
 
 function getInitialTheme() {
     if (typeof window === 'undefined') return 'light';

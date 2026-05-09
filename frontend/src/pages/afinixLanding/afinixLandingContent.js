@@ -1,4 +1,4 @@
-const IMG = '/images/affinix-landing';
+const IMG = '/images/afinix-landing';
 
 export const heroSlides = [
     {
@@ -218,13 +218,13 @@ export const mobileQuickLinks = [
 export const contactChannels = [
     {
         label: 'WhatsApp',
-        href: 'https://wa.me/?text=Hola%2C%20quiero%20coordinar%20un%20caso%20dental%20digital%20con%20Affinix%20LAB.',
+        href: 'https://wa.me/?text=Hola%2C%20quiero%20coordinar%20un%20caso%20dental%20digital%20con%20Afinix%20Lab.',
         icon: 'bi-whatsapp',
         external: true,
     },
     {
         label: 'Ver ubicación',
-        href: 'https://maps.google.com/?q=Affinix+LAB',
+        href: 'https://maps.google.com/?q=Afinix+Lab',
         icon: 'bi-geo-alt',
         external: true,
     },
@@ -234,19 +234,19 @@ export const contactChannels = [
 export const socialLinks = [
     {
         label: 'Instagram',
-        href: 'https://instagram.com/affinixlab',
+        href: 'https://instagram.com/afinixlab',
         icon: 'bi-instagram',
         external: true,
     },
     {
         label: 'Facebook',
-        href: 'https://facebook.com/affinixlab',
+        href: 'https://facebook.com/afinixlab',
         icon: 'bi-facebook',
         external: true,
     },
     {
         label: 'TikTok',
-        href: 'https://tiktok.com/@affinixlab',
+        href: 'https://tiktok.com/@afinixlab',
         icon: 'bi-tiktok',
         external: true,
     },

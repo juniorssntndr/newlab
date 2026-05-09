@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
 import { canAccessFinancialModules, isAdminRole, isClientRole } from '../utils/accessControl.js';
+import AfinixLogo from './AfinixLogo.jsx';
 
 const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const { user, logout } = useAuth();
@@ -49,11 +50,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
             {mobileOpen && <div className="sidebar-overlay" onClick={onMobileClose} />}
             <aside id="app-sidebar" className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-brand">
-                    <div className="brand-logo">N</div>
-                    <div className="brand-text">
-                        <span className="brand-name">NewLab</span>
-                        <span className="brand-subtitle">Lab Dental</span>
-                    </div>
+                    <AfinixLogo showText={!collapsed} size={collapsed ? 32 : 36} theme="dark" />
                 </div>
 
                 <nav className="sidebar-nav">

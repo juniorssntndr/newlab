@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import AfinixLogo from '../../components/AfinixLogo';
 
 const EXIT_ANIM_MS = 420;
 const MIN_VISIBLE_MS = 520;
@@ -32,14 +33,14 @@ function doubleRaf() {
 
 /** Precarga el mismo chunk que `lazy()` para que Swiper + workflow no monten durante el primer scroll. */
 function waitForBelowFoldChunk() {
-    return import('./AffinixLandingBelowFold.jsx');
+    return import('./AfinixLandingBelowFold.jsx');
 }
 
 /**
  * Pantalla de arranque: espera recursos críticos y el chunk inferior para que el primer scroll no compita
  * con hidratación pesada (Swiper, motion, workflow con scroll link).
  */
-export function AffinixLandingBoot({ reduceMotion, theme = 'dark', children }) {
+export function AfinixLandingBoot({ reduceMotion, theme = 'dark', children }) {
     const [phase, setPhase] = useState(reduceMotion ? 'done' : 'boot');
 
     useEffect(() => {
@@ -99,23 +100,23 @@ export function AffinixLandingBoot({ reduceMotion, theme = 'dark', children }) {
     return (
         <>
             <div
-                className={phase === 'boot' ? 'affinix-boot-content is-booting' : 'affinix-boot-content'}
+                className={phase === 'boot' ? 'afinix-boot-content is-booting' : 'afinix-boot-content'}
                 aria-hidden={showOverlay}
             >
                 {children}
             </div>
             {showOverlay ? (
                 <div
-                    className={`affinix-boot-overlay${phase === 'exit' ? ' affinix-boot-overlay--exit' : ''}`}
+                    className={`afinix-boot-overlay${phase === 'exit' ? ' afinix-boot-overlay--exit' : ''}`}
                     data-theme={theme}
                     role="status"
                     aria-live="polite"
                     aria-busy={phase === 'boot'}
                 >
-                    <span className="affinix-boot-sr">Cargando Affinix LAB</span>
-                    <div className="affinix-boot-panel" aria-hidden="true">
-                        <div className="affinix-boot-mark">A</div>
-                        <div className="affinix-boot-bar" />
+                    <span className="afinix-boot-sr">Cargando Afinix Lab</span>
+                    <div className="afinix-boot-panel" aria-hidden="true">
+                        <AfinixLogo size={48} showText={false} theme={theme} />
+                        <div className="afinix-boot-bar" />
                     </div>
                 </div>
             ) : null}

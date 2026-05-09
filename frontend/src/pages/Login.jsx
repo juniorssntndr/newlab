@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
+import AfinixLogo from '../components/AfinixLogo.jsx';
 
 const portalHighlights = [
     'Seguimiento de pedidos en tiempo real',
@@ -52,14 +53,14 @@ const Login = () => {
     return (
         <div className="login-page">
             <div className="login-shell">
-                <aside className="login-story" aria-label="Beneficios del portal Affinix">
+                <aside className="login-story" aria-label="Beneficios del portal Afinix">
                     <Link className="login-back-link" to="/">
                         <i className="bi bi-arrow-left" aria-hidden="true"></i>
-                        Volver a Affinix LAB
+                        Volver a Afinix Dental Lab
                     </Link>
                     <div>
-                        <span className="login-kicker">Portal clinico</span>
-                        <h1>Gestiona tus ordenes dentales con visibilidad de laboratorio.</h1>
+                        <span className="login-kicker">Portal clínico</span>
+                        <h1>Gestiona tus órdenes dentales con visibilidad de laboratorio.</h1>
                         <p>
                             Entra para revisar estados, aprobar avances digitales y coordinar entregas sin perder el hilo de cada caso.
                         </p>
@@ -74,14 +75,13 @@ const Login = () => {
                     </div>
                     <div className="login-live-card">
                         <span>Pedido #AF-2841</span>
-                        <strong>Diseno 3D listo para aprobacion</strong>
+                        <strong>Diseño 3D listo para aprobación</strong>
                     </div>
                 </aside>
 
-                <section className="login-card" aria-label="Inicio de sesion">
+                <section className="login-card" aria-label="Inicio de sesión">
                     <div className="login-logo">
-                        <div className="login-logo-icon">A</div>
-                        <span className="login-logo-text">Affinix LAB</span>
+                        <AfinixLogo size={76} showText={true} theme="dark" isLogin={true} />
                     </div>
                     <h2 className="login-title">Acceso al sistema</h2>
                     <p className="login-subtitle">
