@@ -22,6 +22,7 @@ const AfinixLogo = ({
     alignItems: 'center',
     justifyContent: 'flex-start',
     userSelect: 'none',
+    WebkitUserSelect: 'none',
     height: logoHeightVar,
     width: 'auto',
     overflow: 'visible'
@@ -32,12 +33,16 @@ const AfinixLogo = ({
       <img 
         src={logoSrc} 
         alt="Afinix Dental Lab" 
+        draggable={false}
         style={{ 
           height: '100%',
           width: 'auto',
           display: 'block',
           objectFit: 'contain',
-          flexShrink: 0
+          flexShrink: 0,
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          pointerEvents: 'none'
         }} 
       />
     </div>

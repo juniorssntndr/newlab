@@ -229,7 +229,18 @@
   color: var(--afinix-heading-color);
   white-space: nowrap;
   overflow-wrap: normal;
+  user-select: none;
+  -webkit-user-select: none;
   transition: background 180ms ease, box-shadow 180ms ease, color 180ms ease;
+}
+
+.afinix-brand .afinix-logo,
+.afinix-footer-basic .afinix-logo,
+.afinix-brand .afinix-logo img,
+.afinix-footer-basic .afinix-logo img {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 
 .afinix-brand .afinix-logo {
@@ -249,8 +260,17 @@
 }
 
 .afinix-brand:hover {
-  background: rgba(16, 215, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(16, 215, 255, 0.12);
+  background: transparent;
+  box-shadow: none;
+}
+
+.afinix-brand::selection,
+.afinix-brand *::selection {
+  background: transparent;
+}
+
+.afinix-brand:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .afinix-brand-mark {

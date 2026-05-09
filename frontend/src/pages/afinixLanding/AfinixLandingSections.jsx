@@ -179,7 +179,14 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark'
                 aria-label="Navegación principal"
                 {...headerEntranceMotion(reduceMotion, 0.12)}
             >
-                <a className="afinix-brand" href="#inicio" aria-label="Afinix Lab, inicio (landing para clínicas)">
+                <a
+                    className="afinix-brand"
+                    href="#inicio"
+                    aria-label="Afinix Lab, inicio (landing para clínicas)"
+                    draggable={false}
+                    onDragStart={(event) => event.preventDefault()}
+                    onMouseDown={(event) => event.preventDefault()}
+                >
                     <AfinixLogo size={54} showText={true} theme={theme} />
                 </a>
                 <nav className="afinix-nav-links" aria-label="Secciones de la landing">
