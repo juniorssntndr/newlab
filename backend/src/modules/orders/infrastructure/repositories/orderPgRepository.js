@@ -3,7 +3,8 @@ export const makeOrderPgRepository = ({ pool }) => ({
     listOrders: async ({ user, filters = {} }) => {
         const params = [];
         let query = `SELECT p.*, c.nombre as clinica_nombre, u.nombre as responsable_nombre,
-                 (SELECT pr.nombre FROM nl_pedido_items pi JOIN nl_productos pr ON pi.producto_id = pr.id WHERE pi.pedido_id = p.id LIMIT 1) as producto_principal
+                 (SELECT pr.nombre FROM nl_pedido_items pi JOIN nl_productos pr ON pi.producto_id = pr.id WHERE pi.pedido_id = p.id LIMIT 1) as producto_principal,
+                 COUNT(*) OVER() as total_count
                  FROM nl_pedidos p
                  LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
                  LEFT JOIN nl_usuarios u ON p.responsable_id = u.id
@@ -32,8 +33,68 @@ export const makeOrderPgRepository = ({ pool }) => ({
 
         query += ' ORDER BY p.created_at DESC';
 
+        let limit = parseInt(filters.limit, 10);
+        let page = parseInt(filters.page, 10);
+
+        if (isNaN(limit) || limit <= 0) {
+            limit = 200;
+        } else {
+            limit = Math.min(limit, 500);
+        }
+
+        if (isNaN(page) || page <= 0) {
+            page = 1;
+        }
+
+        const offset = (page - 1) * limit;
+
+        params.push(limit);
+        query += ` LIMIT $${params.length}`;
+
+        params.push(offset);
+        query += ` OFFSET $${params.length}`;
+
         const result = await pool.query(query, params);
-        return result.rows;
+
+        let total = 0;
+        if (result.rows.length > 0) {
+            total = parseInt(result.rows[0].total_count, 10);
+        } else if (page > 1) {
+            let countQuery = `SELECT COUNT(*) FROM nl_pedidos p
+                             LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
+                             LEFT JOIN nl_usuarios u ON p.responsable_id = u.id
+                             WHERE 1=1`;
+            const countParams = [];
+            if (user?.tipo === 'cliente' && user?.clinica_id) {
+                countParams.push(user.clinica_id);
+                countQuery += ` AND p.clinica_id = $${countParams.length}`;
+            }
+            if (filters.estado) {
+                countParams.push(filters.estado);
+                countQuery += ` AND p.estado = $${countParams.length}`;
+            }
+            if (filters.clinica_id) {
+                countParams.push(filters.clinica_id);
+                countQuery += ` AND p.clinica_id = $${countParams.length}`;
+            }
+            if (filters.responsable_id) {
+                countParams.push(filters.responsable_id);
+                countQuery += ` AND p.responsable_id = $${countParams.length}`;
+            }
+            if (filters.search) {
+                countParams.push(`%${filters.search}%`);
+                countQuery += ` AND (p.codigo ILIKE $${countParams.length} OR p.paciente_nombre ILIKE $${countParams.length} OR c.nombre ILIKE $${countParams.length})`;
+            }
+            const countResult = await pool.query(countQuery, countParams);
+            total = parseInt(countResult.rows[0].count, 10);
+        }
+
+        const cleanRows = result.rows.map(row => {
+            const { total_count, ...cleanRow } = row;
+            return cleanRow;
+        });
+
+        return { rows: cleanRows, total };
     },
     getOrderBaseById: async ({ orderId }) => {
         const result = await pool.query(

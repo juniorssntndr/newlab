@@ -41,11 +41,14 @@ export const makeOrderService = ({ orderRepository }) => {
 
     return {
     listOrders: async ({ user, filters }) => {
-        const rows = await orderRepository.listOrders({ user, filters });
+        const { rows, total } = await orderRepository.listOrders({ user, filters });
         return {
             ok: true,
             type: 'SUCCESS',
-            data: rows
+            data: {
+                rows,
+                total
+            }
         };
     },
     getOrderDetail: async ({ user, orderId }) => {

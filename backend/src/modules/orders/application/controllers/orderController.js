@@ -26,17 +26,40 @@ const sendServiceResult = (res, result) => {
 export const makeOrderController = ({ orderService }) => ({
     listOrders: async (req, res, next) => {
         try {
+            const page = parseInt(req.query.page, 10) || 1;
+            const limit = parseInt(req.query.limit, 10) || 200;
+            const paginated = req.query.paginated === 'true' || !!req.query.page || !!req.query.limit;
+
             const result = await orderService.listOrders({
                 user: req.user,
                 filters: {
                     estado: req.query.estado,
                     clinica_id: req.query.clinica_id,
                     search: req.query.search,
-                    responsable_id: req.query.responsable_id
+                    responsable_id: req.query.responsable_id,
+                    page,
+                    limit
                 }
             });
             
-            return sendServiceResult(res, result);
+            if (!result.ok) {
+                return sendServiceResult(res, result);
+            }
+
+            if (paginated) {
+                const total = result.data.total;
+                return res.status(200).json({
+                    data: result.data.rows,
+                    pagination: {
+                        page,
+                        limit,
+                        total,
+                        pages: Math.ceil(total / limit)
+                    }
+                });
+            }
+
+            return res.status(200).json(result.data.rows);
         } catch (error) {
             next(error);
         }
