@@ -11,6 +11,7 @@ import {
     aboutGallery,
     aboutMetrics,
     contactChannels,
+    landingContactChannels,
     landingMetrics,
     partnerClinics,
     services,
@@ -114,16 +115,15 @@ function ServicesCarousel({ reduceMotion }) {
                     Para tu equipo y tus pacientes
                 </motion.span>
                 <motion.h2 className="afinix-services-title" {...servicesHeadingMotion(reduceMotion, 1)}>
-                    Servicios
+                    Control
                     <br />
-                    <span className="afinix-services-title-accent">digitales</span>
+                    <span className="afinix-services-title-accent">digital</span>
                     <br />
-                    que encajan en
-                    {' '}tu forma de trabajar
+                    para tu clínica
                 </motion.h2>
                 <motion.p {...servicesHeadingMotion(reduceMotion, 2)}>
-                    Materiales certificados, CAD/CAM 5 ejes y control por etapa: menos sorpresas entre lo que planeas en clínica y lo
-                    que recibe el paciente.
+                    Ayudamos a odontólogos y clínicas de Arequipa a trabajar con mayor control, comunicación clara y seguimiento de sus casos.
+                    Coronas CAD/CAM, zirconia, disilicato y aprobación digital antes de producir.
                 </motion.p>
             </div>
             <div
@@ -179,7 +179,7 @@ function ServicesCarousel({ reduceMotion }) {
                                     <div className="afinix-service-card-media">
                                         <img
                                             src={service.image}
-                                            alt={`Muestra de ${service.name}`}
+                                            alt={`${service.name}: ${service.indication}`}
                                             loading="lazy"
                                             decoding="async"
                                             draggable={false}
@@ -195,9 +195,9 @@ function ServicesCarousel({ reduceMotion }) {
                                         </ul>
                                     </div>
                                     <div className="afinix-service-card-foot">
-                                        <span className="afinix-service-foot-meta">
+                                        <span className="afinix-service-foot-meta" aria-label={`Entrega: ${service.leadTime}`}>
                                             <i className="bi bi-clock" aria-hidden="true"></i>
-                                            Entrega: <strong>{service.leadTime}</strong>
+                                            <strong>{service.leadTime}</strong>
                                         </span>
                                     </div>
                                 </motion.article>
@@ -263,6 +263,15 @@ function WorkflowDetailCard({ step, reduceMotion, className = '', mobilePopover 
                     </div>
                 </div>
                 <p>{step.text}</p>
+                {step.benefit && (
+                    <div className="afinix-workflow-benefit">
+                        <i className="bi bi-star-fill" aria-hidden="true"></i>
+                        <span>
+                            <strong>Beneficio: </strong>
+                            {step.benefit}
+                        </span>
+                    </div>
+                )}
             </div>
             <div className="afinix-workflow-hud-status" aria-label="Estado operativo del paso activo">
                 <span className="afinix-workflow-hud-label">Estado</span>
@@ -508,11 +517,11 @@ function PartnersAndMetrics({ reduceMotion }) {
             <MotionSection className="afinix-section afinix-about" id="nosotros" {...sectionMotion(reduceMotion)}>
                 <div className="afinix-about-copy">
                     <motion.span {...servicesHeadingMotion(reduceMotion, 0)}>Para tu clínica</motion.span>
-                    <motion.h2 {...servicesHeadingMotion(reduceMotion, 1)}>Tu criterio, el diseño y la pieza: todo en el mismo hilo.</motion.h2>
+                    <motion.h2 {...servicesHeadingMotion(reduceMotion, 1)}>Tu criterio, el diseño y la pieza: todo en el mismo flujo.</motion.h2>
                     <motion.p {...servicesHeadingMotion(reduceMotion, 2)}>
                         Cuando el flujo es visible, tu agenda deja de depender de mensajes sueltos. Unes criterio clínico, revisión 3D
-                        y producción CAD/CAM con responsables y tiempos claros. La precisión en boca se sostiene con trazabilidad: sin
-                        ella, cada caso es una apuesta.
+                        y producción CAD/CAM con responsables y tiempos referenciales según complejidad del caso. La precisión en boca se apoya en trazabilidad: sin
+                        ella, cada caso pierde predictibilidad operativa.
                     </motion.p>
                     <div className="afinix-proof-grid">
                         {aboutMetrics.map((metric, index) => (
@@ -566,6 +575,66 @@ function PartnersAndMetrics({ reduceMotion }) {
     );
 }
 
+function ContactSection({ reduceMotion }) {
+    return (
+        <MotionSection
+            className="afinix-section afinix-contact"
+            id="contacto"
+            {...sectionMotion(reduceMotion)}
+        >
+            <div className="afinix-section-heading afinix-contact-heading">
+                <span>Contacto</span>
+                <h2>Habla con nuestro equipo</h2>
+                <p>
+                    Estamos en Arequipa para darte soporte local y directo.
+                    Escríbenos, llámanos o visítanos en nuestro laboratorio.
+                </p>
+            </div>
+            <div className="afinix-contact-grid">
+                {landingContactChannels.map((channel) => (
+                    <article
+                        key={channel.id}
+                        className={`afinix-contact-card afinix-contact-card--${channel.colorClass}`}
+                    >
+                        <div className="afinix-contact-card-icon" aria-hidden="true">
+                            <i className={`bi ${channel.icon}`}></i>
+                        </div>
+                        <h3>{channel.title}</h3>
+                        <p>{channel.subtitle}</p>
+                        <a
+                            href={channel.href}
+                            className="afinix-contact-card-btn"
+                            target={channel.external ? '_blank' : undefined}
+                            rel={channel.external ? 'noopener noreferrer' : undefined}
+                        >
+                            {channel.btnText}
+                            <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    </article>
+                ))}
+            </div>
+            <div className="afinix-contact-socials-block">
+                <h3>Síguenos en nuestras redes</h3>
+                <div className="afinix-contact-socials-links">
+                    {socialLinks.map((social) => (
+                        <a
+                            key={social.label}
+                            href={social.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={social.label}
+                            className="afinix-contact-social-btn"
+                        >
+                            <i className={`bi ${social.icon}`} aria-hidden="true"></i>
+                            <span>{social.label}</span>
+                        </a>
+                    ))}
+                </div>
+            </div>
+        </MotionSection>
+    );
+}
+
 function FinalCTA({ reduceMotion, theme = 'dark' }) {
     return (
         <footer className="afinix-footer afinix-final-cta">
@@ -573,10 +642,10 @@ function FinalCTA({ reduceMotion, theme = 'dark' }) {
                 <div className="afinix-final-cta__panel">
                     <div className="afinix-section-heading afinix-final-cta__heading">
                         <span>Da el siguiente paso</span>
-                        <h2>Menos fricción entre tu criterio y la pieza terminada</h2>
+                        <h2>Menos fricción entre tu criterio clínico y la pieza terminada</h2>
                         <p>
                             Un solo canal para casos, aprobaciones y seguimiento: tu clínica gana claridad operativa y tus pacientes
-                            ganan puntualidad.
+                            ganan una experiencia más ordenada.
                         </p>
                     </div>
                     <div className="afinix-footer-actions">
@@ -584,7 +653,7 @@ function FinalCTA({ reduceMotion, theme = 'dark' }) {
                             Solicitar acceso
                             <i className="bi bi-arrow-right" aria-hidden="true"></i>
                         </Link>
-                        <a className="afinix-secondary-action" href="#servicios">
+                        <a className="afinix-secondary-action" href="/#servicios">
                             Ver servicios
                         </a>
                     </div>
@@ -593,10 +662,13 @@ function FinalCTA({ reduceMotion, theme = 'dark' }) {
             <div className="afinix-footer-basic" aria-label="Footer legal y navegación">
                 <AfinixLogo size={44} showText={true} theme={theme} />
                 <nav aria-label="Enlaces de footer" style={{ marginTop: '1rem' }}>
-                    <a href="#servicios">Servicios</a>
-                    <a href="#nosotros">Para tu clínica</a>
+                    <a href="/#servicios">Servicios</a>
+                    <a href="/#nosotros">Para tu clínica</a>
+                    <a href="/coronas-cad-cam-arequipa">Coronas CAD/CAM</a>
+                    <a href="/#contacto">Contacto</a>
+                    <a href="/politica-de-privacidad">Privacidad</a>
                 </nav>
-                <small style={{ marginTop: '1rem', display: 'block' }}>2026 Afinix Lab. Todos los derechos reservados.</small>
+                <small style={{ marginTop: '1rem', display: 'block' }}>2026 AFINIX Dental Lab. Todos los derechos reservados.</small>
                 <div className="afinix-footer-channels">
                     {contactChannels.map((ch) => (
                         <a
@@ -638,6 +710,7 @@ export default function AfinixLandingBelowFold({ reduceMotion, theme = 'dark' })
             <ServicesCarousel reduceMotion={reduceMotion} />
             <WorkflowTimeline reduceMotion={reduceMotion} />
             <PartnersAndMetrics reduceMotion={reduceMotion} />
+            <ContactSection reduceMotion={reduceMotion} />
             <FinalCTA reduceMotion={reduceMotion} theme={theme} />
         </>
     );

@@ -5,7 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build",
+        "generate:favicons": "node scripts/generate-favicons.mjs",
+        "build": "node scripts/generate-favicons.mjs && node scripts/write-seo-files.mjs && vite build",
         "preview": "vite preview",
         "test:odontograma": "node src/utils/odontograma.test.js",
         "test:register-payment-optimistic": "node src/modules/finance/mutations/registerPayment.optimistic.test.js",
@@ -33,6 +34,8 @@
     },
     "devDependencies": {
         "@vitejs/plugin-react": "^4.2.1",
+        "png-to-ico": "^3.0.1",
+        "sharp": "^0.34.5",
         "vite": "^5.1.4"
     }
 }

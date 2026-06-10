@@ -1,4 +1,6 @@
 import { writeAuditEvent } from '../../../../services/audit.js';
+import { buildGoogleCalendarAuthUrl, storeGoogleCalendarCode } from '../../../../services/googleCalendar.js';
+import { uploadOrderCaseImage } from '../../../../services/storage.js';
 
 const sendServiceResult = (res, result) => {
     const typeToStatus = {
@@ -118,6 +120,66 @@ export const makeOrderController = ({ orderService }) => ({
             next(error);
         }
     },
+    uploadOrderFile: async (req, res, next) => {
+        try {
+            const access = await orderService.getOrderDetail({
+                user: req.user,
+                orderId: req.params.id
+            });
+            if (!access.ok) {
+                return sendServiceResult(res, access);
+            }
+
+            const uploadedUrl = req.file
+                ? await uploadOrderCaseImage({ file: req.file, orderId: req.params.id })
+                : null;
+
+            const result = await orderService.uploadOrderFile({
+                user: req.user,
+                orderId: req.params.id,
+                fileInput: {
+                    url: uploadedUrl,
+                    type: req.body?.tipo,
+                    originalName: req.file?.originalname || null,
+                    mimeType: req.file?.mimetype || null,
+                    sizeBytes: req.file?.size || null
+                }
+            });
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    getGoogleCalendarAuthUrl: async (req, res, next) => {
+        try {
+            if (req.user?.tipo !== 'admin') {
+                return res.status(403).json({ error: 'No autorizado' });
+            }
+            return res.json({ url: buildGoogleCalendarAuthUrl() });
+        } catch (error) {
+            next(error);
+        }
+    },
+    storeGoogleCalendarCode: async (req, res, next) => {
+        try {
+            if (req.user?.tipo !== 'admin') {
+                return res.status(403).json({ error: 'No autorizado' });
+            }
+            const code = String(req.body?.code || '').trim();
+            if (!code) {
+                return res.status(400).json({ error: 'Codigo OAuth requerido' });
+            }
+            const integration = await storeGoogleCalendarCode({
+                pool: req.app.locals.pool,
+                code,
+                actorUserId: req.user.id
+            });
+            return res.json(integration);
+        } catch (error) {
+            next(error);
+        }
+    },
     updateOrderResponsible: async (req, res, next) => {
         try {
             const result = await orderService.updateOrderResponsible({
@@ -147,6 +209,20 @@ export const makeOrderController = ({ orderService }) => ({
     respondOrderApproval: async (req, res, next) => {
         try {
             const result = await orderService.respondOrderApproval({
+                user: req.user,
+                orderId: req.params.id,
+                approvalId: req.params.aprobacionId,
+                body: req.body
+            });
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    updateApprovalMeetLink: async (req, res, next) => {
+        try {
+            const result = await orderService.updateApprovalMeetLink({
                 user: req.user,
                 orderId: req.params.id,
                 approvalId: req.params.aprobacionId,

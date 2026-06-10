@@ -1,4 +1,5 @@
 export const makeOrderPgRepository = ({ pool }) => ({
+    pool,
     listOrders: async ({ user, filters = {} }) => {
         const params = [];
         let query = `SELECT p.*, c.nombre as clinica_nombre, u.nombre as responsable_nombre,
@@ -74,6 +75,25 @@ export const makeOrderPgRepository = ({ pool }) => ({
         );
 
         return result.rows;
+    },
+    listOrderFiles: async ({ orderId }) => {
+        try {
+            const result = await pool.query(
+                `SELECT a.*, u.nombre as uploaded_by_nombre
+                 FROM nl_pedido_archivos a
+                 LEFT JOIN nl_usuarios u ON a.uploaded_by = u.id
+                 WHERE a.pedido_id = $1
+                 ORDER BY a.created_at DESC, a.id DESC`,
+                [orderId]
+            );
+
+            return result.rows;
+        } catch (error) {
+            if (error?.code === '42P01') {
+                return [];
+            }
+            throw error;
+        }
     },
     createOrder: async ({ orderInput, totals, actorUserId }) => {
         const {
@@ -201,7 +221,10 @@ export const makeOrderPgRepository = ({ pool }) => ({
         }
 
         const result = await pool.query(
-            'INSERT INTO nl_pedido_aprobaciones (pedido_id, link_exocad) VALUES ($1, $2) RETURNING *',
+            `INSERT INTO nl_pedido_aprobaciones
+                (pedido_id, link_exocad)
+             VALUES ($1, $2)
+             RETURNING *`,
             [orderId, link_exocad]
         );
 
@@ -252,16 +275,55 @@ export const makeOrderPgRepository = ({ pool }) => ({
             pedido: result.rows[0]
         };
     },
-    respondOrderApproval: async ({ orderId, approvalId, estado, comentarioCliente }) => {
+    respondOrderApproval: async ({ orderId, approvalId, estado, comentarioCliente, requestMeet, actorUserId }) => {
         const pedidoResult = await pool.query('SELECT id, codigo, clinica_id, estado FROM nl_pedidos WHERE id = $1', [orderId]);
         if (pedidoResult.rows.length === 0) {
             return { notFound: true };
         }
 
         const result = await pool.query(
-            `UPDATE nl_pedido_aprobaciones SET estado=$1, comentario_cliente=$2, respondido_at=NOW()
+            `UPDATE nl_pedido_aprobaciones
+             SET estado=$1,
+                 comentario_cliente=$2,
+                 respondido_at=NOW(),
+                 meet_status=CASE WHEN $5 THEN 'requested' ELSE meet_status END,
+                 meet_requested_at=CASE WHEN $5 THEN NOW() ELSE meet_requested_at END,
+                 meet_requested_by=CASE WHEN $5 THEN $6 ELSE meet_requested_by END,
+                 meet_note=CASE WHEN $5 THEN $2 ELSE meet_note END
              WHERE id=$3 AND pedido_id=$4 RETURNING *`,
-            [estado, comentarioCliente || null, approvalId, orderId]
+            [estado, comentarioCliente || null, approvalId, orderId, !!requestMeet, actorUserId || null]
+        );
+
+        if (result.rows.length === 0) {
+            return {
+                notFound: false,
+                approvalNotFound: true,
+                pedido: pedidoResult.rows[0]
+            };
+        }
+
+        return {
+            notFound: false,
+            approvalNotFound: false,
+            pedido: pedidoResult.rows[0],
+            approval: result.rows[0]
+        };
+    },
+    setApprovalMeetLink: async ({ orderId, approvalId, meetUrl, meetScheduledAt, actorUserId }) => {
+        const pedidoResult = await pool.query('SELECT id, codigo, clinica_id, estado FROM nl_pedidos WHERE id = $1', [orderId]);
+        if (pedidoResult.rows.length === 0) {
+            return { notFound: true };
+        }
+
+        const result = await pool.query(
+            `UPDATE nl_pedido_aprobaciones
+             SET meet_status='scheduled',
+                 meet_url=$1,
+                 meet_scheduled_at=$2,
+                 meet_created_at=NOW(),
+                 meet_created_by=$3
+             WHERE id=$4 AND pedido_id=$5 RETURNING *`,
+            [meetUrl, meetScheduledAt || null, actorUserId || null, approvalId, orderId]
         );
 
         if (result.rows.length === 0) {
@@ -285,6 +347,36 @@ export const makeOrderPgRepository = ({ pool }) => ({
              VALUES ($1, $2, $3, $4, $5)`,
             [orderId, previousStatus, nextStatus, userId, comment]
         );
+    },
+    addOrderFile: async ({ orderId, type, url, originalName, mimeType, sizeBytes, uploadedBy }) => {
+        const result = await pool.query(
+            `INSERT INTO nl_pedido_archivos
+                (pedido_id, tipo, url, nombre_original, mime_type, size_bytes, uploaded_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING *`,
+            [orderId, type, url, originalName, mimeType, sizeBytes, uploadedBy]
+        );
+
+        return result.rows[0];
+    },
+    getOrderAttendeeEmails: async ({ orderId }) => {
+        const result = await pool.query(
+            `SELECT DISTINCT email FROM (
+                SELECT c.email
+                FROM nl_pedidos p
+                LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
+                WHERE p.id = $1
+                UNION
+                SELECT u.email
+                FROM nl_pedidos p
+                LEFT JOIN nl_usuarios u ON p.created_by = u.id
+                WHERE p.id = $1
+            ) emails
+            WHERE email IS NOT NULL AND email <> ''`,
+            [orderId]
+        );
+
+        return result.rows.map((row) => row.email);
     },
     addNotification: async ({ userId, type, title, message, link }) => {
         await pool.query(

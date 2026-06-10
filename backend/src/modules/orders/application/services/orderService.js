@@ -4,6 +4,15 @@ export const makeOrderService = ({ orderRepository }) => {
     const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
     const igvFactor = getIgvFactor();
 
+    const isValidMeetUrl = (value) => {
+        try {
+            const parsed = new URL(value);
+            return parsed.protocol === 'https:' && parsed.hostname === 'meet.google.com';
+        } catch {
+            return false;
+        }
+    };
+
     const notifyLabAdmins = async (type, title, message, link) => {
         const admins = await orderRepository.getActiveLabUsers();
         for (const admin of admins) {
@@ -61,10 +70,11 @@ export const makeOrderService = ({ orderRepository }) => {
             }
         }
 
-        const [items, timeline, approvals] = await Promise.all([
+        const [items, timeline, approvals, files] = await Promise.all([
             orderRepository.listOrderItems({ orderId }),
             orderRepository.listOrderTimeline({ orderId }),
-            orderRepository.listOrderApprovals({ orderId })
+            orderRepository.listOrderApprovals({ orderId }),
+            orderRepository.listOrderFiles({ orderId })
         ]);
 
         return {
@@ -74,7 +84,8 @@ export const makeOrderService = ({ orderRepository }) => {
                 ...order,
                 items,
                 timeline,
-                aprobaciones: approvals
+                aprobaciones: approvals,
+                archivos: files
             }
         };
     },
@@ -292,6 +303,15 @@ export const makeOrderService = ({ orderRepository }) => {
             };
         }
 
+        const order = await orderRepository.getOrderBaseById({ orderId });
+        if (!order) {
+            return {
+                ok: false,
+                type: 'NOT_FOUND',
+                error: 'Pedido no encontrado'
+            };
+        }
+
         const result = await orderRepository.createOrderApprovalLink({
             orderId,
             link_exocad
@@ -310,7 +330,7 @@ export const makeOrderService = ({ orderRepository }) => {
             previousStatus: null,
             nextStatus: null,
             userId: user.id,
-            comment: comentario || 'Nuevo link de aprobación generado'
+            comment: comentario || 'Nuevo link de aprobacion generado'
         });
 
         return {
@@ -319,7 +339,60 @@ export const makeOrderService = ({ orderRepository }) => {
             data: result.approval
         };
     },
-    updateOrderResponsible: async ({ user, orderId, body }) => {
+    uploadOrderFile: async ({ user, orderId, fileInput }) => {
+        const order = await orderRepository.getOrderBaseById({ orderId });
+        if (!order) {
+            return {
+                ok: false,
+                type: 'NOT_FOUND',
+                error: 'Pedido no encontrado'
+            };
+        }
+
+        if (user?.tipo === 'cliente') {
+            const canAccess = !!user?.clinica_id && Number(user.clinica_id) === Number(order.clinica_id);
+            if (!canAccess) {
+                return {
+                    ok: false,
+                    type: 'FORBIDDEN',
+                    error: 'No autorizado'
+                };
+            }
+        }
+
+        if (!fileInput?.url) {
+            return {
+                ok: false,
+                type: 'BAD_REQUEST',
+                error: 'Imagen requerida'
+            };
+        }
+
+        const type = ['color', 'caso', 'final', 'otro'].includes(fileInput.type) ? fileInput.type : 'otro';
+        const created = await orderRepository.addOrderFile({
+            orderId,
+            type,
+            url: fileInput.url,
+            originalName: fileInput.originalName,
+            mimeType: fileInput.mimeType,
+            sizeBytes: fileInput.sizeBytes,
+            uploadedBy: user.id
+        });
+
+        await orderRepository.addTimelineEntry({
+            orderId,
+            previousStatus: null,
+            nextStatus: null,
+            userId: user.id,
+            comment: `Imagen agregada al caso: ${type}`
+        });
+
+        return {
+            ok: true,
+            type: 'CREATED',
+            data: created
+        };
+    },    updateOrderResponsible: async ({ user, orderId, body }) => {
         if (user?.tipo === 'cliente') {
             return {
                 ok: false,
@@ -432,7 +505,7 @@ export const makeOrderService = ({ orderRepository }) => {
             };
         }
 
-        const { estado, comentario_cliente } = body || {};
+        const { estado, comentario_cliente, request_meet } = body || {};
         if (!['aprobado', 'ajuste_solicitado'].includes(estado)) {
             return {
                 ok: false,
@@ -473,6 +546,7 @@ export const makeOrderService = ({ orderRepository }) => {
             approvalId,
             estado,
             comentarioCliente,
+            requestMeet: estado === 'ajuste_solicitado' && !!request_meet,
             actorUserId: user.id
         });
 
@@ -517,6 +591,80 @@ export const makeOrderService = ({ orderRepository }) => {
                                       // pero se registra la respuesta
             userId: user.id,
             comment: `Diseño ${estado === 'aprobado' ? 'APROBADO' : 'CON AJUSTES'}. ${comentarioCliente}`
+        });
+
+        return {
+            ok: true,
+            type: 'SUCCESS',
+            data: result.approval
+        };
+    },
+    updateApprovalMeetLink: async ({ user, orderId, approvalId, body }) => {
+        if (user?.tipo === 'cliente') {
+            return {
+                ok: false,
+                type: 'FORBIDDEN',
+                error: 'No autorizado'
+            };
+        }
+
+        const meetUrl = typeof body?.meet_url === 'string' ? body.meet_url.trim() : '';
+        const meetScheduledAt = body?.meet_scheduled_at || null;
+
+        if (!meetUrl || !isValidMeetUrl(meetUrl)) {
+            return {
+                ok: false,
+                type: 'BAD_REQUEST',
+                error: 'Ingresa un link válido de Google Meet'
+            };
+        }
+
+        if (meetScheduledAt && Number.isNaN(new Date(meetScheduledAt).getTime())) {
+            return {
+                ok: false,
+                type: 'BAD_REQUEST',
+                error: 'Fecha de Meet no válida'
+            };
+        }
+
+        const result = await orderRepository.setApprovalMeetLink({
+            orderId,
+            approvalId,
+            meetUrl,
+            meetScheduledAt,
+            actorUserId: user.id
+        });
+
+        if (result.notFound) {
+            return {
+                ok: false,
+                type: 'NOT_FOUND',
+                error: 'Pedido no encontrado'
+            };
+        }
+
+        if (result.approvalNotFound) {
+            return {
+                ok: false,
+                type: 'NOT_FOUND',
+                error: 'Aprobación no encontrada'
+            };
+        }
+
+        await notifyClinicUsers(
+            result.pedido.clinica_id,
+            'meet_disponible',
+            'Meet disponible',
+            `El laboratorio agregó el link de Meet para ${result.pedido.codigo}`,
+            `/pedidos/${result.pedido.id}`
+        );
+
+        await orderRepository.addTimelineEntry({
+            orderId,
+            previousStatus: result.pedido.estado,
+            nextStatus: result.pedido.estado,
+            userId: user.id,
+            comment: `Meet agendado para revisión del diseño.`
         });
 
         return {

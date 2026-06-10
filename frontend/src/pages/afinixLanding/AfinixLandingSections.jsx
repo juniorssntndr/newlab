@@ -14,6 +14,7 @@ import {
     mobileQuickLinks,
     socialLinks,
 } from './afinixLandingContent.js';
+import { whatsappHref } from '../../config/siteSeo.js';
 import AfinixLogo from '../../components/AfinixLogo';
 
 const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
@@ -21,9 +22,10 @@ const WHATSAPP_CHANNEL = contactChannels.find((channel) => channel.label === 'Wh
 const LOCATION_CHANNEL = contactChannels.find((channel) => channel.label === 'Ver ubicación');
 const HEADER_ICON_LINKS = [LOCATION_CHANNEL, ...socialLinks].filter(Boolean);
 const HEADER_MENU_LINKS = [
-    { href: '#servicios', label: 'Servicios' },
-    { href: '#nosotros', label: 'Para tu clínica' },
-    { href: '#flujo', label: 'Flujo digital' },
+    { href: '/#servicios', label: 'Servicios' },
+    { href: '/#nosotros', label: 'Para tu clínica' },
+    { href: '/#flujo', label: 'Flujo digital' },
+    { href: '/#contacto', label: 'Contacto' },
 ];
 const HERO_EASE = [0.16, 1, 0.3, 1];
 const TRACKING_CHECK_SETTLE_MS = 140;
@@ -181,8 +183,8 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark'
             >
                 <a
                     className="afinix-brand"
-                    href="#inicio"
-                    aria-label="Afinix Lab, inicio (landing para clínicas)"
+                    href="/#inicio"
+                    aria-label="AFINIX Dental Lab, inicio"
                     draggable={false}
                     onDragStart={(event) => event.preventDefault()}
                     onMouseDown={(event) => event.preventDefault()}
@@ -190,20 +192,21 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark'
                     <AfinixLogo size={54} showText={true} theme={theme} />
                 </a>
                 <nav className="afinix-nav-links" aria-label="Secciones de la landing">
-                    <a href="#servicios">Servicios</a>
-                    <a href="#nosotros">Para tu clínica</a>
-                    <a href="#flujo">Flujo digital</a>
+                    <a href="/#servicios">Servicios</a>
+                    <a href="/#nosotros">Para tu clínica</a>
+                    <a href="/#flujo">Flujo digital</a>
+                    <a href="/#contacto">Contacto</a>
                 </nav>
                 <div className="afinix-nav-actions">
                     <a
                         className="afinix-header-whatsapp"
-                        href={WHATSAPP_CHANNEL.href}
-                        target={WHATSAPP_CHANNEL.external ? '_blank' : undefined}
-                        rel={WHATSAPP_CHANNEL.external ? 'noopener noreferrer' : undefined}
-                        aria-label="Consultar por WhatsApp sobre casos para clínicas"
+                        href={whatsappHref()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Escribir por WhatsApp a AFINIX Dental Lab"
                     >
                         <i className={`bi ${WHATSAPP_CHANNEL.icon}`} aria-hidden="true"></i>
-                        <span>Más info</span>
+                        <span>WhatsApp</span>
                     </a>
                     {LOCATION_CHANNEL ? (
                         <a
@@ -325,7 +328,7 @@ function HeroTrackingWidget({ reduceMotion, className = '' }) {
     return (
         <motion.aside
             className={`afinix-hero-tracking ${className}`.trim()}
-            aria-label="Seguimiento de caso sin retrasos"
+            aria-label="Seguimiento de caso en línea"
             {...(reduceMotion
                 ? {}
                 : {
@@ -361,9 +364,9 @@ function HeroTrackingWidget({ reduceMotion, className = '' }) {
                 })}
             </ol>
             <div className="afinix-hero-tracking-actions">
-                <p className="afinix-hero-tracking-alert" aria-label="Aviso: todo sin retrasos">
+                <p className="afinix-hero-tracking-alert" aria-label="Aviso de seguimiento">
                     <i className="bi bi-bell" aria-hidden="true"></i>
-                    Todo sin retrasos
+                    Estado en línea
                 </p>
                 <Link className="afinix-hero-tracking-portal" to={CLINIC_LOGIN_PATH}>
                     Ir al portal
@@ -452,14 +455,19 @@ export function HeroCarousel({ reduceMotion }) {
                                         </div>
                                         <div className="afinix-hero-actions">
                                             <motion.div {...heroButtonMotion(reduceMotion, activeSlide === index, 0.84)}>
-                                                <Link className="afinix-hero-btn afinix-hero-btn--primary" to={CLINIC_LOGIN_PATH}>
-                                                    Enviar caso
+                                                <a
+                                                    className="afinix-hero-btn afinix-hero-btn--primary"
+                                                    href={whatsappHref()}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    {slide.ctaMain}
                                                     <i className="bi bi-arrow-right" aria-hidden="true"></i>
-                                                </Link>
+                                                </a>
                                             </motion.div>
                                             <motion.div {...heroButtonMotion(reduceMotion, activeSlide === index, 0.98)}>
-                                                <a className="afinix-hero-btn afinix-hero-btn--ghost" href="#servicios">
-                                                    Ver servicios
+                                                <a className="afinix-hero-btn afinix-hero-btn--ghost" href="/#servicios">
+                                                    {slide.ctaSecondary}
                                                     <i className="bi bi-arrow-right" aria-hidden="true"></i>
                                                 </a>
                                             </motion.div>

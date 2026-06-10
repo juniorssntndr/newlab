@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Rutas del portal y backoffice (no destinadas a indexación comercial)
+Disallow: /login
+Disallow: /dashboard
+Disallow: /clinicas
+Disallow: /productos
+Disallow: /almacen
+Disallow: /pedidos
+Disallow: /finanzas
+Disallow: /caja-gastos
+Disallow: /calendario
+Disallow: /mi-calendario
+Disallow: /catalogo
+Disallow: /cuenta
+Disallow: /equipo
+
+Sitemap: http://localhost:5173/sitemap.xml

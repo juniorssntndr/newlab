@@ -70,4 +70,7 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          # Variable opcional del repositorio: URL pública (https://tudominio.com) para sitemap/robots/canonical en el artefacto de build.
+          VITE_SITE_ORIGIN: ${{ vars.VITE_SITE_ORIGIN }}
         run: npm run build

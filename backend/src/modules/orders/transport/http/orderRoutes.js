@@ -15,6 +15,7 @@ export const makeOrderRoutes = ({ orderController }) => {
     router.patch('/:id/responsable', orderController.updateOrderResponsible);
     router.patch('/:id/fecha-entrega', orderController.updateOrderDeliveryDate);
     router.patch('/:id/aprobacion/:aprobacionId', orderController.respondOrderApproval);
+    router.patch('/:id/aprobacion/:aprobacionId/meet', orderController.updateApprovalMeetLink);
 
     return router;
 };

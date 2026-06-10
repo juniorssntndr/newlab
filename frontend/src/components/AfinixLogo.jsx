@@ -32,7 +32,7 @@ const AfinixLogo = ({
     <div className={`afinix-logo ${showText ? 'afinix-logo--horizontal' : 'afinix-logo--iso'}`} style={containerStyle}>
       <img 
         src={logoSrc} 
-        alt="Afinix Dental Lab" 
+        alt="AFINIX Dental Lab" 
         draggable={false}
         style={{ 
           height: '100%',

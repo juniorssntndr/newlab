@@ -6,14 +6,12 @@ export default function LandingThemeToggle({ theme, onToggle }) {
         <button
             type="button"
             className="afinix-theme-toggle"
+            aria-pressed={isDark}
+            aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            title={isDark ? 'Apariencia oscura activa. Clic para modo claro.' : 'Apariencia clara activa. Clic para modo oscuro.'}
             onClick={onToggle}
-            aria-label={isDark ? 'Activar modo claro' : 'Activar modo oscuro'}
-            title={isDark ? 'Modo claro' : 'Modo oscuro'}
         >
-            <span className="afinix-theme-toggle-track" aria-hidden="true">
-                <span className="afinix-theme-toggle-thumb" />
-            </span>
-            <i className={`bi ${isDark ? 'bi-moon-stars-fill' : 'bi-sun-fill'}`} aria-hidden="true" />
+            <i className={`bi ${isDark ? 'bi-sun-fill' : 'bi-moon-stars-fill'}`} aria-hidden="true" />
         </button>
     );
 }

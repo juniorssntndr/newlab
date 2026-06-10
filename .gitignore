@@ -8,3 +8,4 @@ backend/uploads/
 .agent/skills/**/__pycache__/
 .agent/skills/**/*.pyc
 .agents/skills/ui-ux-pro-max-skill/
+backend/src/db/migration_950_rescued_data.sql

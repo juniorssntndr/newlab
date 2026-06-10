@@ -29,10 +29,17 @@ export const apiClient = async (path, options = {}) => {
         body
     } = options;
 
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const requestHeaders = { ...headers };
+    if (isFormData) {
+        delete requestHeaders['Content-Type'];
+        delete requestHeaders['content-type'];
+    }
+
     const response = await fetch(buildUrl(path, query), {
         method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body)
+        headers: requestHeaders,
+        body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body)
     });
 
     const contentType = response.headers.get('content-type') || '';

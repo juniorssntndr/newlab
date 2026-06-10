@@ -113,7 +113,7 @@ export function AfinixLandingBoot({ reduceMotion, theme = 'dark', children }) {
                     aria-live="polite"
                     aria-busy={phase === 'boot'}
                 >
-                    <span className="afinix-boot-sr">Cargando Afinix Lab</span>
+                    <span className="afinix-boot-sr">Cargando AFINIX Dental Lab</span>
                     <div className="afinix-boot-panel" aria-hidden="true">
                         <AfinixLogo size={48} showText={false} theme={theme} />
                         <div className="afinix-boot-bar" />

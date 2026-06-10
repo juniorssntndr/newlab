@@ -6,6 +6,8 @@ import Layout from './components/Layout.jsx';
 import { canAccessFinancialModules, isAdminRole, isClientRole } from './utils/accessControl.js';
 import Login from './pages/Login.jsx';
 import AfinixLanding from './pages/AfinixLanding.jsx';
+import AfinixSeoArticlePage from './pages/AfinixSeoArticlePage.jsx';
+import { SEO_ARTICLE_PATHS } from './pages/afinixLanding/seoArticlesData.js';
 import Dashboard from './pages/Dashboard.jsx';
 import Clinicas from './pages/Clinicas.jsx';
 import Productos from './pages/Productos.jsx';
@@ -67,6 +69,9 @@ const App = () => {
             <Toaster position="top-right" />
             <Routes>
                 <Route path="/" element={<AfinixLanding />} />
+                {SEO_ARTICLE_PATHS.map((seoPath) => (
+                    <Route key={seoPath} path={seoPath} element={<AfinixSeoArticlePage path={seoPath} />} />
+                ))}
                 <Route path="/login" element={<Login />} />
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />

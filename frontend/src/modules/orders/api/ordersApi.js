@@ -49,7 +49,19 @@ export const createOrderApprovalLink = ({ orderId, payload, headers }) => apiCli
     body: payload
 });
 
+export const uploadOrderFile = ({ orderId, payload, headers }) => apiClient(`/pedidos/${orderId}/archivos`, {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
 export const respondOrderApproval = ({ orderId, approvalId, payload, headers }) => apiClient(`/pedidos/${orderId}/aprobacion/${approvalId}`, {
+    method: 'PATCH',
+    headers,
+    body: payload
+});
+
+export const updateApprovalMeetLink = ({ orderId, approvalId, payload, headers }) => apiClient(`/pedidos/${orderId}/aprobacion/${approvalId}/meet`, {
     method: 'PATCH',
     headers,
     body: payload

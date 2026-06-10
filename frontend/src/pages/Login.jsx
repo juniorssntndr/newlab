@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
 import AfinixLogo from '../components/AfinixLogo.jsx';
+import SeoHead from '../components/seo/SeoHead.jsx';
 
 const portalHighlights = [
     'Seguimiento de pedidos en tiempo real',
@@ -51,12 +52,19 @@ const Login = () => {
     };
 
     return (
-        <div className="login-page">
+        <>
+            <SeoHead
+                title="Portal clínico y laboratorio"
+                description="Acceso al portal AFINIX Dental Lab: seguimiento de pedidos, aprobación de diseños 3D y catálogo. Página de inicio de sesión."
+                path="/login"
+                noindex
+            />
+            <div className="login-page">
             <div className="login-shell">
-                <aside className="login-story" aria-label="Beneficios del portal Afinix">
+                <aside className="login-story" aria-label="Beneficios del portal AFINIX Dental Lab">
                     <Link className="login-back-link" to="/">
                         <i className="bi bi-arrow-left" aria-hidden="true"></i>
-                        Volver a Afinix Dental Lab
+                        Volver a AFINIX Dental Lab
                     </Link>
                     <div>
                         <span className="login-kicker">Portal clínico</span>
@@ -149,6 +157,7 @@ const Login = () => {
                 </section>
             </div>
         </div>
+        </>
     );
 };
 

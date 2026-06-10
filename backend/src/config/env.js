@@ -35,6 +35,15 @@ export const getSupabaseStorageConfig = () => ({
     bucket: process.env.SUPABASE_STORAGE_BUCKET || 'product-images'
 });
 
+export const getGoogleCalendarConfig = () => ({
+    clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '',
+    redirectUri: process.env.GOOGLE_CALENDAR_REDIRECT_URI || '',
+    tokenEncryptionKey: process.env.GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY || '',
+    calendarId: process.env.GOOGLE_CALENDAR_ID || 'primary',
+    timezone: process.env.GOOGLE_CALENDAR_TIMEZONE || 'America/Lima'
+});
+
 export const getSentryConfig = () => ({
     dsn: process.env.SENTRY_DSN || '',
     environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development'
