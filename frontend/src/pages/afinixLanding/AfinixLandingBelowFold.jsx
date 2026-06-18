@@ -142,7 +142,7 @@ function ServicesCarousel({ reduceMotion }) {
                     <Swiper
                         className="afinix-services-swiper"
                         modules={[A11y, Autoplay, Keyboard, Navigation, Pagination]}
-                        loop={!reduceMotion}
+                        loop={false}
                         rewind={false}
                         slidesPerView="auto"
                         spaceBetween={24}
@@ -361,6 +361,35 @@ function WorkflowTimeline({ reduceMotion }) {
     const workflowStepProgress = workflow.length > 1 ? workflowProgress : 1;
     const mobilePopoverWorkflow = mobilePopoverStep === null ? null : workflow[mobilePopoverStep] ?? null;
 
+    const handleStepClick = (index) => {
+        if (reduceMotion || isMobileWorkflow) {
+            setWorkflowActiveStep(index);
+            setWorkflowProgress(workflow.length > 1 ? index / (workflow.length - 1) : 1);
+            return;
+        }
+
+        if (!workflowStageRef.current) return;
+
+        const viewportHeight = window.innerHeight;
+        const rect = workflowStageRef.current.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const elementTop = rect.top + scrollTop;
+        const elementHeight = rect.height;
+
+        const scrollStart = elementTop - viewportHeight * 0.14;
+        const scrollEnd = elementTop + elementHeight - viewportHeight * 0.18;
+        const scrollDistance = scrollEnd - scrollStart;
+
+        const p = (index + 0.5) / workflow.length;
+        const targetProgress = p * 0.62;
+        const targetScrollY = scrollStart + targetProgress * scrollDistance;
+
+        window.scrollTo({
+            top: targetScrollY,
+            behavior: 'smooth',
+        });
+    };
+
     return (
         <MotionSection
             ref={workflowRef}
@@ -445,10 +474,7 @@ function WorkflowTimeline({ reduceMotion }) {
                                             <button
                                                 type="button"
                                                 className="afinix-workflow-step-button"
-                                                onClick={() => {
-                                                    setWorkflowActiveStep(index);
-                                                    setWorkflowProgress(workflow.length > 1 ? index / (workflow.length - 1) : 1);
-                                                }}
+                                                onClick={() => handleStepClick(index)}
                                                 aria-label={`Ver paso ${step.number}: ${step.title}`}
                                             >
                                                 <span className="afinix-workflow-card-head">

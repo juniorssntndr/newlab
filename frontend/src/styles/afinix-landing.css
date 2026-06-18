@@ -774,12 +774,12 @@
   gap: 0.75rem;
   padding: 0.78rem 1rem;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08)),
-    rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(16px) saturate(1.08);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+    linear-gradient(135deg, rgba(9, 24, 42, 0.65), rgba(5, 15, 28, 0.45)),
+    rgba(5, 15, 28, 0.5);
+  backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
   color: #fff;
   transform-origin: right center;
   backface-visibility: hidden;
@@ -865,11 +865,11 @@
   .afinix-hero .afinix-hero-lead {
     display: -webkit-box !important;
     -webkit-box-orient: vertical !important;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     overflow: hidden;
-    max-height: calc(2 * 1.55em + 0.06em);
-    max-height: calc(2lh + 0.06em);
+    max-height: calc(3 * 1.55em + 0.06em);
+    max-height: calc(3lh + 0.06em);
   }
 }
 
@@ -921,13 +921,13 @@
 .afinix-hero .afinix-hero-lead {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
   width: 100%;
   max-width: 100%;
-  max-height: calc(2 * 1.55em + 0.06em);
-  max-height: calc(2lh + 0.06em);
+  max-height: calc(3 * 1.55em + 0.06em);
+  max-height: calc(3lh + 0.06em);
   margin-top: 1rem;
   color: var(--afinix-muted);
   font-size: clamp(0.95rem, 1.55vw, 1.1rem);
@@ -1675,7 +1675,20 @@
   backface-visibility: hidden;
   transform-origin: center bottom;
   transform-style: preserve-3d;
-  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), border-color 260ms ease, box-shadow 260ms ease;
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 280ms ease,
+              box-shadow 280ms ease;
+}
+
+.afinix-services--showcase .afinix-service-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 0%, rgba(16, 215, 255, 0.08), transparent 70%);
+  opacity: 0;
+  transition: opacity 280ms ease;
 }
 
 .afinix-service-card:focus:not(:focus-visible) {
@@ -1684,12 +1697,19 @@
 
 .afinix-services--showcase .afinix-service-card:hover,
 .afinix-services--showcase .afinix-service-card:focus-within {
-  border-color: rgba(16, 215, 255, 0.42);
-  box-shadow: 0 18px 42px rgba(12, 32, 52, 0.16);
+  border-color: rgba(16, 215, 255, 0.45);
+  box-shadow: 0 20px 48px rgba(16, 215, 255, 0.14), 0 12px 30px rgba(0, 0, 0, 0.15);
   transform: translateY(-5px);
 }
 
+.afinix-services--showcase .afinix-service-card:hover::before,
+.afinix-services--showcase .afinix-service-card:focus-within::before {
+  opacity: 1;
+}
+
 .afinix-services--showcase .afinix-service-card-media {
+  position: relative;
+  z-index: 2;
   height: 154px;
   overflow: hidden;
   background: radial-gradient(circle at 50% 30%, rgba(16, 215, 255, 0.08), transparent 55%), #0a1624;
@@ -1709,6 +1729,8 @@
 }
 
 .afinix-services--showcase .afinix-service-card-body {
+  position: relative;
+  z-index: 2;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -1760,6 +1782,8 @@
 }
 
 .afinix-service-card-foot {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3271,15 +3295,15 @@
   .afinix-hero .afinix-hero-lead {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     overflow: hidden;
     max-width: min(18.25rem, 88%);
     margin-top: 0.62rem;
     font-size: clamp(0.78rem, 3.15vw, 0.9rem);
     line-height: 1.48;
-    max-height: calc(2 * 1.48em + 0.05em);
-    max-height: calc(2lh + 0.05em);
+    max-height: calc(3 * 1.48em + 0.05em);
+    max-height: calc(3lh + 0.05em);
   }
 
   .afinix-hero-actions,
