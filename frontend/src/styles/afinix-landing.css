@@ -8,30 +8,30 @@
   --afinix-cyan: #338eff;
   --afinix-cyan-strong: #0066ff;
   --afinix-teal: #00b8ff;
-  --afinix-night: #000614;
-  --afinix-deep: #000d24;
-  --afinix-card: rgba(0, 10, 32, 0.78);
-  --afinix-card-strong: rgba(0, 15, 46, 0.92);
+  --afinix-night: #020b1e;
+  --afinix-deep: #041432;
+  --afinix-card: rgba(0, 12, 38, 0.52);
+  --afinix-card-strong: rgba(0, 18, 54, 0.82);
   --afinix-glass: rgba(255, 255, 255, 0.08);
   --afinix-glass-border: rgba(255, 255, 255, 0.16);
-  --afinix-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  --afinix-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
   --afinix-section-y: clamp(1.65rem, 3.2vw, 2.75rem);
   --afinix-section-y-tight: clamp(1.25rem, 2.5vw, 2.1rem);
   --afinix-page-gutter: clamp(0.75rem, 2.8vw, 2.6rem);
   --afinix-grid-size: 64px;
-  --afinix-grid-line: rgba(0, 102, 255, 0.035);
+  --afinix-grid-line: rgba(51, 142, 255, 0.065);
   min-height: 100vh;
   overflow-x: clip;
   position: relative;
   isolation: isolate;
   color: var(--afinix-ink);
   background:
-    radial-gradient(80rem 44rem at 14% -12%, rgba(0, 92, 255, 0.20), transparent 74%),
-    radial-gradient(58rem 36rem at 90% 30%, rgba(0, 153, 255, 0.10), transparent 76%),
-    radial-gradient(44rem 30rem at 10% 100%, rgba(0, 212, 255, 0.08), transparent 78%),
+    radial-gradient(80rem 44rem at 14% -12%, rgba(0, 102, 255, 0.24), transparent 74%),
+    radial-gradient(58rem 36rem at 90% 30%, rgba(0, 153, 255, 0.13), transparent 76%),
+    radial-gradient(44rem 30rem at 10% 100%, rgba(0, 212, 255, 0.10), transparent 78%),
     linear-gradient(var(--afinix-grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--afinix-grid-line) 1px, transparent 1px),
-    linear-gradient(180deg, #000614 0%, #000d2b 46%, #001940 100%);
+    linear-gradient(180deg, #020b1e 0%, #041432 46%, #071f4a 100%);
   background-size: auto, auto, auto, var(--afinix-grid-size) var(--afinix-grid-size), var(--afinix-grid-size) var(--afinix-grid-size), auto;
   /* scroll: fixed attachment causes heavy repaints on scroll (jank) in Chromium/WebKit */
   background-attachment: scroll, scroll, scroll, scroll, scroll, scroll;
@@ -776,8 +776,8 @@
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background:
-    linear-gradient(135deg, rgba(0, 8, 24, 0.82), rgba(0, 4, 16, 0.68)),
-    rgba(0, 4, 16, 0.65);
+    linear-gradient(135deg, rgba(0, 16, 48, 0.48), rgba(0, 8, 24, 0.28)),
+    rgba(0, 8, 24, 0.32);
   backdrop-filter: blur(20px) saturate(1.2);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
   color: #fff;
