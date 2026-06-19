@@ -40,13 +40,13 @@
 
 .afinix-page[data-theme='light'] {
   /* Referencia afinix: azul primario vivo, textos navy (sin negro puro) */
-  --afinix-ink: #00122e;
-  --afinix-heading-color: #000B20;
-  --afinix-muted: #3e587a;
-  --afinix-muted-strong: #1c3b66;
+  --afinix-ink: #142c54;
+  --afinix-heading-color: #001f5c;
+  --afinix-muted: #3d5985;
+  --afinix-muted-strong: #213c66;
   --afinix-line: rgba(0, 92, 255, 0.12);
   --afinix-cyan: #0066ff;
-  --afinix-cyan-strong: #004ecc;
+  --afinix-cyan-strong: #0055d4;
   --afinix-teal: #00a6e0;
   --afinix-card: rgba(255, 255, 255, 0.92);
   --afinix-card-strong: #ffffff;
@@ -802,7 +802,7 @@
 
 .afinix-page[data-theme='light'] .afinix-hero-float-icon {
   color: #ffffff;
-  background: linear-gradient(135deg, #000B20, #0066ff);
+  background: linear-gradient(135deg, #001f5c, #0066ff);
 }
 
 .afinix-hero-float-icon {
@@ -812,7 +812,7 @@
   height: 40px;
   flex-shrink: 0;
   border-radius: 14px;
-  color: #000B20;
+  color: #001f5c;
   background: linear-gradient(135deg, #ffffff, #80b7ff);
   font-size: 1.1rem;
 }
