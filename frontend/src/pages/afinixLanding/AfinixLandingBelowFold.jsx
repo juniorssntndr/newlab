@@ -132,17 +132,6 @@ function ServicesCarousel({ reduceMotion }) {
                     <li><i className="bi bi-check2-circle" aria-hidden="true"></i> Diseño aprobado antes de producir</li>
                     <li><i className="bi bi-clock-history" aria-hidden="true"></i> Entregas trazables desde 48 horas</li>
                 </motion.ul>
-                <motion.a
-                    className="afinix-services-scroll-cue"
-                    href="#catalogo-servicios"
-                    aria-label="Desplazarse al catálogo de servicios"
-                    {...servicesHeadingMotion(reduceMotion, 4)}
-                >
-                    <span>Explorar catálogo</span>
-                    <span className="afinix-services-scroll-cue__icon" aria-hidden="true">
-                        <i className="bi bi-arrow-down"></i>
-                    </span>
-                </motion.a>
             </div>
             <div
                 className="afinix-services-shell"
@@ -155,7 +144,6 @@ function ServicesCarousel({ reduceMotion }) {
                         <span>Catálogo de soluciones</span>
                         <strong>{services.length} servicios especializados</strong>
                     </div>
-                    <p>Desliza o usa las flechas para conocer cada alternativa.</p>
                 </div>
                 <button
                     type="button"
@@ -311,18 +299,6 @@ function WorkflowDetailCard({ step, reduceMotion, className = '', mobilePopover 
                         </span>
                     </div>
                 )}
-                <div className="afinix-workflow-detail-meta">
-                    <div className="afinix-workflow-hud-status" aria-label="Estado operativo del paso activo">
-                        <span className="afinix-workflow-hud-label">Estado</span>
-                        <strong>{step.status}</strong>
-                        <span className="afinix-workflow-hud-scan" aria-hidden="true" />
-                    </div>
-                    <ul className="afinix-workflow-detail-tags" aria-label="Características del paso activo">
-                        {step.tags.map((tag) => (
-                            <li key={tag}>{tag}</li>
-                        ))}
-                    </ul>
-                </div>
             </div>
         </motion.article>
     );
@@ -391,7 +367,7 @@ function WorkflowTimeline({ reduceMotion }) {
                 <div className="afinix-workflow-sticky-shell">
                     <div className="afinix-section-heading afinix-workflow-heading">
                         <span>Flujo digital</span>
-                        <h2>De tu archivo a la entrega: cada paso visible para tu equipo.</h2>
+                        <h2>Desde que recibimos tu caso hasta que llega a tus manos: ten el control total.</h2>
                     </div>
                     <div className="afinix-workflow-stage-panel">
                         {!isMobileWorkflow ? (

@@ -1610,48 +1610,6 @@
   font-size: 1.05rem;
 }
 
-.afinix-services-scroll-cue {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.72rem;
-  width: fit-content;
-  min-height: 44px;
-  margin-top: 0.4rem;
-  color: var(--showcase-ink);
-  font-size: 0.82rem;
-  font-weight: 850;
-  letter-spacing: 0.04em;
-  text-decoration: none;
-  text-transform: uppercase;
-}
-
-.afinix-services-scroll-cue__icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(51, 142, 255, 0.3);
-  border-radius: 50%;
-  color: var(--afinix-cyan-strong);
-  background: rgba(51, 142, 255, 0.08);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .afinix-services-scroll-cue__icon {
-    animation: afinixServicesScrollCue 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
-  }
-}
-
-@keyframes afinixServicesScrollCue {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(6px);
-  }
-}
-
 .afinix-services-shell {
   position: relative;
   display: block;
@@ -1667,7 +1625,7 @@
 .afinix-services-catalog-head {
   display: flex;
   align-items: end;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1.5rem;
   margin-bottom: 0.6rem;
   padding: 0 0.25rem;
@@ -1689,15 +1647,6 @@
 .afinix-services-catalog-head strong {
   color: var(--showcase-ink);
   font-size: clamp(1.05rem, 1.6vw, 1.35rem);
-}
-
-.afinix-services-catalog-head p {
-  max-width: 28ch;
-  margin: 0;
-  color: var(--showcase-muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
-  text-align: right;
 }
 
 .afinix-service-nav {
@@ -2361,7 +2310,8 @@
   grid-template-columns: minmax(300px, 0.85fr) minmax(360px, 1.15fr);
   align-items: stretch;
   gap: 0;
-  min-height: 310px;
+  height: 250px;
+  min-height: 250px;
   overflow: hidden;
   padding: 0;
   border: 1px solid rgba(146, 179, 215, 0.13);
@@ -2376,7 +2326,8 @@
 .afinix-workflow-detail-media {
   position: relative;
   min-width: 0;
-  min-height: 310px;
+  height: 250px;
+  min-height: 250px;
   margin: 0;
   overflow: hidden;
   background: #071827;
@@ -2402,7 +2353,8 @@
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 310px;
+  max-height: 250px;
+  min-height: 250px;
   object-fit: cover;
 }
 
@@ -2437,9 +2389,9 @@
 .afinix-workflow-hud-main {
   display: grid;
   align-content: center;
-  gap: 0.82rem;
+  gap: 0.72rem;
   min-width: 0;
-  padding: clamp(1.2rem, 2.4vw, 2rem);
+  padding: clamp(1.1rem, 2vw, 1.6rem);
 }
 
 .afinix-workflow-detail-head {
@@ -3715,11 +3667,6 @@
     padding-inline: 0;
   }
 
-  .afinix-services-catalog-head p {
-    max-width: 100%;
-    text-align: left;
-  }
-
   .swiper.afinix-services-swiper {
     padding-inline: 0.75rem;
     padding-bottom: 3.5rem;
@@ -4117,12 +4064,15 @@
 
   .afinix-workflow-detail-card {
     grid-template-columns: 1fr;
+    height: auto;
     min-height: 0;
     border-radius: 22px;
   }
 
   .afinix-workflow-detail-media,
   .afinix-workflow-detail-media img {
+    height: auto;
+    max-height: none;
     min-height: clamp(210px, 64vw, 290px);
   }
 
