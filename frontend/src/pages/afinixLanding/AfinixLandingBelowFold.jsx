@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from 'framer-motion';
-import { A11y, Autoplay, Keyboard, Navigation, Pagination } from 'swiper/modules';
+import { AnimatePresence, motion, useInView } from 'framer-motion';
+import { A11y, Keyboard, Navigation, Pagination } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/a11y';
@@ -22,6 +22,8 @@ import AfinixLogo from '../../components/AfinixLogo';
 
 const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 const MotionSection = motion.section;
+const WORKFLOW_STEP_DURATION_MS = 4000;
+const WORKFLOW_FINAL_DURATION_MS = 5000;
 
 const sectionMotion = (reduced, delay = 0) =>
     reduced
@@ -58,10 +60,10 @@ const serviceCardMotion = (reduced, index = 0) =>
     reduced
         ? {}
         : {
-            initial: { opacity: 0, y: 42, scale: 0.98, filter: 'blur(8px)' },
-            whileInView: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' },
-            viewport: { once: false, amount: 0.42 },
-            transition: { duration: 0.72, delay: Math.min(index, 2) * 0.08, ease: [0.16, 1, 0.3, 1] },
+            initial: { opacity: 0, y: 28, scale: 0.985 },
+            whileInView: { opacity: 1, y: 0, scale: 1 },
+            viewport: { once: true, amount: 0.12 },
+            transition: { duration: 0.5, delay: Math.min(index, 2) * 0.06, ease: [0.16, 1, 0.3, 1] },
         };
 
 const aboutProofMotion = (reduced, index = 0) =>
@@ -112,25 +114,49 @@ function ServicesCarousel({ reduceMotion }) {
         >
             <div className="afinix-section-heading afinix-services-heading">
                 <motion.span className="afinix-services-eyebrow" {...servicesHeadingMotion(reduceMotion, 0)}>
-                    Para tu equipo y tus pacientes
+                    Servicios para tu equipo y tus pacientes
                 </motion.span>
                 <motion.h2 className="afinix-services-title" {...servicesHeadingMotion(reduceMotion, 1)}>
-                    Control
-                    <br />
-                    <span className="afinix-services-title-accent">digital</span>
-                    <br />
-                    para tu clínica
+                    Soluciones dentales con{' '}
+                    <span className="afinix-services-title-accent">control digital</span>
                 </motion.h2>
                 <motion.p {...servicesHeadingMotion(reduceMotion, 2)}>
-                    Ayudamos a odontólogos y clínicas de Arequipa a trabajar con mayor control, comunicación clara y seguimiento de sus casos.
-                    Coronas CAD/CAM, zirconia, disilicato y aprobación digital antes de producir.
+                    Explora nuestro catálogo de restauraciones y soluciones CAD/CAM. Cada caso combina materiales
+                    seleccionados, aprobación digital y seguimiento hasta la entrega.
                 </motion.p>
+                <motion.ul
+                    className="afinix-services-proof-list"
+                    aria-label="Beneficios del catálogo"
+                    {...servicesHeadingMotion(reduceMotion, 3)}
+                >
+                    <li><i className="bi bi-check2-circle" aria-hidden="true"></i> Diseño aprobado antes de producir</li>
+                    <li><i className="bi bi-clock-history" aria-hidden="true"></i> Entregas trazables desde 48 horas</li>
+                </motion.ul>
+                <motion.a
+                    className="afinix-services-scroll-cue"
+                    href="#catalogo-servicios"
+                    aria-label="Desplazarse al catálogo de servicios"
+                    {...servicesHeadingMotion(reduceMotion, 4)}
+                >
+                    <span>Explorar catálogo</span>
+                    <span className="afinix-services-scroll-cue__icon" aria-hidden="true">
+                        <i className="bi bi-arrow-down"></i>
+                    </span>
+                </motion.a>
             </div>
             <div
                 className="afinix-services-shell"
+                id="catalogo-servicios"
                 role="region"
                 aria-label="Carrusel de servicios. Usa las flechas, paginación o desliza en móvil."
             >
+                <div className="afinix-services-catalog-head">
+                    <div>
+                        <span>Catálogo de soluciones</span>
+                        <strong>{services.length} servicios especializados</strong>
+                    </div>
+                    <p>Desliza o usa las flechas para conocer cada alternativa.</p>
+                </div>
                 <button
                     type="button"
                     className="afinix-service-nav afinix-service-nav--prev"
@@ -141,26 +167,21 @@ function ServicesCarousel({ reduceMotion }) {
                 <div className="afinix-services-carousel" tabIndex={0}>
                     <Swiper
                         className="afinix-services-swiper"
-                        modules={[A11y, Autoplay, Keyboard, Navigation, Pagination]}
+                        modules={[A11y, Keyboard, Navigation, Pagination]}
                         loop={false}
                         rewind={false}
                         slidesPerView="auto"
                         spaceBetween={24}
-                        centeredSlides={true}
+                        centeredSlides={false}
                         navigation={{
                             prevEl: '.afinix-service-nav--prev',
                             nextEl: '.afinix-service-nav--next',
                         }}
-                        pagination={{ clickable: true }}
-                        autoplay={
-                            reduceMotion
-                                ? false
-                                : {
-                                    delay: 4500,
-                                    disableOnInteraction: false,
-                                    pauseOnMouseEnter: true,
-                                }
-                        }
+                        pagination={{
+                            clickable: true,
+                            dynamicBullets: true,
+                            dynamicMainBullets: 3,
+                        }}
                         grabCursor
                         watchOverflow
                         a11y={{
@@ -184,6 +205,9 @@ function ServicesCarousel({ reduceMotion }) {
                                             decoding="async"
                                             draggable={false}
                                         />
+                                        <span className="afinix-service-card-index" aria-hidden="true">
+                                            {String(index + 1).padStart(2, '0')}
+                                        </span>
                                     </div>
                                     <div className="afinix-service-card-body">
                                         <h3>{service.name}</h3>
@@ -252,6 +276,21 @@ function WorkflowDetailCard({ step, reduceMotion, className = '', mobilePopover 
                         : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }
             }
         >
+            <figure className="afinix-workflow-detail-media">
+                <motion.img
+                    src={step.image}
+                    alt={step.imageAlt}
+                    loading="lazy"
+                    decoding="async"
+                    style={{ objectPosition: step.imagePosition || 'center' }}
+                    initial={reduceMotion ? false : { opacity: 0.4, scale: 1.06 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={reduceMotion ? { duration: 0 } : { duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                />
+                <span className="afinix-workflow-detail-media-step" aria-hidden="true">
+                    {step.number}
+                </span>
+            </figure>
             <div className="afinix-workflow-hud-main">
                 <div className="afinix-workflow-detail-head">
                     <div className="afinix-workflow-detail-icon" aria-hidden="true">
@@ -272,11 +311,18 @@ function WorkflowDetailCard({ step, reduceMotion, className = '', mobilePopover 
                         </span>
                     </div>
                 )}
-            </div>
-            <div className="afinix-workflow-hud-status" aria-label="Estado operativo del paso activo">
-                <span className="afinix-workflow-hud-label">Estado</span>
-                <strong>{step.status}</strong>
-                <span className="afinix-workflow-hud-scan" aria-hidden="true" />
+                <div className="afinix-workflow-detail-meta">
+                    <div className="afinix-workflow-hud-status" aria-label="Estado operativo del paso activo">
+                        <span className="afinix-workflow-hud-label">Estado</span>
+                        <strong>{step.status}</strong>
+                        <span className="afinix-workflow-hud-scan" aria-hidden="true" />
+                    </div>
+                    <ul className="afinix-workflow-detail-tags" aria-label="Características del paso activo">
+                        {step.tags.map((tag) => (
+                            <li key={tag}>{tag}</li>
+                        ))}
+                    </ul>
+                </div>
             </div>
         </motion.article>
     );
@@ -284,15 +330,11 @@ function WorkflowDetailCard({ step, reduceMotion, className = '', mobilePopover 
 
 function WorkflowTimeline({ reduceMotion }) {
     const workflowRef = useRef(null);
-    const workflowStageRef = useRef(null);
     const [workflowActiveStep, setWorkflowActiveStep] = useState(0);
-    const [workflowProgress, setWorkflowProgress] = useState(0);
     const [isMobileWorkflow, setIsMobileWorkflow] = useState(false);
-    const [mobilePopoverStep, setMobilePopoverStep] = useState(null);
-    const { scrollYProgress } = useScroll({
-        target: workflowStageRef,
-        offset: ['start 0.14', 'end 0.18'],
-    });
+    const [isHoverPaused, setIsHoverPaused] = useState(false);
+    const [isFocusPaused, setIsFocusPaused] = useState(false);
+    const isWorkflowInView = useInView(workflowRef, { amount: 0.28 });
 
     useEffect(() => {
         const mobileQuery = window.matchMedia('(max-width: 640px)');
@@ -305,89 +347,33 @@ function WorkflowTimeline({ reduceMotion }) {
     }, []);
 
     useEffect(() => {
-        if (!reduceMotion && !isMobileWorkflow) {
+        if (reduceMotion || !isWorkflowInView || isHoverPaused || isFocusPaused) {
             return undefined;
         }
 
-        setWorkflowActiveStep(0);
-        setWorkflowProgress(0);
+        const isFinalStep = workflowActiveStep === workflow.length - 1;
+        const timeoutId = window.setTimeout(
+            () => setWorkflowActiveStep((current) => (current + 1) % workflow.length),
+            isFinalStep ? WORKFLOW_FINAL_DURATION_MS : WORKFLOW_STEP_DURATION_MS,
+        );
 
-        return undefined;
-    }, [reduceMotion, isMobileWorkflow]);
-
-    useEffect(() => {
-        if (!isMobileWorkflow) {
-            setMobilePopoverStep(null);
-        }
-    }, [isMobileWorkflow]);
-
-    useEffect(() => {
-        if (!isMobileWorkflow || mobilePopoverStep === null) {
-            return undefined;
-        }
-
-        const handleEscape = (event) => {
-            if (event.key === 'Escape') {
-                setMobilePopoverStep(null);
-            }
-        };
-
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
-    }, [isMobileWorkflow, mobilePopoverStep]);
-
-    useMotionValueEvent(scrollYProgress, 'change', (latest) => {
-        if (reduceMotion) {
-            return;
-        }
-
-        if (isMobileWorkflow) {
-            const mobileStart = 0.14;
-            const mobileEnd = 0.84;
-            const clamped = Math.min(1, Math.max(0, (latest - mobileStart) / (mobileEnd - mobileStart)));
-            const step = Math.min(workflow.length - 1, Math.max(0, Math.floor(clamped * workflow.length)));
-            setWorkflowProgress((current) => (Math.abs(current - clamped) < 0.001 ? current : clamped));
-            setWorkflowActiveStep((current) => (current === step ? current : step));
-            return;
-        }
-
-        const clamped = Math.min(1, Math.max(0, latest / 0.62));
-        const step = Math.min(workflow.length - 1, Math.max(0, Math.floor(clamped * workflow.length)));
-        setWorkflowProgress((current) => (Math.abs(current - clamped) < 0.001 ? current : clamped));
-        setWorkflowActiveStep((current) => (current === step ? current : step));
-    });
+        return () => window.clearTimeout(timeoutId);
+    }, [isFocusPaused, isHoverPaused, isWorkflowInView, reduceMotion, workflowActiveStep]);
 
     const activeWorkflow = workflow[workflowActiveStep] ?? workflow[0];
-    const workflowStepProgress = workflow.length > 1 ? workflowProgress : 1;
-    const mobilePopoverWorkflow = mobilePopoverStep === null ? null : workflow[mobilePopoverStep] ?? null;
+    const workflowStepProgress = workflow.length > 1
+        ? workflowActiveStep / (workflow.length - 1)
+        : 1;
 
     const handleStepClick = (index) => {
-        if (reduceMotion || isMobileWorkflow) {
-            setWorkflowActiveStep(index);
-            setWorkflowProgress(workflow.length > 1 ? index / (workflow.length - 1) : 1);
-            return;
+        setWorkflowActiveStep(index);
+    };
+
+    const handleFocusCapture = () => setIsFocusPaused(true);
+    const handleBlurCapture = (event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+            setIsFocusPaused(false);
         }
-
-        if (!workflowStageRef.current) return;
-
-        const viewportHeight = window.innerHeight;
-        const rect = workflowStageRef.current.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const elementTop = rect.top + scrollTop;
-        const elementHeight = rect.height;
-
-        const scrollStart = elementTop - viewportHeight * 0.14;
-        const scrollEnd = elementTop + elementHeight - viewportHeight * 0.18;
-        const scrollDistance = scrollEnd - scrollStart;
-
-        const p = (index + 0.5) / workflow.length;
-        const targetProgress = p * 0.62;
-        const targetScrollY = scrollStart + targetProgress * scrollDistance;
-
-        window.scrollTo({
-            top: targetScrollY,
-            behavior: 'smooth',
-        });
     };
 
     return (
@@ -395,12 +381,13 @@ function WorkflowTimeline({ reduceMotion }) {
             ref={workflowRef}
             className="afinix-section afinix-workflow"
             id="flujo"
+            onMouseEnter={() => setIsHoverPaused(true)}
+            onMouseLeave={() => setIsHoverPaused(false)}
+            onFocusCapture={handleFocusCapture}
+            onBlurCapture={handleBlurCapture}
             {...workflowSectionMotion(reduceMotion)}
         >
-            <div
-                className={`afinix-workflow-scroll-stage${reduceMotion ? ' is-reduced-motion' : ''}`}
-                ref={workflowStageRef}
-            >
+            <div className="afinix-workflow-scroll-stage">
                 <div className="afinix-workflow-sticky-shell">
                     <div className="afinix-section-heading afinix-workflow-heading">
                         <span>Flujo digital</span>
@@ -455,9 +442,7 @@ function WorkflowTimeline({ reduceMotion }) {
                                                 <button
                                                     type="button"
                                                     className="afinix-workflow-step-icon-button"
-                                                    onClick={() => setMobilePopoverStep((current) => (current === index ? null : index))}
-                                                    aria-expanded={mobilePopoverStep === index}
-                                                    aria-controls={mobilePopoverStep === index ? `workflow-mobile-popover-${step.id}` : undefined}
+                                                    onClick={() => handleStepClick(index)}
                                                     aria-label={`Ver detalle del paso ${step.number}: ${step.title}`}
                                                 >
                                                     <span className="afinix-workflow-step-icon" aria-hidden="true">
@@ -479,11 +464,6 @@ function WorkflowTimeline({ reduceMotion }) {
                                             >
                                                 <span className="afinix-workflow-card-head">
                                                     <span className="afinix-workflow-step-num">{step.number}</span>
-                                                    {index < workflowActiveStep ? (
-                                                        <span className="afinix-workflow-step-check" aria-hidden="true">
-                                                            <i className="bi bi-check-lg"></i>
-                                                        </span>
-                                                    ) : null}
                                                 </span>
                                                 <span className="afinix-workflow-step-icon" aria-hidden="true">
                                                     <i className={`bi ${step.icon}`}></i>
@@ -496,30 +476,6 @@ function WorkflowTimeline({ reduceMotion }) {
                                 );
                             })}
                         </ol>
-
-                        {isMobileWorkflow ? (
-                            <AnimatePresence initial={false} mode="sync">
-                                {mobilePopoverWorkflow ? (
-                                    <div className="afinix-workflow-mobile-popover-shell" id={`workflow-mobile-popover-${mobilePopoverWorkflow.id}`}>
-                                        <button
-                                            type="button"
-                                            className="afinix-workflow-mobile-popover-close"
-                                            onClick={() => setMobilePopoverStep(null)}
-                                            aria-label="Cerrar detalle del paso"
-                                        >
-                                            <i className="bi bi-x-lg" aria-hidden="true"></i>
-                                        </button>
-                                        <WorkflowDetailCard
-                                            key={mobilePopoverWorkflow.id}
-                                            step={mobilePopoverWorkflow}
-                                            reduceMotion={reduceMotion}
-                                            mobilePopover
-                                            className="afinix-workflow-detail-card--popover"
-                                        />
-                                    </div>
-                                ) : null}
-                            </AnimatePresence>
-                        ) : null}
 
                         <div className="afinix-workflow-detail-shell">
                             <AnimatePresence initial={false} mode="wait">

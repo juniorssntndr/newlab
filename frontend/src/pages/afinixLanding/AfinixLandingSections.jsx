@@ -520,6 +520,20 @@ export function HeroCarousel({ reduceMotion }) {
                     ))}
                 </Swiper>
                 <HeroTrackingWidget reduceMotion={reduceMotion} className="afinix-hero-tracking--desktop" />
+                <motion.a
+                    className="afinix-hero-scroll-cue"
+                    href="#servicios"
+                    aria-label="Desplazarse para conocer los servicios"
+                    initial={reduceMotion ? false : { opacity: 0, y: -8 }}
+                    animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    transition={reduceMotion ? undefined : { duration: 0.5, delay: 1.2, ease: HERO_EASE }}
+                >
+                    <span className="afinix-hero-scroll-cue__arrows" aria-hidden="true">
+                        <i className="bi bi-chevron-down"></i>
+                        <i className="bi bi-chevron-down"></i>
+                        <i className="bi bi-chevron-down"></i>
+                    </span>
+                </motion.a>
             </div>
         </section>
     );
