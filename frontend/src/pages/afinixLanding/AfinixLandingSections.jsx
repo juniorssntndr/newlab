@@ -23,8 +23,8 @@ const LOCATION_CHANNEL = contactChannels.find((channel) => channel.label === 'Ve
 const HEADER_ICON_LINKS = [LOCATION_CHANNEL, ...socialLinks].filter(Boolean);
 const HEADER_MENU_LINKS = [
     { href: '/#servicios', label: 'Servicios' },
-    { href: '/#nosotros', label: 'Para tu clínica' },
     { href: '/#flujo', label: 'Flujo digital' },
+    { href: '/#nosotros', label: 'Para tu clínica' },
     { href: '/#contacto', label: 'Contacto' },
 ];
 const HERO_EASE = [0.16, 1, 0.3, 1];
@@ -193,8 +193,8 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark'
                 </a>
                 <nav className="afinix-nav-links" aria-label="Secciones de la landing">
                     <a href="/#servicios">Servicios</a>
-                    <a href="/#nosotros">Para tu clínica</a>
                     <a href="/#flujo">Flujo digital</a>
+                    <a href="/#nosotros">Para tu clínica</a>
                     <a href="/#contacto">Contacto</a>
                 </nav>
                 <div className="afinix-nav-actions">
@@ -434,7 +434,8 @@ export function HeroCarousel({ reduceMotion }) {
                                     >
                                         <div className="afinix-hero-copy-text">
                                             <motion.span className="afinix-kicker" {...heroLineMotion(reduceMotion, activeSlide === index, 0.32)}>
-                                                {slide.kicker}
+                                                <span className="afinix-kicker-desktop">{slide.kicker}</span>
+                                                <span className="afinix-kicker-mobile">{slide.kickerMobile || slide.kicker}</span>
                                             </motion.span>
                                             {index === 0 ? (
                                                 <motion.h1 className="afinix-hero-title" {...heroLineMotion(reduceMotion, activeSlide === index, 0.46)}>
@@ -524,8 +525,8 @@ export function HeroCarousel({ reduceMotion }) {
                     className="afinix-hero-scroll-cue"
                     href="#servicios"
                     aria-label="Desplazarse para conocer los servicios"
-                    initial={reduceMotion ? false : { opacity: 0, y: -8 }}
-                    animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    initial={reduceMotion ? false : { opacity: 0, x: "-50%", y: -8 }}
+                    animate={reduceMotion ? undefined : { opacity: 1, x: "-50%", y: 0 }}
                     transition={reduceMotion ? undefined : { duration: 0.5, delay: 1.2, ease: HERO_EASE }}
                 >
                     <span className="afinix-hero-scroll-cue__arrows" aria-hidden="true">

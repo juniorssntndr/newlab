@@ -5,6 +5,7 @@ const IMG = '/images/afinix-landing';
 export const heroSlides = [
     {
         kicker: '🎁 Pruebe nuestro flujo digital sin riesgo',
+        kickerMobile: '🎁 Pruebe nuestro flujo sin riesgo',
         titleBefore: 'Pruebe nuestro flujo con ',
         titleHighlight: '50% de descuento',
         titleAfter: '.',
@@ -21,6 +22,7 @@ export const heroSlides = [
     },
     {
         kicker: '⚡️ ¿Cansado de retocar coronas en sillón?',
+        kickerMobile: '⚡️ ¿Cansado de retocar coronas?',
         titleBefore: 'Su prótesis lista para cementar, ',
         titleHighlight: 'sin ajustes de último minuto',
         titleAfter: '.',
@@ -37,6 +39,7 @@ export const heroSlides = [
     },
     {
         kicker: '📅 No vuelva a reprogramar una cita de entrega',
+        kickerMobile: '📅 Casos listos y a tiempo',
         titleBefore: 'La tranquilidad de tener ',
         titleHighlight: 'sus casos terminados a tiempo',
         titleAfter: '.',
@@ -53,6 +56,7 @@ export const heroSlides = [
     },
     {
         kicker: '💻 Apruebe el diseño antes de fresar el bloque',
+        kickerMobile: '💻 Aprobación de diseño 3D',
         titleBefore: 'Tenga el control total y ',
         titleHighlight: 'evite sorpresas en la prueba',
         titleAfter: '.',

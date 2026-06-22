@@ -310,7 +310,7 @@ function WorkflowTimeline({ reduceMotion }) {
     const [isMobileWorkflow, setIsMobileWorkflow] = useState(false);
     const [isHoverPaused, setIsHoverPaused] = useState(false);
     const [isFocusPaused, setIsFocusPaused] = useState(false);
-    const isWorkflowInView = useInView(workflowRef, { amount: 0.28 });
+    const isWorkflowInView = useInView(workflowRef, { amount: 0.12 });
 
     useEffect(() => {
         const mobileQuery = window.matchMedia('(max-width: 640px)');
@@ -365,9 +365,46 @@ function WorkflowTimeline({ reduceMotion }) {
         >
             <div className="afinix-workflow-scroll-stage">
                 <div className="afinix-workflow-sticky-shell">
-                    <div className="afinix-section-heading afinix-workflow-heading">
-                        <span>Flujo digital</span>
-                        <h2>Desde que recibimos tu caso hasta que llega a tus manos: ten el control total.</h2>
+                    <div className="afinix-workflow-header-grid">
+                        <div className="afinix-section-heading afinix-workflow-heading">
+                            <motion.span className="afinix-workflow-eyebrow" {...servicesHeadingMotion(reduceMotion, 0)}>
+                                Flujo digital
+                            </motion.span>
+                            <motion.h2 className="afinix-workflow-title" {...servicesHeadingMotion(reduceMotion, 1)}>
+                                Desde que recibimos tu caso hasta que llega a tus manos: <span className="afinix-workflow-title-accent">ten el control total.</span>
+                            </motion.h2>
+                        </div>
+                        <div className="afinix-workflow-header-sidebar">
+                            <motion.div className="afinix-workflow-insights-card" {...servicesHeadingMotion(reduceMotion, 2)}>
+                                <div className="afinix-workflow-insight-item">
+                                    <i className="bi bi-shield-check" aria-hidden="true"></i>
+                                    <div>
+                                        <h4>Ajuste exacto (Cero retoques)</h4>
+                                        <p>Apruebas el diseño 3D en línea antes de fresar, asegurando precisión absoluta en boca.</p>
+                                    </div>
+                                </div>
+                                <div className="afinix-workflow-insight-item">
+                                    <i className="bi bi-calendar-check" aria-hidden="true"></i>
+                                    <div>
+                                        <h4>Agenda bajo control (Sin retrasos)</h4>
+                                        <p>Seguimiento en línea en tiempo real y fecha exacta de entrega para no reprogramar pacientes.</p>
+                                    </div>
+                                </div>
+                                <div className="afinix-workflow-insight-item">
+                                    <i className="bi bi-cpu" aria-hidden="true"></i>
+                                    <div>
+                                        <h4>Escaneo en consultorio o físico</h4>
+                                        <p>Escaneamos a tu paciente directamente en tu consultorio o recibimos impresiones o modelos en yeso.</p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                            <motion.div {...servicesHeadingMotion(reduceMotion, 3)}>
+                                <Link className="afinix-workflow-portal-link" to={CLINIC_LOGIN_PATH}>
+                                    Ir al portal de clínicas
+                                    <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                                </Link>
+                            </motion.div>
+                        </div>
                     </div>
                     <div className="afinix-workflow-stage-panel">
                         {!isMobileWorkflow ? (
@@ -621,6 +658,7 @@ function FinalCTA({ reduceMotion, theme = 'dark' }) {
                 <AfinixLogo size={44} showText={true} theme={theme} />
                 <nav aria-label="Enlaces de footer" style={{ marginTop: '1rem' }}>
                     <a href="/#servicios">Servicios</a>
+                    <a href="/#flujo">Flujo digital</a>
                     <a href="/#nosotros">Para tu clínica</a>
                     <a href="/coronas-cad-cam-arequipa">Coronas CAD/CAM</a>
                     <a href="/#contacto">Contacto</a>

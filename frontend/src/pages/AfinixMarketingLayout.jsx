@@ -29,8 +29,8 @@ export function AfinixMarketingLayout({ children }) {
                     <AfinixLogo size={44} showText={true} theme={theme} />
                     <nav aria-label="Enlaces de footer" style={{ marginTop: '1rem' }}>
                         <a href="/#servicios">Servicios</a>
-                        <a href="/#nosotros">Para tu clínica</a>
                         <a href="/#flujo">Flujo digital</a>
+                        <a href="/#nosotros">Para tu clínica</a>
                         <a href="/coronas-cad-cam-arequipa">Coronas CAD/CAM</a>
                         <a href="/contacto">Contacto</a>
                         <a href="/politica-de-privacidad">Privacidad</a>
