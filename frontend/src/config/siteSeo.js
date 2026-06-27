@@ -31,21 +31,18 @@ export const WHATSAPP_PREFILL_MESSAGE =
     'Hola AFINIX Dental Lab, quisiera recibir información sobre sus servicios y enviarles un caso.';
 
 export const whatsappHref = () => {
-    const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '').replace(/\D/g, '');
+    const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
     const text = encodeURIComponent(WHATSAPP_PREFILL_MESSAGE);
-    if (phone) {
-        return `https://wa.me/${phone}?text=${text}`;
-    }
-    return `https://api.whatsapp.com/send?text=${text}`;
+    return `https://wa.me/${phone}?text=${text}`;
 };
 
 export const phoneCallHref = () => {
-    const phone = String(import.meta.env.VITE_PHONE_CALL || import.meta.env.VITE_WHATSAPP_E164 || '').replace(/\D/g, '');
+    const phone = String(import.meta.env.VITE_PHONE_CALL || import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
     return phone ? `tel:+${phone}` : 'tel:';
 };
 
 export const mapsHref = () =>
-    trimTrailingSlash(import.meta.env.VITE_MAPS_URL || '') || 'https://www.google.com/maps';
+    trimTrailingSlash(import.meta.env.VITE_MAPS_URL || 'https://maps.app.goo.gl/HnqqE8r9vsNVrznA7') || 'https://www.google.com/maps';
 
 export const googleBusinessProfileHref = () => trimTrailingSlash(import.meta.env.VITE_GOOGLE_BUSINESS_URL || '') || '';
 
