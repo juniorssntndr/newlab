@@ -1709,14 +1709,31 @@
 }
 
 .swiper.afinix-services-swiper {
-  /* Keep the track inside its grid column so cards never slide beneath the copy. */
-  padding: 0.85rem 0.25rem 3.25rem;
-  margin: -0.35rem 0 -1.35rem;
-  width: 100%;
+  /*
+   * Keep elevation inside Swiper's clipping viewport. The lateral padding
+   * prevents the first and last card shadows from ending on a hard edge.
+   */
+  padding: 0.85rem 1.15rem 3.25rem;
+  margin: -0.35rem -0.9rem -1.35rem;
+  width: calc(100% + 1.8rem);
   max-width: none;
   box-sizing: border-box;
   touch-action: pan-y;
   overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.15rem,
+    #000 calc(100% - 1.15rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.15rem,
+    #000 calc(100% - 1.15rem),
+    transparent 100%
+  );
 }
 
 .afinix-services-swiper .swiper-wrapper {
@@ -1745,12 +1762,14 @@
   flex-direction: column;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 480px;
+  min-height: 430px;
   overflow: hidden;
   border: 1px solid var(--showcase-line);
   border-radius: 14px;
   background: var(--showcase-surface);
-  box-shadow: 0 12px 30px rgba(12, 32, 52, 0.12);
+  box-shadow:
+    0 16px 28px -18px rgba(12, 32, 52, 0.34),
+    0 8px 18px rgba(12, 32, 52, 0.08);
   backface-visibility: hidden;
   transform-origin: center bottom;
   transform-style: preserve-3d;
@@ -1777,8 +1796,10 @@
 .afinix-services--showcase .afinix-service-card:hover,
 .afinix-services--showcase .afinix-service-card:focus-within {
   border-color: rgba(51, 142, 255, 0.45);
-  box-shadow: 0 20px 48px rgba(51, 142, 255, 0.14), 0 12px 30px rgba(0, 0, 0, 0.15);
-  transform: translateY(-5px);
+  box-shadow:
+    0 20px 34px -18px rgba(51, 142, 255, 0.32),
+    0 10px 22px rgba(12, 32, 52, 0.12);
+  transform: translateY(-4px);
 }
 
 .afinix-services--showcase .afinix-service-card:hover::before,
@@ -1789,7 +1810,7 @@
 .afinix-services--showcase .afinix-service-card-media {
   position: relative;
   z-index: 2;
-  height: 154px;
+  height: 146px;
   overflow: hidden;
   background: radial-gradient(circle at 50% 30%, rgba(51, 142, 255, 0.08), transparent 55%), #0a1624;
 }
@@ -1833,7 +1854,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 1.08rem 1.1rem 0.85rem;
+  padding: 0.95rem 1.05rem 0.72rem;
 }
 
 .afinix-services--showcase .afinix-service-card h3 {
@@ -1845,17 +1866,17 @@
 
 .afinix-services--showcase .afinix-service-card p {
   flex: 1 1 auto;
-  margin-top: 0.55rem;
+  margin-top: 0.45rem;
   color: var(--showcase-muted);
   font-size: clamp(0.86rem, 1vw, 0.95rem);
-  line-height: 1.52;
+  line-height: 1.46;
 }
 
 .afinix-service-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin: 0.88rem 0 0;
+  margin: 0.68rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -1888,7 +1909,7 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: auto;
-  padding: 0.88rem 1.1rem 1rem;
+  padding: 0.72rem 1.05rem 0.78rem;
   border-top: 1px solid var(--showcase-line);
   font-size: 0.86rem;
   color: var(--showcase-muted);
@@ -1943,7 +1964,7 @@
 
 .afinix-about {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(min(420px, 100%), 1.05fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(min(420px, 100%), 0.95fr);
   gap: clamp(2rem, 5vw, 4rem);
   align-items: center;
 }
@@ -1955,9 +1976,9 @@
 
 .afinix-proof-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-top: 1rem;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
+  margin-top: 0.75rem;
 }
 
 .afinix-proof-grid article,
@@ -1969,21 +1990,72 @@
 }
 
 .afinix-proof-grid article {
+  display: grid;
+  gap: 0.72rem;
   border-radius: 20px;
-  padding: 1rem;
+  padding: 1rem 1.05rem;
 }
 
-.afinix-proof-grid strong {
-  display: block;
-  color: var(--afinix-cyan);
-  font-size: 1.7rem;
-  line-height: 1;
+.afinix-proof-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.afinix-proof-card-head i {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(51, 142, 255, 0.22);
+  border-radius: 13px;
+  color: var(--afinix-cyan-strong);
+  background: rgba(51, 142, 255, 0.09);
+  font-size: 1.05rem;
+}
+
+.afinix-proof-card-head h3 {
+  margin: 0;
+  color: var(--afinix-heading-color);
+  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  line-height: 1.2;
 }
 
 .afinix-proof-grid p {
-  margin-top: 0.65rem;
+  margin: 0;
   color: var(--afinix-muted);
-  line-height: 1.55;
+  line-height: 1.5;
+}
+
+.afinix-proof-response {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.65rem;
+  padding-top: 0.72rem;
+  border-top: 1px solid var(--afinix-glass-border);
+}
+
+.afinix-proof-response span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  color: var(--afinix-cyan-strong);
+  background: rgba(51, 142, 255, 0.1);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.afinix-proof-response strong {
+  color: var(--afinix-heading-color);
+  font-size: 0.86rem;
+  line-height: 1.42;
 }
 
 .afinix-about-gallery {
@@ -1996,7 +2068,10 @@
 }
 
 .afinix-about-gallery__item {
+  position: relative;
   min-width: 0;
+  overflow: hidden;
+  border-radius: 28px;
   transform-style: preserve-3d;
 }
 
@@ -2013,6 +2088,23 @@
   border-radius: 28px;
   object-fit: cover;
   box-shadow: var(--afinix-shadow);
+}
+
+.afinix-about-gallery__caption {
+  position: absolute;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  left: 0.85rem;
+  display: block;
+  padding: 0.62rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  color: #ffffff;
+  background: rgba(4, 20, 37, 0.72);
+  backdrop-filter: blur(12px);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
 .afinix-workflow-header-grid {
@@ -3766,11 +3858,16 @@
 
   .afinix-hero-stage:has(.afinix-hero-swiper--stack) {
     overflow: visible;
-    padding-bottom: 7.5rem;
+    padding-bottom: 4rem;
   }
 
   .afinix-hero-scroll-cue {
-    bottom: 0.65rem;
+    bottom: 0.15rem;
+  }
+
+  .afinix-hero-scroll-cue__arrows {
+    height: 64px;
+    font-size: clamp(2.65rem, 12vw, 3.35rem);
   }
 
   .afinix-hero-tracking--desktop {
@@ -3851,6 +3948,11 @@
 
   .afinix-services-swiper .swiper-slide {
     width: min(100%, calc(100vw - 2.6rem));
+    align-self: flex-start;
+  }
+
+  .afinix-services--showcase {
+    padding-top: 0;
   }
 
   .afinix-services-catalog-head {
@@ -3862,7 +3964,7 @@
 
   .swiper.afinix-services-swiper {
     padding-inline: 0.75rem;
-    padding-bottom: 3.5rem;
+    padding-bottom: 2.45rem;
     -webkit-mask-image: none;
     mask-image: none;
     width: 100% !important;
@@ -3879,8 +3981,17 @@
   }
 
   .afinix-services--showcase .afinix-service-card {
-    min-height: auto;
+    flex: 1 1 auto;
+    height: clamp(570px, 150vw, 610px);
+    min-height: clamp(570px, 150vw, 610px);
     border-radius: 20px;
+  }
+
+  .afinix-services-swiper .swiper-pagination {
+    bottom: 0.35rem !important;
+    left: 50% !important;
+    justify-content: center;
+    transform: translateX(-50%);
   }
 
   .afinix-services--showcase .afinix-service-card-media {
@@ -3928,6 +4039,30 @@
     perspective: none;
   }
 
+  .afinix-about-copy h2 {
+    font-size: clamp(2rem, 10vw, 2.75rem);
+    line-height: 1.02;
+  }
+
+  .afinix-proof-grid {
+    gap: 0.7rem;
+    margin-top: 0.4rem;
+  }
+
+  .afinix-proof-grid article {
+    padding: 0.9rem;
+    border-radius: 18px;
+  }
+
+  .afinix-proof-response {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .afinix-proof-response span {
+    width: fit-content;
+  }
+
   .afinix-about-gallery__item,
   .afinix-about-gallery__item--span-rows {
     grid-row: auto;
@@ -3936,6 +4071,12 @@
   .afinix-about-gallery__item img {
     min-height: 240px;
     max-height: 340px;
+  }
+
+  .afinix-about-gallery__caption {
+    right: 0.7rem;
+    bottom: 0.7rem;
+    left: 0.7rem;
   }
 
   .afinix-workflow-scroll-stage {
@@ -3951,7 +4092,7 @@
   }
 
   .afinix-workflow-stage-panel {
-    --workflow-line-axis-inset: calc(7.85rem / 2);
+    --workflow-line-axis-inset: calc(4.6rem / 2);
 
     position: relative;
     display: grid;
@@ -3972,13 +4113,13 @@
   .afinix-workflow-header-grid {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
-    margin-bottom: 1.5rem;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
     max-width: 100%;
   }
 
   .afinix-workflow-header-sidebar {
-    gap: 1rem;
+    gap: 0.75rem;
     padding-bottom: 0;
   }
 
@@ -3996,9 +4137,37 @@
 
   .afinix-workflow-heading h2 {
     color: var(--afinix-heading-color);
-    font-size: clamp(2rem, 9vw, 3.1rem);
-    line-height: 0.98;
-    max-width: 11ch;
+    font-size: clamp(1.8rem, 7.8vw, 2.25rem);
+    line-height: 1.03;
+    max-width: 15ch;
+  }
+
+  .afinix-workflow-insights-card {
+    gap: 0.72rem;
+    padding: 0.9rem;
+    border-radius: 18px;
+  }
+
+  .afinix-workflow-insight-item {
+    gap: 0.7rem;
+  }
+
+  .afinix-workflow-insight-item i {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 0.95rem;
+  }
+
+  .afinix-workflow-insight-item h4 {
+    font-size: 0.84rem;
+    line-height: 1.18;
+  }
+
+  .afinix-workflow-insight-item p {
+    margin-top: 0.18rem;
+    font-size: 0.76rem;
+    line-height: 1.34;
   }
 
   .afinix-workflow-heading > span {
@@ -4012,7 +4181,7 @@
     position: relative;
     z-index: 1;
     isolation: isolate;
-    gap: 1.7rem;
+    gap: 0.35rem;
     overflow: visible;
     padding: 0;
   }
@@ -4024,7 +4193,7 @@
     z-index: 0;
     top: var(--workflow-line-axis-inset);
     bottom: var(--workflow-line-axis-inset);
-    left: 3rem;
+    left: 1.7rem;
     width: 2px;
     border-radius: 999px;
     transform: translateX(-50%);
@@ -4036,7 +4205,7 @@
     position: absolute;
     top: var(--workflow-line-axis-inset);
     bottom: var(--workflow-line-axis-inset);
-    left: 3rem;
+    left: 1.7rem;
     z-index: 0;
     display: block;
     width: 2px;
@@ -4083,10 +4252,10 @@
 
   .afinix-workflow-mobile-row {
     display: grid;
-    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-columns: 3.4rem minmax(0, 1fr);
     align-items: center;
-    gap: 0.95rem;
-    min-height: 7.85rem;
+    gap: 0.75rem;
+    min-height: 4.6rem;
   }
 
   .afinix-workflow-step-icon-button {
@@ -4096,7 +4265,7 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 6.6rem;
+    min-height: 44px;
     padding: 0;
     border: 0;
     background: transparent;
@@ -4105,7 +4274,7 @@
 
   .afinix-workflow-step-copy {
     display: grid;
-    gap: 0.34rem;
+    gap: 0.2rem;
     min-width: 0;
   }
 
@@ -4127,15 +4296,15 @@
 
   .afinix-workflow-step-icon {
     z-index: 4;
-    width: 4.85rem;
-    height: 4.85rem;
+    width: 3rem;
+    height: 3rem;
     margin: 0;
     border: 1px solid rgba(184, 199, 217, 0.24);
     background: #071827;
     color: var(--afinix-muted-strong);
-    font-size: 1.22rem;
+    font-size: 1rem;
     box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.2),
+      0 7px 18px rgba(0, 0, 0, 0.16),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
@@ -4159,8 +4328,8 @@
   .afinix-workflow-card.is-complete .afinix-workflow-step-icon {
     color: var(--afinix-teal);
     border-color: rgba(0, 102, 255, 0.34);
-    transform: scale(1.04);
-    box-shadow: 0 10px 26px rgba(0, 102, 255, 0.12);
+    transform: scale(1.02);
+    box-shadow: 0 7px 18px rgba(0, 102, 255, 0.1);
   }
 
   .afinix-page[data-theme='light'] .afinix-workflow-card.is-complete .afinix-workflow-step-icon {
@@ -4172,10 +4341,10 @@
     border-color: rgba(51, 142, 255, 0.7);
     background: #071827;
     color: var(--afinix-cyan);
-    transform: scale(1.1);
+    transform: scale(1.05);
     box-shadow:
-      0 0 0 8px rgba(51, 142, 255, 0.1),
-      0 18px 48px rgba(51, 142, 255, 0.22),
+      0 0 0 4px rgba(51, 142, 255, 0.1),
+      0 10px 24px rgba(51, 142, 255, 0.18),
       inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
@@ -4184,8 +4353,8 @@
     background: linear-gradient(152deg, #1f7aab 0%, #156894 42%, #104f73 100%);
     color: #c9f5ff;
     box-shadow:
-      0 0 0 8px rgba(0, 143, 211, 0.12),
-      0 18px 44px rgba(0, 95, 168, 0.22),
+      0 0 0 4px rgba(0, 143, 211, 0.12),
+      0 10px 24px rgba(0, 95, 168, 0.18),
       inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 
@@ -4199,8 +4368,8 @@
     margin: 0;
     max-width: none;
     color: var(--afinix-heading-color);
-    font-size: clamp(1.06rem, 4.9vw, 1.42rem);
-    line-height: 1.08;
+    font-size: clamp(0.94rem, 4.2vw, 1.08rem);
+    line-height: 1.15;
   }
 
   .afinix-workflow-card p,
@@ -4208,8 +4377,8 @@
     margin: 0;
     max-width: none;
     color: var(--afinix-muted);
-    font-size: clamp(0.96rem, 3.9vw, 1.08rem);
-    line-height: 1.24;
+    font-size: clamp(0.78rem, 3.35vw, 0.9rem);
+    line-height: 1.2;
   }
 
   .afinix-workflow-card.is-active .afinix-workflow-step-num,
@@ -4226,7 +4395,7 @@
   .afinix-workflow-detail-shell {
     display: grid;
     width: 100%;
-    margin-top: 0.35rem;
+    margin-top: 0.65rem;
   }
 
   .afinix-workflow-mobile-detail {
@@ -4283,13 +4452,13 @@
 
   .afinix-workflow-detail-media,
   .afinix-workflow-detail-media img {
-    height: auto;
-    max-height: none;
-    min-height: clamp(210px, 64vw, 290px);
+    height: clamp(168px, 48vw, 190px);
+    max-height: 190px;
+    min-height: 168px;
   }
 
   .afinix-workflow-detail-media {
-    aspect-ratio: 16 / 10;
+    aspect-ratio: auto;
   }
 
   .afinix-workflow-detail-media::after {
@@ -4297,7 +4466,36 @@
   }
 
   .afinix-workflow-hud-main {
-    padding: 1.05rem;
+    gap: 0.65rem;
+    padding: 0.9rem;
+  }
+
+  .afinix-workflow-detail-head {
+    gap: 0.75rem;
+  }
+
+  .afinix-workflow-detail-icon {
+    width: 44px;
+    border-radius: 13px;
+  }
+
+  .afinix-workflow-detail-step {
+    margin-bottom: 0.2rem;
+    font-size: 0.74rem;
+  }
+
+  .afinix-workflow-detail-head h3 {
+    font-size: 1.16rem;
+  }
+
+  .afinix-workflow-detail-card p {
+    font-size: 0.9rem;
+    line-height: 1.42;
+  }
+
+  .afinix-workflow-benefit {
+    font-size: 0.86rem;
+    line-height: 1.38;
   }
 
   .afinix-workflow-detail-meta {
@@ -4402,7 +4600,40 @@
   }
 
   .afinix-metrics-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.75rem;
+  }
+
+  .afinix-metrics-grid article {
+    grid-template-columns: 32px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 0.65rem;
+    row-gap: 0.08rem;
+    min-height: 92px;
+    padding: 0.78rem;
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .afinix-metrics-grid i {
+    grid-row: 1 / 3;
+    width: 32px;
+    height: 32px;
+    font-size: 0.86rem;
+  }
+
+  .afinix-metrics-grid strong {
+    align-self: end;
+    font-size: 1.12rem;
+    line-height: 1.1;
+  }
+
+  .afinix-metrics-grid span {
+    align-self: start;
+    font-size: 0.72rem;
+    line-height: 1.25;
   }
 
   .afinix-partners p {
@@ -4414,6 +4645,116 @@
 
   .afinix-partner-logo {
     min-width: 160px;
+  }
+
+  .afinix-footer.afinix-final-cta {
+    gap: 0.75rem;
+    padding: 1.1rem 0 max(1rem, env(safe-area-inset-bottom, 0px));
+    background:
+      radial-gradient(24rem 16rem at 50% 0%, rgba(51, 142, 255, 0.1), transparent 72%),
+      linear-gradient(180deg, transparent, rgba(0, 168, 255, 0.04));
+  }
+
+  .afinix-final-cta__panel {
+    padding: 1rem;
+    border-radius: 18px;
+    box-shadow: none;
+  }
+
+  .afinix-final-cta__heading {
+    gap: 0.55rem;
+  }
+
+  .afinix-final-cta__heading h2 {
+    font-size: clamp(1.55rem, 7vw, 2rem);
+    line-height: 1.05;
+  }
+
+  .afinix-final-cta__heading p {
+    font-size: 0.88rem;
+    line-height: 1.48;
+  }
+
+  .afinix-final-cta__heading + .afinix-footer-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+    margin-top: 0.85rem;
+  }
+
+  .afinix-footer-actions .afinix-primary-action,
+  .afinix-footer-actions .afinix-secondary-action {
+    min-height: 44px;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.76rem;
+    text-align: center;
+  }
+
+  .afinix-footer-basic {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 0.8rem;
+    padding: 1rem;
+    border: 0;
+    border-top: 1px solid var(--afinix-line);
+    border-radius: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .afinix-footer-basic .afinix-logo {
+    width: 164px !important;
+  }
+
+  .afinix-footer-basic nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0 !important;
+  }
+
+  .afinix-footer-basic nav a {
+    justify-content: flex-start;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0.35rem 0.45rem;
+    border-radius: 10px;
+    font-size: 0.76rem;
+    line-height: 1.2;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .afinix-footer-basic small {
+    order: 4;
+    margin-top: 0 !important;
+    font-size: 0.7rem;
+    line-height: 1.4;
+  }
+
+  .afinix-footer-channels {
+    order: 3;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    margin-top: 0;
+    padding-top: 0.75rem;
+  }
+
+  .afinix-footer-chan {
+    justify-content: flex-start;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0.35rem 0.5rem;
+    border-radius: 10px;
+    background: rgba(51, 142, 255, 0.06);
+  }
+
+  .afinix-footer-socials {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 }
 
@@ -4969,22 +5310,421 @@
 }
 
 @media (max-width: 640px) {
+  .afinix-contact {
+    gap: 1rem;
+    padding-block: 1.25rem;
+  }
+
+  .afinix-contact-heading {
+    margin-bottom: 0;
+    text-align: left;
+  }
+
+  .afinix-contact-heading h2 {
+    margin: 0.45rem 0;
+    font-size: clamp(1.8rem, 8vw, 2.25rem);
+  }
+
+  .afinix-contact-heading p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
   .afinix-contact-grid {
     grid-template-columns: 1fr;
-    gap: 1.15rem;
+    gap: 0.65rem;
   }
   
   .afinix-contact-card {
-    padding: 1.85rem 1.35rem;
-    border-radius: 22px;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-areas:
+      "icon title"
+      "icon description"
+      ". action";
+    align-items: center;
+    column-gap: 0.85rem;
+    row-gap: 0.2rem;
+    min-height: 0;
+    padding: 0.85rem;
+    border-radius: 16px;
+    text-align: left;
+    box-shadow: none;
+    backdrop-filter: none;
   }
-  
+
+  .afinix-contact-card-icon {
+    grid-area: icon;
+    width: 48px;
+    height: 48px;
+    margin: 0;
+    border-radius: 14px;
+    font-size: 1.25rem;
+  }
+
+  .afinix-contact-card h3 {
+    grid-area: title;
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .afinix-contact-card p {
+    grid-area: description;
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .afinix-contact-card-btn {
+    grid-area: action;
+    justify-self: start;
+    width: auto;
+    min-height: 40px;
+    margin-top: 0.45rem;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.74rem;
+    box-shadow: none !important;
+  }
+
+  .afinix-contact-socials-block {
+    padding-top: 0.85rem;
+    text-align: left;
+  }
+
+  .afinix-contact-socials-block h3 {
+    margin-bottom: 0.65rem;
+    font-size: 0.9rem;
+  }
+
   .afinix-contact-socials-links {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
   }
   
   .afinix-contact-social-btn {
     width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    padding: 0.45rem 0.35rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+  }
+
+  .afinix-contact-social-btn i {
+    font-size: 0.95rem;
+  }
+}
+
+/* Flujo digital móvil: resumen compacto y tarjeta de detalle optimizada. */
+@media (max-width: 640px) {
+  .afinix-workflow-header-grid {
+    gap: 0.7rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .afinix-workflow-insights-card {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+    padding: 0.45rem;
+    border-radius: 16px;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .afinix-workflow-insight-item {
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 0.4rem;
+    min-width: 0;
+    padding: 0.55rem 0.3rem;
+    border-radius: 12px;
+    text-align: center;
+    background: rgba(51, 142, 255, 0.06);
+  }
+
+  .afinix-workflow-insight-item i {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+  }
+
+  .afinix-workflow-insight-item h4 {
+    font-size: 0.7rem;
+    line-height: 1.22;
+  }
+
+  .afinix-workflow-insight-item p {
+    display: none;
+  }
+
+  .afinix-workflow-portal-link {
+    min-height: 44px;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.76rem;
+  }
+
+  .afinix-workflow-stage-panel {
+    gap: 0.65rem;
+  }
+
+  .afinix-workflow-detail-shell {
+    margin-top: 0;
+  }
+
+  .afinix-workflow-detail-card {
+    overflow: hidden;
+    border-radius: 18px;
+    box-shadow: none;
+  }
+
+  .afinix-workflow-detail-media,
+  .afinix-workflow-detail-media img {
+    height: clamp(142px, 40vw, 164px);
+    min-height: 142px;
+    max-height: 164px;
+  }
+
+  .afinix-workflow-hud-main {
+    gap: 0.55rem;
+    padding: 0.82rem;
+  }
+
+  .afinix-workflow-detail-card p {
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+
+  .afinix-workflow-benefit {
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  /* Lo que está en juego: composición móvil tipo aplicación. */
+  .afinix-about {
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .afinix-about-copy {
+    gap: 0.75rem;
+  }
+
+  .afinix-about-copy h2 {
+    max-width: 11ch;
+    font-size: clamp(2rem, 9.5vw, 2.65rem);
+    line-height: 1;
+  }
+
+  .afinix-about-copy > p {
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .afinix-proof-grid {
+    gap: 0.55rem;
+    margin-top: 0.25rem;
+  }
+
+  .afinix-proof-grid article {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 0.18rem 0.72rem;
+    padding: 0.72rem;
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .afinix-proof-card-head {
+    display: contents;
+  }
+
+  .afinix-proof-card-head i {
+    grid-row: 1 / 4;
+    align-self: start;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+
+  .afinix-proof-card-head h3 {
+    grid-column: 2;
+    font-size: 0.92rem;
+    line-height: 1.2;
+  }
+
+  .afinix-proof-grid article > p {
+    grid-column: 2;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .afinix-proof-response {
+    grid-column: 2;
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding-top: 0.38rem;
+  }
+
+  .afinix-proof-response span {
+    min-height: 0;
+    padding: 0;
+    color: var(--afinix-cyan-strong);
+    background: transparent;
+    font-size: 0.6rem;
+  }
+
+  .afinix-proof-response strong {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .afinix-about-gallery {
+    --afinix-about-mobile-card: min(82vw, 320px);
+    display: flex;
+    gap: 0.65rem;
+    margin-inline: calc(var(--afinix-mobile-gutter, 1rem) * -1);
+    padding-inline: max(1rem, calc((100vw - var(--afinix-about-mobile-card)) / 2));
+    overflow-x: auto;
+    scroll-padding-inline: max(1rem, calc((100vw - var(--afinix-about-mobile-card)) / 2));
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .afinix-about-gallery::-webkit-scrollbar {
+    display: none;
+  }
+
+  .afinix-about-gallery__item,
+  .afinix-about-gallery__item--span-rows {
+    flex: 0 0 var(--afinix-about-mobile-card);
+    height: 190px;
+    border-radius: 18px;
+    scroll-snap-align: center;
+  }
+
+  .afinix-about-gallery__item img {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    border-radius: 18px;
+    object-position: center center;
+  }
+
+  .afinix-about-gallery__caption {
+    right: 0.55rem;
+    bottom: 0.55rem;
+    left: 0.55rem;
+    padding: 0.48rem 0.58rem;
+    border-radius: 11px;
+    font-size: 0.68rem;
+  }
+}
+
+/* Lo que está en juego: densidad controlada para pantallas de escritorio. */
+@media (min-width: 1025px) {
+  .afinix-about {
+    grid-template-columns: minmax(0, 1.08fr) minmax(440px, 0.92fr);
+    gap: clamp(1.75rem, 3vw, 3rem);
+    align-items: center;
+    padding-top: clamp(2.25rem, 4vw, 3.75rem);
+    padding-bottom: clamp(2.25rem, 4vw, 3.75rem);
+  }
+
+  .afinix-about-copy {
+    gap: 0.72rem;
+  }
+
+  .afinix-about-copy h2 {
+    max-width: 12ch;
+    font-size: clamp(2.65rem, 3.6vw, 3.35rem);
+    line-height: 0.98;
+  }
+
+  .afinix-about-copy > p {
+    max-width: 68ch;
+    font-size: 0.94rem;
+    line-height: 1.58;
+  }
+
+  .afinix-proof-grid {
+    gap: 0.52rem;
+    margin-top: 0.35rem;
+  }
+
+  .afinix-proof-grid article {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 0.2rem 0.68rem;
+    padding: 0.68rem 0.78rem;
+    border-radius: 16px;
+    box-shadow: 0 12px 28px rgba(14, 53, 90, 0.08);
+  }
+
+  .afinix-proof-card-head {
+    display: contents;
+  }
+
+  .afinix-proof-card-head i {
+    grid-row: 1 / 4;
+    align-self: start;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: 0.92rem;
+  }
+
+  .afinix-proof-card-head h3 {
+    grid-column: 2;
+    font-size: 0.96rem;
+  }
+
+  .afinix-proof-grid article > p {
+    grid-column: 2;
+    font-size: 0.8rem;
+    line-height: 1.38;
+  }
+
+  .afinix-proof-response {
+    grid-column: 2;
+    display: flex;
+    align-items: baseline;
+    gap: 0.42rem;
+    padding-top: 0.34rem;
+  }
+
+  .afinix-proof-response span {
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    font-size: 0.58rem;
+  }
+
+  .afinix-proof-response strong {
+    font-size: 0.73rem;
+    line-height: 1.3;
+  }
+
+  .afinix-about-gallery {
+    grid-template-rows: 205px 205px;
+    gap: 0.7rem;
+    max-height: 420px;
+  }
+
+  .afinix-about-gallery__item,
+  .afinix-about-gallery__item img {
+    border-radius: 22px;
+  }
+
+  .afinix-about-gallery__caption {
+    right: 0.62rem;
+    bottom: 0.62rem;
+    left: 0.62rem;
+    padding: 0.5rem 0.62rem;
+    border-radius: 11px;
+    font-size: 0.67rem;
   }
 }

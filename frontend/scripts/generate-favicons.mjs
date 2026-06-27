@@ -1,8 +1,7 @@
 /**
  * Genera favicons e iconos desde los isotipos oficiales (assets/branding).
- * - iso-dark.png → ISO oscuro (blanco + azul sobre negro): iconos principales, .ico, apple-touch, favicon-dark.
- * - iso-light.png → ISO claro (azules sobre negro): favicon-light para pestañas en modo claro.
- * Fondo de encuadre: negro #000000 (alineado a la identidad de los PNG oficiales).
+ * - iso-light.png → ISO claro (azules): iconos principales por defecto (.ico, .png, apple-touch, svg) para visualizarse correctamente en fondos claros (ej. resultados de Google).
+ * - iso-dark.png → ISO oscuro (blanco + azul): únicamente para favicon-dark en pestañas de modo oscuro.
  */
 import fs from 'fs';
 import path from 'path';
@@ -49,15 +48,17 @@ async function main() {
     }
     fs.mkdirSync(publicDir, { recursive: true });
 
-    await squarePngFile(isoDarkPath, 32, 'icon-32x32.png');
-    await squarePngFile(isoDarkPath, 192, 'icon-192x192.png');
-    await squarePngFile(isoDarkPath, 180, 'apple-touch-icon.png');
+    // Los iconos principales y por defecto se generan desde el ISO claro (iso-light.png)
+    // para que se vean correctamente en fondos claros (como los resultados de búsqueda de Google y pestañas).
+    await squarePngFile(isoLightPath, 32, 'icon-32x32.png');
+    await squarePngFile(isoLightPath, 192, 'icon-192x192.png');
+    await squarePngFile(isoLightPath, 180, 'apple-touch-icon.png');
 
     await squarePngFile(isoDarkPath, 48, 'favicon-dark.png');
     await squarePngFile(isoLightPath, 48, 'favicon-light.png');
 
-    const buf48 = await squarePngBuffer(isoDarkPath, 48);
-    const buf32 = await squarePngBuffer(isoDarkPath, 32);
+    const buf48 = await squarePngBuffer(isoLightPath, 48);
+    const buf32 = await squarePngBuffer(isoLightPath, 32);
     const icoBuffer = await pngToIco([buf48, buf32]);
     fs.writeFileSync(path.join(publicDir, 'favicon.ico'), icoBuffer);
 

@@ -28,7 +28,7 @@ export const absoluteUrl = (path) => {
 };
 
 export const WHATSAPP_PREFILL_MESSAGE =
-    'Hola AFINIX Dental Lab, soy odontólogo/a y quiero enviar o cotizar un caso dental digital.';
+    'Hola AFINIX Dental Lab, quisiera recibir información sobre sus servicios y enviarles un caso.';
 
 export const whatsappHref = () => {
     const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '').replace(/\D/g, '');

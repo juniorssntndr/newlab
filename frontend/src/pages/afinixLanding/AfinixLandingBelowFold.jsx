@@ -9,7 +9,6 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import {
     aboutGallery,
-    aboutMetrics,
     contactChannels,
     landingContactChannels,
     landingMetrics,
@@ -24,6 +23,32 @@ const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 const MotionSection = motion.section;
 const WORKFLOW_STEP_DURATION_MS = 4000;
 const WORKFLOW_FINAL_DURATION_MS = 5000;
+const clinicPainPoints = [
+    {
+        icon: 'bi-clock-history',
+        title: 'Una entrega que se retrasa',
+        consequence: 'Reprogramas pacientes, pierdes bloques de agenda y das explicaciones por un problema que no generaste.',
+        response: 'Fechas claras y seguimiento visible desde que recibimos el caso hasta la entrega.',
+    },
+    {
+        icon: 'bi-bullseye',
+        title: 'Una pieza que exige retoques',
+        consequence: 'Más tiempo en sillón, más desgaste clínico y una experiencia menos predecible para tu paciente.',
+        response: 'Diseño 3D revisable y producción CAD/CAM enfocada en precisión y ajuste.',
+    },
+    {
+        icon: 'bi-chat-left-text',
+        title: 'Indicaciones perdidas entre mensajes',
+        consequence: 'El criterio clínico se fragmenta y aumenta el riesgo de repetir conversaciones o decisiones.',
+        response: 'Un solo flujo para archivos, observaciones, aprobación y estado del caso.',
+    },
+];
+
+const clinicProofCaptions = [
+    'Planificación digital antes de producir',
+    'Materiales y terminaciones controladas',
+    'Producción CAD/CAM en el laboratorio',
+];
 
 const sectionMotion = (reduced, delay = 0) =>
     reduced
@@ -511,23 +536,31 @@ function PartnersAndMetrics({ reduceMotion }) {
         <>
             <MotionSection className="afinix-section afinix-about" id="nosotros" {...sectionMotion(reduceMotion)}>
                 <div className="afinix-about-copy">
-                    <motion.span {...servicesHeadingMotion(reduceMotion, 0)}>Para tu clínica</motion.span>
-                    <motion.h2 {...servicesHeadingMotion(reduceMotion, 1)}>Tu criterio, el diseño y la pieza: todo en el mismo flujo.</motion.h2>
+                    <motion.span {...servicesHeadingMotion(reduceMotion, 0)}>Lo que está en juego</motion.span>
+                    <motion.h2 {...servicesHeadingMotion(reduceMotion, 1)}>
+                        Tu agenda no debería pagar los errores del laboratorio.
+                    </motion.h2>
                     <motion.p {...servicesHeadingMotion(reduceMotion, 2)}>
-                        Cuando el flujo es visible, tu agenda deja de depender de mensajes sueltos. Unes criterio clínico, revisión 3D
-                        y producción CAD/CAM con responsables y tiempos referenciales según complejidad del caso. La precisión en boca se apoya en trazabilidad: sin
-                        ella, cada caso pierde predictibilidad operativa.
+                        Cada retraso, ajuste inesperado o indicación perdida termina afectando tu tiempo clínico y la confianza
+                        del paciente. AFINIX convierte esos puntos de fricción en un proceso visible, revisable y trazable.
                     </motion.p>
-                    <div className="afinix-proof-grid">
-                        {aboutMetrics.map((metric, index) => (
-                            <motion.article key={metric.value} {...aboutProofMotion(reduceMotion, index)}>
-                                <strong>{metric.value}</strong>
-                                <p>{metric.text}</p>
+                    <div className="afinix-proof-grid" aria-label="Problemas clínicos que AFINIX ayuda a prevenir">
+                        {clinicPainPoints.map((item, index) => (
+                            <motion.article key={item.title} {...aboutProofMotion(reduceMotion, index)}>
+                                <div className="afinix-proof-card-head">
+                                    <i className={`bi ${item.icon}`} aria-hidden="true"></i>
+                                    <h3>{item.title}</h3>
+                                </div>
+                                <p>{item.consequence}</p>
+                                <div className="afinix-proof-response">
+                                    <span>AFINIX responde</span>
+                                    <strong>{item.response}</strong>
+                                </div>
                             </motion.article>
                         ))}
                     </div>
                 </div>
-                <div className="afinix-about-gallery" aria-label="Muestras y equipamiento del laboratorio">
+                <div className="afinix-about-gallery" aria-label="Evidencias del proceso digital de AFINIX">
                     {aboutGallery.map((image, index) => (
                         <motion.div
                             key={image.src}
@@ -539,6 +572,7 @@ function PartnersAndMetrics({ reduceMotion }) {
                             {...aboutGalleryMotion(reduceMotion, index)}
                         >
                             <img src={image.src} alt={image.alt} loading="lazy" decoding="async" />
+                            <span className="afinix-about-gallery__caption">{clinicProofCaptions[index]}</span>
                         </motion.div>
                     ))}
                 </div>
@@ -659,7 +693,7 @@ function FinalCTA({ reduceMotion, theme = 'dark' }) {
                 <nav aria-label="Enlaces de footer" style={{ marginTop: '1rem' }}>
                     <a href="/#servicios">Servicios</a>
                     <a href="/#flujo">Flujo digital</a>
-                    <a href="/#nosotros">Para tu clínica</a>
+                    <a href="/#nosotros">Por qué AFINIX</a>
                     <a href="/coronas-cad-cam-arequipa">Coronas CAD/CAM</a>
                     <a href="/#contacto">Contacto</a>
                     <a href="/politica-de-privacidad">Privacidad</a>

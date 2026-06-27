@@ -24,7 +24,7 @@ const HEADER_ICON_LINKS = [LOCATION_CHANNEL, ...socialLinks].filter(Boolean);
 const HEADER_MENU_LINKS = [
     { href: '/#servicios', label: 'Servicios' },
     { href: '/#flujo', label: 'Flujo digital' },
-    { href: '/#nosotros', label: 'Para tu clínica' },
+    { href: '/#nosotros', label: 'Por qué AFINIX' },
     { href: '/#contacto', label: 'Contacto' },
 ];
 const HERO_EASE = [0.16, 1, 0.3, 1];
@@ -194,7 +194,7 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark'
                 <nav className="afinix-nav-links" aria-label="Secciones de la landing">
                     <a href="/#servicios">Servicios</a>
                     <a href="/#flujo">Flujo digital</a>
-                    <a href="/#nosotros">Para tu clínica</a>
+                    <a href="/#nosotros">Por qué AFINIX</a>
                     <a href="/#contacto">Contacto</a>
                 </nav>
                 <div className="afinix-nav-actions">
