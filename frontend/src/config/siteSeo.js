@@ -47,9 +47,9 @@ export const mapsHref = () =>
 export const googleBusinessProfileHref = () => trimTrailingSlash(import.meta.env.VITE_GOOGLE_BUSINESS_URL || '') || '';
 
 export const socialProfiles = {
-    instagram: trimTrailingSlash(import.meta.env.VITE_SOCIAL_INSTAGRAM_URL || '') || 'https://instagram.com/afinixlab',
-    facebook: trimTrailingSlash(import.meta.env.VITE_SOCIAL_FACEBOOK_URL || '') || 'https://facebook.com/afinixlab',
-    tiktok: trimTrailingSlash(import.meta.env.VITE_SOCIAL_TIKTOK_URL || '') || 'https://tiktok.com/@afinixlab',
+    instagram: trimTrailingSlash(import.meta.env.VITE_SOCIAL_INSTAGRAM_URL || 'https://www.instagram.com/afinixdentallab?igsh=MTZoZjN6NWtuaHBydQ=='),
+    facebook: trimTrailingSlash(import.meta.env.VITE_SOCIAL_FACEBOOK_URL || 'https://www.facebook.com/share/17nvbKgzTT/'),
+    tiktok: trimTrailingSlash(import.meta.env.VITE_SOCIAL_TIKTOK_URL || 'https://tiktok.com/@afinixlab'),
 };
 
 export const businessSchemaAddress = () => {
