@@ -5728,3 +5728,155 @@
     font-size: 0.67rem;
   }
 }
+
+/* ─── Popup apertura Arequipa ─────────────────────────────────────────────── */
+.afinix-opening-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+}
+
+.afinix-opening-popup__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(2, 11, 30, 0.78);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+.afinix-opening-popup__panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  max-height: min(92vh, 820px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(0, 102, 255, 0.14);
+  animation: afinix-opening-popup-enter 280ms ease-out;
+}
+
+@keyframes afinix-opening-popup-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.afinix-opening-popup__close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #001f5c;
+  box-shadow: 0 8px 24px rgba(0, 31, 92, 0.18);
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.afinix-opening-popup__close:hover {
+  transform: translateY(-1px);
+  background: #ffffff;
+}
+
+.afinix-opening-popup__close:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+
+.afinix-opening-popup__link {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.afinix-opening-popup__link:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: -2px;
+}
+
+.afinix-opening-popup__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(92vh - 3.5rem);
+  object-fit: contain;
+  background: #f4f9ff;
+}
+
+.afinix-opening-popup__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(90deg, #001f5c 0%, #003d99 100%);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.afinix-opening-popup__cta .bi-whatsapp {
+  font-size: 1.15rem;
+  color: #25d366;
+}
+
+.afinix-opening-popup__progress {
+  height: 3px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #0066ff, #00b8ff);
+  animation: afinix-opening-popup-progress 10s linear forwards;
+}
+
+.afinix-opening-popup__progress--static {
+  animation: none;
+  transform: scaleX(0.25);
+}
+
+@keyframes afinix-opening-popup-progress {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .afinix-opening-popup__panel {
+    animation: none;
+  }
+
+  .afinix-opening-popup__progress {
+    animation: none;
+    transform: scaleX(0.25);
+  }
+}

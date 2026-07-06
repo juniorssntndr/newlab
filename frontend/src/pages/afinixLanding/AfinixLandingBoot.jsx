@@ -91,7 +91,7 @@ export function AfinixLandingBoot({ reduceMotion, theme = 'dark', children }) {
         const prev = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         return () => {
-            document.body.style.overflow = prev;
+            document.body.style.removeProperty('overflow');
         };
     }, [phase]);
 

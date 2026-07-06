@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useReducedMotion } from 'framer-motion';
 import LandingThemeToggle from '../components/afinix/LandingThemeToggle.jsx';
+import AfinixOpeningPopup from '../components/afinix/AfinixOpeningPopup.jsx';
 import AfinixLogo from '../components/AfinixLogo.jsx';
 import { useLandingTheme } from './hooks/useLandingTheme.js';
 import { LandingNavbar } from './afinixLanding/AfinixLandingSections.jsx';
@@ -14,6 +15,7 @@ export function AfinixMarketingLayout({ children }) {
     const { theme, toggle } = useLandingTheme();
 
     return (
+        <>
         <main className="afinix-page" data-theme={theme} id="afinix-marketing-root">
             <a className="skip-link" href="#contenido-principal">
                 Ir al contenido
@@ -74,5 +76,7 @@ export function AfinixMarketingLayout({ children }) {
                 </div>
             </footer>
         </main>
+        <AfinixOpeningPopup reduceMotion={Boolean(reduceMotion)} />
+        </>
     );
 }

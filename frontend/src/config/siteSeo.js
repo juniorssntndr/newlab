@@ -30,9 +30,18 @@ export const absoluteUrl = (path) => {
 export const WHATSAPP_PREFILL_MESSAGE =
     'Hola AFINIX Dental Lab, quisiera recibir información sobre sus servicios y enviarles un caso.';
 
+export const WHATSAPP_OPENING_PREFILL_MESSAGE =
+    'Hola AFINIX Dental Lab, quisiera preinscribirme como Clínica Fundadora. Clínica/consultorio: [nombre]. Profesional a cargo: [nombre]. Dirección: [dirección]. Especialidad: [especialidad].';
+
 export const whatsappHref = () => {
     const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
     const text = encodeURIComponent(WHATSAPP_PREFILL_MESSAGE);
+    return `https://wa.me/${phone}?text=${text}`;
+};
+
+export const whatsappOpeningHref = () => {
+    const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
+    const text = encodeURIComponent(WHATSAPP_OPENING_PREFILL_MESSAGE);
     return `https://wa.me/${phone}?text=${text}`;
 };
 
