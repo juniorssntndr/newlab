@@ -93,7 +93,7 @@ export default function WorkflowDetailCard({
                     </div>
                 </div>
                 <p>{step.text}</p>
-                {step.benefit ? (
+                {step.benefit && variant !== 'login' ? (
                     <div className={classes.benefit}>
                         <i className="bi bi-star-fill" aria-hidden="true"></i>
                         <span>

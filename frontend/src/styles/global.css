@@ -6893,6 +6893,226 @@ Rediseño UI: Nuevo Pedido Layout Base
   color: #10d7ff;
 }
 
+@media (min-width: 901px) {
+  .login-page {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding: clamp(0.85rem, 2vh, 1.5rem) clamp(1rem, 2.5vw, 2rem);
+  }
+
+  .login-shell {
+    grid-template-columns: minmax(0, 1.05fr) minmax(340px, 410px);
+    gap: clamp(1.25rem, 3vw, 2.25rem);
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    max-height: 100%;
+    width: min(1120px, 100%);
+    align-self: center;
+  }
+
+  .login-story {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.75rem, 1.8vh, 1.2rem);
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .login-story-intro {
+    display: grid;
+    gap: clamp(0.35rem, 0.9vh, 0.55rem);
+    flex-shrink: 0;
+  }
+
+  .login-back-link {
+    flex-shrink: 0;
+    min-height: 40px;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.84rem;
+  }
+
+  .login-kicker {
+    padding: 0.34rem 0.7rem;
+    font-size: 0.72rem;
+  }
+
+  .login-story h1 {
+    margin-top: 0;
+    font-size: clamp(1.55rem, 3.1vh, 2rem);
+    line-height: 1.08;
+  }
+
+  .login-story p {
+    margin-top: 0;
+    font-size: clamp(0.88rem, 1.5vh, 0.98rem);
+    line-height: 1.55;
+  }
+
+  .login-workflow-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.65rem, 1.5vh, 0.9rem);
+    width: 100%;
+    max-width: none;
+  }
+
+  .login-workflow-progress {
+    flex-shrink: 0;
+  }
+
+  .login-workflow-grid {
+    flex-shrink: 0;
+    gap: 0.42rem;
+  }
+
+  .login-workflow-step-button {
+    min-height: 42px;
+    padding: 0.42rem 0.22rem 0.5rem;
+  }
+
+  .login-workflow-step-button h3 {
+    font-size: 0.66rem;
+  }
+
+  .login-workflow-step-button p {
+    font-size: 0.6rem;
+  }
+
+  .login-workflow-step-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .login-workflow-detail-shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .login-workflow-detail-card {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: clamp(220px, 36vh, 380px);
+    max-height: none;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1.65fr) minmax(0, 0.75fr);
+    border-radius: 20px;
+  }
+
+  .login-workflow-detail-media {
+    aspect-ratio: auto;
+    height: 100%;
+    min-height: clamp(140px, 22vh, 240px);
+  }
+
+  .login-workflow-detail-media img {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .login-workflow-hud-main {
+    gap: 0.4rem;
+    padding: 0.65rem 0.85rem 0.75rem;
+    overflow: hidden;
+  }
+
+  .login-workflow-detail-head h3 {
+    font-size: clamp(0.95rem, 1.6vh, 1.05rem);
+  }
+
+  .login-workflow-detail-card p {
+    font-size: clamp(0.82rem, 1.35vh, 0.9rem);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .login-card {
+    align-self: center;
+    width: 100%;
+    height: auto;
+    padding-block: 1.15rem;
+    padding-inline: 1.5rem;
+    border-radius: 26px;
+  }
+
+  .login-logo {
+    margin-bottom: 0.85rem;
+  }
+
+  .login-logo > * {
+    width: min(100%, 290px) !important;
+  }
+
+  .login-title {
+    margin-bottom: 0.2rem;
+    font-size: clamp(1.15rem, 2vh, 1.3rem);
+  }
+
+  .login-subtitle {
+    margin-bottom: 1rem;
+    font-size: clamp(0.82rem, 1.4vh, 0.9rem);
+    line-height: 1.55;
+  }
+
+  .login-card .form-group {
+    margin-bottom: 0.75rem;
+  }
+
+  .login-card .form-input {
+    min-height: 44px;
+  }
+
+  .login-btn {
+    min-height: 44px;
+    margin-top: 0.25rem;
+  }
+
+  .login-demo {
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+  }
+
+  .login-demo-title {
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 820px) {
+  .login-story h1 {
+    font-size: 1.42rem;
+  }
+
+  .login-story p {
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .login-workflow-detail-card {
+    min-height: clamp(190px, 30vh, 260px);
+  }
+
+  .login-workflow-detail-media {
+    min-height: 110px;
+  }
+
+  .login-logo > * {
+    width: min(100%, 250px) !important;
+  }
+}
+
 @media (max-width: 900px) {
   .login-shell {
     grid-template-columns: 1fr;

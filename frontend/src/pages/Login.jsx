@@ -61,7 +61,7 @@ const Login = () => {
                         <i className="bi bi-arrow-left" aria-hidden="true"></i>
                         Volver a AFINIX Dental Lab
                     </Link>
-                    <div>
+                    <div className="login-story-intro">
                         <span className="login-kicker">Flujo digital</span>
                         <h1>Así avanza tu caso en AFINIX</h1>
                         <p>
@@ -74,7 +74,7 @@ const Login = () => {
 
                 <section className="login-card" aria-label="Inicio de sesión">
                     <div className="login-logo">
-                        <AfinixLogo size={76} showText={true} theme="dark" isLogin={true} />
+                        <AfinixLogo size={68} showText={true} theme="dark" isLogin={true} />
                     </div>
                     <h2 className="login-title">Acceso al sistema</h2>
                     <p className="login-subtitle">
