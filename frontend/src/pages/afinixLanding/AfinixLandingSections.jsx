@@ -244,9 +244,9 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark'
                         <i className={`bi ${isMobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`} aria-hidden="true"></i>
                     </button>
                     {themeToggle}
-                    <Link className="afinix-login-link" to={CLINIC_LOGIN_PATH}>
+                    <Link className="afinix-login-link" to={CLINIC_LOGIN_PATH} aria-label="Entrar al portal">
                         <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                        Entrar al portal
+                        <span className="afinix-login-link__label">Entrar al portal</span>
                     </Link>
                 </div>
                 <nav className="afinix-mobile-quicknav" aria-label="Accesos rápidos">

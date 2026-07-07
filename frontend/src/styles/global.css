@@ -6449,8 +6449,8 @@ Rediseño UI: Nuevo Pedido Layout Base
   max-width: 680px;
   margin-top: 1rem;
   color: #fff;
-  font-size: clamp(2.4rem, 6vw, 5.2rem);
-  line-height: 0.96;
+  font-size: clamp(1.85rem, 4.5vw, 2.75rem);
+  line-height: 1.05;
   letter-spacing: 0;
 }
 
@@ -6509,6 +6509,295 @@ Rediseño UI: Nuevo Pedido Layout Base
 .login-live-card strong {
   color: #fff;
   font-size: 1.05rem;
+}
+
+/* Login workflow carousel (flujo digital) */
+.login-workflow-panel {
+  display: grid;
+  gap: 0.85rem;
+  width: min(100%, 620px);
+}
+
+.login-workflow-progress {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.login-workflow-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.login-workflow-progress-meta strong {
+  color: #d8e8f7;
+  font-weight: 850;
+}
+
+.login-workflow-progress-track {
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.24);
+  overflow: hidden;
+}
+
+.login-workflow-progress-fill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #008cff, #10d7ff);
+  box-shadow: 0 0 18px rgba(16, 215, 255, 0.35);
+}
+
+.login-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login-workflow-card {
+  position: relative;
+  min-width: 0;
+}
+
+.login-workflow-step-button {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.45rem 0.25rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.login-workflow-step-button:hover,
+.login-workflow-step-button:focus-visible {
+  border-color: rgba(16, 215, 255, 0.35);
+  background: rgba(16, 215, 255, 0.08);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.login-workflow-step-button:focus-visible {
+  box-shadow: 0 0 0 2px #10d7ff;
+}
+
+.login-workflow-card-head {
+  display: flex;
+  justify-content: center;
+}
+
+.login-workflow-step-num {
+  color: #10d7ff;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+}
+
+.login-workflow-step-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 0 auto;
+  border-radius: 50%;
+  color: #10d7ff;
+  background: rgba(16, 215, 255, 0.12);
+  border: 1px solid rgba(16, 215, 255, 0.22);
+}
+
+.login-workflow-step-icon i {
+  font-size: 0.95rem;
+}
+
+.login-workflow-step-button h3 {
+  margin: 0;
+  color: #e8f5ff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.login-workflow-step-button p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-workflow-card.is-upcoming .login-workflow-step-button {
+  opacity: 0.72;
+}
+
+.login-workflow-card.is-complete .login-workflow-step-icon {
+  color: #06111f;
+  background: #10d7ff;
+  border-color: transparent;
+}
+
+.login-workflow-card.is-active .login-workflow-step-button {
+  border-color: rgba(16, 215, 255, 0.42);
+  background: rgba(16, 215, 255, 0.12);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.login-workflow-card.is-active .login-workflow-step-num,
+.login-workflow-card.is-active .login-workflow-step-button h3 {
+  color: #fff;
+}
+
+.login-workflow-card.is-active .login-workflow-step-icon {
+  color: #06111f;
+  background: #10d7ff;
+  border-color: transparent;
+  box-shadow: 0 0 0 4px rgba(16, 215, 255, 0.18);
+}
+
+.login-workflow-detail-shell {
+  display: grid;
+  width: 100%;
+}
+
+.login-workflow-detail-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(7, 22, 36, 0.82), rgba(5, 15, 27, 0.55)),
+    radial-gradient(circle at 12% 16%, rgba(16, 215, 255, 0.12), transparent 14rem);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+}
+
+.login-workflow-detail-media {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #071827;
+}
+
+.login-workflow-detail-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 55%, rgba(5, 15, 27, 0.45));
+}
+
+.login-workflow-detail-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.login-workflow-detail-media-step {
+  position: absolute;
+  left: 0.85rem;
+  bottom: 0.85rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  height: 30px;
+  padding: 0 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 850;
+  background: rgba(6, 17, 31, 0.72);
+}
+
+.login-workflow-hud-main {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.95rem 1rem 1.05rem;
+}
+
+.login-workflow-detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.login-workflow-detail-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  color: #10d7ff;
+  background: rgba(16, 215, 255, 0.12);
+  border: 1px solid rgba(16, 215, 255, 0.22);
+}
+
+.login-workflow-detail-step {
+  display: block;
+  color: #10d7ff;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.login-workflow-detail-head h3 {
+  margin: 0.15rem 0 0;
+  color: #fff;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.login-workflow-detail-card p {
+  margin: 0;
+  color: #b8c7d9;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.login-workflow-benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  color: #d8e8f7;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  background: rgba(16, 215, 255, 0.08);
+  border: 1px solid rgba(16, 215, 255, 0.16);
+}
+
+.login-workflow-benefit i {
+  color: #10d7ff;
+  margin-top: 0.1rem;
 }
 
 .login-card {
@@ -6620,7 +6909,33 @@ Rediseño UI: Nuevo Pedido Layout Base
   }
 
   .login-story h1 {
-    font-size: clamp(2.1rem, 12vw, 3.2rem);
+    font-size: clamp(1.65rem, 8vw, 2.2rem);
+  }
+
+  .login-workflow-grid {
+    gap: 0.35rem;
+  }
+
+  .login-workflow-step-button {
+    padding: 0.4rem 0.15rem 0.45rem;
+    border-radius: 14px;
+  }
+
+  .login-workflow-step-button h3 {
+    font-size: 0.6rem;
+  }
+
+  .login-workflow-step-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .login-workflow-detail-head h3 {
+    font-size: 0.95rem;
+  }
+
+  .login-workflow-detail-card p {
+    font-size: 0.82rem;
   }
 
   .login-card {

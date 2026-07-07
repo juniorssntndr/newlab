@@ -101,3 +101,18 @@ Automated smoke workflow (`.github/workflows/smoke-environments.yml`) uses these
 ## 9) Incident response
 
 - Follow `ROLLBACK.md` for rollback and recovery steps.
+
+## 10) Production on Coolify (affinixlab.com)
+
+Current production runs on a self-hosted VPS with Coolify:
+
+- **Frontend:** `https://affinixlab.com` — static Vite build via nginx
+- **Backend:** `https://bak.affinixlab.com` — Node/Express API
+
+See **[docs/deploy-coolify-frontend.md](docs/deploy-coolify-frontend.md)** for the exact Coolify settings, environment variables, and troubleshooting (including recovery from the default nginx page).
+
+Deploy assets in repo:
+
+- `deploy/coolify-frontend.env.example` — build-time `VITE_*` for Coolify
+- `deploy/nginx-spa.conf` — SPA fallback for nginx
+- `deploy/Dockerfile.frontend` — optional self-contained Docker build (Plan B)

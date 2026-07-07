@@ -348,8 +348,10 @@
   display: inline-flex;
   align-items: center;
   justify-self: end;
+  flex-wrap: nowrap;
   gap: 0.38rem;
   min-width: 0;
+  max-width: 100%;
 }
 
 .afinix-header-whatsapp {
@@ -546,16 +548,23 @@
   gap: 0.45rem;
   border: 1px solid rgba(51, 142, 255, 0.3);
   border-radius: 999px;
+  min-width: 44px;
   min-height: 48px;
   padding: 0.62rem 0.98rem;
-  line-height: 1.3;
+  line-height: 1.2;
   color: #fff;
   font-size: 0.84rem;
   font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
   background: linear-gradient(135deg, #008cff, #10d7ff);
   box-shadow: 0 12px 28px rgba(0, 168, 255, 0.24);
   touch-action: manipulation;
   transition: background 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.afinix-login-link__label {
+  display: inline;
 }
 
 .afinix-login-link:hover {
@@ -3244,6 +3253,12 @@
   }
 }
 
+@media (max-width: 1280px) {
+  .afinix-header-socials {
+    display: none;
+  }
+}
+
 @media (max-width: 1240px) {
   .afinix-navbar {
     grid-template-columns: minmax(180px, 0.8fr) auto minmax(360px, 1fr);
@@ -3259,13 +3274,25 @@
   }
 }
 
+@media (max-width: 1180px) {
+  .afinix-login-link {
+    width: 44px;
+    min-width: 44px;
+    padding-inline: 0;
+  }
+
+  .afinix-login-link__label {
+    display: none;
+  }
+
+  .afinix-login-link i {
+    font-size: 1.05rem;
+  }
+}
+
 @media (max-width: 980px) {
   .afinix-navbar {
     grid-template-columns: minmax(180px, 0.85fr) auto minmax(190px, 0.7fr);
-  }
-
-  .afinix-header-socials {
-    display: none;
   }
 }
 
@@ -4942,16 +4969,6 @@
 
   .afinix-nav-actions {
     gap: 0.35rem;
-  }
-
-  .afinix-login-link {
-    width: 44px;
-    padding-inline: 0;
-    font-size: 0;
-  }
-
-  .afinix-login-link i {
-    font-size: 1.05rem;
   }
 
   .afinix-brand .afinix-logo {

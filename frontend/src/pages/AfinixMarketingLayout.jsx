@@ -68,9 +68,9 @@ export function AfinixMarketingLayout({ children }) {
                         </div>
                     </div>
                     <div style={{ marginTop: '1.25rem' }}>
-                        <Link className="afinix-login-link" to={CLINIC_LOGIN_PATH}>
+                        <Link className="afinix-login-link" to={CLINIC_LOGIN_PATH} aria-label="Entrar al portal">
                             <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                            Entrar al portal
+                            <span className="afinix-login-link__label">Entrar al portal</span>
                         </Link>
                     </div>
                 </div>

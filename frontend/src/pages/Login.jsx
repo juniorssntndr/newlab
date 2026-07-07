@@ -3,12 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
 import AfinixLogo from '../components/AfinixLogo.jsx';
 import SeoHead from '../components/seo/SeoHead.jsx';
-
-const portalHighlights = [
-    'Seguimiento de pedidos en tiempo real',
-    'Aprobacion de disenos 3D',
-    'Historial clinico y entregas',
-];
+import LoginWorkflowCarousel from '../components/login/LoginWorkflowCarousel.jsx';
 
 const Login = () => {
     const { login } = useAuth();
@@ -67,24 +62,14 @@ const Login = () => {
                         Volver a AFINIX Dental Lab
                     </Link>
                     <div>
-                        <span className="login-kicker">Portal clínico</span>
-                        <h1>Gestiona tus órdenes dentales con visibilidad de laboratorio.</h1>
+                        <span className="login-kicker">Flujo digital</span>
+                        <h1>Así avanza tu caso en AFINIX</h1>
                         <p>
-                            Entra para revisar estados, aprobar avances digitales y coordinar entregas sin perder el hilo de cada caso.
+                            Desde que envías el caso hasta la entrega: revisa cada etapa y entra al portal para
+                            seguimiento, aprobación 3D y trazabilidad clínica.
                         </p>
                     </div>
-                    <div className="login-benefits">
-                        {portalHighlights.map((highlight) => (
-                            <div className="login-benefit" key={highlight}>
-                                <i className="bi bi-check2" aria-hidden="true"></i>
-                                {highlight}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="login-live-card">
-                        <span>Pedido #AF-2841</span>
-                        <strong>Diseño 3D listo para aprobación</strong>
-                    </div>
+                    <LoginWorkflowCarousel />
                 </aside>
 
                 <section className="login-card" aria-label="Inicio de sesión">

@@ -182,8 +182,8 @@ export const workflow = [
         icon: 'bi-cloud-arrow-up',
         status: 'Validando archivos',
         tags: ['Control de calidad', 'Validación STL'],
-        image: `${IMG}/hero-lab.jpg`,
-        imageAlt: 'Técnico de laboratorio recibiendo y revisando un caso dental digital',
+        image: `${IMG}/workflow-reception.jpg`,
+        imageAlt: 'Recepción de caso dental: envío del caso y revisión digital de la información',
         imagePosition: 'center',
     },
     {
@@ -195,7 +195,7 @@ export const workflow = [
         icon: 'bi-bezier2',
         status: 'Diseño en proceso',
         tags: ['Exocad Expert', 'Oclusión digital'],
-        image: `${IMG}/workflow-design-3d.jpg`,
+        image: `${IMG}/workflow-design-3d.png`,
         imageAlt: 'Diseño 3D y planificación digital de alta precisión en exocad',
         imagePosition: 'center',
     },
@@ -208,7 +208,7 @@ export const workflow = [
         icon: 'bi-person-check',
         status: 'Esperando tu OK',
         tags: ['Cero sorpresas', 'Aprobación online'],
-        image: `${IMG}/section-tech.jpg`,
+        image: `${IMG}/workflow-approval.png`,
         imageAlt: 'Profesional revisando información digital de un caso dental',
         imagePosition: 'center',
     },
@@ -221,7 +221,7 @@ export const workflow = [
         icon: 'bi-cpu',
         status: 'Fresando pieza',
         tags: ['Alta tecnología', 'Fidelidad 3D'],
-        image: `${IMG}/equipment-milling.jpg`,
+        image: `${IMG}/workflow-milling.png`,
         imageAlt: 'Equipo de fresado CAD CAM produciendo una restauración dental',
         imagePosition: 'center',
     },
@@ -234,7 +234,7 @@ export const workflow = [
         icon: 'bi-box-seam',
         status: 'Listo para envío',
         tags: ['Historial clínico', 'Garantía digital'],
-        image: `${IMG}/service-hybrid-real.jpg`,
+        image: `${IMG}/workflow-delivery.png`,
         imageAlt: 'Prótesis dental terminada y preparada para su entrega',
         imagePosition: 'center',
     },
@@ -266,15 +266,15 @@ export const aboutMetrics = [
 
 export const aboutGallery = [
     {
-        src: `${IMG}/service-hybrid-real.jpg`,
-        alt: 'Prótesis híbrida dental sobre modelo de trabajo',
+        src: `${IMG}/about-design-3d.png`,
+        alt: 'Estación de diseño 3D y planificación digital en AFINIX Dental Lab',
     },
     {
-        src: `${IMG}/service-zirconia-real.jpg`,
-        alt: 'Coronas dentales en zirconia terminadas',
+        src: `${IMG}/about-materials-cadcam.png`,
+        alt: 'Materiales CAD CAM cuidadosamente elegidos con alta resistencia y estética duradera',
     },
     {
-        src: `${IMG}/equipment-milling.jpg`,
+        src: `${IMG}/workflow-milling.png`,
         alt: 'Equipo de fresado dental CAD/CAM en funcionamiento',
     },
 ];
