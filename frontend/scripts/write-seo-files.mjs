@@ -1,25 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { CANONICAL_SITE_ORIGIN, INDEXABLE_SITE_PATHS } from '../src/config/seoConstants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '../public');
 
-const origin = String(process.env.VITE_SITE_ORIGIN || 'http://localhost:5173').replace(/\/+$/, '');
-
-const paths = [
-    '/',
-    '/coronas-cad-cam-arequipa',
-    '/zirconia-dental-arequipa',
-    '/disilicato-emax-arequipa',
-    '/guias-quirurgicas-dentales-arequipa',
-    '/protesis-sobre-implantes-arequipa',
-    '/impresion-3d-dental-arequipa',
-    '/flujo-digital',
-    '/para-clinicas',
-    '/contacto',
-    '/politica-de-privacidad',
-];
+const origin = CANONICAL_SITE_ORIGIN.replace(/\/+$/, '');
+const paths = INDEXABLE_SITE_PATHS;
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -37,21 +25,6 @@ ${paths
 
 const robots = `User-agent: *
 Allow: /
-
-# Rutas del portal y backoffice (no destinadas a indexación comercial)
-Disallow: /login
-Disallow: /dashboard
-Disallow: /clinicas
-Disallow: /productos
-Disallow: /almacen
-Disallow: /pedidos
-Disallow: /finanzas
-Disallow: /caja-gastos
-Disallow: /calendario
-Disallow: /mi-calendario
-Disallow: /catalogo
-Disallow: /cuenta
-Disallow: /equipo
 
 Sitemap: ${origin}/sitemap.xml
 `;

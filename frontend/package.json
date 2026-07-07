@@ -7,6 +7,7 @@
         "dev": "vite",
         "generate:favicons": "node scripts/generate-favicons.mjs",
         "build": "node scripts/generate-favicons.mjs && node scripts/write-seo-files.mjs && vite build",
+        "check:seo": "node scripts/check-seo-contract.mjs",
         "preview": "vite preview",
         "test:odontograma": "node src/utils/odontograma.test.js",
         "test:register-payment-optimistic": "node src/modules/finance/mutations/registerPayment.optimistic.test.js",

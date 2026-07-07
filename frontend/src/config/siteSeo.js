@@ -1,8 +1,11 @@
 /**
  * SEO y canales comerciales centralizados.
- * Configura VITE_SITE_ORIGIN, VITE_WHATSAPP_E164, VITE_GA_MEASUREMENT_ID y URLs sociales en .env (Vite).
+ * Configura VITE_WHATSAPP_E164, VITE_GA_MEASUREMENT_ID y URLs sociales en .env (Vite).
+ * El origen SEO canónico vive en seoConstants.js para evitar canonicals o sitemaps locales.
  * No incluir datos inventados: dirección y horarios solo si existen en env.
  */
+
+import { CANONICAL_SITE_ORIGIN } from './seoConstants.js';
 
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 
@@ -12,12 +15,7 @@ export const SITE_TAGLINE = 'Laboratorio dental digital en Arequipa';
 export const getConfiguredSiteOrigin = () => trimTrailingSlash(import.meta.env.VITE_SITE_ORIGIN || '');
 
 export const getSiteOrigin = () => {
-    const configured = getConfiguredSiteOrigin();
-    if (configured) return configured;
-    if (typeof window !== 'undefined' && window.location?.origin) {
-        return trimTrailingSlash(window.location.origin);
-    }
-    return '';
+    return CANONICAL_SITE_ORIGIN;
 };
 
 export const absoluteUrl = (path) => {
