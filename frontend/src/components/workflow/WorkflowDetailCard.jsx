@@ -15,12 +15,6 @@ const classMap = {
     login: {
         card: 'login-workflow-detail-card',
         media: 'login-workflow-detail-media',
-        mediaStep: 'login-workflow-detail-media-step',
-        hud: 'login-workflow-hud-main',
-        head: 'login-workflow-detail-head',
-        icon: 'login-workflow-detail-icon',
-        step: 'login-workflow-detail-step',
-        benefit: 'login-workflow-benefit',
     },
 };
 
@@ -78,21 +72,26 @@ export default function WorkflowDetailCard({
                     animate={{ opacity: 1, scale: 1 }}
                     transition={reduceMotion ? { duration: 0 } : { duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 />
-                <span className={classes.mediaStep} aria-hidden="true">
-                    {step.number}
-                </span>
-            </figure>
-            {variant === 'login' ? (
-                <div className={`${classes.hud} login-workflow-hud-compact`}>
-                    <div className={classes.icon} aria-hidden="true">
-                        <i className={`bi ${step.icon}`}></i>
-                    </div>
-                    <div className="login-workflow-hud-copy">
+                {variant === 'landing' && (
+                    <span className={classes.mediaStep} aria-hidden="true">
+                        {step.number}
+                    </span>
+                )}
+                {variant === 'login' ? (
+                    <figcaption className="login-workflow-media-caption">
+                        <span className="login-workflow-step-kicker">{step.loginKicker ?? `PASO ${step.number}`}</span>
                         <h3>{step.title}</h3>
                         <p className="login-workflow-insight">{step.loginInsight ?? step.text}</p>
-                    </div>
-                </div>
-            ) : (
+                        {step.loginProof ? (
+                            <span className="login-workflow-proof">
+                                <i className="bi bi-check2-circle" aria-hidden="true"></i>
+                                {step.loginProof}
+                            </span>
+                        ) : null}
+                    </figcaption>
+                ) : null}
+            </figure>
+            {variant === 'login' ? null : (
                 <div className={classes.hud}>
                     <div className={classes.head}>
                         <div className={classes.icon} aria-hidden="true">

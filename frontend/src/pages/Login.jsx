@@ -15,6 +15,12 @@ const LOGIN_PORTAL_ASSURANCES = [
     'Historial y entregas trazables',
 ];
 
+const LOGIN_STORY_PROOFS = [
+    { icon: 'bi-broadcast-pin', value: '24/7', label: 'Estado del caso disponible' },
+    { icon: 'bi-bezier2', value: '3D', label: 'Aprobación antes de fabricar' },
+    { icon: 'bi-archive', value: 'Historial', label: 'Archivos y entregas trazables' },
+];
+
 const Login = () => {
     const { login } = useAuth();
     const { theme, toggle } = useLandingTheme();
@@ -70,14 +76,28 @@ const Login = () => {
                 <LandingThemeToggle theme={theme} onToggle={toggle} />
             </div>
             <div className="login-shell">
-                <aside className="login-story" aria-label="Vista previa del flujo digital AFINIX">
-                    <Link className="login-back-link" to="/">
-                        <i className="bi bi-arrow-left" aria-hidden="true"></i>
-                        Volver a AFINIX Dental Lab
-                    </Link>
-                    <div className="login-story-intro">
-                        <span className="login-kicker">Flujo digital</span>
-                        <h1>Tu caso, paso a paso</h1>
+                <aside className="login-story" aria-label="Beneficios del portal clínico AFINIX">
+                    <div className="login-story-header">
+                        <Link className="login-back-link" to="/">
+                            <i className="bi bi-arrow-left" aria-hidden="true"></i>
+                            Volver a AFINIX Dental Lab
+                        </Link>
+                        <div className="login-story-marketing">
+                            <span className="login-kicker">Portal clínico AFINIX</span>
+                            <h1>Control clínico sin mensajes dispersos</h1>
+                            <p className="login-story-lead">
+                                Sigue pedidos, revisa diseños 3D y conserva cada entrega documentada en una sola plataforma.
+                            </p>
+                            <div className="login-proof-grid" aria-label="Beneficios principales del portal">
+                                {LOGIN_STORY_PROOFS.map((proof) => (
+                                    <div className="login-proof-tile" key={proof.label}>
+                                        <i className={`bi ${proof.icon}`} aria-hidden="true"></i>
+                                        <span className="login-proof-value">{proof.value}</span>
+                                        <span className="login-proof-label">{proof.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                     <LoginWorkflowCarousel />
                 </aside>
@@ -148,7 +168,7 @@ const Login = () => {
                             aria-label="Solicitar acceso al portal por WhatsApp"
                         >
                             <i className="bi bi-whatsapp" aria-hidden="true"></i>
-                            ¿Primera vez? Solicita acceso
+                            Solicitar acceso al portal
                         </a>
                     </div>
 
