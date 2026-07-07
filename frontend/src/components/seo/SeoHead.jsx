@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { absoluteUrl, defaultOgImagePath, gaMeasurementId, googleSiteVerification, SITE_NAME } from '../../config/siteSeo.js';
+import { absoluteUrl, defaultOgImagePath, gaMeasurementId, googleSiteVerification, SITE_NAME, tiktokPixelId } from '../../config/siteSeo.js';
 
 function upsertMeta(attr, key, content) {
     if (!content) return;
@@ -44,6 +44,13 @@ function clearHreflangAlternates() {
 }
 
 let gaInitialized = false;
+let tiktokInitialized = false;
+let tiktokLastPageKey = '';
+
+function sanitizeTiktokPixelId(pixelId) {
+    const normalized = String(pixelId || '').trim();
+    return /^[A-Za-z0-9_-]+$/.test(normalized) ? normalized : '';
+}
 
 function ensureGa(measurementId) {
     if (!measurementId || gaInitialized || typeof document === 'undefined') {
@@ -63,6 +70,80 @@ function ensureGa(measurementId) {
       gtag('config', '${measurementId}', { anonymize_ip: true });
     `;
     document.head.appendChild(inline);
+}
+
+function ensureTiktokPixel(pixelId, pageKey) {
+    const normalizedPixelId = sanitizeTiktokPixelId(pixelId);
+    if (!normalizedPixelId || typeof window === 'undefined' || typeof document === 'undefined') {
+        return;
+    }
+
+    if (tiktokInitialized) {
+        if (pageKey && pageKey !== tiktokLastPageKey && window.ttq && typeof window.ttq.page === 'function') {
+            window.ttq.page();
+            tiktokLastPageKey = pageKey;
+        }
+        return;
+    }
+
+    tiktokInitialized = true;
+    tiktokLastPageKey = pageKey || '';
+
+    const analyticsObject = 'ttq';
+    window.TiktokAnalyticsObject = analyticsObject;
+    const ttq = (window[analyticsObject] = window[analyticsObject] || []);
+    ttq._i = ttq._i || {};
+    ttq.methods = [
+        'page',
+        'track',
+        'identify',
+        'instances',
+        'debug',
+        'on',
+        'off',
+        'once',
+        'ready',
+        'alias',
+        'group',
+        'enableCookie',
+        'disableCookie',
+        'holdConsent',
+        'revokeConsent',
+        'grantConsent',
+    ];
+    ttq.setAndDefer = (target, method) => {
+        target[method] = (...args) => target.push([method].concat(args));
+    };
+    ttq.methods.forEach((method) => ttq.setAndDefer(ttq, method));
+    ttq.instance = (instanceId) => {
+        const instance = ttq._i[instanceId] || [];
+        ttq.methods.forEach((method) => ttq.setAndDefer(instance, method));
+        return instance;
+    };
+    ttq.load = (instanceId, options) => {
+        const scriptBase = 'https://analytics.tiktok.com/i18n/pixel/events.js';
+        ttq._i[instanceId] = [];
+        ttq._i[instanceId]._u = scriptBase;
+        ttq._t = ttq._t || {};
+        ttq._t[instanceId] = Date.now();
+        ttq._o = ttq._o || {};
+        ttq._o[instanceId] = options || {};
+
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.async = true;
+        script.src = `${scriptBase}?sdkid=${encodeURIComponent(instanceId)}&lib=${encodeURIComponent(analyticsObject)}`;
+
+        const firstScript = document.getElementsByTagName('script')[0];
+        if (firstScript?.parentNode) {
+            firstScript.parentNode.insertBefore(script, firstScript);
+        } else {
+            document.head.appendChild(script);
+        }
+    };
+
+    ttq.load(normalizedPixelId);
+    ttq.page();
 }
 
 /**
@@ -112,6 +193,9 @@ export default function SeoHead({ title, description, path, ogImagePath = defaul
 
         const measurementId = gaMeasurementId();
         ensureGa(measurementId);
+
+        const pixelId = tiktokPixelId();
+        ensureTiktokPixel(pixelId, canonical);
     }, [canonical, description, noindex, ogImage, resolvedTitle, siteVerify, type]);
 
     return null;

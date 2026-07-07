@@ -1,6 +1,6 @@
 /**
  * SEO y canales comerciales centralizados.
- * Configura VITE_WHATSAPP_E164, VITE_GA_MEASUREMENT_ID y URLs sociales en .env (Vite).
+ * Configura VITE_WHATSAPP_E164, VITE_GA_MEASUREMENT_ID, VITE_TIKTOK_PIXEL_ID y URLs sociales en .env (Vite).
  * El origen SEO canónico vive en seoConstants.js para evitar canonicals o sitemaps locales.
  * No incluir datos inventados: dirección y horarios solo si existen en env.
  */
@@ -101,6 +101,8 @@ export const businessOpeningHours = () => {
 export const defaultOgImagePath = '/images/afinix-landing/hero-precision.jpg';
 
 export const gaMeasurementId = () => String(import.meta.env.VITE_GA_MEASUREMENT_ID || '').trim();
+
+export const tiktokPixelId = () => String(import.meta.env.VITE_TIKTOK_PIXEL_ID || '').trim();
 
 export const googleSiteVerification = () => String(import.meta.env.VITE_GOOGLE_SITE_VERIFICATION || '').trim();
 
