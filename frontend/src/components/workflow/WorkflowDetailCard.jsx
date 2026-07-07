@@ -82,27 +82,39 @@ export default function WorkflowDetailCard({
                     {step.number}
                 </span>
             </figure>
-            <div className={classes.hud}>
-                <div className={classes.head}>
+            {variant === 'login' ? (
+                <div className={`${classes.hud} login-workflow-hud-compact`}>
                     <div className={classes.icon} aria-hidden="true">
                         <i className={`bi ${step.icon}`}></i>
                     </div>
-                    <div>
-                        <span className={classes.step}>Paso {step.number}</span>
+                    <div className="login-workflow-hud-copy">
                         <h3>{step.title}</h3>
+                        <p className="login-workflow-insight">{step.loginInsight ?? step.text}</p>
                     </div>
                 </div>
-                <p>{step.text}</p>
-                {step.benefit && variant !== 'login' ? (
-                    <div className={classes.benefit}>
-                        <i className="bi bi-star-fill" aria-hidden="true"></i>
-                        <span>
-                            <strong>Beneficio: </strong>
-                            {step.benefit}
-                        </span>
+            ) : (
+                <div className={classes.hud}>
+                    <div className={classes.head}>
+                        <div className={classes.icon} aria-hidden="true">
+                            <i className={`bi ${step.icon}`}></i>
+                        </div>
+                        <div>
+                            <span className={classes.step}>Paso {step.number}</span>
+                            <h3>{step.title}</h3>
+                        </div>
                     </div>
-                ) : null}
-            </div>
+                    <p>{step.text}</p>
+                    {step.benefit ? (
+                        <div className={classes.benefit}>
+                            <i className="bi bi-star-fill" aria-hidden="true"></i>
+                            <span>
+                                <strong>Beneficio: </strong>
+                                {step.benefit}
+                            </span>
+                        </div>
+                    ) : null}
+                </div>
+            )}
         </motion.article>
     );
 }

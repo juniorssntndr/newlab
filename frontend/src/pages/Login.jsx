@@ -2,11 +2,22 @@ import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
 import AfinixLogo from '../components/AfinixLogo.jsx';
+import LandingThemeToggle from '../components/afinix/LandingThemeToggle.jsx';
 import SeoHead from '../components/seo/SeoHead.jsx';
 import LoginWorkflowCarousel from '../components/login/LoginWorkflowCarousel.jsx';
+import { whatsappLoginAccessHref } from '../config/siteSeo.js';
+import { useLandingTheme } from './hooks/useLandingTheme.js';
+import '../styles/login-theme.css';
+
+const LOGIN_PORTAL_ASSURANCES = [
+    'Seguimiento de pedidos en tiempo real',
+    'Aprobación de diseños 3D',
+    'Historial y entregas trazables',
+];
 
 const Login = () => {
     const { login } = useAuth();
+    const { theme, toggle } = useLandingTheme();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [email, setEmail] = useState('');
@@ -54,27 +65,26 @@ const Login = () => {
                 path="/login"
                 noindex
             />
-            <div className="login-page">
+            <div className="login-page" data-theme={theme}>
+            <div className="login-page-topbar">
+                <LandingThemeToggle theme={theme} onToggle={toggle} />
+            </div>
             <div className="login-shell">
-                <aside className="login-story" aria-label="Beneficios del portal AFINIX Dental Lab">
+                <aside className="login-story" aria-label="Vista previa del flujo digital AFINIX">
                     <Link className="login-back-link" to="/">
                         <i className="bi bi-arrow-left" aria-hidden="true"></i>
                         Volver a AFINIX Dental Lab
                     </Link>
                     <div className="login-story-intro">
                         <span className="login-kicker">Flujo digital</span>
-                        <h1>Así avanza tu caso en AFINIX</h1>
-                        <p>
-                            Desde que envías el caso hasta la entrega: revisa cada etapa y entra al portal para
-                            seguimiento, aprobación 3D y trazabilidad clínica.
-                        </p>
+                        <h1>Tu caso, paso a paso</h1>
                     </div>
                     <LoginWorkflowCarousel />
                 </aside>
 
                 <section className="login-card" aria-label="Inicio de sesión">
                     <div className="login-logo">
-                        <AfinixLogo size={68} showText={true} theme="dark" isLogin={true} />
+                        <AfinixLogo size={68} showText={true} theme={theme} isLogin={true} />
                     </div>
                     <h2 className="login-title">Acceso al sistema</h2>
                     <p className="login-subtitle">
@@ -119,6 +129,28 @@ const Login = () => {
                             {loading ? 'Ingresando...' : 'Iniciar sesion'}
                         </button>
                     </form>
+
+                    <div className="login-card-footer">
+                        <p className="login-card-footer-title">En el portal podrás</p>
+                        <ul className="login-benefits login-card-assurances">
+                            {LOGIN_PORTAL_ASSURANCES.map((item) => (
+                                <li className="login-benefit" key={item}>
+                                    <i className="bi bi-check-circle-fill" aria-hidden="true"></i>
+                                    <span>{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <a
+                            className="login-card-help"
+                            href={whatsappLoginAccessHref()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Solicitar acceso al portal por WhatsApp"
+                        >
+                            <i className="bi bi-whatsapp" aria-hidden="true"></i>
+                            ¿Primera vez? Solicita acceso
+                        </a>
+                    </div>
 
                     {showDemoCredentials && (
                         <div className="login-demo">

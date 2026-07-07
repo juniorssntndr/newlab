@@ -33,6 +33,9 @@ export const WHATSAPP_PREFILL_MESSAGE =
 export const WHATSAPP_OPENING_PREFILL_MESSAGE =
     'Hola AFINIX Dental Lab, quisiera preinscribirme como Clínica Fundadora. Clínica/consultorio: [nombre]. Profesional a cargo: [nombre]. Dirección: [dirección]. Especialidad: [especialidad].';
 
+export const WHATSAPP_LOGIN_ACCESS_MESSAGE =
+    'Hola AFINIX Dental Lab, necesito acceso al portal clínico. Clínica/consultorio: [nombre]. Profesional a cargo: [nombre].';
+
 export const whatsappHref = () => {
     const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
     const text = encodeURIComponent(WHATSAPP_PREFILL_MESSAGE);
@@ -42,6 +45,12 @@ export const whatsappHref = () => {
 export const whatsappOpeningHref = () => {
     const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
     const text = encodeURIComponent(WHATSAPP_OPENING_PREFILL_MESSAGE);
+    return `https://wa.me/${phone}?text=${text}`;
+};
+
+export const whatsappLoginAccessHref = () => {
+    const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
+    const text = encodeURIComponent(WHATSAPP_LOGIN_ACCESS_MESSAGE);
     return `https://wa.me/${phone}?text=${text}`;
 };
 

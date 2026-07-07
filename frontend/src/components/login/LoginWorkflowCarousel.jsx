@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { AnimatePresence, useReducedMotion } from 'framer-motion';
 import WorkflowDetailCard from '../workflow/WorkflowDetailCard.jsx';
 import { workflow } from '../../pages/afinixLanding/afinixLandingContent.js';
@@ -15,6 +15,7 @@ export default function LoginWorkflowCarousel() {
 
     const activeWorkflow = workflow[activeStep] ?? workflow[0];
     const stepProgress = workflow.length > 1 ? activeStep / (workflow.length - 1) : 1;
+    const regionLabel = `Flujo digital: paso ${activeWorkflow.number}, ${activeWorkflow.title}. ${activeWorkflow.loginInsight || activeWorkflow.text}`;
 
     useEffect(() => {
         if (reduceMotion || isHoverPaused || isFocusPaused) {
@@ -41,19 +42,13 @@ export default function LoginWorkflowCarousel() {
         <div
             className="login-workflow-panel"
             role="region"
-            aria-label="Flujo digital AFINIX"
+            aria-label={regionLabel}
             onMouseEnter={() => setIsHoverPaused(true)}
             onMouseLeave={() => setIsHoverPaused(false)}
             onFocusCapture={handleFocusCapture}
             onBlurCapture={handleBlurCapture}
         >
             <div className="login-workflow-progress" aria-hidden="true">
-                <div className="login-workflow-progress-meta">
-                    <strong>
-                        Paso {activeWorkflow.number} de {String(workflow.length).padStart(2, '0')}
-                    </strong>
-                    <span>{Math.round(stepProgress * 100)}% completado</span>
-                </div>
                 <div className="login-workflow-progress-track">
                     <div
                         className="login-workflow-progress-fill"
@@ -65,7 +60,7 @@ export default function LoginWorkflowCarousel() {
                 </div>
             </div>
 
-            <ol className="login-workflow-grid" aria-label="Etapas del flujo digital">
+            <ol className="login-workflow-grid login-workflow-grid--compact" aria-label="Etapas del flujo digital">
                 {workflow.map((step, index) => {
                     const stepState =
                         index === activeStep
@@ -82,18 +77,14 @@ export default function LoginWorkflowCarousel() {
                         >
                             <button
                                 type="button"
-                                className="login-workflow-step-button"
+                                className="login-workflow-step-button login-workflow-step-button--compact"
                                 onClick={() => setActiveStep(index)}
                                 aria-label={`Ver paso ${step.number}: ${step.title}`}
                             >
-                                <span className="login-workflow-card-head">
-                                    <span className="login-workflow-step-num">{step.number}</span>
-                                </span>
+                                <span className="login-workflow-step-num">{step.number}</span>
                                 <span className="login-workflow-step-icon" aria-hidden="true">
                                     <i className={`bi ${step.icon}`}></i>
                                 </span>
-                                <h3>{step.title}</h3>
-                                <p>{step.status}</p>
                             </button>
                         </li>
                     );

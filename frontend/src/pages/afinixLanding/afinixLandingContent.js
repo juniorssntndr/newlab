@@ -185,6 +185,7 @@ export const workflow = [
         image: `${IMG}/workflow-reception.jpg`,
         imageAlt: 'Recepción de caso dental: envío del caso y revisión digital de la información',
         imagePosition: 'center',
+        loginInsight: 'Validamos archivos antes de iniciar.',
     },
     {
         id: 'diseno',
@@ -198,6 +199,7 @@ export const workflow = [
         image: `${IMG}/workflow-design-3d.png`,
         imageAlt: 'Diseño 3D y planificación digital de alta precisión en exocad',
         imagePosition: 'center',
+        loginInsight: 'Modelado digital según anatomía y oclusión.',
     },
     {
         id: 'aprobacion',
@@ -211,6 +213,7 @@ export const workflow = [
         image: `${IMG}/workflow-approval.png`,
         imageAlt: 'Profesional revisando información digital de un caso dental',
         imagePosition: 'center',
+        loginInsight: 'Aprueba el diseño 3D antes de fabricar.',
     },
     {
         id: 'produccion',
@@ -224,6 +227,7 @@ export const workflow = [
         image: `${IMG}/workflow-milling.png`,
         imageAlt: 'Equipo de fresado CAD CAM produciendo una restauración dental',
         imagePosition: 'center',
+        loginInsight: 'Fabricación CAD/CAM con trazabilidad.',
     },
     {
         id: 'entrega',
@@ -237,6 +241,7 @@ export const workflow = [
         image: `${IMG}/workflow-delivery.png`,
         imageAlt: 'Prótesis dental terminada y preparada para su entrega',
         imagePosition: 'center',
+        loginInsight: 'Entrega coordinada e historial digital.',
     },
 ];
 

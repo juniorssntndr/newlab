@@ -6682,8 +6682,10 @@ Rediseño UI: Nuevo Pedido Layout Base
 
 .login-workflow-detail-card {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto;
   gap: 0;
+  height: auto;
+  align-self: start;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 22px;
@@ -6798,6 +6800,159 @@ Rediseño UI: Nuevo Pedido Layout Base
 .login-workflow-benefit i {
   color: #10d7ff;
   margin-top: 0.1rem;
+}
+
+/* Login carousel compact + card footer */
+.login-story {
+  opacity: 0.94;
+}
+
+.login-story-intro h1 {
+  max-width: 420px;
+}
+
+.login-workflow-panel {
+  opacity: 0.96;
+}
+
+.login-workflow-progress-meta {
+  display: none;
+}
+
+.login-workflow-grid--compact {
+  gap: 0.35rem;
+}
+
+.login-workflow-step-button--compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.2rem 0.45rem;
+  min-height: 52px;
+}
+
+.login-workflow-step-button--compact .login-workflow-step-num {
+  line-height: 1;
+}
+
+.login-workflow-detail-card {
+  grid-template-rows: auto auto;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.login-workflow-detail-media {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.login-workflow-hud-main {
+  gap: 0.45rem;
+  padding: 0.75rem 0.9rem 0.85rem;
+}
+
+.login-workflow-hud-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.85rem 0.6rem;
+}
+
+.login-workflow-hud-compact .login-workflow-detail-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.login-workflow-hud-compact .login-workflow-detail-icon i {
+  font-size: 0.85rem;
+}
+
+.login-workflow-hud-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.login-workflow-hud-copy h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.login-workflow-detail-head h3 {
+  font-size: 0.95rem;
+}
+
+.login-workflow-insight {
+  display: -webkit-box;
+  margin: 0;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #b8c7d9;
+}
+
+.login-card-footer {
+  margin-top: 1.15rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.login-card-footer-title {
+  margin: 0 0 0.65rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.login-card-assurances {
+  gap: 0.55rem;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.login-card-assurances .login-benefit {
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: #c8d8ea;
+}
+
+.login-card-assurances .login-benefit i {
+  width: 22px;
+  height: 22px;
+  font-size: 0.72rem;
+}
+
+.login-card-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  color: #10d7ff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.login-card-help:hover {
+  color: #7ee8ff;
+}
+
+.login-card-help:focus-visible {
+  outline: 2px solid #10d7ff;
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 .login-card {
@@ -6995,29 +7150,29 @@ Rediseño UI: Nuevo Pedido Layout Base
     flex: 1;
     min-height: 0;
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
   }
 
   .login-workflow-detail-card {
-    flex: 1;
     width: 100%;
-    height: 100%;
-    min-height: clamp(220px, 36vh, 380px);
-    max-height: none;
+    height: auto;
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1.65fr) minmax(0, 0.75fr);
+    grid-template-rows: auto auto;
+    align-self: flex-start;
     border-radius: 20px;
   }
 
   .login-workflow-detail-media {
-    aspect-ratio: auto;
-    height: 100%;
-    min-height: clamp(140px, 22vh, 240px);
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    height: auto;
+    min-height: 0;
   }
 
   .login-workflow-detail-media img {
+    width: 100%;
     height: 100%;
-    min-height: 0;
+    object-fit: cover;
   }
 
   .login-workflow-hud-main {
@@ -7026,17 +7181,30 @@ Rediseño UI: Nuevo Pedido Layout Base
     overflow: hidden;
   }
 
+  .login-workflow-hud-compact {
+    padding: 0.5rem 0.85rem 0.55rem;
+  }
+
+  .login-workflow-hud-copy h3 {
+    font-size: clamp(0.88rem, 1.5vh, 0.98rem);
+  }
+
   .login-workflow-detail-head h3 {
     font-size: clamp(0.95rem, 1.6vh, 1.05rem);
   }
 
-  .login-workflow-detail-card p {
+  .login-workflow-detail-card p:not(.login-workflow-insight) {
     font-size: clamp(0.82rem, 1.35vh, 0.9rem);
     line-height: 1.45;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  .login-workflow-insight {
+    font-size: clamp(0.78rem, 1.25vh, 0.84rem);
+    -webkit-line-clamp: 1;
   }
 
   .login-card {
@@ -7098,14 +7266,6 @@ Rediseño UI: Nuevo Pedido Layout Base
   .login-story p {
     font-size: 0.84rem;
     line-height: 1.45;
-  }
-
-  .login-workflow-detail-card {
-    min-height: clamp(190px, 30vh, 260px);
-  }
-
-  .login-workflow-detail-media {
-    min-height: 110px;
   }
 
   .login-logo > * {
