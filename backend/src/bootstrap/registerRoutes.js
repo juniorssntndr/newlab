@@ -11,10 +11,12 @@ import usuariosRoutes from '../routes/usuarios.js';
 import auditRoutes from '../routes/audit.js';
 import facturacionRoutes from '../routes/facturacion.js';
 import consultasRoutes from '../routes/consultas.js';
+import doctoresRoutes from '../routes/doctores.js';
 
 export const registerRoutes = (app, compositionRoot) => {
     app.use('/api/auth', authRoutes);
     app.use('/api/clinicas', clinicasRoutes);
+    app.use('/api/doctores', doctoresRoutes);
     app.use('/api/productos', productosRoutes);
     app.use('/api/pedidos', pedidosRoutes);
     app.use('/api/finanzas', finanzasRoutes);

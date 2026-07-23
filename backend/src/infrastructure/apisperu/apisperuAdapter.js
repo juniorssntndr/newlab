@@ -5,11 +5,7 @@ const apiHeaders = (token) => ({
     'Content-Type': 'application/json'
 });
 
-const isDemoMode = ({ entorno, token }) => {
-    const envDemo = String(process.env.ENTORNO || '').toLowerCase() === 'demo';
-    const issuerDemo = String(entorno || '').toLowerCase() === 'beta';
-    return envDemo || (issuerDemo && (!token || token === 'TU_TOKEN_AQUI'));
-};
+const isDemoMode = () => String(process.env.APISPERU_MOCK || '').toLowerCase() === 'true';
 
 const parseJsonSafely = async (response) => {
     try {
@@ -20,11 +16,24 @@ const parseJsonSafely = async (response) => {
 };
 
 const callApisperu = async ({ token, method, path, body }) => {
-    const response = await fetch(`${APISPERU_BASE}${path}`, {
-        method,
-        headers: apiHeaders(token),
-        body: body ? JSON.stringify(body) : undefined
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Number(process.env.APISPERU_TIMEOUT_MS || 20000));
+    let response;
+    try {
+        response = await fetch(`${APISPERU_BASE}${path}`, {
+            method,
+            headers: apiHeaders(token),
+            body: body ? JSON.stringify(body) : undefined,
+            signal: controller.signal
+        });
+    } catch (error) {
+        if (error?.name === 'AbortError') {
+            throw new Error('APISPERU no respondio dentro del tiempo esperado');
+        }
+        throw new Error('No se pudo conectar con APISPERU');
+    } finally {
+        clearTimeout(timeout);
+    }
 
     const data = await parseJsonSafely(response);
     if (!response.ok) {
@@ -62,7 +71,7 @@ export const makeApisperuAdapter = () => ({
             body: payload
         });
     },
-    getInvoiceStatus: async ({ token, tipoComprobante, serie, correlativo, entorno }) => {
+    getInvoiceStatus: async ({ token, tipoComprobante, serie, correlativo, ruc, entorno }) => {
         if (isDemoMode({ entorno, token })) {
             return {
                 estadoCpe: 'aceptado',
@@ -77,10 +86,40 @@ export const makeApisperuAdapter = () => ({
             throw new Error('Token de APISPERU invalido o no configurado.');
         }
 
+        const params = new URLSearchParams({
+            tipo: String(tipoComprobante),
+            serie: String(serie),
+            numero: String(correlativo)
+        });
+        if (ruc) params.set('ruc', String(ruc));
+
         return callApisperu({
             token,
             method: 'GET',
-            path: `/invoice/status/${tipoComprobante}/${serie}/${correlativo}`
+            path: `/invoice/status?${params.toString()}`
         });
-    }
+    },
+    sendCreditNote: ({ token, payload }) => isDemoMode()
+        ? { hash: 'DEMO-NOTE-HASH', sunatResponse: { success: true, cdrResponse: { accepted: true, code: '0', description: 'Aceptado (DEMO)' } } }
+        : callApisperu({ token, method: 'POST', path: '/note/send', body: payload }),
+    sendVoided: ({ token, payload }) => isDemoMode()
+        ? { hash: 'DEMO-VOIDED-HASH', sunatResponse: { success: true, ticket: `DEMO-VOIDED-${Date.now()}` } }
+        : callApisperu({ token, method: 'POST', path: '/voided/send', body: payload }),
+    getVoidedStatus: ({ token, ticket, ruc }) => isDemoMode()
+        ? { success: true, cdrResponse: { accepted: true, code: '0', description: 'Baja aceptada (DEMO)' } }
+        : callApisperu({
+        token,
+        method: 'GET',
+        path: `/voided/status?ticket=${encodeURIComponent(ticket)}&ruc=${encodeURIComponent(ruc)}`
+    }),
+    sendSummary: ({ token, payload }) => isDemoMode()
+        ? { hash: 'DEMO-SUMMARY-HASH', sunatResponse: { success: true, ticket: `DEMO-SUMMARY-${Date.now()}` } }
+        : callApisperu({ token, method: 'POST', path: '/summary/send', body: payload }),
+    getSummaryStatus: ({ token, ticket, ruc }) => isDemoMode()
+        ? { success: true, cdrResponse: { accepted: true, code: '0', description: 'Resumen aceptado (DEMO)' } }
+        : callApisperu({
+        token,
+        method: 'GET',
+        path: `/summary/status?ticket=${encodeURIComponent(ticket)}&ruc=${encodeURIComponent(ruc)}`
+    })
 });

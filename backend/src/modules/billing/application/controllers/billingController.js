@@ -1,4 +1,5 @@
 import { BillingServiceError } from '../services/billingService.js';
+import { logger } from '../../../../lib/logger.js';
 
 const buildContext = (ctx = {}) => ({
     requestId: ctx.requestId || 'n/a',
@@ -16,10 +17,23 @@ const toControllerError = (error) => {
         };
     }
 
+    logger.error('billing.unexpected', {
+        name: error?.name,
+        message: error?.message,
+        code: error?.code,
+        detail: error?.detail,
+        constraint: error?.constraint
+    });
+
+    // Surface actionable DB/provider messages without leaking stack traces.
+    const safeMessage = error?.message && !/password|token|bearer|authorization/i.test(error.message)
+        ? error.message
+        : 'Error interno de facturacion';
+
     return {
         status: 500,
-        code: 'UNEXPECTED_ERROR',
-        message: 'Error interno de facturacion'
+        code: error?.code === '23505' ? 'DUPLICATE_COMPROBANTE' : 'UNEXPECTED_ERROR',
+        message: safeMessage
     };
 };
 
@@ -68,7 +82,10 @@ export const makeBillingController = ({ billingService }) => ({
     }),
     createInvoice: makeAnalyticalSignature(async (_ctx, input) => {
         const snapshot = extractSnapshotInput(input);
-        return billingService.createInvoice(snapshot);
+        return billingService.createInvoice(snapshot, {
+            tipoComprobante: input?.body?.tipoComprobante,
+            idempotencyKey: input?.body?.idempotencyKey
+        });
     }, 201),
     syncInvoiceStatus: makeAnalyticalSignature(async (_ctx, input) => {
         const invoiceId = extractInvoiceId(input);

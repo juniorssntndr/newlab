@@ -21,6 +21,7 @@ import CajaGastos from './pages/CajaGastos.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Equipo from './pages/Equipo.jsx';
+import Doctores from './pages/Doctores.jsx';
 
 import Almacen from './pages/Almacen.jsx';
 import CalendarioCliente from './pages/CalendarioCliente.jsx';
@@ -76,6 +77,7 @@ const App = () => {
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />
                     <Route path="clinicas" element={<LabOnlyRoute><Clinicas /></LabOnlyRoute>} />
+                    <Route path="doctores" element={<LabOnlyRoute><Doctores /></LabOnlyRoute>} />
                     <Route path="productos" element={<LabOnlyRoute><Productos /></LabOnlyRoute>} />
                     <Route path="almacen" element={<LabOnlyRoute><Almacen /></LabOnlyRoute>} />
                     <Route path="pedidos" element={<Pedidos />} />

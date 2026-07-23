@@ -12,12 +12,19 @@ const mapProviderStateToInvoiceStatus = (stateValue) => {
 
 export const mapIssueResponseToBillingResult = ({ providerResponse }) => {
     const success = Boolean(providerResponse?.sunatResponse?.success);
+    const cdr = providerResponse?.sunatResponse?.cdrResponse || {};
+    const cdrCode = cdr?.code ?? cdr?.responseCode;
+    const cdrDescription = cdr?.description ?? cdr?.responseDescription;
 
     return {
-        invoiceStatus: success ? InvoiceStatus.SENT : InvoiceStatus.GENERATED,
-        sunatTicket: providerResponse?.sunatResponse?.cdrResponse?.id || providerResponse?.sunatTicket,
+        invoiceStatus: success ? InvoiceStatus.SENT : InvoiceStatus.REJECTED,
+        sunatTicket: String(cdr?.id || providerResponse?.sunatTicket || '').trim() || undefined,
         pdfUrl: providerResponse?.links?.pdf,
-        xmlUrl: providerResponse?.links?.xml
+        xmlUrl: providerResponse?.links?.xml,
+        cdrUrl: providerResponse?.links?.cdr,
+        hash: providerResponse?.hash || undefined,
+        cdrCode: cdrCode === undefined || cdrCode === null ? undefined : String(cdrCode),
+        cdrDescription: cdrDescription ? String(cdrDescription) : undefined
     };
 };
 

@@ -42,6 +42,7 @@ async function runMigration() {
         console.log('Migrations completed successfully.');
     } catch (err) {
         console.error('Migration failed:', err);
+        process.exitCode = 1;
     } finally {
         await pool.end();
     }

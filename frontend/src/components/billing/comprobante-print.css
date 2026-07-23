@@ -1,0 +1,362 @@
+/* ─── Comprobante Electrónico — Hoja de Impresión ─────────────────────────── */
+
+#cpe-print-root {
+    display: none;
+}
+
+/* Técnica de impresión: ocultar todo excepto el root de impresión */
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+    #cpe-print-root,
+    #cpe-print-root * {
+        visibility: visible !important;
+    }
+    #cpe-print-root {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Ocultar la hoja ticket80 si se está imprimiendo A4/A5 y viceversa */
+    body.cpe-printing--ticket80 .cpe-print--a4,
+    body.cpe-printing--ticket80 .cpe-print--a5 {
+        display: none !important;
+    }
+    body.cpe-printing--a4 .cpe-print--ticket80 {
+        display: none !important;
+    }
+    body.cpe-printing--a5 .cpe-print--ticket80,
+    body.cpe-printing--a5 .cpe-print--a4 {
+        display: none !important;
+    }
+}
+
+/* ─── Hoja A4 ────────────────────────────────────────────────────────────────*/
+.cpe-print--a4 {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+    color: #0f172a;
+    background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 14mm 12mm;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+
+@media print {
+    .cpe-print--a4 {
+        @page { size: A4 portrait; margin: 0; }
+        padding: 10mm 10mm;
+    }
+}
+
+.cpe-print--a4 .cpe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 12px;
+    border-bottom: 3px solid #007BFF;
+    margin-bottom: 16px;
+    gap: 1rem;
+}
+
+.cpe-print--a4 .cpe-emisor-logo {
+    margin-bottom: 6px;
+}
+
+.cpe-print--a4 .cpe-emisor-sub {
+    font-size: 9pt;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.cpe-t-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.cpe-print--a4 .cpe-doc-box {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.cpe-print--a4 .cpe-doc-type {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #0f172a;
+    border: 2px solid #007BFF;
+    padding: 4px 12px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.cpe-print--a4 .cpe-doc-serie {
+    font-size: 11pt;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: #0f172a;
+    margin-top: 6px;
+}
+
+.cpe-print--a4 .cpe-doc-fecha {
+    font-size: 9pt;
+    color: #64748b;
+    margin-top: 3px;
+}
+
+.cpe-print--a4 .cpe-section-title {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 14px 0 8px;
+}
+
+.cpe-print--a4 .cpe-info-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 16px;
+    font-size: 10pt;
+}
+
+.cpe-print--a4 .cpe-info-label {
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+}
+
+.cpe-print--a4 .cpe-info-value {
+    color: #0f172a;
+}
+
+.cpe-print--a4 .cpe-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    margin-top: 4px;
+}
+
+.cpe-print--a4 .cpe-items-table thead tr {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.cpe-print--a4 .cpe-items-table th {
+    padding: 6px 8px;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #475569;
+}
+
+.cpe-print--a4 .cpe-items-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+}
+
+.cpe-print--a4 .cpe-items-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.cpe-print--a4 .cpe-totals-wrap {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.cpe-print--a4 .cpe-totals-box {
+    min-width: 220px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.cpe-print--a4 .cpe-total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 12px;
+    font-size: 10pt;
+    border-bottom: 1px solid #f1f5f9;
+    gap: 12px;
+}
+
+.cpe-print--a4 .cpe-total-row:last-child {
+    border-bottom: none;
+    background: rgba(0, 123, 255, 0.08);
+    font-size: 12pt;
+    font-weight: 700;
+    color: #007BFF;
+}
+
+.cpe-print--a4 .cpe-total-label {
+    color: #64748b;
+}
+
+.cpe-print--a4 .cpe-hash-row {
+    display: flex;
+    gap: 8px;
+    font-size: 8pt;
+    color: #64748b;
+    margin-top: 10px;
+    align-items: flex-start;
+}
+
+.cpe-print--a4 .cpe-hash-value {
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+    color: #475569;
+}
+
+.cpe-print--a4 .cpe-footer {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px dashed #cbd5e1;
+    text-align: center;
+    font-size: 8pt;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+/* ─── Ticket 80mm ────────────────────────────────────────────────────────────*/
+.cpe-print--ticket80 {
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: 10pt;
+    color: #000;
+    background: #fff;
+    width: 80mm;
+    padding: 3mm 3mm 8mm;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+
+@media print {
+    .cpe-print--ticket80 {
+        @page { size: 80mm auto; margin: 0; }
+        width: 80mm;
+    }
+}
+
+.cpe-print--ticket80 .cpe-t-center {
+    text-align: center;
+}
+
+.cpe-print--ticket80 .cpe-t-brand {
+    font-size: 15pt;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-bottom: 1px;
+}
+
+.cpe-print--ticket80 .cpe-t-sub {
+    font-size: 8pt;
+    margin-bottom: 2px;
+}
+
+.cpe-print--ticket80 .cpe-t-divider {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 5px 0;
+}
+
+.cpe-print--ticket80 .cpe-t-doc-type {
+    font-size: 10pt;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.cpe-print--ticket80 .cpe-t-serie {
+    font-size: 10pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.cpe-print--ticket80 .cpe-t-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+}
+
+.cpe-print--ticket80 .cpe-t-table td {
+    padding: 2px 0;
+    vertical-align: top;
+}
+
+.cpe-print--ticket80 .cpe-t-label {
+    font-size: 8pt;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.cpe-print--ticket80 .cpe-t-total-row {
+    font-size: 13pt;
+    font-weight: 900;
+}
+
+.cpe-print--ticket80 .cpe-t-footer {
+    font-size: 8pt;
+    text-align: center;
+    color: #333;
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.cpe-print--ticket80 .cpe-t-hash {
+    font-size: 7pt;
+    word-break: break-all;
+    color: #555;
+    margin-top: 4px;
+}
+
+/* ─── A5 (opcional) ──────────────────────────────────────────────────────────*/
+.cpe-print--a5 {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 9.5pt;
+    color: #0f172a;
+    background: #fff;
+    width: 148mm;
+    min-height: 210mm;
+    padding: 10mm 10mm;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+
+@media print {
+    .cpe-print--a5 {
+        @page { size: A5 portrait; margin: 0; }
+        padding: 8mm 8mm;
+    }
+}
+
+/* A5 hereda los mismos selectores que A4 con fuentes reducidas */
+.cpe-print--a5 .cpe-emisor-logo { margin-bottom: 4px; }
+.cpe-print--a5 .cpe-emisor-logo .afinix-logo { --afinix-logo-size: 36px; }
+.cpe-print--a5 .cpe-emisor-sub { font-size: 8pt; color: #64748b; }
+.cpe-print--a5 .cpe-doc-type { font-size: 10pt; font-weight: 700; border: 2px solid #007BFF; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+.cpe-print--a5 .cpe-doc-serie { font-size: 10pt; font-weight: 700; font-family: 'Courier New', monospace; }
+.cpe-print--a5 .cpe-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 10px; border-bottom: 2px solid #007BFF; margin-bottom: 12px; gap: 1rem; }
+.cpe-print--a5 .cpe-section-title { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; padding-bottom: 3px; border-bottom: 1px solid #e2e8f0; margin: 10px 0 6px; }
+.cpe-print--a5 .cpe-info-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 9pt; }
+.cpe-print--a5 .cpe-info-label { font-weight: 600; color: #475569; }
+.cpe-print--a5 .cpe-items-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+.cpe-print--a5 .cpe-items-table th { padding: 5px 6px; font-size: 7.5pt; font-weight: 700; text-transform: uppercase; color: #475569; }
+.cpe-print--a5 .cpe-items-table td { padding: 5px 6px; border-bottom: 1px solid #f1f5f9; }
+.cpe-print--a5 .cpe-totals-wrap { display: flex; justify-content: flex-end; margin-top: 10px; }
+.cpe-print--a5 .cpe-totals-box { min-width: 180px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+.cpe-print--a5 .cpe-total-row { display: flex; justify-content: space-between; padding: 6px 10px; font-size: 9pt; border-bottom: 1px solid #f1f5f9; }
+.cpe-print--a5 .cpe-total-row:last-child { border-bottom: none; background: rgba(0, 123, 255, 0.08); font-size: 11pt; font-weight: 700; color: #007BFF; }
+.cpe-print--a5 .cpe-total-label { color: #64748b; }
+.cpe-print--a5 .cpe-footer { margin-top: 16px; padding-top: 8px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 7.5pt; color: #94a3b8; }
+.cpe-print--a5 .cpe-hash-row { display: flex; gap: 6px; font-size: 7.5pt; color: #64748b; margin-top: 8px; }
+.cpe-print--a5 .cpe-hash-value { font-family: 'Courier New', monospace; word-break: break-all; color: #475569; }

@@ -25,6 +25,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
         {
             section: 'Gestión', items: [
                 { to: '/clinicas', icon: 'bi-building', label: 'Clientes / CRM' },
+                { to: '/doctores', icon: 'bi-person-badge', label: 'Doctores' },
                 { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo de Productos' },
                 { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
                 ...(isAdminRole(user) ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : [])

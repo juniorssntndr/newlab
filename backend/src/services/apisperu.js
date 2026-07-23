@@ -50,6 +50,7 @@ const UBIGEO_MAP = {
     '070101': { dep: 'CALLAO', prov: 'CALLAO', dist: 'CALLAO' },
     // Arequipa
     '040101': { dep: 'AREQUIPA', prov: 'AREQUIPA', dist: 'AREQUIPA' },
+    '040126': { dep: 'AREQUIPA', prov: 'AREQUIPA', dist: 'MARIANO MELGAR' },
     // Trujillo
     '130101': { dep: 'LA LIBERTAD', prov: 'TRUJILLO', dist: 'TRUJILLO' },
     // Piura
@@ -74,6 +75,8 @@ export function resolveUbigeoAddress(ubigeo, direccion, context = {}) {
 
     return {
         ubigeo: normalizedUbigeo,
+        // APISPERU docs use the misspelling "ubigueo"; send both for compatibility.
+        ubigueo: normalizedUbigeo,
         direccion: direccion || 'SIN DIRECCION',
         provincia: loc.prov,
         departamento: loc.dep,
@@ -537,14 +540,21 @@ export async function consultarEstadoSunat(pool, comprobanteId) {
     if (compRes.rows.length === 0) throw new Error('Comprobante no encontrado.');
     const comp = compRes.rows[0];
 
-    const empRes = await pool.query('SELECT token_apisperu FROM nl_empresas WHERE activo = true LIMIT 1');
+    const empRes = await pool.query('SELECT token_apisperu, ruc FROM nl_empresas WHERE activo = true LIMIT 1');
     if (empRes.rows.length === 0) throw new Error('No hay empresa emisora configurada.');
-    const { token_apisperu } = empRes.rows[0];
+    const { token_apisperu, ruc } = empRes.rows[0];
+
+    const params = new URLSearchParams({
+        tipo: String(comp.tipo_comprobante),
+        serie: String(comp.serie),
+        numero: String(comp.correlativo)
+    });
+    if (ruc) params.set('ruc', String(ruc));
 
     const data = await callApisperu(
         token_apisperu,
         'GET',
-        `/invoice/status/${comp.tipo_comprobante}/${comp.serie}/${comp.correlativo}`
+        `/invoice/status?${params.toString()}`
     );
 
     // Update local state if different

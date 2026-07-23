@@ -17,6 +17,7 @@ import { makeApisperuBillingAcl } from '../modules/billing/infrastructure/adapte
 import { makeLegacyApisperuBillingAcl } from '../modules/billing/infrastructure/adapters/legacyApisperuBillingAcl.js';
 import { makeBillingService } from '../modules/billing/application/services/billingService.js';
 import { makeBillingController } from '../modules/billing/application/controllers/billingController.js';
+import { makeBillingPhase2Service } from '../modules/billing/application/services/billingPhase2Service.js';
 
 const { Pool } = pg;
 
@@ -41,6 +42,7 @@ export const createCompositionRoot = () => {
         : makeLegacyApisperuBillingAcl({ pool });
     const billingService = makeBillingService({ billingRepository, billingProviderAcl });
     const billingController = makeBillingController({ billingService });
+    const billingPhase2Service = makeBillingPhase2Service({ billingRepository, billingProviderAcl });
 
     return {
         pool,
@@ -68,6 +70,7 @@ export const createCompositionRoot = () => {
                 billingProviderAcl,
                 billingService,
                 billingController,
+                billingPhase2Service,
                 billingAclMode: useNewBillingAcl ? 'new-acl' : 'legacy-service'
             }
         }

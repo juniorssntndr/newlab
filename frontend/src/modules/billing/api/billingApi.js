@@ -8,6 +8,9 @@ export const fetchBillingPreview = async ({ orderId, headers }) => {
     return Array.isArray(data) ? data : [];
 };
 
+export const fetchComprobantePrint = ({ id, headers }) =>
+    apiClient(`/facturacion/comprobantes/${id}/print`, { headers });
+
 export const createInvoice = ({ orderId, payload, headers }) => apiClient(`/facturacion/${orderId}/emitir`, {
     method: 'POST',
     headers,

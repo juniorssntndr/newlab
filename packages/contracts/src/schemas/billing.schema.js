@@ -14,10 +14,22 @@ export const pedidoBillingSnapshotSchema = z.object({
   orderId: z.string().min(1),
   customerDocument: z.string().min(1),
   customerName: z.string().min(1),
+  customerAddress: z.object({
+    ubigeo: z.string().optional(),
+    direccion: z.string().optional()
+  }).optional(),
   status: orderStatusSchema,
   paymentStatus: paymentStatusSchema,
   lines: z.array(billingLineSchema),
   total: moneySchema
+});
+
+export const receptorSchema = z.object({
+  tipoDoc: z.string().optional(),
+  documento: z.string().min(1),
+  razonSocial: z.string().min(1),
+  direccion: z.string().optional(),
+  ubigeo: z.string().optional(),
 });
 
 export const comprobanteDraftSchema = z.object({
@@ -28,7 +40,8 @@ export const comprobanteDraftSchema = z.object({
   subtotal: moneySchema,
   igv: moneySchema,
   total: moneySchema,
-  lines: z.array(billingLineSchema)
+  lines: z.array(billingLineSchema),
+  receptor: receptorSchema.optional()
 });
 
 export const billingResultSchema = z.object({
@@ -36,5 +49,9 @@ export const billingResultSchema = z.object({
   invoiceStatus: invoiceStatusSchema,
   sunatTicket: z.string().min(1).optional(),
   pdfUrl: z.string().url().optional(),
-  xmlUrl: z.string().url().optional()
+  xmlUrl: z.string().url().optional(),
+  cdrUrl: z.string().url().optional(),
+  hash: z.string().min(1).optional(),
+  cdrCode: z.string().min(1).optional(),
+  cdrDescription: z.string().min(1).optional()
 });

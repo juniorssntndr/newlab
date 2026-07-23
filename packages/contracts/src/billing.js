@@ -49,11 +49,19 @@ export const createBillingResult = ({
   invoiceStatus,
   sunatTicket,
   pdfUrl,
-  xmlUrl
+  xmlUrl,
+  cdrUrl,
+  hash,
+  cdrCode,
+  cdrDescription
 }) => ({
   invoiceId,
   invoiceStatus,
   sunatTicket,
   pdfUrl,
-  xmlUrl
+  xmlUrl,
+  cdrUrl,
+  hash,
+  cdrCode,
+  cdrDescription
 });

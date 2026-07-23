@@ -6,6 +6,7 @@ import { mapIssueResponseToBillingResult, mapStatusResponseToBillingResult } fro
 import { makeApisperuBillingAcl } from '../infrastructure/adapters/apisperuBillingAcl.js';
 import {
     draftFixture,
+    draftWithoutReceptorFixture,
     snapshotFixture,
     issuerFixture,
     issueProviderResponseFixture,
@@ -42,9 +43,50 @@ test('maps provider issue/status responses to billing domain contract', () => {
     assert.equal(statusResult.xmlUrl, 'https://cdn.example.com/invoice.xml');
 });
 
-test('ACL issues invoice and syncs status using repository/provider ports', async () => {
+test('maps the documented APISPERU invoice response including hash and CDR', () => {
+    const result = mapIssueResponseToBillingResult({
+        providerResponse: {
+            xml: 'base64-xml-content',
+            hash: 'CPE-HASH-123',
+            sunatResponse: {
+                success: true,
+                cdrZip: 'base64-cdr-content',
+                cdrResponse: {
+                    id: 'F001-123',
+                    code: 0,
+                    description: 'La Factura numero F001-123 ha sido aceptada'
+                }
+            }
+        }
+    });
+
+    assert.equal(result.invoiceStatus, 'SENT');
+    assert.equal(result.hash, 'CPE-HASH-123');
+    assert.equal(result.cdrCode, '0');
+    assert.match(result.cdrDescription, /aceptada/);
+});
+
+test('maps a SUNAT rejection as rejected instead of generated', () => {
+    const result = mapIssueResponseToBillingResult({
+        providerResponse: {
+            sunatResponse: {
+                success: false,
+                cdrResponse: {
+                    code: '2335',
+                    description: 'El documento fue rechazado'
+                }
+            }
+        }
+    });
+
+    assert.equal(result.invoiceStatus, 'REJECTED');
+    assert.equal(result.cdrCode, '2335');
+});
+
+test('ACL issues invoice via receptor en draft (sin re-fetch de snapshot)', async () => {
+    let snapshotFetchCount = 0;
     const billingRepository = {
-        getOrderSnapshot: async () => snapshotFixture,
+        getOrderSnapshot: async () => { snapshotFetchCount++; return snapshotFixture; },
         resolveInvoiceSeries: async () => ({ serie: 'F001', tipoComprobante: '01' }),
         getIssuerConfig: async () => issuerFixture,
         getInvoiceProviderReference: async () => ({
@@ -64,23 +106,82 @@ test('ACL issues invoice and syncs status using repository/provider ports', asyn
         getInvoiceStatus: async (input) => {
             calls.push({ type: 'status', input });
             return statusProviderResponseFixture;
-        }
+        },
+        sendCreditNote: async () => ({}),
+        sendVoided: async () => ({}),
+        getVoidedStatus: async () => ({}),
+        sendSummary: async () => ({}),
+        getSummaryStatus: async () => ({})
     };
 
     const acl = makeApisperuBillingAcl({ billingRepository, apisperuAdapter });
-    const issueResult = await acl.issueComprobante(draftFixture);
-    const statusResult = await acl.getComprobanteStatus('55');
 
+    // Con receptor en draft: getOrderSnapshot NO debe llamarse
+    const issueResult = await acl.issueComprobante(draftFixture);
     assert.equal(issueResult.invoiceStatus, 'SENT');
+    assert.equal(snapshotFetchCount, 0, 'getOrderSnapshot no debe llamarse cuando draft.receptor está presente');
+    assert.equal(calls[0].input.payload.client.numDoc, draftFixture.receptor.documento);
+    assert.equal(calls[0].input.payload.client.rznSocial, draftFixture.receptor.razonSocial);
+
+    // Sincronización de estado funciona normalmente
+    const statusResult = await acl.getComprobanteStatus('55');
     assert.equal(statusResult.invoiceStatus, 'SENT');
     assert.equal(calls.length, 2);
-    assert.equal(calls[0].type, 'send');
     assert.equal(calls[0].input.payload.serie, 'F001');
-    assert.equal(calls[1].type, 'status');
     assert.equal(calls[1].input.correlativo, '123');
+    assert.equal(calls[1].input.ruc, issuerFixture.ruc);
 });
 
-test('ACL throws when repository cannot resolve order snapshot', async () => {
+test('ACL issues invoice sin receptor en draft (usa getOrderSnapshot como fallback)', async () => {
+    let snapshotFetchCount = 0;
+    const billingRepository = {
+        getOrderSnapshot: async () => { snapshotFetchCount++; return snapshotFixture; },
+        resolveInvoiceSeries: async () => ({ serie: 'F001', tipoComprobante: '01' }),
+        getIssuerConfig: async () => issuerFixture,
+        getInvoiceProviderReference: async () => null
+    };
+
+    const apisperuAdapter = {
+        sendInvoice: async () => issueProviderResponseFixture,
+        getInvoiceStatus: async () => statusProviderResponseFixture,
+        sendCreditNote: async () => ({}),
+        sendVoided: async () => ({}),
+        getVoidedStatus: async () => ({}),
+        sendSummary: async () => ({}),
+        getSummaryStatus: async () => ({})
+    };
+
+    const acl = makeApisperuBillingAcl({ billingRepository, apisperuAdapter });
+    const issueResult = await acl.issueComprobante(draftWithoutReceptorFixture);
+    assert.equal(issueResult.invoiceStatus, 'SENT');
+    assert.equal(snapshotFetchCount, 1, 'getOrderSnapshot debe llamarse cuando no hay receptor en draft');
+});
+
+test('ACL usa seriesResolution de opts cuando se provee (evita resolveInvoiceSeries extra)', async () => {
+    let seriesResolveCalls = 0;
+    const billingRepository = {
+        getOrderSnapshot: async () => null,
+        resolveInvoiceSeries: async () => { seriesResolveCalls++; return { serie: 'F001', tipoComprobante: '01' }; },
+        getIssuerConfig: async () => issuerFixture,
+        getInvoiceProviderReference: async () => null
+    };
+
+    const apisperuAdapter = {
+        sendInvoice: async () => issueProviderResponseFixture,
+        getInvoiceStatus: async () => statusProviderResponseFixture,
+        sendCreditNote: async () => ({}),
+        sendVoided: async () => ({}),
+        getVoidedStatus: async () => ({}),
+        sendSummary: async () => ({}),
+        getSummaryStatus: async () => ({})
+    };
+
+    const acl = makeApisperuBillingAcl({ billingRepository, apisperuAdapter });
+    await acl.issueComprobante(draftFixture, { seriesResolution: { serie: 'F001', tipoComprobante: '01' } });
+    assert.equal(seriesResolveCalls, 0, 'resolveInvoiceSeries no debe llamarse cuando opts.seriesResolution está presente');
+});
+
+test('ACL throws when repository cannot resolve order snapshot (draft sin receptor)', async () => {
     const acl = makeApisperuBillingAcl({
         billingRepository: {
             getOrderSnapshot: async () => null,
@@ -90,12 +191,18 @@ test('ACL throws when repository cannot resolve order snapshot', async () => {
         },
         apisperuAdapter: {
             sendInvoice: async () => issueProviderResponseFixture,
-            getInvoiceStatus: async () => statusProviderResponseFixture
+            getInvoiceStatus: async () => statusProviderResponseFixture,
+            sendCreditNote: async () => ({}),
+            sendVoided: async () => ({}),
+            getVoidedStatus: async () => ({}),
+            sendSummary: async () => ({}),
+            getSummaryStatus: async () => ({})
         }
     });
 
+    // Sin receptor en draft, el ACL intenta getOrderSnapshot → null → lanza error
     await assert.rejects(
-        () => acl.issueComprobante(draftFixture),
+        () => acl.issueComprobante(draftWithoutReceptorFixture),
         /No se encontro el pedido para emitir comprobante/
     );
 });

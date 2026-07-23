@@ -38,6 +38,8 @@ const buildDraftFromSnapshot = (snapshot, serie, nowDate) => {
     const fallbackTotal = roundMoney(subtotalAmount + igvAmount);
     const totalAmount = roundMoney(Number(snapshot.total.amount) || fallbackTotal);
 
+    const normalizedDoc = String(snapshot.customerDocument || '').replace(/\D/g, '');
+
     return {
         orderId: snapshot.orderId,
         serie,
@@ -54,7 +56,14 @@ const buildDraftFromSnapshot = (snapshot, serie, nowDate) => {
             amount: totalAmount,
             currency
         },
-        lines
+        lines,
+        receptor: {
+            tipoDoc: normalizedDoc.length === 11 ? '6' : '1',
+            documento: snapshot.customerDocument,
+            razonSocial: snapshot.customerName,
+            direccion: snapshot.customerAddress?.direccion,
+            ubigeo: snapshot.customerAddress?.ubigeo
+        }
     };
 };
 
@@ -115,7 +124,7 @@ export const makeBillingService = ({ billingRepository, billingProviderAcl, now 
                 'Borrador de comprobante invalido'
             );
         },
-        createInvoice: async (snapshotInput) => {
+        createInvoice: async (snapshotInput, options = {}) => {
             const snapshot = parseContract(
                 pedidoBillingSnapshotSchema,
                 snapshotInput,
@@ -125,7 +134,8 @@ export const makeBillingService = ({ billingRepository, billingProviderAcl, now 
 
             const seriesResolution = await billingRepository.resolveInvoiceSeries({
                 orderId: snapshot.orderId,
-                customerDocument: snapshot.customerDocument
+                customerDocument: snapshot.customerDocument,
+                tipoComprobante: options.tipoComprobante
             });
 
             const draft = parseContract(
@@ -141,7 +151,8 @@ export const makeBillingService = ({ billingRepository, billingProviderAcl, now 
 
             if (!providerHandlesDraftPersistence) {
                 const savedDraft = await billingRepository.saveDraft(draft, {
-                    tipoComprobante: seriesResolution.tipoComprobante
+                    tipoComprobante: seriesResolution.tipoComprobante,
+                    idempotencyKey: options.idempotencyKey
                 });
                 if (!savedDraft?.draftId) {
                     throw new BillingServiceError('DRAFT_NOT_PERSISTED', 'No se pudo guardar el borrador de facturacion', 500);
@@ -154,7 +165,19 @@ export const makeBillingService = ({ billingRepository, billingProviderAcl, now 
                 };
             }
 
-            const providerResultRaw = await billingProviderAcl.issueComprobante(draftForIssue, { seriesResolution });
+            let providerResultRaw;
+            try {
+                providerResultRaw = await billingProviderAcl.issueComprobante(draftForIssue, { seriesResolution });
+            } catch (error) {
+                if (persistedInvoiceId && typeof billingRepository.markInvoiceFailure === 'function') {
+                    await billingRepository.markInvoiceFailure(persistedInvoiceId, error);
+                }
+                throw new BillingServiceError(
+                    'PROVIDER_DELIVERY_FAILED',
+                    error?.message || 'APISPERU no pudo enviar el comprobante',
+                    502
+                );
+            }
             const providerResult = parseContract(
                 billingResultSchema,
                 providerHandlesDraftPersistence

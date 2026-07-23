@@ -98,6 +98,10 @@ const buildSnapshotOverride = ({ baseSnapshot, billingData, tipoComprobante }) =
         ...baseSnapshot,
         customerDocument,
         customerName: normalizeString(client?.rznSocial) || baseSnapshot.customerName,
+        customerAddress: {
+            ubigeo: normalizeString(client?.address?.ubigeo) || baseSnapshot?.customerAddress?.ubigeo,
+            direccion: normalizeString(client?.address?.direccion) || baseSnapshot?.customerAddress?.direccion
+        },
         lines,
         total: {
             amount: totalAmount,
@@ -140,11 +144,17 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
         }
         const pool = req.app.locals.pool;
         const existing = await pool.query(
-            "SELECT id FROM nl_comprobantes WHERE pedido_id = $1 AND estado_sunat != 'anulado' LIMIT 1",
+            "SELECT id, estado_sunat, idempotency_key FROM nl_comprobantes WHERE pedido_id = $1 AND estado_sunat != 'anulado' ORDER BY created_at DESC LIMIT 1",
             [req.params.pedidoId]
         );
         if (existing.rows.length > 0) {
-            return res.status(400).json({ error: 'El pedido ya tiene un comprobante activo emitido.' });
+            const current = existing.rows[0];
+            const sameRetry = req.body?.idempotencyKey
+                && current.idempotency_key === req.body.idempotencyKey
+                && ['generado', 'error'].includes(current.estado_sunat);
+            if (!sameRetry) {
+                return res.status(409).json({ error: 'El pedido ya tiene un comprobante activo emitido.' });
+            }
         }
 
         let comprobante;
@@ -176,12 +186,34 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
                 },
                 {
                     params: { pedidoId: req.params.pedidoId },
-                    body: snapshot
+                    body: {
+                        snapshot,
+                        tipoComprobante,
+                        idempotencyKey: req.body?.idempotencyKey
+                    }
                 }
             );
 
             if (!result.ok) {
-                return res.status(result.status).json({ error: result.errorMessage, code: result.errorCode });
+                return res.status(result.status).json({
+                    error: result.errorMessage,
+                    code: result.errorCode,
+                    cdr_code: result.errorCode,
+                    cdr_description: result.errorMessage,
+                    details: result.details,
+                    requestId: req.requestId || null
+                });
+            }
+
+            if (result.data.invoiceStatus === 'REJECTED') {
+                return res.status(422).json({
+                    error: result.data.cdrDescription || 'SUNAT rechazó el comprobante.',
+                    code: result.data.cdrCode || 'SUNAT_REJECTED',
+                    cdr_code: result.data.cdrCode || null,
+                    cdr_description: result.data.cdrDescription || null,
+                    invoiceId: result.data.invoiceId,
+                    requestId: req.requestId || null
+                });
             }
 
             const persisted = await pool.query('SELECT * FROM nl_comprobantes WHERE id = $1 LIMIT 1', [result.data.invoiceId]);
@@ -204,6 +236,12 @@ router.post('/:comprobanteId/anular', async (req, res, next) => {
             return res.status(400).json({ error: 'El motivo de anulación es obligatorio (mín. 5 caracteres).' });
         }
         const pool = req.app.locals.pool;
+        if (!isLegacyBillingMode(req)) {
+            const result = await getBillingModule(req).billingPhase2Service.requestVoiding(req.params.comprobanteId, {
+                motivo: motivo.trim(), idempotencyKey: req.body.idempotencyKey
+            });
+            return res.status(202).json({ ok: true, baja: result });
+        }
         const result = await facturacionDeps.anularComprobante(pool, req.params.comprobanteId, motivo.trim());
         res.json({ ok: true, comprobante: result });
     } catch (err) {
@@ -224,10 +262,169 @@ router.post('/:comprobanteId/nota-credito', async (req, res, next) => {
             return res.status(400).json({ error: 'El monto de la nota de crédito debe ser mayor a 0.' });
         }
         const pool = req.app.locals.pool;
+        if (!isLegacyBillingMode(req)) {
+            const result = await getBillingModule(req).billingPhase2Service.createCreditNote(req.params.comprobanteId, {
+                motivo: motivo.trim(), monto, detalles, codMotivo: req.body.codMotivo,
+                idempotencyKey: req.body.idempotencyKey
+            });
+            return res.status(result.status === 'aceptado' ? 201 : 422).json({ ok: result.status === 'aceptado', notaCredito: result });
+        }
         const result = await facturacionDeps.emitirNotaCredito(pool, req.params.comprobanteId, { motivo: motivo.trim(), monto, detalles });
         res.json({ ok: true, notaCredito: result });
     } catch (err) {
         console.error('[facturacion] nota-credito error:', err.message);
+        next(err);
+    }
+});
+
+router.get('/bajas/:bajaId/status', async (req, res, next) => {
+    try {
+        if (!requireTecnico(req, res)) return;
+        const service = getBillingModule(req)?.billingPhase2Service;
+        if (!service) return res.status(503).json({ error: 'Módulo de facturación no disponible.' });
+        res.json(await service.syncVoidingStatus(req.params.bajaId));
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.post('/resumenes-diarios', async (req, res, next) => {
+    try {
+        if (!requireTecnico(req, res)) return;
+        const service = getBillingModule(req)?.billingPhase2Service;
+        if (!service) return res.status(503).json({ error: 'Módulo de facturación no disponible.' });
+        const result = await service.createDailySummary(req.body || {});
+        res.status(202).json(result);
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.get('/resumenes-diarios/:resumenId/status', async (req, res, next) => {
+    try {
+        if (!requireTecnico(req, res)) return;
+        const service = getBillingModule(req)?.billingPhase2Service;
+        if (!service) return res.status(503).json({ error: 'Módulo de facturación no disponible.' });
+        res.json(await service.syncSummaryStatus(req.params.resumenId));
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ─── GET /comprobantes/:id/print ─────────────────────────────────────────────
+router.get('/comprobantes/:id/print', async (req, res, next) => {
+    try {
+        if (!requireTecnico(req, res)) return;
+        const pool = req.app.locals.pool;
+        const { id } = req.params;
+
+        const { rows } = await pool.query(`
+            SELECT
+                c.id, c.tipo_comprobante, c.serie, c.correlativo, c.fecha_emision,
+                c.total_gravada, c.total_igv, c.total_venta,
+                c.estado_sunat, c.hash_cpe, c.cdr_code, c.cdr_description,
+                c.pdf_url, c.xml_url, c.cdr_url,
+                c.receptor_tipo_doc, c.receptor_documento, c.receptor_razon_social,
+                c.receptor_direccion, c.receptor_ubigeo,
+                c.pedido_id,
+                p.id AS p_id, p.paciente_nombre,
+                p.clinica_id,
+                cl.ruc AS cl_ruc, cl.dni AS cl_dni,
+                cl.razon_social AS cl_razon_social,
+                cl.direccion AS cl_direccion,
+                e.ruc AS e_ruc, e.razon_social AS e_razon_social,
+                e.nombre_comercial AS e_nombre_comercial,
+                e.direccion_fiscal AS e_direccion_fiscal,
+                e.ubigeo AS e_ubigeo,
+                e.entorno AS e_entorno
+            FROM nl_comprobantes c
+            JOIN nl_pedidos p ON p.id = c.pedido_id
+            LEFT JOIN nl_clinicas cl ON cl.id = p.clinica_id
+            LEFT JOIN nl_empresas e ON e.activo = true
+            WHERE c.id = $1
+            LIMIT 1
+        `, [id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Comprobante no encontrado.' });
+        }
+
+        const row = rows[0];
+
+        const receptor_documento = row.receptor_documento || row.cl_ruc || row.cl_dni || '';
+        const receptor_razon_social = row.receptor_razon_social || row.cl_razon_social || '';
+        const receptor_direccion = row.receptor_direccion || row.cl_direccion || '';
+        const receptor_tipo_doc = row.receptor_tipo_doc || (receptor_documento.length === 11 ? '6' : '1');
+
+        const { rows: itemRows } = await pool.query(`
+            SELECT
+                COALESCE(NULLIF(TRIM(pi.material), ''), pr.nombre, 'Servicio dental') AS descripcion,
+                pi.cantidad,
+                pi.precio_unitario,
+                pi.subtotal
+            FROM nl_pedido_items pi
+            LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
+            WHERE pi.pedido_id = $1
+            ORDER BY pi.id
+        `, [row.pedido_id]);
+
+        const isDemoUrl = (url) => {
+            if (!url) return false;
+            return url.includes('/demo/') || url.includes('demo.apisperu') || url.includes('apisperu.com/demo');
+        };
+
+        const isDemoAsset = isDemoUrl(row.pdf_url) || isDemoUrl(row.xml_url) || isDemoUrl(row.cdr_url);
+
+        res.json({
+            comprobante: {
+                id: row.id,
+                tipo_comprobante: row.tipo_comprobante,
+                serie: row.serie,
+                correlativo: row.correlativo,
+                fecha_emision: row.fecha_emision,
+                total_gravada: row.total_gravada,
+                total_igv: row.total_igv,
+                total_venta: row.total_venta,
+                estado_sunat: row.estado_sunat,
+                hash_cpe: row.hash_cpe,
+                cdr_code: row.cdr_code,
+                cdr_description: row.cdr_description,
+                pdf_url: row.pdf_url,
+                xml_url: row.xml_url,
+                cdr_url: row.cdr_url,
+                receptor_tipo_doc,
+                receptor_documento,
+                receptor_razon_social,
+                receptor_direccion,
+                receptor_ubigeo: row.receptor_ubigeo || '',
+            },
+            emisor: {
+                ruc: row.e_ruc || '',
+                razon_social: row.e_razon_social || 'NEWLAB',
+                nombre_comercial: row.e_nombre_comercial || 'NewLab Dental',
+                direccion_fiscal: row.e_direccion_fiscal || '',
+                ubigeo: row.e_ubigeo || '',
+                entorno: row.e_entorno || 'demo',
+            },
+            pedido: {
+                id: row.p_id,
+                paciente_nombre: row.paciente_nombre,
+            },
+            lineas: itemRows.map(item => ({
+                descripcion: item.descripcion,
+                cantidad: Number(item.cantidad),
+                precio_unitario: Number(item.precio_unitario),
+                subtotal: Number(item.subtotal),
+            })),
+            assets: {
+                pdfIsExternal: !!row.pdf_url,
+                xmlIsExternal: !!row.xml_url,
+                cdrIsExternal: !!row.cdr_url,
+                isDemoAsset,
+            },
+        });
+    } catch (err) {
+        console.error('[facturacion] print error:', err.message);
         next(err);
     }
 });

@@ -13,6 +13,10 @@ export interface PedidoBillingSnapshotDto {
   orderId: string;
   customerDocument: string;
   customerName: string;
+  customerAddress?: {
+    ubigeo?: string;
+    direccion?: string;
+  };
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   lines: BillingLineDto[];
@@ -36,4 +40,8 @@ export interface BillingResultDto {
   sunatTicket?: string;
   pdfUrl?: string;
   xmlUrl?: string;
+  cdrUrl?: string;
+  hash?: string;
+  cdrCode?: string;
+  cdrDescription?: string;
 }

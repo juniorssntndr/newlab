@@ -14,6 +14,32 @@ export const draftFixture = {
             unitPrice: { amount: 100, currency: 'PEN' },
             taxRate: 0.18
         }
+    ],
+    receptor: {
+        tipoDoc: '6',
+        documento: '20123456789',
+        razonSocial: 'Clinica Test SAC',
+        direccion: 'Av. Test 123',
+        ubigeo: '150101'
+    }
+};
+
+export const draftWithoutReceptorFixture = {
+    orderId: '100',
+    serie: 'F001',
+    correlativo: '123',
+    issueDateIso: '2026-03-20T12:00:00.000Z',
+    subtotal: { amount: 100, currency: 'PEN' },
+    igv: { amount: 18, currency: 'PEN' },
+    total: { amount: 118, currency: 'PEN' },
+    lines: [
+        {
+            sku: 'PRD-1',
+            description: 'Corona zirconio',
+            qty: 1,
+            unitPrice: { amount: 100, currency: 'PEN' },
+            taxRate: 0.18
+        }
     ]
 };
 

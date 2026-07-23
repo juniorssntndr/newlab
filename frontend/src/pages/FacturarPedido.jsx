@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { API_URL } from '../config.js';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useOrderDetailQuery } from '../modules/orders/queries/useOrderDetailQuery.js';
 import { useCreateInvoiceMutation } from '../modules/billing/mutations/useCreateInvoiceMutation.js';
+import { consultarDNI, consultarRUC } from '../modules/identity/api/identityApi.js';
+import BillingConfirmModal from '../components/billing/BillingConfirmModal.jsx';
+import BillingResultModal from '../components/billing/BillingResultModal.jsx';
 
 export default function FacturarPedido() {
     const { id } = useParams();
@@ -13,8 +15,14 @@ export default function FacturarPedido() {
     const { data: pedido, isLoading } = useOrderDetailQuery(id);
     const createInvoiceMutation = useCreateInvoiceMutation();
     const hydratedOrderIdRef = useRef(null);
+    const idempotencyKeyRef = useRef(null);
 
     const [consultando, setConsultando] = useState(false);
+    const [consultaDocumento, setConsultaDocumento] = useState(null);
+
+    // Modales de billing
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [resultModal, setResultModal] = useState({ open: false, status: 'aceptado', data: {} });
 
     // Form State
     const [tipoComprobante, setTipoComprobante] = useState('03'); // Boleta por defecto
@@ -143,111 +151,125 @@ export default function FacturarPedido() {
         const value = e.target.value;
         setTipoComprobante(value);
         if (value === '01') {
-            setCliente(prev => ({ ...prev, tipoDoc: '6' })); // Factura exige RUC
+            setCliente(prev => ({ ...prev, tipoDoc: '6', numDoc: '', rznSocial: '' })); // Factura exige RUC
         } else {
-            setCliente(prev => ({ ...prev, tipoDoc: '1' })); // Boleta prefiere DNI
+            setCliente(prev => ({ ...prev, tipoDoc: '1', numDoc: '', rznSocial: '' })); // Boleta prefiere DNI
         }
+        setConsultaDocumento(null);
     };
 
     const handleConsultaDocumento = async () => {
-        const num = cliente.numDoc.trim();
+        const num = cliente.numDoc.trim().replace(/\D/g, '');
         if (!num) return;
 
-        // Determinar endpoint según longitud
-        let endpoint = '';
-        if (num.length === 8) endpoint = 'dni';
-        else if (num.length === 11) endpoint = 'ruc';
-        else {
+        const isDni = num.length === 8;
+        const isRuc = num.length === 11;
+        if (!isDni && !isRuc) {
             toast.error('El documento debe tener 8 (DNI) u 11 (RUC) dígitos.');
             return;
         }
 
         try {
             setConsultando(true);
-            const res = await fetch(`${API_URL}/consultas/${endpoint}/${num}`, {
-                headers: getHeaders()
+            const data = isDni
+                ? await consultarDNI({ dni: num, headers: getHeaders() })
+                : await consultarRUC({ ruc: num, headers: getHeaders() });
+
+            const nombreCompleto = isDni
+                ? ([data.nombres, data.apellidoPaterno, data.apellidoMaterno].filter(Boolean).join(' ').trim() || data.fullName || '')
+                : (data.razonSocial || data.razon_social || '');
+
+            const ubigeoObtenido = Array.isArray(data.ubigeo) ? data.ubigeo[0] : (data.ubigeo || cliente.ubigeo);
+
+            setConsultaDocumento({
+                numero: num,
+                tipo: isDni ? 'dni' : 'ruc',
+                estado: data.estado || null,
+                condicion: data.condicion || null
             });
-            const data = await res.json();
 
-            if (!res.ok) {
-                // Safely convert details to string to avoid "is not a function" error
-                const detailsStr = data.details
-                    ? (typeof data.details === 'string' ? data.details : JSON.stringify(data.details))
-                    : '';
-                if (res.status === 404 || res.status === 422) {
-                    toast.error(data.error || 'Documento no encontrado en RENIEC/SUNAT.');
-                } else if (res.status === 401) {
-                    toast.error('Token de APISPERU inválido. Revisa la configuración del backend.', { duration: 6000 });
-                } else {
-                    toast.error(data.error || detailsStr || 'Error al consultar documento');
-                }
-                return;
-            }
-
-            // APISPERU puede devolver HTTP 200 con { success: false } en algunos casos
-            if (data.success === false) {
-                toast.error(data.message || 'Documento no encontrado en RENIEC/SUNAT.');
-                return;
-            }
-
-            // Mapeo seguro según respuesta (DNI usa nombres/apellidoX; RUC usa razonSocial)
-            let nombreCompleto = '';
-            let direccionObtenida = cliente.direccion;
-            let ubigeoObtenido = cliente.ubigeo;
-
-            if (endpoint === 'dni') {
-                nombreCompleto = [data.nombres, data.apellidoPaterno, data.apellidoMaterno]
-                    .filter(Boolean)
-                    .join(' ')
-                    .trim();
-            } else if (endpoint === 'ruc') {
-                nombreCompleto = data.razonSocial || data.nombre || '';
-                direccionObtenida = data.direccion || direccionObtenida;
-
-                // Extraer ubigeo si viene en el formato de API
-                if (data.ubigeo) ubigeoObtenido = data.ubigeo;
-            }
-
-            if (nombreCompleto) {
-                setCliente(prev => ({
-                    ...prev,
-                    rznSocial: nombreCompleto,
-                    direccion: direccionObtenida,
-                    ubigeo: ubigeoObtenido
-                }));
-                toast.success('Datos obtenidos exitosamente.');
-            } else {
+            if (!nombreCompleto) {
                 toast.error('No se pudo extraer el nombre del documento consultado.');
+                return;
             }
 
+            if (isRuc && data.isActiveHabido === false) {
+                toast.error(
+                    `RUC ${data.estado || '?'} / ${data.condicion || '?'} — no apto para factura hasta regularizar.`,
+                    { duration: 7000 }
+                );
+            }
+
+            setCliente(prev => ({
+                ...prev,
+                tipoDoc: isRuc ? '6' : '1',
+                rznSocial: nombreCompleto,
+                direccion: data.direccion || prev.direccion,
+                ubigeo: ubigeoObtenido || prev.ubigeo
+            }));
+            toast.success('Datos obtenidos exitosamente.');
         } catch (err) {
             console.error(err);
-            toast.error(err.message || 'Error de conexión.');
+            if (err.status === 401 || err.code === 'TOKEN_MISSING') {
+                toast.error('Token de consultas APISPERU inválido o ausente. Revisa EXTERNAL_API_TOKEN.', { duration: 6000 });
+            } else {
+                toast.error(err.message || 'Error de conexión.');
+            }
         } finally {
             setConsultando(false);
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = (e) => {
+        e?.preventDefault();
+        const documento = cliente.numDoc.replace(/\D/g, '');
 
         // Validación básica
-        if (tipoComprobante === '01' && cliente.numDoc.length !== 11) {
+        if (tipoComprobante === '01' && documento.length !== 11) {
             toast.error('La Factura exige un número de RUC válido de 11 dígitos.');
+            return;
+        }
+        if (!cliente.rznSocial.trim()) {
+            toast.error('Ingresa o consulta el nombre o razón social del receptor.');
+            return;
+        }
+        if (!cliente.direccion.trim() || !/^\d{6}$/.test(cliente.ubigeo.trim())) {
+            toast.error('La dirección y un ubigeo válido de 6 dígitos son obligatorios.');
             return;
         }
         if (productosFacturacion.length === 0) {
             toast.error('Debe haber al menos un producto a facturar.');
             return;
         }
+        if (productosFacturacion.some((item) => !item.descripcion.trim() || item.cantidad <= 0 || item.mtoPrecioUnitario <= 0)) {
+            toast.error('Todos los productos deben tener descripción, cantidad y precio mayores a cero.');
+            return;
+        }
 
+        const rucNoApto = consultaDocumento?.tipo === 'ruc' && consultaDocumento.numero === documento && (
+            (consultaDocumento.estado && !String(consultaDocumento.estado).toUpperCase().includes('ACTIVO'))
+            || (consultaDocumento.condicion && !String(consultaDocumento.condicion).toUpperCase().includes('HABIDO'))
+        );
+        if (rucNoApto) {
+            toast.error(`El RUC figura ${consultaDocumento.estado || ''} / ${consultaDocumento.condicion || ''}. Verifica antes de emitir.`);
+            return;
+        }
+
+        // Abrir modal de confirmación (reemplaza window.confirm)
+        setConfirmModalOpen(true);
+    };
+
+    const handleConfirmEmit = async () => {
+        const documento = cliente.numDoc.replace(/\D/g, '');
         try {
+            idempotencyKeyRef.current ||= crypto.randomUUID();
             const payload = {
                 tipoComprobante,
+                idempotencyKey: idempotencyKeyRef.current,
                 billingData: {
                     client: {
                         tipoDoc: cliente.tipoDoc,
-                        numDoc: cliente.numDoc,
+                        numDoc: documento,
                         rznSocial: cliente.rznSocial,
                         address: {
                             direccion: cliente.direccion,
@@ -262,17 +284,59 @@ export default function FacturarPedido() {
                 }
             };
 
-            await createInvoiceMutation.mutateAsync({
-                orderId: id,
-                payload
-            });
+            const result = await createInvoiceMutation.mutateAsync({ orderId: id, payload });
 
-            toast.success('Comprobante emitido correctamente en SUNAT.');
-            navigate(`/finanzas/${id}`);
+            setConfirmModalOpen(false);
+            idempotencyKeyRef.current = null;
+            toast.success('Comprobante emitido.');
+            setResultModal({
+                open: true,
+                status: 'aceptado',
+                data: {
+                    serie: result?.serie,
+                    correlativo: result?.correlativo,
+                    cdrCode: result?.cdr_code,
+                    cdrDescription: result?.cdr_description,
+                    hash: result?.hash_cpe || result?.hash,
+                    pdfUrl: result?.pdf_url,
+                    xmlUrl: result?.xml_url,
+                    cdrUrl: result?.cdr_url,
+                    requestId: result?.requestId || null,
+                    comprobanteId: result?.id || null,
+                    isDemoAsset: !!(result?.pdf_url && (result.pdf_url.includes('/demo/') || result.pdf_url.includes('demo.apisperu'))),
+                },
+            });
         } catch (err) {
             console.error(err);
-            toast.error(err.message || 'Error al emitir comprobante');
+            setConfirmModalOpen(false);
+            const is422 = err.status === 422;
+            const isNetworkOrServer = !err.status || err.status >= 500;
+            const status = is422 ? 'rechazado' : isNetworkOrServer ? 'no_confirmado' : 'rechazado';
+            // Conservar la clave de idempotencia para reintentos en caso de error de red
+            if (!isNetworkOrServer) idempotencyKeyRef.current = null;
+            setResultModal({
+                open: true,
+                status,
+                data: {
+                    cdrCode: err.payload?.cdr_code || err.payload?.code,
+                    cdrDescription: err.payload?.cdr_description || err.payload?.details,
+                    message: err.message || 'Error al emitir comprobante',
+                    requestId: err.payload?.requestId || err.payload?.request_id,
+                },
+            });
         }
+    };
+
+    const handleRetryEmit = () => {
+        setResultModal({ open: false, status: 'aceptado', data: {} });
+        // La clave de idempotencia se conserva para reintentar
+        handleConfirmEmit();
+    };
+
+    const handleResultClose = () => {
+        const wasAcepted = resultModal.status === 'aceptado';
+        setResultModal({ open: false, status: 'aceptado', data: {} });
+        if (wasAcepted) navigate(`/finanzas/${id}`);
     };
 
     if (isLoading) return <div>Cargando pantalla de facturación...</div>;
@@ -280,6 +344,26 @@ export default function FacturarPedido() {
 
     return (
         <div className="facturacion-layout animate-fade-in">
+            <BillingConfirmModal
+                open={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={handleConfirmEmit}
+                tipoComprobante={tipoComprobante}
+                receptorName={cliente.rznSocial}
+                receptorDoc={cliente.numDoc.replace(/\D/g, '')}
+                entorno="beta APISPERU"
+                base={totales.gravada}
+                igv={totales.igv}
+                total={totales.total}
+                confirming={createInvoiceMutation.isPending}
+            />
+            <BillingResultModal
+                open={resultModal.open}
+                onClose={handleResultClose}
+                onRetry={resultModal.status === 'no_confirmado' ? handleRetryEmit : undefined}
+                status={resultModal.status}
+                {...resultModal.data}
+            />
 
             {/* Left Column: Form Content */}
             <div className="facturacion-main" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -340,7 +424,10 @@ export default function FacturarPedido() {
                                     }}
                                     placeholder={tipoComprobante === '01' ? "RUC de 11 dígitos..." : "Número..."}
                                     value={cliente.numDoc}
-                                    onChange={e => setCliente({ ...cliente, numDoc: e.target.value })}
+                                    onChange={e => {
+                                        setCliente({ ...cliente, numDoc: e.target.value.replace(/\D/g, '') });
+                                        setConsultaDocumento(null);
+                                    }}
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault();

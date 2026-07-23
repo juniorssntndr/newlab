@@ -1,6 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
+import BillingConfirmModal from '../components/billing/BillingConfirmModal.jsx';
+import BillingResultModal from '../components/billing/BillingResultModal.jsx';
+import ComprobantePrintModal from '../components/billing/ComprobantePrintModal.jsx';
 import { useFinanceDetailQuery } from '../modules/finance/queries/useFinanceDetailQuery.js';
 import { useFinanceCatalogsQuery } from '../modules/finance/queries/useFinanceCatalogsQuery.js';
 import { useBillingPreviewQuery } from '../modules/billing/queries/useBillingPreviewQuery.js';
@@ -8,7 +11,16 @@ import { useRegisterPaymentMutation } from '../modules/finance/mutations/useRegi
 import { useCreateInvoiceMutation } from '../modules/billing/mutations/useCreateInvoiceMutation.js';
 import { useAnnulInvoiceMutation } from '../modules/billing/mutations/useAnnulInvoiceMutation.js';
 import { useCreateCreditNoteMutation } from '../modules/billing/mutations/useCreateCreditNoteMutation.js';
+import logoAfinixPrint from '../assets/branding/logo-light.png';
+import isoAfinixPrint from '../assets/branding/iso-light.png';
 import '../styles/detalle-finanza-ui-consistency.css';
+
+/** URL absoluta del asset (ventana de impresión = about:blank). */
+const assetAbsUrl = (assetPath) => {
+    if (!assetPath) return '';
+    if (/^https?:\/\//i.test(assetPath)) return assetPath;
+    return `${window.location.origin}${assetPath.startsWith('/') ? '' : '/'}${assetPath}`;
+};
 
 const statusLabels = {
     por_cancelar: 'Por cancelar',
@@ -26,7 +38,15 @@ const DetalleFinanza = () => {
     const [anularModal, setAnularModal] = useState(null); // comp object | null
     const [anularMotivo, setAnularMotivo] = useState('');
     const [notaCreditoModal, setNotaCreditoModal] = useState(null); // comp object | null
-    const [ncForm, setNcForm] = useState({ motivo: '', monto: '' });
+    const [ncForm, setNcForm] = useState({ motivo: '', monto: '', codMotivo: '01' });
+    const voidingKeyRef = useRef(null);
+    const creditNoteKeyRef = useRef(null);
+    const emitirKeyRef = useRef(null);
+
+    // Modales de emit rápido
+    const [emitirConfirm, setEmitirConfirm] = useState({ open: false, tipoComprobante: '03' });
+    const [emitirResult, setEmitirResult] = useState({ open: false, status: 'aceptado', data: {} });
+    const [printModal, setPrintModal] = useState({ open: false, comprobanteId: null });
     const [form, setForm] = useState({
         monto: '',
         metodo: 'transferencia',
@@ -118,22 +138,64 @@ const DetalleFinanza = () => {
         }
     };
 
-    const handleEmitir = async (tipoComprobante) => {
-        if (!window.confirm(`¿Seguro que deseas emitir ${tipoComprobante === '01' ? 'Factura' : 'Boleta'} electrónica a la SUNAT?`)) return;
-        try {
-            await createInvoiceMutation.mutateAsync({
-                orderId: id,
-                payload: { tipoComprobante }
-            });
+    const handleEmitir = (tipoComprobante) => {
+        emitirKeyRef.current ||= crypto.randomUUID();
+        setEmitirConfirm({ open: true, tipoComprobante });
+    };
 
-            alert('Comprobante emitido con éxito');
+    const handleConfirmEmitir = async () => {
+        const { tipoComprobante } = emitirConfirm;
+        try {
+            emitirKeyRef.current ||= crypto.randomUUID();
+            const result = await createInvoiceMutation.mutateAsync({
+                orderId: id,
+                payload: { tipoComprobante, idempotencyKey: emitirKeyRef.current }
+            });
+            setEmitirConfirm({ open: false, tipoComprobante });
+            emitirKeyRef.current = null;
+            setEmitirResult({
+                open: true,
+                status: 'aceptado',
+                data: {
+                    serie: result?.serie,
+                    correlativo: result?.correlativo,
+                    cdrCode: result?.cdr_code,
+                    cdrDescription: result?.cdr_description,
+                    hash: result?.hash,
+                    pdfUrl: result?.pdf_url,
+                    xmlUrl: result?.xml_url,
+                    cdrUrl: result?.cdr_url,
+                    comprobanteId: result?.id || null,
+                    isDemoAsset: !!(result?.pdf_url && (result.pdf_url.includes('/demo/') || result.pdf_url.includes('demo.apisperu'))),
+                },
+            });
         } catch (err) {
-            alert(err.message);
+            setEmitirConfirm({ open: false, tipoComprobante: emitirConfirm.tipoComprobante });
+            const is422 = err.status === 422;
+            const isNetworkOrServer = !err.status || err.status >= 500;
+            if (!isNetworkOrServer) emitirKeyRef.current = null;
+            setEmitirResult({
+                open: true,
+                status: is422 ? 'rechazado' : isNetworkOrServer ? 'no_confirmado' : 'rechazado',
+                data: {
+                    cdrCode: err.payload?.cdr_code || err.payload?.code,
+                    cdrDescription: err.payload?.cdr_description || err.message,
+                    message: err.message,
+                    requestId: err.payload?.requestId || err.payload?.request_id,
+                },
+            });
         }
+    };
+
+    const handleRetryEmitir = () => {
+        const tipoComprobante = emitirConfirm.tipoComprobante || '03';
+        setEmitirResult({ open: false, status: 'aceptado', data: {} });
+        setEmitirConfirm({ open: true, tipoComprobante });
     };
 
     const handleAnularComprobante = (comp) => {
         setAnularMotivo('');
+        voidingKeyRef.current = crypto.randomUUID();
         setAnularModal(comp);
     };
 
@@ -144,16 +206,18 @@ const DetalleFinanza = () => {
             await annulInvoiceMutation.mutateAsync({
                 orderId: id,
                 invoiceId: anularModal.id,
-                payload: { motivo: anularMotivo.trim() }
+                payload: { motivo: anularMotivo.trim(), idempotencyKey: voidingKeyRef.current }
             });
             setAnularModal(null);
+            alert('La comunicación de baja fue enviada. SUNAT la procesará mediante un ticket pendiente.');
         } catch (err) {
             alert(err.message);
         }
     };
 
     const handleNotaCredito = (comp) => {
-        setNcForm({ motivo: '', monto: String(comp.total_venta || '') });
+        creditNoteKeyRef.current = crypto.randomUUID();
+        setNcForm({ motivo: '', monto: String(comp.total_venta || ''), codMotivo: '01' });
         setNotaCreditoModal(comp);
     };
 
@@ -167,7 +231,10 @@ const DetalleFinanza = () => {
             await createCreditNoteMutation.mutateAsync({
                 orderId: id,
                 invoiceId: notaCreditoModal.id,
-                payload: { motivo: ncForm.motivo.trim(), monto: parseFloat(ncForm.monto) }
+                payload: {
+                    motivo: ncForm.motivo.trim(), monto: parseFloat(ncForm.monto),
+                    codMotivo: ncForm.codMotivo, idempotencyKey: creditNoteKeyRef.current
+                }
             });
             setNotaCreditoModal(null);
         } catch (err) {
@@ -176,11 +243,7 @@ const DetalleFinanza = () => {
     };
 
     const handlePrintComprobante = (comp) => {
-        if (comp.pdf_url) {
-            window.open(comp.pdf_url, '_blank');
-        } else {
-            alert('El PDF del comprobante aún no está disponible.');
-        }
+        setPrintModal({ open: true, comprobanteId: comp.id });
     };
 
     const escapeHtml = (value) => {
@@ -218,44 +281,44 @@ const DetalleFinanza = () => {
             )).join('')
             : '<tr><td colspan="4" style="text-align:center;color:#64748B;padding:12px 0;">Sin items registrados</td></tr>';
 
+        const logoSrc = assetAbsUrl(logoAfinixPrint);
         const html = `
 <!doctype html><html><head><meta charset="utf-8" />
 <title>Comprobante ${escapeHtml(finanza.codigo)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #0F172A; background: #fff; }
+  body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; color: #0A1B33; background: #fff; }
   .page { max-width: 190mm; margin: 0 auto; padding: 16mm 14mm; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 3px solid #0d9488; margin-bottom: 18px; }
-  .header-brand { font-size: 22px; font-weight: 800; color: #0d9488; letter-spacing: -0.5px; }
-  .header-brand span { display: block; font-size: 11px; font-weight: 400; color: #64748B; letter-spacing: 0; margin-top: 2px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 3px solid #007BFF; margin-bottom: 18px; gap: 16px; }
+  .header-brand img { height: 52px; width: auto; display: block; object-fit: contain; }
   .header-doc { text-align: right; }
-  .header-doc .doc-type { font-size: 15px; font-weight: 700; color: #0F172A; }
-  .header-doc .doc-code { font-size: 12px; color: #64748B; margin-top: 2px; font-family: monospace; }
-  .chip { display: inline-block; background: #f0fdf4; color: #15803d; border: 1px solid #86efac; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; margin-top: 6px; }
-  .chip.por_cancelar { background: #fefce8; color: #854d0e; border-color: #fde047; }
-  .chip.pago_parcial { background: #fff7ed; color: #9a3412; border-color: #fdba74; }
-  .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748B; margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #E2E8F0; }
+  .header-doc .doc-type { font-size: 14px; font-weight: 800; color: #0A1B33; letter-spacing: 0.06em; }
+  .header-doc .doc-code { font-size: 12px; color: #475569; margin-top: 3px; font-family: ui-monospace, monospace; }
+  .chip { display: inline-block; background: #D1FAE5; color: #047857; border: 1px solid #6EE7B7; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; margin-top: 6px; }
+  .chip.por_cancelar { background: #FEF3C7; color: #92400E; border-color: #FCD34D; }
+  .chip.pago_parcial { background: #FFEDD5; color: #9A3412; border-color: #FDBA74; }
+  .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #475569; margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #D1D9E6; }
   .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 4px; }
   .info-block .ib-label { font-size: 10px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; }
-  .info-block .ib-value { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+  .info-block .ib-value { font-size: 12.5px; font-weight: 600; margin-top: 2px; color: #0A1B33; }
   table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-  thead tr { background: #F8FAFC; border-top: 1px solid #E2E8F0; border-bottom: 2px solid #E2E8F0; }
+  thead tr { background: #F8FAFC; border-top: 1px solid #D1D9E6; border-bottom: 2px solid #D1D9E6; }
   th { padding: 7px 10px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; }
-  td { padding: 8px 10px; border-bottom: 1px solid #F1F5F9; }
+  td { padding: 8px 10px; border-bottom: 1px solid #E2E8F0; }
   tbody tr:last-child td { border-bottom: none; }
   .totals-box { margin-top: 16px; display: flex; justify-content: flex-end; }
-  .totals-inner { min-width: 220px; border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; }
-  .totals-row { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 12px; border-bottom: 1px solid #F1F5F9; }
-  .totals-row:last-child { border-bottom: none; background: #F0FDFA; font-size: 14px; font-weight: 700; color: #0d9488; }
-  .totals-row .t-label { color: #64748B; font-size: inherit; }
+  .totals-inner { min-width: 220px; border: 1px solid #D1D9E6; border-radius: 10px; overflow: hidden; background: #F8FAFC; }
+  .totals-row { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 12px; border-bottom: 1px solid #E2E8F0; }
+  .totals-row:last-child { border-bottom: none; background: rgba(0, 123, 255, 0.08); font-size: 14px; font-weight: 700; color: #007BFF; }
+  .totals-row .t-label { color: #475569; font-size: inherit; }
   .footer { margin-top: 28px; padding-top: 12px; border-top: 1px dashed #CBD5E1; text-align: center; font-size: 10px; color: #94A3B8; }
   @page { size: A4; margin: 0; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head><body>
 <div class="page">
   <div class="header">
-    <div>
-      <div class="header-brand">NewLab<span>Laboratorio Dental</span></div>
+    <div class="header-brand">
+      <img src="${escapeHtml(logoSrc)}" alt="AFINIX Dental Lab" />
     </div>
     <div class="header-doc">
       <div class="doc-type">COMPROBANTE INTERNO</div>
@@ -294,7 +357,7 @@ const DetalleFinanza = () => {
     </div>
   </div>
 
-  <div class="footer">Documento interno — No válido como comprobante de pago tributario &nbsp;·&nbsp; NewLab Dental &nbsp;·&nbsp; ${escapeHtml(formatDate(new Date(), true))}</div>
+  <div class="footer">Documento interno — No válido como comprobante de pago tributario &nbsp;·&nbsp; AFINIX Dental Lab &nbsp;·&nbsp; ${escapeHtml(formatDate(new Date(), true))}</div>
 </div>
 <script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
@@ -308,7 +371,6 @@ const DetalleFinanza = () => {
     const handlePrint80mm = () => {
         if (!finanza) return;
         setPrintMenuOpen(false);
-        const dashes = '--------------------------------';
 
         const itemsRows = finanza.items?.length
             ? finanza.items.map((item) => (
@@ -331,39 +393,39 @@ const DetalleFinanza = () => {
             )).join('')
             : '<tr><td colspan="2" style="text-align:center">Sin pagos</td></tr>';
 
+        const isoSrc = assetAbsUrl(isoAfinixPrint);
         const html = `
 <!doctype html><html><head><meta charset="utf-8" />
 <title>Ticket ${escapeHtml(finanza.codigo)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; background: #fff; width: 80mm; margin: 0 auto; padding: 4mm 3mm 8mm; }
+  body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; font-size: 12px; color: #0A1B33; background: #fff; width: 80mm; margin: 0 auto; padding: 4mm 3mm 8mm; }
   .center { text-align: center; }
-  .brand { font-size: 18px; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
-  .sub { font-size: 10px; margin-bottom: 2px; }
-  .divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
-  .section { font-size: 10px; font-weight: 700; text-transform: uppercase; margin: 5px 0 3px; }
+  .brand-logo { height: 36px; width: auto; margin: 0 auto 4px; display: block; object-fit: contain; }
+  .brand-name { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: #007BFF; margin-bottom: 2px; }
+  .divider { border: none; border-top: 1px dashed #D1D9E6; margin: 6px 0; }
+  .section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin: 5px 0 3px; }
   table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
   td { padding: 2px 0; vertical-align: top; }
-  .row-bold { font-weight: 700; font-size: 13px; }
-  .total-row { font-size: 14px; font-weight: 900; }
-  .footer-note { font-size: 9.5px; text-align: center; margin-top: 8px; color: #333; }
+  .total-row { font-size: 14px; font-weight: 800; color: #007BFF; }
+  .footer-note { font-size: 9.5px; text-align: center; margin-top: 8px; color: #64748B; }
   @page { size: 80mm auto; margin: 0; }
-  @media print { body { width: 80mm; } }
+  @media print { body { width: 80mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head><body>
 <div class="center">
-  <div class="brand">NEWLAB</div>
-  <div class="sub">Laboratorio Dental</div>
+  <img class="brand-logo" src="${escapeHtml(isoSrc)}" alt="AFINIX" />
+  <div class="brand-name">AFINIX DENTAL LAB</div>
 </div>
 <hr class="divider">
 <div class="center">
-  <div style="font-size:11px;font-weight:700">COMPROBANTE INTERNO</div>
-  <div style="font-size:11px">${escapeHtml(finanza.codigo)}</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:0.06em">COMPROBANTE INTERNO</div>
+  <div style="font-size:11px;color:#475569">${escapeHtml(finanza.codigo)}</div>
 </div>
 <hr class="divider">
 <table>
-  <tr><td style="font-size:10px;color:#444">PACIENTE</td><td style="text-align:right;font-size:10px;color:#444">FECHA EMI.</td></tr>
+  <tr><td style="font-size:10px;color:#64748B">PACIENTE</td><td style="text-align:right;font-size:10px;color:#64748B">FECHA EMI.</td></tr>
   <tr><td style="font-weight:600">${escapeHtml(finanza.paciente_nombre)}</td><td style="text-align:right">${escapeHtml(formatDate(new Date()))}</td></tr>
-  <tr><td style="font-size:10px;color:#444;padding-top:4px">CLÍNICA</td></tr>
+  <tr><td style="font-size:10px;color:#64748B;padding-top:4px">CLÍNICA</td></tr>
   <tr><td colspan="2">${escapeHtml(finanza.clinica_nombre || '—')}</td></tr>
 </table>
 <hr class="divider">
@@ -380,7 +442,7 @@ const DetalleFinanza = () => {
 </table>
 <hr class="divider">
 <div class="footer-note">Documento interno — No válido tributariamente</div>
-<div class="footer-note">¡Gracias por su confianza!</div>
+<div class="footer-note">AFINIX Dental Lab</div>
 <script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
 
@@ -629,15 +691,13 @@ const DetalleFinanza = () => {
                             <div className="detail-finanza-section-subtitle">Registrados ante SUNAT</div>
                         </div>
                         <div className="detail-finanza-section-actions">
-                            {comprobantes.length > 0 && comprobantes[0]?.pdf_url && (
-                                <a
-                                    href={comprobantes[0].pdf_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="btn btn-primary btn-sm detail-finanza-action-link detail-finanza-action-link--primary"
+                            {comprobantes.length > 0 && comprobantes[0] && (
+                                <button
+                                    className="btn btn-primary btn-sm detail-finanza-action-button detail-finanza-action-button--primary"
+                                    onClick={() => handlePrintComprobante(comprobantes[0])}
                                 >
-                                    <i className="bi bi-file-earmark-pdf-fill"></i> Imprimir / Ver PDF
-                                </a>
+                                    <i className="bi bi-printer-fill"></i> Imprimir comprobante
+                                </button>
                             )}
                             {comprobantes.length === 0 && (
                                 <button
@@ -673,6 +733,7 @@ const DetalleFinanza = () => {
                                 ) : comprobantes.map((comp) => {
                                     const isVoided = comp.estado_sunat === 'anulado';
                                     const isActive = comp.estado_sunat === 'aceptado' || comp.estado_sunat === 'generado';
+                                    const isDemo = !!(comp.pdf_url && (comp.pdf_url.includes('/demo/') || comp.pdf_url.includes('demo.apisperu')));
                                     return (
                                         <tr key={comp.id} className={`detail-finanza-comprobante-row${isVoided ? ' is-voided' : ''}`}>
                                             <td>{formatDate(comp.fecha_emision)}</td>
@@ -691,24 +752,39 @@ const DetalleFinanza = () => {
                                             </td>
                                             <td>
                                                 <div className="detail-finanza-pill-links">
-                                                    {comp.pdf_url && (
+                                                    {comp.pdf_url && !isDemo && (
                                                         <a href={comp.pdf_url} target="_blank" rel="noreferrer"
                                                             className="detail-finanza-pill-link detail-finanza-pill-link--pdf"
+                                                            title="PDF del proveedor SUNAT"
                                                         ><i className="bi bi-filetype-pdf"></i>PDF</a>
                                                     )}
-                                                    {comp.xml_url && (
+                                                    {comp.xml_url && !isDemo && (
                                                         <a href={comp.xml_url} target="_blank" rel="noreferrer"
                                                             className="detail-finanza-pill-link detail-finanza-pill-link--neutral"
                                                         ><i className="bi bi-code-slash"></i>XML</a>
                                                     )}
-                                                    {comp.cdr_url && (
+                                                    {comp.cdr_url && !isDemo && (
                                                         <a href={comp.cdr_url} target="_blank" rel="noreferrer"
                                                             className="detail-finanza-pill-link detail-finanza-pill-link--neutral"
                                                         ><i className="bi bi-shield-check"></i>CDR</a>
                                                     )}
+                                                    {isDemo && (
+                                                        <span
+                                                            className="detail-finanza-pill-link detail-finanza-pill-link--neutral"
+                                                            title="En mock no hay PDF/XML/CDR reales. Usa Imprimir."
+                                                            style={{ opacity: 0.7, cursor: 'default' }}
+                                                        ><i className="bi bi-info-circle"></i>Mock</span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="detail-finanza-action-cell">
+                                                <button
+                                                    onClick={() => handlePrintComprobante(comp)}
+                                                    className="btn btn-sm btn-ghost"
+                                                    title="Imprimir comprobante electrónico"
+                                                >
+                                                    <i className="bi bi-printer"></i> Imprimir
+                                                </button>
                                                 {!isVoided && (
                                                     <button
                                                         onClick={() => handleAnularComprobante(comp)}
@@ -793,6 +869,33 @@ const DetalleFinanza = () => {
                     )}
                 </div>
             </div>
+
+            {/* ── Modales de emisión rápida ──────────────────────── */}
+            <BillingConfirmModal
+                open={emitirConfirm.open}
+                onClose={() => setEmitirConfirm(p => ({ ...p, open: false }))}
+                onConfirm={handleConfirmEmitir}
+                tipoComprobante={emitirConfirm.tipoComprobante}
+                receptorName={finanza?.clinica_nombre || finanza?.paciente_nombre || ''}
+                receptorDoc=""
+                entorno="beta APISPERU"
+                base={parseFloat(finanza?.total || 0) / 1.18}
+                igv={parseFloat(finanza?.total || 0) - parseFloat(finanza?.total || 0) / 1.18}
+                total={parseFloat(finanza?.total || 0)}
+                confirming={createInvoiceMutation.isPending}
+            />
+            <BillingResultModal
+                open={emitirResult.open}
+                onClose={() => setEmitirResult({ open: false, status: 'aceptado', data: {} })}
+                onRetry={emitirResult.status === 'no_confirmado' ? handleRetryEmitir : undefined}
+                status={emitirResult.status}
+                {...emitirResult.data}
+            />
+            <ComprobantePrintModal
+                open={printModal.open}
+                onClose={() => setPrintModal({ open: false, comprobanteId: null })}
+                comprobanteId={printModal.comprobanteId}
+            />
 
             <Modal
                 open={modalOpen}
@@ -936,7 +1039,7 @@ const DetalleFinanza = () => {
                 <div className="detail-finanza-warning-panel detail-finanza-warning-panel--danger">
                     <i className="bi bi-exclamation-triangle-fill detail-finanza-warning-panel__icon"></i>
                     <div className="detail-finanza-warning-panel__body">
-                        <strong>Acción irreversible.</strong> Esta anulación se comunicará a SUNAT. Comprobante <strong>{anularModal?.serie}-{anularModal?.correlativo}</strong> quedará inactivo.
+                        <strong>Solicitud fiscal.</strong> Se enviará una comunicación de baja a SUNAT. El comprobante <strong>{anularModal?.serie}-{anularModal?.correlativo}</strong> solo quedará inactivo cuando SUNAT acepte el ticket.
                     </div>
                 </div>
                 <div className="form-group">
@@ -991,6 +1094,18 @@ const DetalleFinanza = () => {
                             value={ncForm.monto}
                             onChange={e => setNcForm(p => ({ ...p, monto: e.target.value }))}
                         />
+                    </div>
+                    <div className="form-group detail-finanza-form-group">
+                        <label htmlFor="credit-note-reason-code" className="form-label detail-finanza-form-label">Tipo de corrección <span className="detail-finanza-required">*</span></label>
+                        <select
+                            id="credit-note-reason-code"
+                            className="form-select"
+                            value={ncForm.codMotivo}
+                            onChange={e => setNcForm(p => ({ ...p, codMotivo: e.target.value }))}
+                        >
+                            <option value="01">Anulación total de la operación</option>
+                            <option value="07">Devolución o corrección parcial por ítem</option>
+                        </select>
                     </div>
                     <div className="detail-finanza-igv-summary">
                         <span>IGV estimado (18%)</span>
