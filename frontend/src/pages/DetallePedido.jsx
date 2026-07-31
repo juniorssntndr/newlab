@@ -12,11 +12,12 @@ import { useUpdateOrderResponsibleMutation } from '../modules/orders/mutations/u
 import { useUpdateOrderDeliveryDateMutation } from '../modules/orders/mutations/useUpdateOrderDeliveryDateMutation.js';
 import { useUploadOrderFileMutation } from '../modules/orders/mutations/useUploadOrderFileMutation.js';
 import { useUpdateApprovalMeetLinkMutation } from '../modules/orders/mutations/useUpdateApprovalMeetLinkMutation.js';
-
-const statusLabels = {
-    pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
-    en_produccion: 'En Producción', terminado: 'Terminado', enviado: 'Enviado'
-};
+import { isClientRole, isLabStaffRole } from '../utils/accessControl.js';
+import {
+    ORDER_STATUS_FLOW,
+    getOrderStatusLabel,
+    getClientNextStepMessage,
+} from '../utils/orderStatusLabels.js';
 
 const approvalStatusLabels = {
     pendiente: 'Pendiente',
@@ -30,8 +31,6 @@ const fileTypeLabels = {
     final: 'Imagen final',
     otro: 'Otra imagen'
 };
-
-const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
 
 const formatFileSize = (bytes) => {
     const size = Number(bytes) || 0;
@@ -285,10 +284,16 @@ const DetallePedido = () => {
             return;
         }
 
+        const approvalId = pedido?.aprobaciones?.[0]?.id;
+        if (!approvalId) {
+            alert('No hay una aprobación activa para asociar el Meet');
+            return;
+        }
+
         try {
             await updateApprovalMeetLinkMutation.mutateAsync({
                 orderId: id,
-                approvalId: currentApproval.id,
+                approvalId,
                 payload: {
                     meet_url: meetUrl.trim(),
                     meet_scheduled_at: meetScheduledAt || null
@@ -340,10 +345,13 @@ const DetallePedido = () => {
         </div>
     );
 
-    const currentIdx = statusFlow.indexOf(pedido.estado);
-    const nextStatus = currentIdx < statusFlow.length - 1 ? statusFlow[currentIdx + 1] : null;
-    const isLab = user?.tipo !== 'cliente';
+    const currentIdx = ORDER_STATUS_FLOW.indexOf(pedido.estado);
+    const nextStatus = currentIdx < ORDER_STATUS_FLOW.length - 1 ? ORDER_STATUS_FLOW[currentIdx + 1] : null;
+    const isClient = isClientRole(user);
+    const isLab = isLabStaffRole(user);
+    const statusLabel = (estado) => getOrderStatusLabel(estado, { forClient: isClient });
     const isApproval = pedido.estado === 'esperando_aprobacion';
+    const clientNextStep = isClient ? getClientNextStepMessage(pedido) : '';
     const deliveryMeta = getDeliveryMeta();
     const itemsCount = (pedido.items || []).reduce((sum, item) => sum + (parseFloat(item.cantidad) || 0), 0);
     const itemsPiecesLabel = itemsCount === 1 ? 'pieza' : 'piezas';
@@ -363,7 +371,7 @@ const DetallePedido = () => {
             ? 'badge-approval-adjust'
             : 'badge-approval-pending';
     const caseFiles = Array.isArray(pedido.archivos) ? pedido.archivos : [];
-    const rollbackOptions = statusFlow.slice(0, Math.max(currentIdx, 0));
+    const rollbackOptions = ORDER_STATUS_FLOW.slice(0, Math.max(currentIdx, 0));
     const timelineSorted = [...(pedido.timeline || [])].sort((a, b) => {
         const timeA = a?.created_at ? new Date(a.created_at).getTime() : 0;
         const timeB = b?.created_at ? new Date(b.created_at).getTime() : 0;
@@ -385,7 +393,7 @@ const DetallePedido = () => {
                     <div>
                         <h1 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                             {pedido.codigo}
-                            <span className={`badge badge-dot badge-${pedido.estado}`}>{statusLabels[pedido.estado]}</span>
+                            <span className={`badge badge-dot badge-${pedido.estado}`}>{statusLabel(pedido.estado)}</span>
                         </h1>
                         <p>Pedido para {pedido.paciente_nombre}</p>
                     </div>
@@ -400,8 +408,8 @@ const DetallePedido = () => {
                             {updating
                                 ? 'Actualizando...'
                                 : nextStatus === 'esperando_aprobacion'
-                                    ? 'Enviar a Aprobación'
-                                    : `Avanzar a: ${statusLabels[nextStatus]}`}
+                                    ? 'Enviar a aprobación'
+                                    : `Avanzar a: ${statusLabel(nextStatus)}`}
                             <i className="bi bi-arrow-right"></i>
                         </button>
                     )}
@@ -430,10 +438,23 @@ const DetallePedido = () => {
                 </div>
             </div>
 
+            {clientNextStep && (
+                <div
+                    className={`pedido-client-next-step ${isApproval ? 'is-action' : ''}`}
+                    role="status"
+                >
+                    <i className={`bi ${isApproval ? 'bi-exclamation-circle' : 'bi-info-circle'}`}></i>
+                    <div>
+                        <strong>{isApproval ? 'Acción requerida' : 'Estado de tu pedido'}</strong>
+                        <p>{clientNextStep}</p>
+                    </div>
+                </div>
+            )}
+
             {/* Status timeline */}
             <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
                 <div className="status-timeline">
-                    {statusFlow.map((s, i) => (
+                    {ORDER_STATUS_FLOW.map((s, i) => (
                         <div key={s} className="status-step">
                             <div
                                 className="status-step-dot"
@@ -445,7 +466,7 @@ const DetallePedido = () => {
                                 {i < currentIdx ? <i className="bi bi-check"></i> : i + 1}
                             </div>
                             <div className="status-step-label" style={{ fontWeight: i === currentIdx ? 700 : 500, color: i === currentIdx ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>
-                                {statusLabels[s]}
+                                {statusLabel(s)}
                             </div>
                         </div>
                     ))}
@@ -518,7 +539,7 @@ const DetallePedido = () => {
                             <div><span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Creado por</span><br />{pedido.creador_nombre || 'Sistema'}</div>
                             <div>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Fecha de entrega</span><br />
-                                {user?.tipo !== 'cliente' ? (
+                                {isLab ? (
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-2)' }}>
                                         <input
                                             className="form-input form-input-sm"
@@ -641,7 +662,7 @@ const DetallePedido = () => {
                                                 <strong>{approvalMeetUrl ? 'Meet listo' : 'Meet solicitado'}</strong>
                                                 <span>
                                                     {approvalMeetUrl
-                                                        ? (meetScheduledLabel ? `Programado: ${meetScheduledLabel}` : 'Usá el enlace para coordinar ajustes.')
+                                                        ? (meetScheduledLabel ? `Programado: ${meetScheduledLabel}` : 'Usa el enlace para coordinar ajustes.')
                                                         : 'El laboratorio agregará el enlace.'}
                                                 </span>
                                             </div>
@@ -656,11 +677,11 @@ const DetallePedido = () => {
                                             ) : null}
                                         </div>
                                     )}
-                                    {!isLab && isApproval && (
+                                    {isClient && isApproval && (
                                         <div className="approval-actions">
                                             <div className="approval-client-guide">
                                                 <i className="bi bi-info-circle"></i>
-                                                <span>Revisá el diseño: aprobalo o pedí un Meet si necesitás ajustes.</span>
+                                                <span>Revisa el diseño 3D. Si está bien, apruébalo. Si necesitas cambios, pide un Meet.</span>
                                             </div>
                                             <div className="approval-actions-row">
                                                 <button
@@ -668,7 +689,7 @@ const DetallePedido = () => {
                                                     onClick={() => updateApproval('aprobado')}
                                                     disabled={updating}
                                                 >
-                                                    <i className="bi bi-check-lg"></i> Aprobar diseño
+                                                    <i className="bi bi-check-lg"></i> {updating ? 'Guardando...' : 'Aprobar diseño'}
                                                 </button>
                                                 <div className="approval-popover-wrap" ref={adjustPopoverRef}>
                                                     <button
@@ -677,15 +698,15 @@ const DetallePedido = () => {
                                                         onClick={() => setAdjustPopoverOpen(prev => !prev)}
                                                         disabled={updating || (hasMeetRequest && !approvalMeetUrl)}
                                                     >
-                                                        <i className="bi bi-camera-video"></i> {hasMeetRequest && !approvalMeetUrl ? 'Meet solicitado' : 'Pedir Meet para ajustes'}
+                                                        <i className="bi bi-camera-video"></i> {hasMeetRequest && !approvalMeetUrl ? 'Meet solicitado' : 'Pedir ajuste (Meet)'}
                                                     </button>
                                                     {adjustPopoverOpen && (
                                                         <div className="approval-popover animate-fade-in" role="dialog" aria-label="Pedir Meet para ajustes">
-                                                            <label className="form-label" style={{ marginBottom: 'var(--space-2)' }}>Nota adicional</label>
+                                                            <label className="form-label" style={{ marginBottom: 'var(--space-2)' }}>Nota para el laboratorio (opcional)</label>
                                                             <textarea
                                                                 ref={adjustTextareaRef}
                                                                 className="form-textarea approval-textarea"
-                                                                placeholder="Agregá una indicación solo si es necesario"
+                                                                placeholder="Ej.: ajustar contacto o forma del canino"
                                                                 value={adjustComment}
                                                                 onChange={e => setAdjustComment(e.target.value)}
                                                             />
@@ -739,6 +760,7 @@ const DetallePedido = () => {
                             <h3 className="card-title">Archivos del caso</h3>
                         </div>
                         <div className="card-body">
+                            {isLab && (
                             <div className="case-file-upload">
                                 <select
                                     id={`case-file-type-${id}`}
@@ -773,6 +795,7 @@ const DetallePedido = () => {
                                     <small>PNG, JPG o WebP · máx. 8 MB</small>
                                 </label>
                             </div>
+                            )}
                             {caseFiles.length === 0 ? (
                                 <div className="empty-state case-files-empty">
                                     <i className="bi bi-images empty-state-icon"></i>
@@ -810,7 +833,7 @@ const DetallePedido = () => {
                         ) : (
                             <div className="timeline-list">
                                 {timelineSorted.map((t, i) => {
-                                    const accion = t.accion || (t.estado_nuevo ? `Cambio a ${statusLabels[t.estado_nuevo] || t.estado_nuevo}` : 'Actualización');
+                                    const accion = t.accion || (t.estado_nuevo ? `Cambio a ${statusLabel(t.estado_nuevo)}` : 'Actualización');
                                     const detalle = t.detalle || t.comentario;
                                     const isLatest = i === 0;
                                     const timelineIcon = getTimelineIcon(t);
@@ -989,7 +1012,7 @@ const DetallePedido = () => {
                         onChange={e => setRollbackState(e.target.value)}
                     >
                         {rollbackOptions.map(state => (
-                            <option key={state} value={state}>{statusLabels[state]}</option>
+                            <option key={state} value={state}>{statusLabel(state)}</option>
                         ))}
                     </select>
                 </div>

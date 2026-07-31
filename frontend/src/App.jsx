@@ -60,7 +60,9 @@ const AdminOnlyRoute = ({ children }) => {
 const FinancialAccessRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
-    if (!canAccessFinancialModules(user)) return <Navigate to="/dashboard" replace />;
+    if (!canAccessFinancialModules(user)) {
+        return <Navigate to={isClientRole(user) ? '/pedidos' : '/dashboard'} replace />;
+    }
     return children;
 };
 

@@ -11,6 +11,16 @@ import {
     getBridgeParts
 } from '../utils/odontograma.js';
 import { ODONTOGRAM_TOOTH_PATHS, ODONTOGRAM_QUADRANTS, buildToothCenters } from './odontogramaShapes.js';
+import {
+    AFFINITY_VIEWBOX,
+    AFFINITY_DECORATIONS,
+    AFFINITY_TEETH,
+    AFFINITY_ARCH_ORDER,
+    buildAffinityToothCenters,
+    buildAffinityToothLabels
+} from './odontogramaAffinityShapes.js';
+
+const CLASSIC_VIEWBOX = '-4 -4 417 702';
 
 const OdontogramaInteractive = ({
     product,
@@ -21,8 +31,10 @@ const OdontogramaInteractive = ({
     showProductPill = true,
     showHeader = true,
     preserveAspectRatio = 'xMidYMid meet',
-    disabled = false
+    disabled = false,
+    variant = 'classic'
 }) => {
+    const isMinimal = variant === 'minimal';
     const [isDragging, setIsDragging] = useState(false);
     const [dragSelectValue, setDragSelectValue] = useState(true);
     const [bridgeAnchor, setBridgeAnchor] = useState(null);
@@ -30,7 +42,15 @@ const OdontogramaInteractive = ({
     const [bridgePointerStart, setBridgePointerStart] = useState(null);
     const [bridgeDidDrag, setBridgeDidDrag] = useState(false);
     const [bridgeHint, setBridgeHint] = useState('');
-    const toothCenters = useMemo(() => buildToothCenters(), []);
+    const toothCenters = useMemo(
+        () => (isMinimal ? buildAffinityToothCenters() : buildToothCenters()),
+        [isMinimal]
+    );
+    const toothLabels = useMemo(
+        () => (isMinimal ? buildAffinityToothLabels() : null),
+        [isMinimal]
+    );
+    const svgViewBox = isMinimal ? AFFINITY_VIEWBOX : CLASSIC_VIEWBOX;
 
     const currentTeeth = useMemo(() => sortTeethByArchOrder(selection?.piezas_dentales || []), [selection?.piezas_dentales]);
     const selectedSet = useMemo(() => new Set(currentTeeth), [currentTeeth]);
@@ -216,7 +236,7 @@ const OdontogramaInteractive = ({
     }, [selection?.es_puente, currentTeeth, toothCenters]);
 
     return (
-        <div className={`odontograma-shell${disabled ? ' is-readonly' : ''}`}>
+        <div className={`odontograma-shell${disabled ? ' is-readonly' : ''}${isMinimal ? ' is-minimal' : ''}`}>
             {showHeader && (
                 <div className="odontograma-header">
                     <div>
@@ -236,7 +256,7 @@ const OdontogramaInteractive = ({
                 <section className="odontograma-panel">
                     <div className="odontograma-stage">
                         <svg
-                            viewBox="-4 -4 417 702"
+                            viewBox={svgViewBox}
                             preserveAspectRatio={preserveAspectRatio}
                             className="odontograma-svg"
                             role="img"
@@ -244,15 +264,33 @@ const OdontogramaInteractive = ({
                             onPointerMove={handlePointerMove}
                             aria-disabled={disabled}
                         >
-                            <defs>
-                                <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
-                                    <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-                                    <feMerge>
-                                        <feMergeNode in="coloredBlur" />
-                                        <feMergeNode in="SourceGraphic" />
-                                    </feMerge>
-                                </filter>
-                            </defs>
+                            {!isMinimal && (
+                                <defs>
+                                    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+                                        <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                                        <feMerge>
+                                            <feMergeNode in="coloredBlur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                </defs>
+                            )}
+
+                            {isMinimal && (
+                                <g className="odontograma-decor" aria-hidden="true">
+                                    {(AFFINITY_DECORATIONS.maxilarSuperior || [])
+                                        .filter((d) => d.length < 500)
+                                        .map((d, index) => (
+                                            <path key={`max-sup-${index}`} className="odontograma-arch-guide" d={d} />
+                                        ))}
+                                    {AFFINITY_DECORATIONS.baseSuperior ? (
+                                        <path className="odontograma-arch-outline" d={AFFINITY_DECORATIONS.baseSuperior} />
+                                    ) : null}
+                                    {AFFINITY_DECORATIONS.maxilarInferior ? (
+                                        <path className="odontograma-arch-outline" d={AFFINITY_DECORATIONS.maxilarInferior} />
+                                    ) : null}
+                                </g>
+                            )}
 
                             {bridgePoints && (
                                 <polyline
@@ -261,58 +299,97 @@ const OdontogramaInteractive = ({
                                     fill="none"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
-                                    filter="url(#softGlow)"
+                                    filter={isMinimal ? undefined : 'url(#softGlow)'}
                                 />
                             )}
 
-                            {ODONTOGRAM_QUADRANTS.map((quadrant) => (
-                                <g key={quadrant.prefix} transform={quadrant.transform}>
-                                    {ODONTOGRAM_TOOTH_PATHS.map((tooth) => {
-                                        const toothCode = `${quadrant.prefix}${tooth.name}`;
-                                        return (
-                                            <g
-                                                key={toothCode}
-                                                onPointerDown={(event) => handlePointerDown(event, toothCode)}
-                                                onPointerEnter={() => handlePointerEnter(toothCode)}
-                                                className={getToothClassName(toothCode)}
-                                                data-tooth-code={toothCode}
-                                            >
-                                                <path className="tooth-outline" d={tooth.outlinePath} />
-                                                <path className="tooth-fill" d={tooth.shadowPath} />
-                                                {Array.isArray(tooth.lineHighlightPath)
-                                                    ? tooth.lineHighlightPath.map((segment) => (
-                                                        <path className="tooth-groove" key={`${toothCode}-${segment}`} d={segment} />
-                                                    ))
-                                                    : <path className="tooth-groove" d={tooth.lineHighlightPath} />}
-                                            </g>
-                                        );
-                                    })}
-                                </g>
-                            ))}
+                            {isMinimal
+                                ? AFFINITY_ARCH_ORDER.map((toothCode) => {
+                                    const tooth = AFFINITY_TEETH[toothCode];
+                                    if (!tooth) return null;
+                                    return (
+                                        <g
+                                            key={toothCode}
+                                            id={`tooth-${toothCode}`}
+                                            onPointerDown={(event) => handlePointerDown(event, toothCode)}
+                                            onPointerEnter={() => handlePointerEnter(toothCode)}
+                                            className={getToothClassName(toothCode)}
+                                            data-tooth-code={toothCode}
+                                        >
+                                            <path className="tooth-outline" d={tooth.d} />
+                                        </g>
+                                    );
+                                })
+                                : ODONTOGRAM_QUADRANTS.map((quadrant) => (
+                                    <g key={quadrant.prefix} transform={quadrant.transform}>
+                                        {ODONTOGRAM_TOOTH_PATHS.map((tooth) => {
+                                            const toothCode = `${quadrant.prefix}${tooth.name}`;
+                                            return (
+                                                <g
+                                                    key={toothCode}
+                                                    onPointerDown={(event) => handlePointerDown(event, toothCode)}
+                                                    onPointerEnter={() => handlePointerEnter(toothCode)}
+                                                    className={getToothClassName(toothCode)}
+                                                    data-tooth-code={toothCode}
+                                                >
+                                                    <path className="tooth-outline" d={tooth.outlinePath} />
+                                                    <path className="tooth-fill" d={tooth.shadowPath} />
+                                                    {Array.isArray(tooth.lineHighlightPath)
+                                                        ? tooth.lineHighlightPath.map((segment) => (
+                                                            <path className="tooth-groove" key={`${toothCode}-${segment}`} d={segment} />
+                                                        ))
+                                                        : <path className="tooth-groove" d={tooth.lineHighlightPath} />}
+                                                </g>
+                                            );
+                                        })}
+                                    </g>
+                                ))}
 
-                            {ARCH_ORDER.map((toothCode) => {
+                            {(isMinimal ? AFFINITY_ARCH_ORDER : ARCH_ORDER).map((toothCode) => {
                                 const center = toothCenters[toothCode];
                                 if (!center) return null;
+                                const isSelected = selectedSet.has(toothCode);
+                                const labelPoint = toothLabels?.[toothCode] || {
+                                    x: center.x,
+                                    y: isMinimal ? center.y - 18 : center.y + 4
+                                };
                                 return (
-                                    <text key={`label-${toothCode}`} x={center.x} y={center.y + 4} textAnchor="middle" className="tooth-code">
-                                        {toothCode}
-                                    </text>
+                                    <g key={`label-${toothCode}`} pointerEvents="none">
+                                        {isMinimal && isSelected ? (
+                                            <circle
+                                                className="tooth-selected-dot"
+                                                cx={center.x}
+                                                cy={center.y}
+                                                r={9}
+                                            />
+                                        ) : null}
+                                        <text
+                                            x={labelPoint.x}
+                                            y={labelPoint.y}
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                            className={`tooth-code${isSelected ? ' is-selected' : ''}`}
+                                        >
+                                            {toothCode}
+                                        </text>
+                                    </g>
                                 );
                             })}
 
-                            {selection?.es_puente && ARCH_ORDER.map((toothCode) => {
+                            {selection?.es_puente && (isMinimal ? AFFINITY_ARCH_ORDER : ARCH_ORDER).map((toothCode) => {
                                 const center = toothCenters[toothCode];
                                 if (!center) return null;
+                                const roleY = isMinimal ? center.y - 28 : center.y - 17;
                                 if (bridgeParts.pilares.includes(toothCode)) {
                                     return (
-                                        <text key={`role-p-${toothCode}`} x={center.x} y={center.y - 17} textAnchor="middle" className="bridge-role-label pillar">
+                                        <text key={`role-p-${toothCode}`} x={center.x} y={roleY} textAnchor="middle" className="bridge-role-label pillar">
                                             P
                                         </text>
                                     );
                                 }
                                 if (bridgeParts.ponticos.includes(toothCode)) {
                                     return (
-                                        <text key={`role-pt-${toothCode}`} x={center.x} y={center.y - 17} textAnchor="middle" className="bridge-role-label pontic">
+                                        <text key={`role-pt-${toothCode}`} x={center.x} y={roleY} textAnchor="middle" className="bridge-role-label pontic">
                                             Pt
                                         </text>
                                     );

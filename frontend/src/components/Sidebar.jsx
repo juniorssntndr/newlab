@@ -1,50 +1,59 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
 import { canAccessFinancialModules, isAdminRole, isClientRole } from '../utils/accessControl.js';
+import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
 import AfinixLogo from './AfinixLogo.jsx';
 
 const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const { user, logout } = useAuth();
-    const location = useLocation();
     const isClient = isClientRole(user);
     const canAccessFinance = canAccessFinancialModules(user);
 
+    const pendingApprovalQuery = useOrdersListQuery({
+        filters: { estado: 'esperando_aprobacion' },
+        enabled: isClient,
+    });
+    const pendingApprovalCount = isClient && Array.isArray(pendingApprovalQuery.data)
+        ? pendingApprovalQuery.data.length
+        : 0;
+
     const labLinks = [
-        {
-            section: 'Principal', items: [
-                { to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' },
-                { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Seguimiento de pedidos' },
-                ...(canAccessFinance ? [
-                    { to: '/finanzas', icon: 'bi-cash-stack', label: 'Finanzas' },
-                    { to: '/caja-gastos', icon: 'bi-wallet2', label: 'Caja y Gastos' }
-                ] : []),
-                { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
-            ]
-        },
-        {
-            section: 'Gestión', items: [
-                { to: '/clinicas', icon: 'bi-building', label: 'Clientes / CRM' },
-                { to: '/doctores', icon: 'bi-person-badge', label: 'Doctores' },
-                { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo de Productos' },
-                { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
-                ...(isAdminRole(user) ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : [])
-            ]
-        },
+        ...(isAdminRole(user)
+            ? [{ to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' }]
+            : []),
+        { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Cola de pedidos' },
+        ...(canAccessFinance
+            ? [{ to: '/finanzas', icon: 'bi-cash-stack', label: 'Finanzas' }]
+            : []),
+        ...(canAccessFinance
+            ? [{ to: '/caja-gastos', icon: 'bi-wallet2', label: isAdminRole(user) ? 'Caja y Gastos' : 'Caja' }]
+            : []),
+        { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
+        { to: '/clinicas', icon: 'bi-building', label: 'Clientes' },
+        { to: '/doctores', icon: 'bi-person-badge', label: 'Doctores' },
+        { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo' },
+        { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
+        ...(isAdminRole(user) ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : []),
+        { to: '/cuenta', icon: 'bi-person-circle', label: 'Cuenta' },
     ];
 
     const clientLinks = [
+        { to: '/catalogo', icon: 'bi-plus-circle', label: 'Pedir' },
         {
-            section: 'Mi Portal', items: [
-                { to: '/catalogo', icon: 'bi-grid', label: 'Catálogo' },
-                { to: '/pedidos/nuevo', icon: 'bi-plus-circle', label: 'Nuevo Pedido' },
-                { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Mis Pedidos' },
-                { to: '/mi-calendario', icon: 'bi-calendar3', label: 'Calendario' },
-            ]
+            to: '/pedidos',
+            icon: 'bi-clipboard2-pulse',
+            label: 'Mis pedidos',
+            badge: pendingApprovalCount,
+            badgeLabel: pendingApprovalCount === 1
+                ? '1 pedido por aprobar'
+                : `${pendingApprovalCount} pedidos por aprobar`,
         },
+        { to: '/mi-calendario', icon: 'bi-calendar3', label: 'Calendario' },
+        { to: '/cuenta', icon: 'bi-person-circle', label: 'Cuenta' },
     ];
 
-    const navSections = isClient ? clientLinks : labLinks;
+    const navItems = isClient ? clientLinks : labLinks;
 
     return (
         <>
@@ -54,34 +63,40 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                     <AfinixLogo showText={!collapsed} size={collapsed ? 32 : 36} theme="dark" />
                 </div>
 
-                <nav className="sidebar-nav">
-                    {navSections.map((section, idx) => (
-                        <div className="nav-section" key={idx}>
-                            <div className="nav-section-title">{section.section}</div>
-                            {section.items.map(item => (
-                                <NavLink
-                                    key={item.to}
-                                    to={item.to}
-                                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                                    onClick={onMobileClose}
-                                    end={item.to === '/pedidos'}
-                                >
-                                    <i className={`bi ${item.icon}`}></i>
-                                    <span>{item.label}</span>
-                                    <div className="nav-tooltip">{item.label}</div>
-                                </NavLink>
-                            ))}
-                        </div>
-                    ))}
+                <nav className="sidebar-nav" aria-label="Navegación principal">
+                    <div className="nav-section nav-section--flat">
+                        {navItems.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}${item.badge > 0 ? ' has-badge' : ''}`}
+                                onClick={onMobileClose}
+                                end={item.to === '/pedidos' || item.to === '/catalogo'}
+                            >
+                                <i className={`bi ${item.icon}`}></i>
+                                <span>{item.label}</span>
+                                {item.badge > 0 ? (
+                                    <span
+                                        className="nav-item-badge"
+                                        aria-label={item.badgeLabel || `${item.badge} pendientes`}
+                                    >
+                                        {item.badge > 99 ? '99+' : item.badge}
+                                    </span>
+                                ) : null}
+                                <div className="nav-tooltip">{item.label}</div>
+                            </NavLink>
+                        ))}
+                    </div>
                 </nav>
 
                 <div className="sidebar-footer">
-                    <button className="sidebar-toggle" onClick={onToggle}>
+                    <button type="button" className="sidebar-toggle" onClick={onToggle}>
                         <i className={`bi ${collapsed ? 'bi-chevron-right' : 'bi-chevron-left'}`}></i>
                         <span>Colapsar</span>
                         <div className="nav-tooltip">{collapsed ? 'Expandir' : 'Colapsar'}</div>
                     </button>
                     <button
+                        type="button"
                         className="sidebar-toggle"
                         onClick={logout}
                         style={{ marginTop: '0.5rem', color: '#EF4444' }}

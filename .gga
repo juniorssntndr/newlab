@@ -1,5 +1,7 @@
 # Gentleman Guardian Angel Configuration
-PROVIDER="opencode"
+# OpenCode needs an explicit working model; default was broken.
+# Prompt is handed via stdin (local GGA providers.sh ARG_MAX patch on Windows).
+PROVIDER="opencode:openai/gpt-5.4-mini"
 FILE_PATTERNS="frontend/src/components/orders/*.jsx,frontend/src/modules/orders/composer/*.js"
 EXCLUDE_PATTERNS="*.test.js,*.spec.js,*.test.jsx,*.spec.jsx,*.d.ts"
 RULES_FILE="AGENTS.md"

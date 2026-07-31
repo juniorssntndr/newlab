@@ -1,26 +1,51 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
-import OdontogramaInteractive from '../components/OdontogramaInteractive.jsx';
-import OrderClinicalPanel from '../components/orders/OrderClinicalPanel.jsx';
-import OrderCatalogPane from '../components/orders/OrderCatalogPane.jsx';
+import OrderWizardShell from '../components/orders/wizard/OrderWizardShell.jsx';
+import OrderWizardTimeline from '../components/orders/wizard/OrderWizardTimeline.jsx';
+import OrderTeethStep from '../components/orders/wizard/OrderTeethStep.jsx';
+import OrderIntakeStep from '../components/orders/wizard/OrderIntakeStep.jsx';
+import OrderSelectedProductCard from '../components/orders/wizard/OrderSelectedProductCard.jsx';
+import DeliveryDateCoordModal from '../components/orders/wizard/DeliveryDateCoordModal.jsx';
+import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
 import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
 import { useOrderComposerState } from '../modules/orders/composer/useOrderComposerState.js';
 import { apiClient } from '../services/http/apiClient.js';
-
-const BACKEND_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace(/\/api\/?$/, '');
-
-const resolveImageUrl = (imageUrl) => {
-    if (!imageUrl) return '';
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
-    return `${BACKEND_BASE}${imageUrl}`;
-};
+import { isClientRole } from '../utils/accessControl.js';
+import {
+    applyExpressSurcharge,
+    expressSurchargeAmount,
+    formatObservacionesWithIntake,
+    ORDER_EXPRESS_SURCHARGE_RATE,
+    ORDER_INTAKE_DEFAULT,
+} from '../modules/orders/wizard/orderWizardConstants.js';
+import {
+    clearOrderWizardDraft,
+    readOrderWizardDraft,
+    saveOrderWizardDraft,
+} from '../modules/orders/wizard/orderWizardDraft.js';
+import { buildItemSelection } from '../utils/odontograma.js';
+import { resolveImageUrl, resolveProductImageUrl } from '../utils/resolveImageUrl.js';
+import { matchLandingProductImage } from '../utils/productCatalogImages.js';
 
 const formatDateForInput = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+};
+
+const formatDeliveryLabel = (isoDate) => {
+    if (!isoDate) return '—';
+    const [year, month, day] = String(isoDate).split('-').map(Number);
+    if (!year || !month || !day) return isoDate;
+    const date = new Date(year, month - 1, day);
+    const label = date.toLocaleDateString('es-PE', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+    });
+    return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
 const calculateEstimatedDeliveryDate = (product, isUrgent) => {
@@ -33,23 +58,70 @@ const calculateEstimatedDeliveryDate = (product, isUrgent) => {
     return formatDateForInput(deliveryDate);
 };
 
+const ConfirmProductThumb = ({ product }) => {
+    const primarySrc = resolveProductImageUrl(product);
+    const landingSrc = resolveImageUrl(matchLandingProductImage(product));
+    const preferredSrc = primarySrc || landingSrc;
+    const [src, setSrc] = useState(preferredSrc);
+    const [imgError, setImgError] = useState(false);
+
+    useEffect(() => {
+        setSrc(preferredSrc);
+        setImgError(false);
+    }, [preferredSrc]);
+
+    if (!src || imgError) {
+        return <i className="bi bi-gem" aria-hidden="true"></i>;
+    }
+
+    return (
+        <img
+            src={src}
+            alt=""
+            loading="lazy"
+            onError={() => {
+                if (landingSrc && src !== landingSrc) {
+                    setSrc(landingSrc);
+                    return;
+                }
+                setImgError(true);
+            }}
+        />
+    );
+};
+
 const NuevoPedido = () => {
     const { getHeaders, user } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const isClient = isClientRole(user);
+    const preselectProductId = searchParams.get('productoId');
+
     const [clinicas, setClinicas] = useState([]);
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [clinicSearch, setClinicSearch] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
+    const [productSearch, setProductSearch] = useState('');
     const [form, setForm] = useState({
         clinica_id: '',
         paciente_nombre: '',
         fecha_entrega: '',
-        observaciones: ''
+        observaciones: '',
     });
+    const [intakeMode, setIntakeMode] = useState(ORDER_INTAKE_DEFAULT);
+    const [intakeNote, setIntakeNote] = useState('');
     const [isExpressOrder, setIsExpressOrder] = useState(false);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
-    const [selectedImageError, setSelectedImageError] = useState(false);
+    /** @type {['paciente'|'piezas'|'confirmar', Function]} */
+    const [macroStep, setMacroStep] = useState('paciente');
+    const [pickingProduct, setPickingProduct] = useState(false);
+    const [showAddItemPrompt, setShowAddItemPrompt] = useState(false);
+    const [appliedProductId, setAppliedProductId] = useState(null);
+    const [catalogReady, setCatalogReady] = useState(false);
+    const [coordinatingDelivery, setCoordinatingDelivery] = useState(false);
+
     const createOrderMutation = useCreateOrderMutation();
     const {
         items,
@@ -57,28 +129,129 @@ const NuevoPedido = () => {
         selectedItem,
         selectedItemId,
         addProduct,
-        removeItem,
-        replaceItems,
         selectItem,
         updateItemField,
-        updateQuantity,
-        updateDentalSelection
+        updateDentalSelection,
     } = useOrderComposerState();
+
+    const daysForProduct = (product, urgent) => {
+        if (!product) return null;
+        const rawDays = Number(product.tiempo_estimado_dias);
+        const baseDays = Number.isFinite(rawDays) && rawDays > 0 ? Math.trunc(rawDays) : 5;
+        return urgent ? Math.max(1, Math.floor(baseDays / 2)) : baseDays;
+    };
+
+    const productForUi = useMemo(() => {
+        const productId = selectedItem?.producto_id || selectedItem?.product?.id || selectedItem?.id;
+        const fromCatalog = productos.find((item) => String(item.id) === String(productId));
+        return fromCatalog || selectedItem?.product || selectedItem || null;
+    }, [productos, selectedItem]);
+
+    const standardDays = daysForProduct(productForUi || items[0], false);
+    const urgentDays = daysForProduct(productForUi || items[0], true);
+    const displayDays = isExpressOrder ? urgentDays : standardDays;
+    const productPrice = Number(productForUi?.precio_base ?? selectedItem?.precio_unitario ?? 0);
+    const expressSurcharge = expressSurchargeAmount(productPrice, isExpressOrder);
+    const displayUnitPrice = applyExpressSurcharge(productPrice, isExpressOrder);
+    const displayTotal = useMemo(() => {
+        const base = Number(total || 0);
+        if (!isExpressOrder || base <= 0) return base;
+        return Number((base * (1 + ORDER_EXPRESS_SURCHARGE_RATE)).toFixed(2));
+    }, [total, isExpressOrder]);
+    const priceLabel = productPrice > 0 ? `S/. ${displayUnitPrice.toFixed(2)}` : null;
+    const etaLabel = displayDays
+        ? `Entrega estimada: ${displayDays} día${displayDays === 1 ? '' : 's'}${form.fecha_entrega ? ` · ${form.fecha_entrega}` : ''}`
+        : null;
+    const priceNote = isExpressOrder && expressSurcharge > 0
+        ? `Incluye recargo express +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}% (S/. ${expressSurcharge.toFixed(2)})`
+        : null;
+
+    const persistDraftAndGoCatalog = () => {
+        saveOrderWizardDraft({
+            form,
+            intakeMode,
+            intakeNote,
+            isExpressOrder,
+            macroStep: 'paciente',
+        });
+        navigate('/catalogo');
+    };
+
+    const goToProductSelection = () => {
+        if (isClient) {
+            persistDraftAndGoCatalog();
+            return;
+        }
+        setPickingProduct(true);
+        setMacroStep('paciente');
+    };
 
     useEffect(() => {
         Promise.all([
             apiClient('/clinicas', { headers: getHeaders() }),
-            apiClient('/productos', { headers: getHeaders() }),
-            apiClient('/categorias', { headers: getHeaders() })
+            apiClient('/productos', {
+                headers: getHeaders(),
+                query: { activo: true, visible: true },
+            }),
+            apiClient('/categorias', { headers: getHeaders() }),
         ]).then(([clinics, products, categories]) => {
             setClinicas(clinics);
-            setProductos(products);
+            const visibleProducts = (Array.isArray(products) ? products : []).filter(
+                (product) => product?.activo !== false && product?.visible !== false
+            );
+            setProductos(visibleProducts);
             setCategorias(categories);
             if (user?.clinica_id) {
-                setForm((prevForm) => ({ ...prevForm, clinica_id: user.clinica_id }));
+                setForm((prev) => ({ ...prev, clinica_id: user.clinica_id }));
             }
-        });
-    }, []);
+            setCatalogReady(true);
+        }).catch((err) => setError(err.message || 'No se pudo cargar el catálogo'));
+    }, [getHeaders, user?.clinica_id]);
+
+    useEffect(() => {
+        const draft = readOrderWizardDraft();
+        if (!draft) return;
+        if (draft.form) {
+            setForm((prev) => ({
+                ...prev,
+                ...draft.form,
+                clinica_id: user?.clinica_id || draft.form.clinica_id || prev.clinica_id,
+            }));
+        }
+        if (draft.intakeMode) setIntakeMode(draft.intakeMode);
+        if (typeof draft.intakeNote === 'string') setIntakeNote(draft.intakeNote);
+        if (typeof draft.isExpressOrder === 'boolean') setIsExpressOrder(draft.isExpressOrder);
+    }, [user?.clinica_id]);
+
+    useEffect(() => {
+        if (!preselectProductId || productos.length === 0) return;
+        if (String(appliedProductId) === String(preselectProductId)) return;
+
+        const product = productos.find((item) => String(item.id) === String(preselectProductId));
+        if (!product) return;
+
+        const itemId = addProduct(product);
+        selectItem(itemId);
+        if (isExpressOrder) updateItemField(itemId, 'es_urgente', true);
+        setAppliedProductId(String(product.id));
+        setMacroStep('paciente');
+        setPickingProduct(false);
+        clearOrderWizardDraft();
+    }, [
+        preselectProductId,
+        productos,
+        appliedProductId,
+        addProduct,
+        selectItem,
+        isExpressOrder,
+        updateItemField,
+    ]);
+
+    useEffect(() => {
+        if (!catalogReady || isClient || preselectProductId) return;
+        if (items.length > 0) return;
+        setPickingProduct(true);
+    }, [catalogReady, isClient, preselectProductId, items.length]);
 
     useEffect(() => {
         if (!selectedItemId && items.length > 0) {
@@ -86,60 +259,229 @@ const NuevoPedido = () => {
         }
     }, [items, selectedItemId, selectItem]);
 
-    const addItem = (producto) => {
-        const existingItem = items.find((item) => {
-            const itemProductId = item.product?.id || item.product_id || item.id_producto;
-            return itemProductId === producto.id;
-        });
+    const selectedClinic = useMemo(
+        () => clinicas.find((clinic) => String(clinic.id) === String(form.clinica_id)) || null,
+        [clinicas, form.clinica_id]
+    );
 
-        if (existingItem) {
-            setError('');
-            selectItem(existingItem.id);
+    const clinicSearchValue = clinicSearch.trim().toLowerCase();
+    const filteredClinicas = useMemo(() => {
+        if (!clinicSearchValue) return clinicas;
+        return clinicas.filter((clinic) => clinic.nombre?.toLowerCase().includes(clinicSearchValue));
+    }, [clinicas, clinicSearchValue]);
+
+    const filteredProductos = useMemo(() => {
+        const query = productSearch.trim().toLowerCase();
+        return productos.filter((product) => {
+            const byCat = categoryFilter === 'all' || String(product.categoria_id) === String(categoryFilter);
+            const byQuery = !query
+                || product.nombre?.toLowerCase().includes(query)
+                || product.categoria_nombre?.toLowerCase().includes(query);
+            return byCat && byQuery;
+        });
+    }, [productos, categoryFilter, productSearch]);
+
+    const estimatedDeliveryDate = useMemo(() => {
+        const selectedProduct = productForUi || items[0]?.product || items[0] || null;
+        return calculateEstimatedDeliveryDate(selectedProduct, isExpressOrder);
+    }, [productForUi, items, isExpressOrder]);
+
+    useEffect(() => {
+        if (user?.clinica_id && selectedClinic?.nombre) {
+            setClinicSearch(selectedClinic.nombre);
+        }
+    }, [user?.clinica_id, selectedClinic?.nombre]);
+
+    useEffect(() => {
+        setForm((prev) => {
+            if (!estimatedDeliveryDate) return prev;
+            // Solo autoajusta si no hay fecha o si quedó por debajo del mínimo del lab.
+            if (!prev.fecha_entrega || prev.fecha_entrega < estimatedDeliveryDate) {
+                return { ...prev, fecha_entrega: estimatedDeliveryDate };
+            }
+            return prev;
+        });
+    }, [estimatedDeliveryDate]);
+
+    const isCoordinatedDelivery = Boolean(
+        estimatedDeliveryDate
+        && form.fecha_entrega
+        && form.fecha_entrega > estimatedDeliveryDate
+    );
+
+    const setDeliveryDate = (nextDate) => {
+        const safeDate = estimatedDeliveryDate && nextDate && nextDate < estimatedDeliveryDate
+            ? estimatedDeliveryDate
+            : nextDate;
+        setForm((prev) => ({ ...prev, fecha_entrega: safeDate || estimatedDeliveryDate || '' }));
+    };
+
+    const needsDental = !!selectedItem?.requiresDentalSelection;
+
+    const checklistItems = useMemo(() => {
+        const productDone = items.length > 0;
+        const pacienteDone = Boolean(form.paciente_nombre?.trim() && form.clinica_id);
+        const piezasDone = needsDental
+            ? Boolean(selectedItem?.piezas_dentales?.length)
+            : (macroStep === 'confirmar' || Boolean(selectedItem?.color_vita || selectedItem?.notas));
+        const confirmarDone = Boolean(intakeMode);
+
+        const status = (done, isCurrent) => {
+            if (done && !isCurrent) return 'done';
+            if (isCurrent) return 'current';
+            if (done) return 'done';
+            return 'pending';
+        };
+
+        const piezasDetail = (() => {
+            if (needsDental) {
+                const teeth = selectedItem?.piezas_dentales?.length
+                    ? `${selectedItem.piezas_dentales.length} pieza(s)`
+                    : 'Sin piezas aún';
+                return selectedItem?.color_vita ? `${teeth} · ${selectedItem.color_vita}` : teeth;
+            }
+            return selectedItem?.color_vita || 'Sin tono aún';
+        })();
+
+        return [
+            {
+                id: 'paciente',
+                label: 'Paciente y prioridad',
+                description: 'Datos del caso y entrega estándar o express.',
+                detail: productDone
+                    ? (form.paciente_nombre?.trim() || selectedItem?.nombre || 'Producto listo')
+                    : 'Elige un producto primero',
+                status: status(
+                    pacienteDone,
+                    !pickingProduct && macroStep === 'paciente'
+                ),
+            },
+            {
+                id: 'piezas',
+                label: needsDental ? 'Piezas e indicaciones' : 'Tono e indicaciones',
+                description: needsDental
+                    ? 'Selecciona dientes, tono VITA y notas clínicas.'
+                    : 'Define tono e instrucciones del trabajo.',
+                detail: piezasDetail,
+                status: status(piezasDone, macroStep === 'piezas'),
+            },
+            {
+                id: 'confirmar',
+                label: 'Confirmar e ingreso',
+                description: 'Revisa el resumen y cómo llega el caso al lab.',
+                detail: intakeMode || 'Pendiente de coordinar',
+                status: status(confirmarDone, macroStep === 'confirmar'),
+            },
+        ];
+    }, [
+        items.length,
+        form.paciente_nombre,
+        form.clinica_id,
+        needsDental,
+        selectedItem,
+        macroStep,
+        pickingProduct,
+        intakeMode,
+    ]);
+
+    const closeWizard = () => navigate(isClient ? '/catalogo' : '/pedidos');
+
+    const goBack = () => {
+        setError('');
+        setShowAddItemPrompt(false);
+        if (pickingProduct) {
+            if (items.length > 0) {
+                setPickingProduct(false);
+                return;
+            }
+            closeWizard();
             return;
         }
-
-        if (items.length > 0) {
-            replaceItems([]);
+        if (macroStep === 'confirmar') {
+            setMacroStep('piezas');
+            return;
         }
+        if (macroStep === 'piezas') {
+            setMacroStep('paciente');
+            return;
+        }
+        closeWizard();
+    };
 
+    const handleProductPick = (producto) => {
         const itemId = addProduct(producto);
-        setError('');
         selectItem(itemId);
-        if (isExpressOrder) {
-            updateItemField(itemId, 'es_urgente', true);
-        }
+        if (isExpressOrder) updateItemField(itemId, 'es_urgente', true);
+        setError('');
+        setShowAddItemPrompt(false);
+        setPickingProduct(false);
+        setMacroStep('paciente');
     };
 
-    const removeOrderItem = (itemId) => {
-        removeItem(itemId);
-        if (selectedItemId === itemId) {
-            const nextSelected = items.find((item) => item.id !== itemId);
-            selectItem(nextSelected?.id || null);
+    const continueFromPaciente = () => {
+        if (!form.clinica_id || !form.paciente_nombre?.trim()) {
+            setError('Completa clínica y nombre del paciente.');
+            return;
         }
+        if (!items.length) {
+            setError('Elige un producto para continuar.');
+            goToProductSelection();
+            return;
+        }
+        setError('');
+        setMacroStep('piezas');
     };
 
-    const hasMissingDentalSelection = items.some((item) => {
-        return item.requiresDentalSelection && (!item.piezas_dentales || item.piezas_dentales.length === 0);
-    });
+    const continueFromTeeth = () => {
+        if (needsDental && (!selectedItem?.piezas_dentales || selectedItem.piezas_dentales.length < 1)) {
+            setError('Selecciona al menos un diente.');
+            return;
+        }
+        setError('');
+        if (isClient) {
+            setMacroStep('confirmar');
+            return;
+        }
+        setShowAddItemPrompt(true);
+    };
+
+    const goToConfirmar = () => {
+        setShowAddItemPrompt(false);
+        setMacroStep('confirmar');
+    };
 
     const handleSubmit = async () => {
         if (!form.clinica_id || !form.paciente_nombre || !form.fecha_entrega || items.length === 0) {
-            setError('Completa clinica, paciente, fecha de entrega y agrega al menos un producto.');
+            setError('Completa clínica, paciente, fecha de entrega y al menos un producto.');
             return;
         }
-
-        if (hasMissingDentalSelection) {
-            setError('Cada item clinico debe tener al menos una pieza seleccionada en el odontograma.');
+        if (items.some((item) => item.requiresDentalSelection && (!item.piezas_dentales || item.piezas_dentales.length === 0))) {
+            setError('Cada ítem clínico debe tener al menos una pieza seleccionada.');
+            return;
+        }
+        if (!intakeMode) {
+            setError('Elige cómo llegará el caso al laboratorio.');
             return;
         }
 
         setSaving(true);
         setError('');
-
         try {
+            const observaciones = formatObservacionesWithIntake(
+                intakeMode,
+                [intakeNote, form.observaciones].filter(Boolean).join('\n')
+            );
             const pedido = await createOrderMutation.mutateAsync({
                 ...form,
-                items
+                observaciones,
+                items: items.map((item) => {
+                    const baseUnit = Number(item.precio_unitario || item.precio_base || 0);
+                    return {
+                        ...item,
+                        es_urgente: isExpressOrder,
+                        precio_unitario: applyExpressSurcharge(baseUnit, isExpressOrder),
+                    };
+                }),
             });
             navigate(`/pedidos/${pedido.id}`);
         } catch (submitError) {
@@ -149,303 +491,401 @@ const NuevoPedido = () => {
         }
     };
 
-    const selectedItemNeedsOdontograma = !!selectedItem?.requiresDentalSelection;
-    const clinicalPanelForm = selectedItem || {
-        piezas_dentales: [],
-        color_vita: '',
-        notas: ''
-    };
-    const selectedProductImage = selectedItem?.product?.image_url || selectedItem?.image_url || '';
-    const selectedClinic = useMemo(() => {
-        return clinicas.find((clinic) => String(clinic.id) === String(form.clinica_id)) || null;
-    }, [clinicas, form.clinica_id]);
-    const clinicSearchValue = clinicSearch.trim().toLowerCase();
-    const filteredClinicas = useMemo(() => {
-        if (!clinicSearchValue) return clinicas;
-        return clinicas.filter((clinic) => clinic.nombre?.toLowerCase().includes(clinicSearchValue));
-    }, [clinicas, clinicSearchValue]);
-    const clinicOptions = useMemo(() => {
-        if (user?.clinica_id && selectedClinic) return [selectedClinic];
-        return filteredClinicas;
-    }, [user?.clinica_id, selectedClinic, filteredClinicas]);
-    const estimatedDeliveryDate = useMemo(() => {
-        const selectedProduct = selectedItem?.product || selectedItem || items[0]?.product || items[0] || null;
-        return calculateEstimatedDeliveryDate(selectedProduct, isExpressOrder);
-    }, [selectedItem, items, isExpressOrder]);
+    const stepTitle = (() => {
+        if (pickingProduct) return 'Producto';
+        if (macroStep === 'confirmar') return 'Confirmar pedido';
+        if (macroStep === 'piezas') return needsDental ? null : 'Tono e instrucciones';
+        return null;
+    })();
 
-    useEffect(() => {
-        setSelectedImageError(false);
-    }, [selectedProductImage, selectedItem?.id]);
-
-    useEffect(() => {
-        if (user?.clinica_id && selectedClinic?.nombre) {
-            setClinicSearch(selectedClinic.nombre);
-        }
-    }, [user?.clinica_id, selectedClinic?.nombre]);
-
-    useEffect(() => {
-        setForm((prevForm) => {
-            if (prevForm.fecha_entrega === estimatedDeliveryDate) return prevForm;
-            return { ...prevForm, fecha_entrega: estimatedDeliveryDate };
-        });
-    }, [estimatedDeliveryDate]);
+    const showChecklist = !pickingProduct;
 
     return (
-        <div className="animate-fade-in nuevo-pedido-page-shell">
-            <div className="page-header nuevo-pedido-page-header">
-                <div className="page-header-left">
-                    <div>
-                        <h1>Nuevo Pedido</h1>
-                        <p>Prescripcion digital de trabajo dental</p>
-                    </div>
-                </div>
-                <button
-                    className="btn btn-ghost btn-sm nuevo-pedido-header-back"
-                    onClick={() => navigate('/pedidos')}
-                    type="button"
-                >
-                    <i className="bi bi-arrow-left" aria-hidden="true"></i>
-                    Volver a seguimiento
-                </button>
-            </div>
-
-            {error && (
-                <div className="login-error order-composer-error-banner" id="nuevo-pedido-error" role="alert" aria-live="assertive">
+        <OrderWizardShell
+            macroStep={macroStep}
+            title={stepTitle}
+            subtitle={null}
+            onBack={goBack}
+            onClose={closeWizard}
+        >
+            {error ? (
+                <div className="login-error order-composer-error-banner" role="alert" aria-live="assertive">
                     <i className="bi bi-exclamation-circle" aria-hidden="true"></i> {error}
                 </div>
-            )}
+            ) : null}
 
-            <div className="animate-slide-up nuevo-pedido-layout">
-                <aside className="nuevo-pedido-sidebar">
-                    <OrderCatalogPane
-                        categorias={categorias}
-                        productos={productos}
-                        items={items}
-                        selectedItemId={selectedItemId}
-                        onAddProduct={addItem}
-                        onSelectItem={selectItem}
-                        onRemoveItem={removeOrderItem}
-                        hideOrderItems
-                    />
-                </aside>
+            <div className={`order-wizard-layout${showChecklist ? '' : ' is-full'}`}>
+                {showChecklist ? (
+                    <aside className="order-wizard-aside">
+                        <OrderWizardTimeline
+                            items={checklistItems}
+                            title="Caso rápido"
+                            subtitle="Completa el pedido en 3 pasos claros."
+                        />
+                    </aside>
+                ) : null}
 
-                <section className="nuevo-pedido-main">
-                    <article className="card nuevo-pedido-admin-card">
-                        {selectedItem ? (
-                            <article className="nuevo-pedido-selected-product-card">
-                                <div className="nuevo-pedido-selected-product-media">
-                                    {selectedProductImage && !selectedImageError ? (
-                                        <img
-                                            src={resolveImageUrl(selectedProductImage)}
-                                            alt={selectedItem.nombre}
-                                            onError={() => setSelectedImageError(true)}
-                                        />
-                                    ) : (
-                                        <div className="nuevo-pedido-selected-product-fallback">
-                                            <i className="bi bi-box-seam" aria-hidden="true"></i>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="nuevo-pedido-selected-product-copy">
-                                    <span>Producto seleccionado</span>
-                                    <strong>{selectedItem.nombre}</strong>
-                                </div>
-                                <div className="nuevo-pedido-selected-product-side">
-                                    <strong>S/. {Number(selectedItem?.precio_unitario || 0).toFixed(2)}</strong>
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm nuevo-pedido-selected-product-remove"
-                                        onClick={() => removeOrderItem(selectedItem.id)}
-                                        aria-label={`Quitar ${selectedItem.nombre} del pedido`}
-                                    >
-                                        <i className="bi bi-trash" aria-hidden="true"></i> Quitar
-                                    </button>
-                                </div>
-                            </article>
-                        ) : null}
-
-                        <div className="nuevo-pedido-section-heading">
-                            <div>
-                                <h6 className="order-composer-section-title"><i className="bi bi-person-lines-fill" aria-hidden="true"></i> Datos administrativos</h6>
-                                <p className="nuevo-pedido-section-copy">La informacion general del caso queda siempre visible y estable.</p>
-                            </div>
-                        </div>
-
-                        <div className="order-composer-fields-grid nuevo-pedido-admin-reference-grid nuevo-pedido-admin-clinic-row">
-                            <div className="form-group order-composer-field-reset">
-                                <label className="form-label" htmlFor="nuevo-pedido-clinica">Clinica *</label>
-                                <div className="nuevo-pedido-clinic-search">
-                                    <i className="bi bi-search" aria-hidden="true"></i>
-                                    <input
-                                        id="nuevo-pedido-clinica-search"
-                                        className="form-input nuevo-pedido-clinic-search-input"
-                                        placeholder="Buscar clinica..."
-                                        aria-label="Buscar clinica por nombre"
-                                        aria-describedby={!user?.clinica_id && clinicSearchValue && clinicOptions.length === 0 ? 'nuevo-pedido-clinica-empty' : undefined}
-                                        value={clinicSearch}
-                                        onChange={(event) => setClinicSearch(event.target.value)}
-                                        disabled={!!user?.clinica_id}
-                                    />
-                                </div>
+                <section className="order-wizard-main">
+                    {pickingProduct && !isClient ? (
+                        <div className="order-wizard-card">
+                            <div className="order-wizard-product-toolbar">
+                                <input
+                                    className="form-input"
+                                    placeholder="Buscar producto..."
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                />
                                 <select
-                                    id="nuevo-pedido-clinica"
                                     className="form-select"
-                                    value={form.clinica_id}
-                                    onChange={(event) => setForm({ ...form, clinica_id: event.target.value })}
-                                    disabled={!!user?.clinica_id}
-                                    required
-                                    aria-invalid={!!error && !form.clinica_id}
-                                    aria-describedby={error && !form.clinica_id ? 'nuevo-pedido-error' : undefined}
+                                    value={categoryFilter}
+                                    onChange={(e) => setCategoryFilter(e.target.value)}
+                                    aria-label="Filtrar por categoría"
                                 >
-                                    <option value="">Seleccionar clinica...</option>
-                                    {clinicOptions.map((clinic) => (
-                                        <option key={clinic.id} value={clinic.id}>{clinic.nombre}</option>
+                                    <option value="all">Todas las categorías</option>
+                                    {categorias.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>{cat.nombre}</option>
                                     ))}
                                 </select>
-                                {!user?.clinica_id && clinicSearchValue && clinicOptions.length === 0 && (
-                                    <small className="nuevo-pedido-clinic-empty" id="nuevo-pedido-clinica-empty">No hay clinicas que coincidan con tu busqueda.</small>
+                            </div>
+                            {filteredProductos.length === 0 ? (
+                                <p className="order-wizard-empty-hint">No hay productos visibles para mostrar.</p>
+                            ) : (
+                                <div className="order-wizard-product-grid catalog-products-grid">
+                                    {filteredProductos.map((product) => (
+                                        <ProductCatalogCard
+                                            key={product.id}
+                                            producto={product}
+                                            ctaLabel="Seleccionar"
+                                            ctaIcon="bi-check2-circle"
+                                            onOrder={() => handleProductPick(product)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
+
+                    {!pickingProduct && macroStep === 'paciente' ? (
+                        <div className="order-wizard-card order-wizard-card-paciente">
+                            {selectedItem ? (
+                                <OrderSelectedProductCard
+                                    product={productForUi}
+                                    variant="featured"
+                                    onChange={goToProductSelection}
+                                    priceLabel={priceLabel}
+                                    etaLabel={etaLabel}
+                                    priceNote={priceNote}
+                                />
+                            ) : isClient ? (
+                                <OrderSelectedProductCard
+                                    empty
+                                    variant="featured"
+                                    onEmptyAction={persistDraftAndGoCatalog}
+                                />
+                            ) : (
+                                <OrderSelectedProductCard
+                                    empty
+                                    variant="featured"
+                                    emptyHint="Selecciona un producto del catálogo interno"
+                                    emptyActionLabel="Elegir producto"
+                                    onEmptyAction={() => setPickingProduct(true)}
+                                />
+                            )}
+
+                            <div className="order-wizard-paciente-fields">
+                                {!isClient ? (
+                                    <div className="form-group">
+                                        <label className="form-label" htmlFor="wizard-clinica">Clínica *</label>
+                                        <input
+                                            className="form-input"
+                                            placeholder="Buscar clínica..."
+                                            value={clinicSearch}
+                                            onChange={(e) => setClinicSearch(e.target.value)}
+                                            disabled={Boolean(user?.clinica_id)}
+                                            style={{ marginBottom: '0.5rem' }}
+                                        />
+                                        <select
+                                            id="wizard-clinica"
+                                            className="form-select"
+                                            value={form.clinica_id}
+                                            onChange={(e) => setForm((prev) => ({ ...prev, clinica_id: e.target.value }))}
+                                            disabled={Boolean(user?.clinica_id)}
+                                        >
+                                            <option value="">Seleccionar clínica</option>
+                                            {filteredClinicas.map((clinic) => (
+                                                <option key={clinic.id} value={clinic.id}>{clinic.nombre}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                ) : (
+                                    <div className="form-group">
+                                        <label className="form-label">Clínica</label>
+                                        <input className="form-input" value={selectedClinic?.nombre || 'Tu clínica'} readOnly />
+                                    </div>
                                 )}
-                            </div>
-                        </div>
 
-                        <div className="order-composer-fields-grid nuevo-pedido-admin-reference-grid">
-                            <div className="form-group order-composer-field-reset">
-                                <label className="form-label" htmlFor="nuevo-pedido-paciente">Nombre del paciente *</label>
-                                <input
-                                    id="nuevo-pedido-paciente"
-                                    className="form-input"
-                                    placeholder="Nombre completo"
-                                    value={form.paciente_nombre}
-                                    onChange={(event) => setForm({ ...form, paciente_nombre: event.target.value })}
-                                    required
-                                    aria-invalid={!!error && !form.paciente_nombre}
-                                    aria-describedby={error && !form.paciente_nombre ? 'nuevo-pedido-error' : undefined}
-                                />
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="wizard-paciente">Paciente *</label>
+                                    <input
+                                        id="wizard-paciente"
+                                        className="form-input"
+                                        value={form.paciente_nombre}
+                                        onChange={(e) => setForm((prev) => ({ ...prev, paciente_nombre: e.target.value }))}
+                                        placeholder="Nombre del paciente"
+                                    />
+                                </div>
                             </div>
-                            <div className="form-group order-composer-field-reset">
-                                <label className="form-label" htmlFor="nuevo-pedido-fecha-entrega">Fecha de entrega estimada</label>
-                                <input
-                                    id="nuevo-pedido-fecha-entrega"
-                                    className="form-input"
-                                    type="date"
-                                    value={form.fecha_entrega}
-                                    readOnly
-                                    disabled
-                                    aria-describedby="nuevo-pedido-fecha-ayuda"
-                                />
-                                <small className="form-help" id="nuevo-pedido-fecha-ayuda">Se calcula automaticamente segun el producto y la prioridad.</small>
-                            </div>
-                        </div>
 
-                        <div className={`nuevo-pedido-express-toggle-wrapper ${isExpressOrder ? 'is-express' : ''}`}>
-                            <i className={isExpressOrder ? "bi bi-lightning-charge-fill" : "bi bi-lightning-charge"} aria-hidden="true"></i>
-                            <div className="nuevo-pedido-express-toggle-info">
-                                <strong>Pedido Express ⚡</strong>
-                                <p id="nuevo-pedido-express-help">Marca esta opcion si el trabajo requiere prioridad maxima en laboratorio.</p>
+                            <div className="order-wizard-urgency-block">
+                                <button
+                                    type="button"
+                                    className={`order-wizard-express${isExpressOrder ? ' is-on' : ''}`}
+                                    onClick={() => setIsExpressOrder((prev) => !prev)}
+                                    aria-pressed={isExpressOrder}
+                                >
+                                    <span className="order-wizard-express-icon" aria-hidden="true">
+                                        <i className="bi bi-lightning-charge-fill"></i>
+                                    </span>
+                                    <span className="order-wizard-express-copy">
+                                        <strong>
+                                            Pedido Express
+                                            <i className="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+                                            <span className="order-wizard-express-badge">
+                                                +{Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}% cargo extra
+                                            </span>
+                                        </strong>
+                                        <span>
+                                            {isExpressOrder
+                                                ? 'Prioridad máxima en laboratorio. El precio y el plazo ya incluyen el recargo express.'
+                                                : (
+                                                    productPrice > 0
+                                                        ? `Marca esta opción si el trabajo requiere prioridad máxima. Total express: S/. ${applyExpressSurcharge(productPrice, true).toFixed(2)}.`
+                                                        : 'Marca esta opción si el trabajo requiere prioridad máxima en laboratorio.'
+                                                )}
+                                        </span>
+                                    </span>
+                                    <span
+                                        className="order-wizard-express-switch"
+                                        role="presentation"
+                                        aria-hidden="true"
+                                    >
+                                        <span className="order-wizard-express-knob"></span>
+                                    </span>
+                                </button>
                             </div>
-                            <div className="nuevo-pedido-express-switch">
-                                <input
-                                    type="checkbox"
-                                    id="expressOrderToggle"
-                                    className="toggle-switch-input"
-                                    checked={isExpressOrder}
-                                    aria-describedby="nuevo-pedido-express-help"
-                                    onChange={(e) => {
-                                        const nextExpress = e.target.checked;
-                                        setIsExpressOrder(nextExpress);
-                                        items.forEach((item) => updateItemField(item.id, 'es_urgente', nextExpress));
-                                    }}
-                                />
-                                <label htmlFor="expressOrderToggle" className="toggle-switch-label"></label>
-                            </div>
-                        </div>
 
-                        <div className="nuevo-pedido-clinical-stack">
-                            <OrderClinicalPanel
-                                className="nuevo-pedido-clinical-card"
-                                form={clinicalPanelForm}
-                                resolvedCantidad={selectedItem?.cantidad || 0}
-                                requiresDentalSelection={selectedItem ? selectedItem.requiresDentalSelection : true}
-                                showDerivedFields={false}
-                                disabled={!selectedItem}
-                                onColorChange={(color_vita) => {
-                                    if (selectedItem) updateItemField(selectedItem.id, 'color_vita', color_vita);
+                            <button type="button" className="btn btn-primary order-wizard-paciente-cta" onClick={continueFromPaciente}>
+                                Continuar a piezas
+                            </button>
+                        </div>
+                    ) : null}
+
+                    {!pickingProduct && macroStep === 'piezas' && selectedItem ? (
+                        <OrderTeethStep
+                            product={productForUi || selectedItem.product || selectedItem}
+                            selection={selectedItem}
+                            productLabel={selectedItem.nombre || 'Trabajo'}
+                            showOdontogram={needsDental}
+                            colorVita={selectedItem.color_vita || ''}
+                            notes={selectedItem.notas || ''}
+                            onColorChange={(value) => updateItemField(selectedItem.id, 'color_vita', value)}
+                            onNotesChange={(value) => updateItemField(selectedItem.id, 'notas', value)}
+                            onChange={(dentalData) => updateDentalSelection(selectedItem.id, dentalData)}
+                            onClear={() => updateDentalSelection(selectedItem.id, buildItemSelection([], false))}
+                            onContinue={continueFromTeeth}
+                        />
+                    ) : null}
+
+                    {!pickingProduct && macroStep === 'confirmar' ? (
+                        <div className="order-wizard-card order-wizard-confirm">
+                            <section className="order-wizard-confirm-section" aria-label="Datos del caso">
+                                <h3 className="order-wizard-confirm-section-title">Datos del caso</h3>
+                                <header className="order-wizard-confirm-hero" aria-label="Resumen del caso">
+                                    <div className="order-wizard-confirm-stat">
+                                        <span className="order-wizard-confirm-stat-icon" aria-hidden="true">
+                                            <i className="bi bi-person"></i>
+                                        </span>
+                                        <div className="order-wizard-confirm-stat-copy">
+                                            <span className="order-wizard-confirm-label">Paciente</span>
+                                            <strong>{form.paciente_nombre}</strong>
+                                            {!isClient && selectedClinic?.nombre ? (
+                                                <em className="order-wizard-confirm-meta">{selectedClinic.nombre}</em>
+                                            ) : null}
+                                        </div>
+                                    </div>
+
+                                    <div className="order-wizard-confirm-stat">
+                                        <span className="order-wizard-confirm-stat-icon" aria-hidden="true">
+                                            <i className="bi bi-calendar3"></i>
+                                        </span>
+                                        <div className="order-wizard-confirm-stat-copy order-wizard-confirm-entrega">
+                                            <span className="order-wizard-confirm-label">Entrega</span>
+                                            <div className="order-wizard-confirm-date-row">
+                                                <strong className="order-wizard-confirm-date-value">
+                                                    {formatDeliveryLabel(form.fecha_entrega || estimatedDeliveryDate)}
+                                                </strong>
+                                                <button
+                                                    type="button"
+                                                    className="order-wizard-confirm-coord-icon"
+                                                    onClick={() => setCoordinatingDelivery(true)}
+                                                    title="Coordinar otra fecha"
+                                                    aria-label="Coordinar otra fecha"
+                                                >
+                                                    <i className="bi bi-pencil-square" aria-hidden="true"></i>
+                                                </button>
+                                            </div>
+                                            {isExpressOrder || isCoordinatedDelivery ? (
+                                                <em className="order-wizard-confirm-meta">
+                                                    {[
+                                                        isExpressOrder
+                                                            ? `Express · +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
+                                                            : null,
+                                                        isCoordinatedDelivery ? 'Coordinada' : null,
+                                                    ].filter(Boolean).join(' · ')}
+                                                </em>
+                                            ) : null}
+                                        </div>
+                                    </div>
+
+                                    <div className="order-wizard-confirm-stat is-total">
+                                        <span className="order-wizard-confirm-stat-icon" aria-hidden="true">
+                                            <i className="bi bi-cash-stack"></i>
+                                        </span>
+                                        <div className="order-wizard-confirm-stat-copy">
+                                            <span className="order-wizard-confirm-label">Total</span>
+                                            <strong className="order-wizard-confirm-total-value">
+                                                S/. {displayTotal.toFixed(2)}
+                                            </strong>
+                                        </div>
+                                    </div>
+                                </header>
+
+                                <ul className="order-wizard-confirm-items">
+                                    {items.map((item) => {
+                                        const teeth = Array.isArray(item.piezas_dentales) ? item.piezas_dentales : [];
+                                        const tone = String(item.color_vita || '').trim();
+                                        const productId = item.producto_id || item.product?.id;
+                                        const product = productos.find((p) => String(p.id) === String(productId))
+                                            || item.product
+                                            || item;
+                                        return (
+                                            <li key={item.id} className="order-wizard-confirm-item">
+                                                <div className="order-wizard-confirm-item-media" aria-hidden="true">
+                                                    <ConfirmProductThumb product={product} />
+                                                </div>
+                                                <div className="order-wizard-confirm-item-main">
+                                                    <strong>{item.nombre}</strong>
+                                                    <div className="order-wizard-confirm-clinical">
+                                                        {teeth.length > 0 ? (
+                                                            <div
+                                                                className={[
+                                                                    'order-wizard-confirm-teeth',
+                                                                    teeth.length > 24 ? 'is-dense-xl' : '',
+                                                                    teeth.length > 16 && teeth.length <= 24 ? 'is-dense-lg' : '',
+                                                                    teeth.length > 8 && teeth.length <= 16 ? 'is-dense-md' : '',
+                                                                ].filter(Boolean).join(' ')}
+                                                                data-count={teeth.length}
+                                                                aria-label="Piezas seleccionadas"
+                                                            >
+                                                                {teeth.map((tooth) => (
+                                                                    <span key={`${item.id}-${tooth}`} className="order-wizard-confirm-tooth">
+                                                                        {tooth}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="order-wizard-confirm-qty">{item.cantidad} u.</span>
+                                                        )}
+                                                        {tone ? (
+                                                            <span className="order-wizard-confirm-tone">
+                                                                Tono {tone}
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </section>
+
+                            <DeliveryDateCoordModal
+                                open={coordinatingDelivery}
+                                onClose={() => setCoordinatingDelivery(false)}
+                                minDate={estimatedDeliveryDate}
+                                value={form.fecha_entrega || estimatedDeliveryDate}
+                                onConfirm={(nextDate) => {
+                                    setDeliveryDate(nextDate);
+                                    setCoordinatingDelivery(false);
                                 }}
-                                onNotesChange={(notas) => {
-                                    if (selectedItem) updateItemField(selectedItem.id, 'notas', notas);
-                                }}
-                                onQuantityChange={(cantidad_manual) => {
-                                    if (selectedItem) updateQuantity(selectedItem.id, parseInt(cantidad_manual, 10) || 1);
+                                onUseEstimated={() => {
+                                    setDeliveryDate(estimatedDeliveryDate);
+                                    setCoordinatingDelivery(false);
                                 }}
                             />
 
-                            <article className="card nuevo-pedido-case-summary-card">
-                                <h6 className="order-composer-section-title"><i className="bi bi-receipt" aria-hidden="true"></i> Resumen del caso</h6>
-                                <div className="nuevo-pedido-case-summary-row">
-                                    <span>Precio unitario</span>
-                                    <strong>S/. {Number(selectedItem?.precio_unitario || 0).toFixed(2)}</strong>
-                                </div>
-                                <div className="nuevo-pedido-case-summary-row">
-                                    <span>Piezas seleccionadas</span>
-                                    <strong>{selectedItem?.piezas_dentales?.length || 0}</strong>
-                                </div>
-                                <div className="nuevo-pedido-case-summary-total-row">
-                                    <span>TOTAL PEDIDO</span>
-                                    <strong>S/. {Number(total || 0).toFixed(2)}</strong>
-                                </div>
-                                <div className="nuevo-pedido-case-summary-actions">
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary btn-crear-pedido"
-                                        onClick={handleSubmit}
-                                        disabled={saving}
-                                        aria-busy={saving}
-                                        aria-describedby={error ? 'nuevo-pedido-error' : undefined}
-                                    >
-                                        {saving ? (
-                                            <>
-                                                <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                                <span aria-live="polite">Guardando...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <i className="bi bi-check-circle-fill" aria-hidden="true"></i>
-                                                Crear Pedido
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </article>
-                        </div>
-
-                    </article>
-
-                </section>
-
-                <aside className="nuevo-pedido-odontograma-column">
-                    <section className="card nuevo-pedido-odontograma-pane">
-                        <div className="nuevo-pedido-odontograma-body">
-                            <div className="order-composer-odontograma-slot nuevo-pedido-odontograma-slot">
-                                <OdontogramaInteractive
-                                    product={selectedItem?.product || selectedItem || null}
-                                    selection={selectedItem || { piezas_dentales: [] }}
-                                    onChange={(dentalData) => {
-                                        if (selectedItem) updateDentalSelection(selectedItem.id, dentalData);
-                                    }}
-                                    title="Selecciona las piezas del producto"
-                                    showSidePanel={false}
-                                    showProductPill={false}
-                                    showHeader={false}
-                                    preserveAspectRatio="xMidYMid meet"
-                                    disabled={!selectedItem}
+                            <section className="order-wizard-confirm-section" aria-label="Ingreso del caso">
+                                <OrderIntakeStep
+                                    compact
+                                    value={intakeMode}
+                                    onChange={setIntakeMode}
+                                    note={intakeNote}
+                                    onNoteChange={setIntakeNote}
+                                    title="¿Cómo llegará el caso?"
                                 />
-                            </div>
+                            </section>
+
+                            <button
+                                type="button"
+                                className="btn btn-primary order-wizard-confirm-cta"
+                                onClick={handleSubmit}
+                                disabled={saving || !intakeMode}
+                            >
+                                {saving ? 'Creando...' : 'Crear pedido'}
+                            </button>
                         </div>
-                    </section>
-                </aside>
+                    ) : null}
+                </section>
             </div>
 
-        </div>
+            {showAddItemPrompt ? (
+                <div className="order-wizard-modal-backdrop" role="presentation" onClick={() => setShowAddItemPrompt(false)}>
+                    <div
+                        className="order-wizard-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="order-wizard-add-title"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 id="order-wizard-add-title">¿Agregar otro artículo?</h3>
+                        <p>Puedes editar este ítem, agregar otro producto o continuar a confirmar.</p>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                setShowAddItemPrompt(false);
+                                setMacroStep('piezas');
+                            }}
+                        >
+                            Editar artículo
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                setShowAddItemPrompt(false);
+                                goToProductSelection();
+                            }}
+                        >
+                            Agregar otro artículo
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={goToConfirmar}>
+                            Continuar a confirmar
+                        </button>
+                    </div>
+                </div>
+            ) : null}
+        </OrderWizardShell>
     );
 };
 
