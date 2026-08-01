@@ -48,6 +48,17 @@ const formatDeliveryLabel = (isoDate) => {
     return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
+const formatDeliveryShort = (isoDate) => {
+    if (!isoDate) return '';
+    const [year, month, day] = String(isoDate).split('-').map(Number);
+    if (!year || !month || !day) return String(isoDate);
+    return new Date(year, month - 1, day).toLocaleDateString('es-PE', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
+};
+
 const calculateEstimatedDeliveryDate = (product, isUrgent) => {
     if (!product) return '';
     const rawDays = Number(product.tiempo_estimado_dias);
@@ -117,7 +128,6 @@ const NuevoPedido = () => {
     /** @type {['paciente'|'piezas'|'confirmar', Function]} */
     const [macroStep, setMacroStep] = useState('paciente');
     const [pickingProduct, setPickingProduct] = useState(false);
-    const [showAddItemPrompt, setShowAddItemPrompt] = useState(false);
     const [appliedProductId, setAppliedProductId] = useState(null);
     const [catalogReady, setCatalogReady] = useState(false);
     const [coordinatingDelivery, setCoordinatingDelivery] = useState(false);
@@ -160,7 +170,7 @@ const NuevoPedido = () => {
     }, [total, isExpressOrder]);
     const priceLabel = productPrice > 0 ? `S/. ${displayUnitPrice.toFixed(2)}` : null;
     const etaLabel = displayDays
-        ? `Entrega estimada: ${displayDays} día${displayDays === 1 ? '' : 's'}${form.fecha_entrega ? ` · ${form.fecha_entrega}` : ''}`
+        ? `Entrega: ${displayDays} día${displayDays === 1 ? '' : 's'}${form.fecha_entrega ? ` · ${formatDeliveryShort(form.fecha_entrega)}` : ''}`
         : null;
     const priceNote = isExpressOrder && expressSurcharge > 0
         ? `Incluye recargo express +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}% (S/. ${expressSurcharge.toFixed(2)})`
@@ -388,7 +398,6 @@ const NuevoPedido = () => {
 
     const goBack = () => {
         setError('');
-        setShowAddItemPrompt(false);
         if (pickingProduct) {
             if (items.length > 0) {
                 setPickingProduct(false);
@@ -413,7 +422,6 @@ const NuevoPedido = () => {
         selectItem(itemId);
         if (isExpressOrder) updateItemField(itemId, 'es_urgente', true);
         setError('');
-        setShowAddItemPrompt(false);
         setPickingProduct(false);
         setMacroStep('paciente');
     };
@@ -438,15 +446,6 @@ const NuevoPedido = () => {
             return;
         }
         setError('');
-        if (isClient) {
-            setMacroStep('confirmar');
-            return;
-        }
-        setShowAddItemPrompt(true);
-    };
-
-    const goToConfirmar = () => {
-        setShowAddItemPrompt(false);
         setMacroStep('confirmar');
     };
 
@@ -516,7 +515,7 @@ const NuevoPedido = () => {
 
             <div className={`order-wizard-layout${showChecklist ? '' : ' is-full'}`}>
                 {showChecklist ? (
-                    <aside className="order-wizard-aside">
+                    <aside className="order-wizard-aside desktop-only" aria-label="Progreso del caso">
                         <OrderWizardTimeline
                             items={checklistItems}
                             title="Caso rápido"
@@ -642,27 +641,27 @@ const NuevoPedido = () => {
                                     className={`order-wizard-express${isExpressOrder ? ' is-on' : ''}`}
                                     onClick={() => setIsExpressOrder((prev) => !prev)}
                                     aria-pressed={isExpressOrder}
+                                    aria-label={
+                                        isExpressOrder
+                                            ? `Pedido Express activo, +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
+                                            : `Activar Pedido Express, +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
+                                    }
                                 >
-                                    <span className="order-wizard-express-icon" aria-hidden="true">
-                                        <i className="bi bi-lightning-charge-fill"></i>
-                                    </span>
                                     <span className="order-wizard-express-copy">
                                         <strong>
-                                            Pedido Express
                                             <i className="bi bi-lightning-charge-fill" aria-hidden="true"></i>
-                                            <span className="order-wizard-express-badge">
-                                                +{Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}% cargo extra
-                                            </span>
+                                            Express
                                         </strong>
-                                        <span>
-                                            {isExpressOrder
-                                                ? 'Prioridad máxima en laboratorio. El precio y el plazo ya incluyen el recargo express.'
-                                                : (
-                                                    productPrice > 0
-                                                        ? `Marca esta opción si el trabajo requiere prioridad máxima. Total express: S/. ${applyExpressSurcharge(productPrice, true).toFixed(2)}.`
-                                                        : 'Marca esta opción si el trabajo requiere prioridad máxima en laboratorio.'
-                                                )}
+                                        <span className="order-wizard-express-badge">
+                                            +{Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%
                                         </span>
+                                        {productPrice > 0 ? (
+                                            <span className="order-wizard-express-price">
+                                                {isExpressOrder
+                                                    ? `S/. ${applyExpressSurcharge(productPrice, true).toFixed(2)}`
+                                                    : `S/. ${productPrice.toFixed(2)} → ${applyExpressSurcharge(productPrice, true).toFixed(2)}`}
+                                            </span>
+                                        ) : null}
                                     </span>
                                     <span
                                         className="order-wizard-express-switch"
@@ -847,44 +846,6 @@ const NuevoPedido = () => {
                     ) : null}
                 </section>
             </div>
-
-            {showAddItemPrompt ? (
-                <div className="order-wizard-modal-backdrop" role="presentation" onClick={() => setShowAddItemPrompt(false)}>
-                    <div
-                        className="order-wizard-modal"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="order-wizard-add-title"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <h3 id="order-wizard-add-title">¿Agregar otro artículo?</h3>
-                        <p>Puedes editar este ítem, agregar otro producto o continuar a confirmar.</p>
-                        <button
-                            type="button"
-                            className="btn btn-secondary"
-                            onClick={() => {
-                                setShowAddItemPrompt(false);
-                                setMacroStep('piezas');
-                            }}
-                        >
-                            Editar artículo
-                        </button>
-                        <button
-                            type="button"
-                            className="btn btn-secondary"
-                            onClick={() => {
-                                setShowAddItemPrompt(false);
-                                goToProductSelection();
-                            }}
-                        >
-                            Agregar otro artículo
-                        </button>
-                        <button type="button" className="btn btn-primary" onClick={goToConfirmar}>
-                            Continuar a confirmar
-                        </button>
-                    </div>
-                </div>
-            ) : null}
         </OrderWizardShell>
     );
 };

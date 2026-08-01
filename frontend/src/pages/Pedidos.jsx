@@ -68,7 +68,7 @@ const Pedidos = () => {
         && filtroEstado !== 'esperando_aprobacion';
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in pedidos-tracking">
             <div className="page-header">
                 <div className="page-header-left">
                     <h1>{pageTitle}</h1>
@@ -79,14 +79,16 @@ const Pedidos = () => {
                     className="btn btn-primary"
                     onClick={() => navigate(isClient ? '/catalogo' : '/pedidos/nuevo')}
                 >
-                    <i className="bi bi-plus-lg"></i> {isClient ? 'Pedir' : 'Nuevo Pedido'}
+                    <i className="bi bi-plus-lg" aria-hidden="true"></i> {isClient ? 'Pedir' : 'Nuevo Pedido'}
                 </button>
             </div>
 
             {showApprovalCue ? (
                 <div className="pedidos-approval-cue" role="status">
                     <div className="pedidos-approval-cue-copy">
-                        <i className="bi bi-check2-square" aria-hidden="true"></i>
+                        <span className="pedidos-stat-icon" aria-hidden="true">
+                            <i className="bi bi-check2-square"></i>
+                        </span>
                         <div>
                             <strong>
                                 {pendingApprovalCount === 1
@@ -106,10 +108,10 @@ const Pedidos = () => {
                 </div>
             ) : null}
 
-            <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div className="search-box" style={{ flex: 1, minWidth: 200 }}>
-                        <i className="bi bi-search"></i>
+            <section className="pedidos-toolbar card" aria-label="Buscar y filtrar pedidos">
+                <div className="pedidos-toolbar-row">
+                    <div className="search-box pedidos-search">
+                        <i className="bi bi-search" aria-hidden="true"></i>
                         <input
                             className="form-input"
                             placeholder={isClient ? 'Buscar por código o paciente...' : 'Buscar por código, paciente o clínica...'}
@@ -117,7 +119,7 @@ const Pedidos = () => {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <div className="pedidos-status-filters" style={{ display: 'flex', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
+                    <div className="pedidos-status-filters" role="group" aria-label="Filtrar por estado">
                         {estados.map((e) => {
                             const isApprovalChip = e === 'esperando_aprobacion';
                             const showChipBadge = isClient && isApprovalChip && pendingApprovalCount > 0;
@@ -144,14 +146,18 @@ const Pedidos = () => {
                         })}
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div className="card">
+            <section className="pedidos-list-panel card" aria-label="Listado de pedidos">
                 {loading ? (
-                    <div>{[1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 60, marginBottom: 8, borderRadius: 8 }} />)}</div>
+                    <div className="pedidos-skeleton-list">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="skeleton pedidos-skeleton-row" />
+                        ))}
+                    </div>
                 ) : pedidos.length === 0 ? (
                     <div className="empty-state">
-                        <i className="bi bi-clipboard2 empty-state-icon"></i>
+                        <i className="bi bi-clipboard2 empty-state-icon" aria-hidden="true"></i>
                         <h3 className="empty-state-title">
                             {filtroEstado === 'esperando_aprobacion' ? 'Nada por aprobar' : 'Sin pedidos'}
                         </h3>
@@ -164,83 +170,66 @@ const Pedidos = () => {
                             <button
                                 type="button"
                                 className="btn btn-primary"
-                                style={{ marginTop: 'var(--space-4)' }}
                                 onClick={() => navigate(isClient ? '/catalogo' : '/pedidos/nuevo')}
                             >
-                                <i className="bi bi-plus-lg"></i> {isClient ? 'Ir a Pedir' : 'Crear Pedido'}
+                                <i className="bi bi-plus-lg" aria-hidden="true"></i> {isClient ? 'Ir a Pedir' : 'Crear Pedido'}
                             </button>
                         )}
                     </div>
                 ) : (
-                    <>
-                        <div className="data-table-wrapper desktop-only" style={{ border: 'none' }}>
-                            <table className="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Código</th>
-                                        <th>Paciente</th>
-                                        {!isClient && <th>Clínica</th>}
-                                        <th>Estado</th>
-                                        <th>Fecha</th>
-                                        <th>Entrega</th>
-                                        <th>Total</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pedidos.map((p) => (
-                                        <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/pedidos/${p.id}`)}>
-                                            <td><strong style={{ fontFamily: 'var(--font-mono)' }}>{p.codigo}</strong></td>
-                                            <td>{p.paciente_nombre}</td>
-                                            {!isClient && <td>{p.clinica_nombre}</td>}
-                                            <td>
+                    <ul className="pedidos-order-list">
+                        {pedidos.map((p) => {
+                            const needsReview = isClient && p.estado === 'esperando_aprobacion';
+                            return (
+                                <li key={p.id}>
+                                    <button
+                                        type="button"
+                                        className={`pedidos-order-card${needsReview ? ' is-attention' : ''}`}
+                                        onClick={() => navigate(`/pedidos/${p.id}`)}
+                                    >
+                                        <span className="pedidos-stat-icon" aria-hidden="true">
+                                            <i className={`bi ${needsReview ? 'bi-check2-square' : 'bi-clipboard2-pulse'}`}></i>
+                                        </span>
+                                        <span className="pedidos-order-main">
+                                            <span className="pedidos-order-top">
+                                                <strong className="pedidos-order-code">{p.codigo}</strong>
                                                 <span className={`badge badge-dot badge-${p.estado}`}>
                                                     {getOrderStatusLabel(p.estado, { forClient: isClient })}
                                                 </span>
-                                            </td>
-                                            <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{formatDateShort(p.fecha || p.created_at)}</td>
-                                            <td style={{ fontSize: '0.8125rem' }}>{formatDateShort(p.fecha_entrega)}</td>
-                                            <td><strong>S/. {parseFloat(p.total ?? 0).toFixed(2)}</strong></td>
-                                            <td>
-                                                <button type="button" className="btn btn-ghost btn-sm btn-icon" title="Ver detalle">
-                                                    <i className="bi bi-chevron-right"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="mobile-cards mobile-only">
-                            {pedidos.map((p) => (
-                                <div key={p.id} className="mobile-card" onClick={() => navigate(`/pedidos/${p.id}`)} style={{ cursor: 'pointer' }}>
-                                    <div className="mobile-card-head">
-                                        <div className="mobile-card-title">{p.codigo}</div>
-                                        <span className={`badge badge-dot badge-${p.estado}`}>
-                                            {getOrderStatusLabel(p.estado, { forClient: isClient })}
+                                            </span>
+                                            <span className="pedidos-order-meta">
+                                                <span>{p.paciente_nombre}</span>
+                                                {!isClient && p.clinica_nombre ? (
+                                                    <span>· {p.clinica_nombre}</span>
+                                                ) : null}
+                                            </span>
+                                            <span className="pedidos-order-dates">
+                                                <span>
+                                                    <i className="bi bi-calendar3" aria-hidden="true"></i>
+                                                    {formatDateShort(p.fecha || p.created_at)}
+                                                </span>
+                                                <span>
+                                                    <i className="bi bi-truck" aria-hidden="true"></i>
+                                                    Entrega {formatDateShort(p.fecha_entrega)}
+                                                </span>
+                                            </span>
                                         </span>
-                                    </div>
-                                    <div className="mobile-card-grid">
-                                        <div className="mobile-field"><span className="mobile-field-label">Paciente</span><span className="mobile-field-value">{p.paciente_nombre}</span></div>
-                                        {!isClient && (
-                                            <div className="mobile-field"><span className="mobile-field-label">Clinica</span><span className="mobile-field-value">{p.clinica_nombre}</span></div>
-                                        )}
-                                        <div className="mobile-field"><span className="mobile-field-label">Fecha</span><span className="mobile-field-value">{formatDateShort(p.fecha || p.created_at)}</span></div>
-                                        <div className="mobile-field"><span className="mobile-field-label">Entrega</span><span className="mobile-field-value">{formatDateShort(p.fecha_entrega)}</span></div>
-                                        <div className="mobile-field"><span className="mobile-field-label">Total</span><span className="mobile-field-value"><strong>S/. {parseFloat(p.total ?? 0).toFixed(2)}</strong></span></div>
-                                    </div>
-                                    <div className="mobile-card-actions">
-                                        <button type="button" className="btn btn-ghost btn-sm">
-                                            {p.estado === 'esperando_aprobacion' && isClient ? 'Revisar diseño' : 'Ver detalle'}
-                                            {' '}<i className="bi bi-chevron-right"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </>
+                                        <span className="pedidos-order-aside">
+                                            <strong className="pedidos-order-total">
+                                                S/. {parseFloat(p.total ?? 0).toFixed(2)}
+                                            </strong>
+                                            <span className="pedidos-order-cta">
+                                                {needsReview ? 'Revisar diseño' : 'Ver detalle'}
+                                                <i className="bi bi-chevron-right" aria-hidden="true"></i>
+                                            </span>
+                                        </span>
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
                 )}
-            </div>
+            </section>
         </div>
     );
 };

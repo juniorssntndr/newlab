@@ -2357,6 +2357,491 @@ h4 {
   line-height: 1;
 }
 
+.pedidos-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  font-size: 1.05rem;
+}
+
+.pedidos-tracking .pedidos-toolbar,
+.pedidos-tracking .pedidos-list-panel {
+  border-radius: 16px;
+  border-color: var(--color-border-light);
+  overflow: hidden;
+}
+
+.pedidos-tracking .pedidos-toolbar {
+  margin-bottom: var(--space-5);
+  padding: 0.95rem 1rem;
+}
+
+.pedidos-toolbar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.pedidos-search {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.pedidos-status-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.pedidos-tracking .pedidos-list-panel {
+  padding: 0;
+}
+
+.pedidos-tracking .pedidos-list-panel .empty-state {
+  padding: 2.5rem 1.25rem;
+}
+
+.pedidos-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.pedidos-skeleton-row {
+  height: 5.25rem;
+  border-radius: 14px;
+}
+
+.pedidos-order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pedidos-order-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+  text-align: left;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 14px;
+  background: var(--color-surface, #fff);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pedidos-order-card:hover,
+.pedidos-order-card:focus-visible {
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: rgba(var(--color-primary-rgb), 0.04);
+  box-shadow: 0 0 0 1px rgba(var(--color-primary-rgb), 0.08);
+  outline: none;
+}
+
+.pedidos-order-card.is-attention {
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  background: rgba(var(--color-primary-rgb), 0.06);
+}
+
+.pedidos-order-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.pedidos-order-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+}
+
+.pedidos-order-code {
+  font-size: 0.98rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.pedidos-order-meta,
+.pedidos-order-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.65rem;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.pedidos-order-dates span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.pedidos-order-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.pedidos-order-total {
+  font-size: 1rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.pedidos-order-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.pedido-detail-header {
+  flex-wrap: wrap;
+}
+
+.pedido-detail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pedido-detail-flow {
+  margin-bottom: var(--space-5);
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+}
+
+.pedido-detail-hero {
+  margin-bottom: var(--space-5);
+}
+
+.pedido-detail-hero .order-wizard-confirm-stat {
+  gap: 0.4rem;
+}
+
+.pedido-detail-hero .order-wizard-confirm-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pedido-detail-hero .order-wizard-confirm-label > i {
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.pedido-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.9fr);
+  grid-template-areas:
+    "info design"
+    "items files"
+    ". history";
+  gap: var(--space-6);
+  align-items: stretch;
+}
+
+.pedido-detail-info { grid-area: info; }
+.pedido-detail-design { grid-area: design; }
+.pedido-detail-items { grid-area: items; }
+.pedido-detail-files { grid-area: files; }
+.pedido-detail-history { grid-area: history; }
+
+.pedido-detail-info,
+.pedido-detail-design,
+.pedido-detail-items,
+.pedido-detail-files,
+.pedido-detail-history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border-radius: 16px;
+  border-color: var(--color-border-light);
+}
+
+.pedido-detail-design .approval-card,
+.pedido-detail-files > .card-body,
+.pedido-detail-items .pedido-detail-item-list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pedido-detail-design .approval-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.pedido-detail-design .approval-review,
+.pedido-detail-design .approval-review-empty {
+  flex: 1 1 auto;
+}
+
+.pedido-detail-design .approval-review-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.pedido-detail-files > .card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.pedido-detail-files .case-files-empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0;
+}
+
+.pedido-detail-layout.has-case-files .case-files-grid {
+  flex: 1 1 auto;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
+}
+
+.pedido-detail-layout.has-case-files .case-file-tile img {
+  aspect-ratio: 4 / 3;
+  min-height: 140px;
+}
+
+.pedido-detail-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 0.75rem;
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.pedido-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 14px;
+  background: var(--color-surface, #fff);
+}
+
+.pedido-detail-field .order-wizard-confirm-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.pedido-detail-field .order-wizard-confirm-label > i {
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.pedido-detail-field strong {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.pedido-detail-field-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.pedido-detail-field-actions .form-select,
+.pedido-detail-field-actions .form-input {
+  flex: 1 1 180px;
+}
+
+.pedido-detail-notes {
+  display: flex;
+  gap: 0.55rem;
+  margin: 0 var(--space-4) var(--space-4);
+  padding: var(--space-3);
+  border-radius: 12px;
+  background: var(--color-bg-alt);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.pedido-detail-notes > i {
+  color: var(--color-primary);
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.pedido-detail-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.55rem 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pedido-detail-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 14px;
+  background: var(--color-surface, #fff);
+}
+
+.pedido-detail-item-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pedido-detail-item-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+}
+
+.pedido-detail-item-top strong {
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.pedido-detail-item-subtotal {
+  font-size: 0.92rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.pedido-detail-item-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.pedido-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg-alt);
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.pedido-detail-chip.is-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.pedido-detail-chip.is-vita {
+  border-color: rgba(var(--color-primary-rgb), 0.28);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+}
+
+.pedido-detail-items-total {
+  margin-top: auto;
+  text-align: right;
+  padding: 0.85rem 1rem 1rem;
+  font-size: 1.15rem;
+  font-weight: 750;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.pedido-detail .pedido-client-next-step {
+  border-radius: 14px;
+  align-items: center;
+}
+
+.pedido-detail .pedido-client-next-step.is-action .pedidos-stat-icon {
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 18%, transparent);
+  color: var(--color-warning, #d97706);
+}
+
+@media (max-width: 960px) {
+  .pedido-detail-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "info"
+      "design"
+      "items"
+      "files"
+      "history";
+  }
+
+  .pedido-detail-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .pedidos-order-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .pedidos-order-aside {
+    grid-column: 2;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .pedidos-order-card {
+    grid-template-columns: 1fr;
+  }
+
+  .pedidos-order-aside {
+    grid-column: 1;
+  }
+
+  .pedidos-order-card .pedidos-stat-icon,
+  .pedido-detail-item .pedidos-stat-icon {
+    display: none;
+  }
+
+  .pedido-detail-item {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ============================================ */
 /* Grid                                         */
 /* ============================================ */
@@ -2927,6 +3412,11 @@ h4 {
 
   .app-content {
     padding: var(--space-4);
+  }
+
+  .app-content:has(.order-wizard) {
+    padding-inline: var(--space-2);
+    padding-block: var(--space-3);
   }
 
   .card {
@@ -8332,13 +8822,13 @@ Rediseño UI: Nuevo Pedido Layout Base
   --express-bg: #fff8f0;
   --express-border: #f0b56a;
   width: 100%;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 1rem 1.15rem;
+  justify-content: space-between;
+  gap: 0.75rem;
   text-align: left;
-  padding: 1.1rem 1.25rem;
-  border-radius: 16px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
   border: 1.5px solid var(--express-border);
   background: var(--express-bg);
   cursor: pointer;
@@ -8347,7 +8837,7 @@ Rediseño UI: Nuevo Pedido Layout Base
 
 .order-wizard-express:hover {
   border-color: var(--express-accent);
-  box-shadow: 0 8px 18px -14px rgba(217, 119, 6, 0.55);
+  box-shadow: 0 6px 14px -12px rgba(217, 119, 6, 0.55);
 }
 
 .order-wizard-express:focus-visible {
@@ -8361,68 +8851,56 @@ Rediseño UI: Nuevo Pedido Layout Base
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--express-accent) 35%, transparent);
 }
 
-.order-wizard-express-icon {
-  width: 3rem;
-  height: 3rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--express-accent-strong);
-  font-size: 2rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
 .order-wizard-express-copy {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.55rem;
   min-width: 0;
 }
 
 .order-wizard-express-copy strong {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.6rem;
-  font-size: 1.08rem;
+  gap: 0.3rem;
+  font-size: 0.95rem;
+  font-weight: 700;
   color: var(--color-text);
 }
 
 .order-wizard-express-copy strong i {
   color: var(--express-accent-strong);
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
 .order-wizard-express-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.22rem 0.65rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--express-accent-strong) 16%, #fff);
   border: 1px solid color-mix(in srgb, var(--express-accent-strong) 35%, transparent);
   color: var(--express-accent-strong);
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
-.order-wizard-express-copy span {
-  font-size: 0.9rem;
-  line-height: 1.45;
+.order-wizard-express-price {
+  font-size: 0.8rem;
+  font-weight: 650;
   color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
-.order-wizard-express-copy em {
-  font-style: normal;
-  font-weight: 700;
+.order-wizard-express.is-on .order-wizard-express-price {
   color: var(--express-accent-strong);
 }
 
 .order-wizard-express-switch {
-  width: 3.15rem;
-  height: 1.7rem;
+  width: 2.75rem;
+  height: 1.5rem;
   border-radius: 999px;
   background: #d6d3d1;
   position: relative;
@@ -8436,10 +8914,10 @@ Rediseño UI: Nuevo Pedido Layout Base
 
 .order-wizard-express-knob {
   position: absolute;
-  top: 0.2rem;
-  left: 0.2rem;
-  width: 1.3rem;
-  height: 1.3rem;
+  top: 0.18rem;
+  left: 0.18rem;
+  width: 1.14rem;
+  height: 1.14rem;
   border-radius: 999px;
   background: #fff;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
@@ -8447,7 +8925,7 @@ Rediseño UI: Nuevo Pedido Layout Base
 }
 
 .order-wizard-express.is-on .order-wizard-express-knob {
-  transform: translateX(1.4rem);
+  transform: translateX(1.2rem);
 }
 
 .order-wizard-selected-product .btn {
@@ -8631,6 +9109,7 @@ Rediseño UI: Nuevo Pedido Layout Base
   font-size: 0.9rem !important;
   color: var(--color-text-secondary) !important;
   font-weight: 500 !important;
+  white-space: nowrap;
 }
 
 .order-wizard-product-summary-note {
@@ -9560,7 +10039,28 @@ Rediseño UI: Nuevo Pedido Layout Base
   box-shadow: none !important;
 }
 
+.order-wizard-topbar-nav {
+  flex-shrink: 0;
+}
+
+.order-wizard-macro-label {
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
+  .order-wizard {
+    --ow-max: 100%;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding-inline: 0;
+  }
+
+  .order-wizard-card {
+    border-radius: 14px;
+    padding: 1rem;
+  }
+
   .order-wizard-layout,
   .order-teeth-step,
   .order-wizard-product-toolbar,
@@ -9568,6 +10068,70 @@ Rediseño UI: Nuevo Pedido Layout Base
   .order-wizard-confirm-hero,
   .order-intake-step.is-compact .order-intake-options {
     grid-template-columns: 1fr;
+  }
+
+  .order-wizard-layout {
+    gap: 0;
+  }
+
+  /* En móvil el checklist lateral es redundante: el stepper superior basta. */
+  .order-wizard-aside {
+    display: none !important;
+  }
+
+  .order-wizard-topbar {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .order-wizard-topbar-label {
+    display: none;
+  }
+
+  .order-wizard-topbar-nav {
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .order-wizard-macro {
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .order-wizard-macro-step {
+    gap: 0.3rem;
+    font-size: 0.78rem;
+  }
+
+  .order-wizard-macro-index {
+    width: 1.55rem;
+    height: 1.55rem;
+    font-size: 0.72rem;
+  }
+
+  /* Solo el paso activo muestra etiqueta; el resto son números/checks. */
+  .order-wizard-macro-step:not(.is-active) .order-wizard-macro-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .order-wizard-macro-step.is-active .order-wizard-macro-label {
+    max-width: 5.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .order-wizard-main {
@@ -9597,15 +10161,15 @@ Rediseño UI: Nuevo Pedido Layout Base
   }
 
   .order-wizard-express {
-    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.55rem;
+    padding: 0.65rem 0.75rem;
   }
 
-  .order-wizard-express-switch {
-    grid-column: 2;
-    justify-self: start;
+  .order-wizard-express-price {
+    flex-basis: 100%;
+    white-space: normal;
   }
 
-  .order-wizard-aside,
   .order-teeth-step-summary {
     position: static;
   }

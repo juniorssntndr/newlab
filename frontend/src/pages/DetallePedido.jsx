@@ -18,6 +18,11 @@ import {
     getOrderStatusLabel,
     getClientNextStepMessage,
 } from '../utils/orderStatusLabels.js';
+import {
+    ORDER_INTAKE_LABELS,
+    ORDER_INTAKE_MODES,
+    parseIntakeFromObservaciones,
+} from '../modules/orders/wizard/orderWizardConstants.js';
 
 const approvalStatusLabels = {
     pendiente: 'Pendiente',
@@ -371,6 +376,9 @@ const DetallePedido = () => {
             ? 'badge-approval-adjust'
             : 'badge-approval-pending';
     const caseFiles = Array.isArray(pedido.archivos) ? pedido.archivos : [];
+    const { intakeMode, notes: observationNotes } = parseIntakeFromObservaciones(pedido.observaciones);
+    const intakeLabel = intakeMode ? (ORDER_INTAKE_LABELS[intakeMode] || intakeMode) : null;
+    const intakeIcon = ORDER_INTAKE_MODES.find((mode) => mode.id === intakeMode)?.icon || 'bi-geo-alt';
     const rollbackOptions = ORDER_STATUS_FLOW.slice(0, Math.max(currentIdx, 0));
     const timelineSorted = [...(pedido.timeline || [])].sort((a, b) => {
         const timeA = a?.created_at ? new Date(a.created_at).getTime() : 0;
@@ -384,14 +392,14 @@ const DetallePedido = () => {
     });
 
     return (
-        <div className="animate-fade-in">
-            <div className="page-header" style={{ flexWrap: 'wrap' }}>
+        <div className="animate-fade-in pedido-detail">
+            <div className="page-header pedido-detail-header">
                 <div className="page-header-left">
-                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/pedidos')}>
+                    <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/pedidos')} aria-label="Volver a pedidos">
                         <i className="bi bi-arrow-left"></i>
                     </button>
                     <div>
-                        <h1 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                        <h1 className="pedido-detail-title">
                             {pedido.codigo}
                             <span className={`badge badge-dot badge-${pedido.estado}`}>{statusLabel(pedido.estado)}</span>
                         </h1>
@@ -401,7 +409,8 @@ const DetallePedido = () => {
                 <div className="pedido-actions">
                     {isLab && nextStatus && (
                         <button
-                            className="btn btn-accent"
+                            type="button"
+                            className="btn btn-primary"
                             onClick={() => (nextStatus === 'esperando_aprobacion' ? setApprovalModalOpen(true) : changeStatus(nextStatus))}
                             disabled={updating}
                         >
@@ -415,6 +424,7 @@ const DetallePedido = () => {
                     )}
                     {isLab && ['en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
                         <button
+                            type="button"
                             className="btn btn-secondary"
                             onClick={() => { setForceReason(''); setForceModalOpen(true); }}
                             disabled={updating}
@@ -424,6 +434,7 @@ const DetallePedido = () => {
                     )}
                     {isLab && rollbackOptions.length > 0 && (
                         <button
+                            type="button"
                             className="btn btn-secondary"
                             onClick={() => {
                                 setRollbackState(rollbackOptions[rollbackOptions.length - 1]);
@@ -443,7 +454,9 @@ const DetallePedido = () => {
                     className={`pedido-client-next-step ${isApproval ? 'is-action' : ''}`}
                     role="status"
                 >
-                    <i className={`bi ${isApproval ? 'bi-exclamation-circle' : 'bi-info-circle'}`}></i>
+                    <span className="pedidos-stat-icon" aria-hidden="true">
+                        <i className={`bi ${isApproval ? 'bi-exclamation-circle' : 'bi-info-circle'}`}></i>
+                    </span>
                     <div>
                         <strong>{isApproval ? 'Acción requerida' : 'Estado de tu pedido'}</strong>
                         <p>{clientNextStep}</p>
@@ -451,11 +464,10 @@ const DetallePedido = () => {
                 </div>
             )}
 
-            {/* Status timeline */}
-            <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className="card pedido-detail-flow">
                 <div className="status-timeline">
                     {ORDER_STATUS_FLOW.map((s, i) => (
-                        <div key={s} className="status-step">
+                        <div key={s} className={`status-step${i === currentIdx ? ' is-current' : ''}${i < currentIdx ? ' is-done' : ''}`}>
                             <div
                                 className="status-step-dot"
                                 style={{
@@ -473,61 +485,67 @@ const DetallePedido = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-6)' }}>
-                {/* Left: Details */}
-                <div style={{ flex: '1 1 60%', minWidth: 'min(100%, 280px)', maxWidth: '100%' }}>
-                    {/* Summary */}
-                    <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-                        <div className="card-header"><h3 className="card-title">Resumen</h3></div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: 'var(--space-4)' }}>
-                            <div className="detail-metric">
-                                <span className="detail-label">Fecha pedido</span>
-                                <div className="detail-value">{formatDate(pedido.fecha || pedido.created_at, true)}</div>
-                            </div>
-                            <div className="detail-metric">
-                                <span className="detail-label">Entrega</span>
-                                <div className="detail-value">{formatDate(pedido.fecha_entrega)}</div>
-                                {deliveryMeta && (
-                                    <span className={`date-chip is-${deliveryMeta.tone}`}>
-                                        <i className="bi bi-clock"></i> {deliveryMeta.label}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="detail-metric">
-                                <span className="detail-label">Items</span>
-                                <div className="detail-value">
-                                    {itemsCount} {itemsPiecesLabel}
-                                </div>
-                            </div>
-                            <div className="detail-metric">
-                                <span className="detail-label">Total</span>
-                                <div className="detail-value">S/. {parseFloat(finalTotal).toFixed(2)}</div>
-                            </div>
-                        </div>
+            <div className="order-wizard-confirm-hero pedido-detail-hero" aria-label="Resumen del pedido">
+                <div className="order-wizard-confirm-stat">
+                    <div className="order-wizard-confirm-stat-copy">
+                        <span className="order-wizard-confirm-label">
+                            <i className="bi bi-person" aria-hidden="true"></i>
+                            Paciente
+                        </span>
+                        <strong>{pedido.paciente_nombre}</strong>
+                        {pedido.clinica_nombre ? (
+                            <em className="order-wizard-confirm-meta">{pedido.clinica_nombre}</em>
+                        ) : null}
                     </div>
+                </div>
+                <div className="order-wizard-confirm-stat order-wizard-confirm-entrega">
+                    <div className="order-wizard-confirm-stat-copy">
+                        <span className="order-wizard-confirm-label">
+                            <i className="bi bi-truck" aria-hidden="true"></i>
+                            Entrega
+                        </span>
+                        <strong className="order-wizard-confirm-date-value">{formatDate(pedido.fecha_entrega)}</strong>
+                        {deliveryMeta ? (
+                            <em className="order-wizard-confirm-meta">{deliveryMeta.label}</em>
+                        ) : (
+                            <em className="order-wizard-confirm-meta">Pedido {formatDate(pedido.fecha || pedido.created_at, true)}</em>
+                        )}
+                    </div>
+                </div>
+                <div className="order-wizard-confirm-stat is-total">
+                    <div className="order-wizard-confirm-stat-copy">
+                        <span className="order-wizard-confirm-label">
+                            <i className="bi bi-cash-stack" aria-hidden="true"></i>
+                            Total
+                        </span>
+                        <strong>S/. {parseFloat(finalTotal).toFixed(2)}</strong>
+                        <em className="order-wizard-confirm-meta">{itemsCount} {itemsPiecesLabel}</em>
+                    </div>
+                </div>
+            </div>
 
-                    {/* Patient Info */}
-                    <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className={`pedido-detail-layout${caseFiles.length > 0 ? ' has-case-files' : ''}`}>
+                    <div className="card pedido-detail-info">
                         <div className="card-header"><h3 className="card-title">Información</h3></div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))', gap: 'var(--space-4)' }}>
-                            <div><span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Paciente</span><br /><strong>{pedido.paciente_nombre}</strong></div>
-                            <div><span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Clínica</span><br /><strong>{pedido.clinica_nombre}</strong></div>
-                            <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Responsable</span><br />
+                        <div className="pedido-detail-info-grid">
+                            <div className="pedido-detail-field">
+                                <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-person-gear" aria-hidden="true"></i>
+                                    Responsable
+                                </span>
                                 {user?.tipo === 'admin' ? (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-2)' }}>
+                                    <div className="pedido-detail-field-actions">
                                         <select
                                             className="form-select form-select-sm"
                                             value={responsableId}
                                             onChange={e => setResponsableId(e.target.value)}
-                                            style={{ flex: '1 1 180px' }}
                                         >
                                             <option value="">Sin asignar</option>
                                             {responsables.map(r => (
                                                 <option key={r.id} value={r.id}>{r.nombre}</option>
                                             ))}
                                         </select>
-                                        <button className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
+                                        <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
                                             <i className="bi bi-check2"></i>
                                             {savingResponsable ? 'Guardando...' : 'Guardar'}
                                         </button>
@@ -536,19 +554,20 @@ const DetallePedido = () => {
                                     <strong>{pedido.responsable_nombre || 'Sin asignar'}</strong>
                                 )}
                             </div>
-                            <div><span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Creado por</span><br />{pedido.creador_nombre || 'Sistema'}</div>
-                            <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Fecha de entrega</span><br />
+                            <div className="pedido-detail-field">
+                                <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-calendar3" aria-hidden="true"></i>
+                                    Fecha de entrega
+                                </span>
                                 {isLab ? (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-2)' }}>
+                                    <div className="pedido-detail-field-actions">
                                         <input
                                             className="form-input form-input-sm"
                                             type="date"
                                             value={deliveryDate}
                                             onChange={e => setDeliveryDate(e.target.value)}
-                                            style={{ flex: '1 1 180px' }}
                                         />
-                                        <button className="btn btn-primary btn-sm btn-commit" onClick={saveDeliveryDate} disabled={savingDelivery}>
+                                        <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveDeliveryDate} disabled={savingDelivery}>
                                             <i className="bi bi-check2"></i>
                                             {savingDelivery ? 'Guardando...' : 'Guardar'}
                                         </button>
@@ -557,74 +576,62 @@ const DetallePedido = () => {
                                     <strong>{formatDate(pedido.fecha_entrega)}</strong>
                                 )}
                             </div>
+                            {intakeLabel ? (
+                                <div className="pedido-detail-field">
+                                    <span className="order-wizard-confirm-label">
+                                        <i className={`bi ${intakeIcon}`} aria-hidden="true"></i>
+                                        Ingreso del caso
+                                    </span>
+                                    <strong>{intakeLabel}</strong>
+                                </div>
+                            ) : null}
                         </div>
-                        {pedido.observaciones && (
-                            <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-3)', background: 'var(--color-bg-alt)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
-                                <i className="bi bi-chat-left-text" style={{ marginRight: 8 }}></i>{pedido.observaciones}
+                        {observationNotes ? (
+                            <div className="pedido-detail-notes">
+                                <i className="bi bi-chat-left-text" aria-hidden="true"></i>
+                                <span>{observationNotes}</span>
                             </div>
-                        )}
+                        ) : null}
                     </div>
 
-                    {/* Items */}
-                    <div className="card">
+                    <div className="card pedido-detail-items">
                         <div className="card-header">
-                            <h3 className="card-title">Items del Pedido</h3>
+                            <h3 className="card-title">Ítems del pedido</h3>
                             <span className="badge badge-enviado">{itemsCount} {itemsPiecesLabel}</span>
                         </div>
-                        <div className="data-table-wrapper table-scroll-dense desktop-only" style={{ border: 'none', overflowX: 'auto' }}>
-                            <table className="data-table" style={{ minWidth: '600px' }}>
-                                <thead><tr><th>Producto</th><th>Pieza</th><th>Color</th><th>Material</th><th>Cant.</th><th>Subtotal</th></tr></thead>
-                                <tbody>
-                                    {(pedido.items || []).map((item, i) => (
-                                        <tr key={i}>
-                                            <td><strong>{item.producto_nombre || `Producto #${item.producto_id}`}</strong></td>
-                                            <td style={{ fontFamily: 'var(--font-mono)' }}>{formatDentalSelection(item)}</td>
-                                            <td>{item.color_vita || item.color || '—'}</td>
-                                            <td>{item.material || '—'}</td>
-                                            <td>{item.cantidad}</td>
-                                            <td><strong>S/. {(parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario))).toFixed(2)}</strong></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="mobile-cards mobile-only" style={{ marginTop: 'var(--space-3)' }}>
-                            {(pedido.items || []).map((item, i) => (
-                                <article className="mobile-card" key={`item-mobile-${i}`}>
-                                    <div className="mobile-card-head">
-                                        <div className="mobile-card-title">{item.producto_nombre || `Producto #${item.producto_id}`}</div>
-                                        <span className="badge badge-enviado">{item.cantidad} {parseFloat(item.cantidad) === 1 ? 'pieza' : 'piezas'}</span>
-                                    </div>
-                                    <div className="mobile-card-grid">
-                                        <div className="mobile-field">
-                                            <span className="mobile-field-label">Pieza</span>
-                                            <span className="mobile-field-value" style={{ fontFamily: 'var(--font-mono)' }}>{formatDentalSelection(item)}</span>
+                        <ul className="pedido-detail-item-list">
+                            {(pedido.items || []).map((item, i) => {
+                                const subtotal = parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario));
+                                const color = item.color_vita || item.color || null;
+                                return (
+                                    <li key={i} className="pedido-detail-item">
+                                        <span className="pedidos-stat-icon" aria-hidden="true">
+                                            <i className="bi bi-box-seam"></i>
+                                        </span>
+                                        <div className="pedido-detail-item-body">
+                                            <div className="pedido-detail-item-top">
+                                                <strong>{item.producto_nombre || `Producto #${item.producto_id}`}</strong>
+                                                <span className="pedido-detail-item-subtotal">S/. {Number(subtotal || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="pedido-detail-item-chips">
+                                                <span className="pedido-detail-chip is-mono">{formatDentalSelection(item)}</span>
+                                                {color ? <span className="pedido-detail-chip is-vita">{color}</span> : null}
+                                                {item.material ? <span className="pedido-detail-chip">{item.material}</span> : null}
+                                                <span className="pedido-detail-chip">
+                                                    {item.cantidad} {parseFloat(item.cantidad) === 1 ? 'pieza' : 'piezas'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="mobile-field">
-                                            <span className="mobile-field-label">Color</span>
-                                            <span className="mobile-field-value">{item.color_vita || item.color || '—'}</span>
-                                        </div>
-                                        <div className="mobile-field">
-                                            <span className="mobile-field-label">Material</span>
-                                            <span className="mobile-field-value">{item.material || '—'}</span>
-                                        </div>
-                                        <div className="mobile-field">
-                                            <span className="mobile-field-label">Subtotal</span>
-                                            <span className="mobile-field-value"><strong>S/. {(parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario))).toFixed(2)}</strong></span>
-                                        </div>
-                                    </div>
-                                </article>
-                            ))}
-                        </div>
-                        <div style={{ textAlign: 'right', padding: 'var(--space-4)', fontSize: '1.25rem', fontWeight: 700, borderTop: '2px solid var(--color-border)' }}>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                        <div className="pedido-detail-items-total">
                             Total: S/. {parseFloat(finalTotal).toFixed(2)}
                         </div>
                     </div>
-                </div>
 
-                {/* Right: Approval + Timeline */}
-                <div className="detail-side-stack" style={{ flex: '1 1 30%', minWidth: 'min(100%, 280px)', maxWidth: '100%' }}>
-                    <div className="card">
+                    <div className="card pedido-detail-design">
                         <div className="card-header"><h3 className="card-title">Diseño 3D</h3></div>
                         <div className="approval-card">
                             {approvalLink ? (
@@ -755,7 +762,7 @@ const DetallePedido = () => {
                         </div>
                     </div>
 
-                    <div className="card">
+                    <div className="card pedido-detail-files">
                         <div className="card-header">
                             <h3 className="card-title">Archivos del caso</h3>
                         </div>
@@ -824,7 +831,7 @@ const DetallePedido = () => {
                         </div>
                     </div>
 
-                    <div className="card">
+                    <div className="card pedido-detail-history">
                         <div className="card-header"><h3 className="card-title">Historial</h3></div>
                         {timelineSorted.length === 0 ? (
                             <div className="empty-state timeline-empty">
@@ -861,7 +868,6 @@ const DetallePedido = () => {
                             </div>
                         )}
                     </div>
-                </div>
             </div>
 
             <Modal

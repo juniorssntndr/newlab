@@ -18,8 +18,9 @@ const OrderWizardShell = ({
     return (
         <div className="order-wizard animate-fade-in">
             <header className="order-wizard-topbar">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={onBack}>
-                    <i className="bi bi-chevron-left" aria-hidden="true"></i> Volver
+                <button type="button" className="btn btn-ghost btn-sm order-wizard-topbar-nav" onClick={onBack}>
+                    <i className="bi bi-chevron-left" aria-hidden="true"></i>
+                    <span className="order-wizard-topbar-label">Volver</span>
                 </button>
 
                 <nav className="order-wizard-macro" aria-label="Pasos del pedido">
@@ -35,14 +36,20 @@ const OrderWizardShell = ({
                                 <span className="order-wizard-macro-index" aria-hidden="true">
                                     {done ? <i className="bi bi-check-lg"></i> : step.index}
                                 </span>
-                                <span>{step.label}</span>
+                                <span className="order-wizard-macro-label">{step.label}</span>
                             </div>
                         );
                     })}
                 </nav>
 
-                <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-                    <i className="bi bi-x-lg" aria-hidden="true"></i> Guardar y cerrar
+                <button
+                    type="button"
+                    className="btn btn-ghost btn-sm order-wizard-topbar-nav"
+                    onClick={onClose}
+                    aria-label="Guardar y cerrar"
+                >
+                    <i className="bi bi-x-lg" aria-hidden="true"></i>
+                    <span className="order-wizard-topbar-label">Guardar y cerrar</span>
                 </button>
             </header>
 
