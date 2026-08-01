@@ -25,8 +25,7 @@ import {
     saveOrderWizardDraft,
 } from '../modules/orders/wizard/orderWizardDraft.js';
 import { buildItemSelection } from '../utils/odontograma.js';
-import { resolveImageUrl, resolveProductImageUrl } from '../utils/resolveImageUrl.js';
-import { matchLandingProductImage } from '../utils/productCatalogImages.js';
+import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
 
 const formatDateForInput = (date) => {
     const year = date.getFullYear();
@@ -67,38 +66,6 @@ const calculateEstimatedDeliveryDate = (product, isUrgent) => {
     const deliveryDate = new Date();
     deliveryDate.setDate(deliveryDate.getDate() + estimatedDays);
     return formatDateForInput(deliveryDate);
-};
-
-const ConfirmProductThumb = ({ product }) => {
-    const primarySrc = resolveProductImageUrl(product);
-    const landingSrc = resolveImageUrl(matchLandingProductImage(product));
-    const preferredSrc = primarySrc || landingSrc;
-    const [src, setSrc] = useState(preferredSrc);
-    const [imgError, setImgError] = useState(false);
-
-    useEffect(() => {
-        setSrc(preferredSrc);
-        setImgError(false);
-    }, [preferredSrc]);
-
-    if (!src || imgError) {
-        return <i className="bi bi-gem" aria-hidden="true"></i>;
-    }
-
-    return (
-        <img
-            src={src}
-            alt=""
-            loading="lazy"
-            onError={() => {
-                if (landingSrc && src !== landingSrc) {
-                    setSrc(landingSrc);
-                    return;
-                }
-                setImgError(true);
-            }}
-        />
-    );
 };
 
 const NuevoPedido = () => {
@@ -701,11 +668,11 @@ const NuevoPedido = () => {
                                 <h3 className="order-wizard-confirm-section-title">Datos del caso</h3>
                                 <header className="order-wizard-confirm-hero" aria-label="Resumen del caso">
                                     <div className="order-wizard-confirm-stat">
-                                        <span className="order-wizard-confirm-stat-icon" aria-hidden="true">
-                                            <i className="bi bi-person"></i>
-                                        </span>
                                         <div className="order-wizard-confirm-stat-copy">
-                                            <span className="order-wizard-confirm-label">Paciente</span>
+                                            <span className="order-wizard-confirm-label">
+                                                <i className="bi bi-person" aria-hidden="true"></i>
+                                                Paciente
+                                            </span>
                                             <strong>{form.paciente_nombre}</strong>
                                             {!isClient && selectedClinic?.nombre ? (
                                                 <em className="order-wizard-confirm-meta">{selectedClinic.nombre}</em>
@@ -714,11 +681,11 @@ const NuevoPedido = () => {
                                     </div>
 
                                     <div className="order-wizard-confirm-stat">
-                                        <span className="order-wizard-confirm-stat-icon" aria-hidden="true">
-                                            <i className="bi bi-calendar3"></i>
-                                        </span>
                                         <div className="order-wizard-confirm-stat-copy order-wizard-confirm-entrega">
-                                            <span className="order-wizard-confirm-label">Entrega</span>
+                                            <span className="order-wizard-confirm-label">
+                                                <i className="bi bi-calendar3" aria-hidden="true"></i>
+                                                Entrega
+                                            </span>
                                             <div className="order-wizard-confirm-date-row">
                                                 <strong className="order-wizard-confirm-date-value">
                                                     {formatDeliveryLabel(form.fecha_entrega || estimatedDeliveryDate)}
@@ -747,11 +714,11 @@ const NuevoPedido = () => {
                                     </div>
 
                                     <div className="order-wizard-confirm-stat is-total">
-                                        <span className="order-wizard-confirm-stat-icon" aria-hidden="true">
-                                            <i className="bi bi-cash-stack"></i>
-                                        </span>
                                         <div className="order-wizard-confirm-stat-copy">
-                                            <span className="order-wizard-confirm-label">Total</span>
+                                            <span className="order-wizard-confirm-label">
+                                                <i className="bi bi-cash-stack" aria-hidden="true"></i>
+                                                Total
+                                            </span>
                                             <strong className="order-wizard-confirm-total-value">
                                                 S/. {displayTotal.toFixed(2)}
                                             </strong>
@@ -770,7 +737,7 @@ const NuevoPedido = () => {
                                         return (
                                             <li key={item.id} className="order-wizard-confirm-item">
                                                 <div className="order-wizard-confirm-item-media" aria-hidden="true">
-                                                    <ConfirmProductThumb product={product} />
+                                                    <OrderProductThumb product={product} />
                                                 </div>
                                                 <div className="order-wizard-confirm-item-main">
                                                     <strong>{item.nombre}</strong>

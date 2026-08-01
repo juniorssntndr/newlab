@@ -111,7 +111,7 @@ export const makeOrderPgRepository = ({ pool }) => ({
     },
     listOrderItems: async ({ orderId }) => {
         const result = await pool.query(
-            `SELECT pi.*, pr.nombre as producto_nombre
+            `SELECT pi.*, pr.nombre as producto_nombre, pr.image_url as producto_image_url
              FROM nl_pedido_items pi LEFT JOIN nl_productos pr ON pi.producto_id = pr.id
              WHERE pi.pedido_id = $1`,
             [orderId]

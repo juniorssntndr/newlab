@@ -30,6 +30,7 @@ const OrderTeethStep = ({
     const count = teeth.length;
     const countLabel = count === 1 ? '1 diente seleccionado' : `${count} dientes seleccionados`;
     const isBridge = isBridgeProduct(product);
+    const selectedShade = String(colorVita || '').trim();
 
     const removeTooth = (tooth) => {
         const next = teeth.filter((value) => value !== tooth);
@@ -84,7 +85,16 @@ const OrderTeethStep = ({
                                 Borrar
                             </button>
                         </div>
-                        <div className="order-teeth-chips" role="list">
+                        <div
+                            className={[
+                                'order-teeth-chips',
+                                count > 24 ? 'is-dense-xl' : '',
+                                count > 16 && count <= 24 ? 'is-dense-lg' : '',
+                                count > 8 && count <= 16 ? 'is-dense-md' : '',
+                            ].filter(Boolean).join(' ')}
+                            role="list"
+                            data-count={count}
+                        >
                             {teeth.map((tooth) => (
                                 <button
                                     key={tooth}
@@ -106,8 +116,8 @@ const OrderTeethStep = ({
                     <label className="form-label" htmlFor="order-teeth-color">Tono VITA</label>
                     <select
                         id="order-teeth-color"
-                        className="form-select"
-                        value={colorVita || ''}
+                        className={`form-select order-teeth-vita-select${selectedShade ? ' has-value' : ''}`}
+                        value={selectedShade}
                         onChange={(event) => onColorChange?.(event.target.value)}
                         aria-label="Seleccionar tono VITA"
                     >

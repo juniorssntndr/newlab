@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
-import { formatDentalSelection } from '../utils/odontograma.js';
+import { formatDentalSelection, sortTeethByArchOrder } from '../utils/odontograma.js';
 import { apiClient } from '../services/http/apiClient.js';
 import { useOrderDetailQuery } from '../modules/orders/queries/useOrderDetailQuery.js';
 import { useUpdateOrderStatusMutation } from '../modules/orders/mutations/useUpdateOrderStatusMutation.js';
@@ -16,13 +16,13 @@ import { isClientRole, isLabStaffRole } from '../utils/accessControl.js';
 import {
     ORDER_STATUS_FLOW,
     getOrderStatusLabel,
-    getClientNextStepMessage,
 } from '../utils/orderStatusLabels.js';
 import {
     ORDER_INTAKE_LABELS,
     ORDER_INTAKE_MODES,
     parseIntakeFromObservaciones,
 } from '../modules/orders/wizard/orderWizardConstants.js';
+import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
 
 const approvalStatusLabels = {
     pendiente: 'Pendiente',
@@ -356,7 +356,6 @@ const DetallePedido = () => {
     const isLab = isLabStaffRole(user);
     const statusLabel = (estado) => getOrderStatusLabel(estado, { forClient: isClient });
     const isApproval = pedido.estado === 'esperando_aprobacion';
-    const clientNextStep = isClient ? getClientNextStepMessage(pedido) : '';
     const deliveryMeta = getDeliveryMeta();
     const itemsCount = (pedido.items || []).reduce((sum, item) => sum + (parseFloat(item.cantidad) || 0), 0);
     const itemsPiecesLabel = itemsCount === 1 ? 'pieza' : 'piezas';
@@ -449,35 +448,18 @@ const DetallePedido = () => {
                 </div>
             </div>
 
-            {clientNextStep && (
-                <div
-                    className={`pedido-client-next-step ${isApproval ? 'is-action' : ''}`}
-                    role="status"
-                >
-                    <span className="pedidos-stat-icon" aria-hidden="true">
-                        <i className={`bi ${isApproval ? 'bi-exclamation-circle' : 'bi-info-circle'}`}></i>
-                    </span>
-                    <div>
-                        <strong>{isApproval ? 'Acción requerida' : 'Estado de tu pedido'}</strong>
-                        <p>{clientNextStep}</p>
-                    </div>
-                </div>
-            )}
-
             <div className="card pedido-detail-flow">
                 <div className="status-timeline">
                     {ORDER_STATUS_FLOW.map((s, i) => (
-                        <div key={s} className={`status-step${i === currentIdx ? ' is-current' : ''}${i < currentIdx ? ' is-done' : ''}`}>
-                            <div
-                                className="status-step-dot"
-                                style={{
-                                    background: i <= currentIdx ? 'var(--color-primary)' : 'var(--color-bg-alt)',
-                                    color: i <= currentIdx ? '#fff' : 'var(--color-text-secondary)'
-                                }}
-                            >
-                                {i < currentIdx ? <i className="bi bi-check"></i> : i + 1}
+                        <div
+                            key={s}
+                            className={`status-step${i === currentIdx ? ' is-current' : ''}${i < currentIdx ? ' is-done' : ''}`}
+                            aria-current={i === currentIdx ? 'step' : undefined}
+                        >
+                            <div className="status-step-dot" aria-hidden="true">
+                                {i < currentIdx ? <i className="bi bi-check-lg"></i> : i + 1}
                             </div>
-                            <div className="status-step-label" style={{ fontWeight: i === currentIdx ? 700 : 500, color: i === currentIdx ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>
+                            <div className="status-step-label">
                                 {statusLabel(s)}
                             </div>
                         </div>
@@ -501,7 +483,7 @@ const DetallePedido = () => {
                 <div className="order-wizard-confirm-stat order-wizard-confirm-entrega">
                     <div className="order-wizard-confirm-stat-copy">
                         <span className="order-wizard-confirm-label">
-                            <i className="bi bi-truck" aria-hidden="true"></i>
+                            <i className="bi bi-calendar3" aria-hidden="true"></i>
                             Entrega
                         </span>
                         <strong className="order-wizard-confirm-date-value">{formatDate(pedido.fecha_entrega)}</strong>
@@ -526,7 +508,12 @@ const DetallePedido = () => {
 
             <div className={`pedido-detail-layout${caseFiles.length > 0 ? ' has-case-files' : ''}`}>
                     <div className="card pedido-detail-info">
-                        <div className="card-header"><h3 className="card-title">Información</h3></div>
+                        <div className="card-header">
+                            <h3 className="card-title">
+                                <i className="bi bi-info-circle" aria-hidden="true"></i>
+                                Información
+                            </h3>
+                        </div>
                         <div className="pedido-detail-info-grid">
                             <div className="pedido-detail-field">
                                 <span className="order-wizard-confirm-label">
@@ -596,30 +583,66 @@ const DetallePedido = () => {
 
                     <div className="card pedido-detail-items">
                         <div className="card-header">
-                            <h3 className="card-title">Ítems del pedido</h3>
+                            <h3 className="card-title">Datos del caso</h3>
                             <span className="badge badge-enviado">{itemsCount} {itemsPiecesLabel}</span>
                         </div>
-                        <ul className="pedido-detail-item-list">
+                        <ul className="order-wizard-confirm-items pedido-detail-confirm-items">
                             {(pedido.items || []).map((item, i) => {
                                 const subtotal = parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario));
-                                const color = item.color_vita || item.color || null;
+                                const tone = String(item.color_vita || item.color || '').trim();
+                                const teeth = sortTeethByArchOrder(item.piezas_dentales || []);
+                                const isBridge = Boolean(item.es_puente && item.pieza_inicio && item.pieza_fin);
+                                const product = {
+                                    id: item.producto_id,
+                                    nombre: item.producto_nombre || `Producto #${item.producto_id}`,
+                                    image_url: item.producto_image_url || item.image_url || '',
+                                };
+                                const teethDenseClass = teeth.length > 24
+                                    ? 'is-dense-xl'
+                                    : teeth.length > 16
+                                        ? 'is-dense-lg'
+                                        : teeth.length > 8
+                                            ? 'is-dense-md'
+                                            : '';
                                 return (
-                                    <li key={i} className="pedido-detail-item">
-                                        <span className="pedidos-stat-icon" aria-hidden="true">
-                                            <i className="bi bi-box-seam"></i>
-                                        </span>
-                                        <div className="pedido-detail-item-body">
-                                            <div className="pedido-detail-item-top">
-                                                <strong>{item.producto_nombre || `Producto #${item.producto_id}`}</strong>
+                                    <li key={i} className="order-wizard-confirm-item">
+                                        <div className="order-wizard-confirm-item-media" aria-hidden="true">
+                                            <OrderProductThumb product={product} />
+                                        </div>
+                                        <div className="order-wizard-confirm-item-main">
+                                            <div className="pedido-detail-confirm-item-top">
+                                                <strong>{product.nombre}</strong>
                                                 <span className="pedido-detail-item-subtotal">S/. {Number(subtotal || 0).toFixed(2)}</span>
                                             </div>
-                                            <div className="pedido-detail-item-chips">
-                                                <span className="pedido-detail-chip is-mono">{formatDentalSelection(item)}</span>
-                                                {color ? <span className="pedido-detail-chip is-vita">{color}</span> : null}
-                                                {item.material ? <span className="pedido-detail-chip">{item.material}</span> : null}
-                                                <span className="pedido-detail-chip">
-                                                    {item.cantidad} {parseFloat(item.cantidad) === 1 ? 'pieza' : 'piezas'}
-                                                </span>
+                                            <div className="order-wizard-confirm-clinical">
+                                                {isBridge ? (
+                                                    <span className="order-wizard-confirm-qty">{formatDentalSelection(item)}</span>
+                                                ) : teeth.length > 0 ? (
+                                                    <div
+                                                        className={[
+                                                            'order-wizard-confirm-teeth',
+                                                            teethDenseClass,
+                                                        ].filter(Boolean).join(' ')}
+                                                        data-count={teeth.length}
+                                                        aria-label="Piezas seleccionadas"
+                                                    >
+                                                        {teeth.map((tooth) => (
+                                                            <span key={`${i}-${tooth}`} className="order-wizard-confirm-tooth">
+                                                                {tooth}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="order-wizard-confirm-qty">
+                                                        {item.cantidad} {parseFloat(item.cantidad) === 1 ? 'pieza' : 'piezas'}
+                                                    </span>
+                                                )}
+                                                {tone ? (
+                                                    <span className="order-wizard-confirm-tone">Tono {tone}</span>
+                                                ) : null}
+                                                {item.material ? (
+                                                    <span className="order-wizard-confirm-tone">{item.material}</span>
+                                                ) : null}
                                             </div>
                                         </div>
                                     </li>
@@ -632,7 +655,12 @@ const DetallePedido = () => {
                     </div>
 
                     <div className="card pedido-detail-design">
-                        <div className="card-header"><h3 className="card-title">Diseño 3D</h3></div>
+                        <div className="card-header">
+                            <h3 className="card-title">
+                                <i className="bi bi-badge-3d" aria-hidden="true"></i>
+                                Diseño 3D
+                            </h3>
+                        </div>
                         <div className="approval-card">
                             {approvalLink ? (
                                 <div className="approval-review">
@@ -745,9 +773,6 @@ const DetallePedido = () => {
                                 </div>
                             ) : (
                                 <div className="approval-review-empty">
-                                    <div className="approval-review-empty-icon">
-                                        <i className="bi bi-cube"></i>
-                                    </div>
                                     <div>
                                         <h4>Diseño 3D aún no disponible</h4>
                                         <p>Pendiente de link Exocad.</p>

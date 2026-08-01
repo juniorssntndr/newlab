@@ -5,19 +5,19 @@ export const ORDER_INTAKE_MODES = [
     {
         id: 'recoleccion',
         label: 'Recolección en consultorio',
-        description: 'El laboratorio coordinará el recojo de modelos en tu consultorio.',
+        description: 'Recojo de modelos en tu consultorio.',
         icon: 'bi-geo-alt',
     },
     {
         id: 'envio',
         label: 'Envío de modelos',
-        description: 'Enviarás impresiones o modelos físicos al laboratorio.',
+        description: 'Envías impresiones o modelos al lab.',
         icon: 'bi-box-seam',
     },
     {
         id: 'digital',
         label: 'Archivos digitales',
-        description: 'Coordinaremos la subida de STL u otros archivos (después del pedido).',
+        description: 'STL u otros archivos después del pedido.',
         icon: 'bi-cloud-arrow-up',
     },
 ];
