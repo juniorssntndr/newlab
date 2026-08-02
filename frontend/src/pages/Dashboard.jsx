@@ -5,10 +5,16 @@ import { Doughnut, Bar } from 'react-chartjs-2';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useDashboardStatsQuery } from '../modules/dashboard/queries/useDashboardStatsQuery.js';
 import { useDashboardFinanceQuery } from '../modules/dashboard/queries/useDashboardFinanceQuery.js';
-import { canAccessFinancialModules } from '../utils/accessControl.js';
+import { canAccessFinanceDashboard } from '../utils/accessControl.js';
+import { getOrderStatusLabel } from '../utils/orderStatusLabels.js';
+import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
+import FormDatePicker from '../components/FormDatePicker.jsx';
+import { sortTeethByArchOrder } from '../utils/odontograma.js';
 import '../styles/dashboard-ui-consistency.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+
+const MAX_TEETH_PREVIEW = 4;
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
@@ -28,6 +34,52 @@ const dashboardPalette = {
 };
 const dashboardGridColor = 'rgba(0,0,0,0.05)';
 const statusColors = [dashboardPalette.amber, dashboardPalette.violet, dashboardPalette.blue, dashboardPalette.cyan, dashboardPalette.emerald, dashboardPalette.gray];
+
+const getStrategicRankShellStyle = (count) => {
+    const rows = Math.max(1, count);
+    const height = Math.max(168, Math.min(460, rows * 42 + 52));
+    return { height, minHeight: height };
+};
+
+const truncateChartLabel = (label, max = 22) => {
+    const text = String(label || '');
+    if (text.length <= max) return text;
+    return `${text.slice(0, max - 1)}…`;
+};
+
+const buildStrategicRankChartOptions = () => ({
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    datasets: {
+        bar: {
+            categoryPercentage: 0.72,
+            barPercentage: 0.82,
+            borderRadius: 6,
+            maxBarThickness: 28
+        }
+    },
+    scales: {
+        x: {
+            grid: { color: dashboardGridColor },
+            ticks: { font: { size: 10 }, maxTicksLimit: 5 }
+        },
+        y: {
+            grid: { display: false },
+            ticks: {
+                font: { size: 10 },
+                autoSkip: false,
+                callback(value) {
+                    return truncateChartLabel(this.getLabelForValue(value));
+                }
+            }
+        }
+    },
+    layout: { padding: { top: 2, bottom: 2, right: 6 } }
+});
+
+const STRATEGIC_RANK_CHART_OPTIONS = buildStrategicRankChartOptions();
 
 const formatCurrency = (value) => {
     const number = parseFloat(value || 0);
@@ -74,7 +126,7 @@ const toMonthKey = (value) => {
 const Dashboard = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const canAccessFinance = canAccessFinancialModules(user);
+    const canAccessFinance = canAccessFinanceDashboard(user);
     const [activeView, setActiveView] = useState('operativo');
     const [financeView, setFinanceView] = useState('resumen');
     const [strategicTopN, setStrategicTopN] = useState(5);
@@ -116,6 +168,14 @@ const Dashboard = () => {
     const topClinicaMes = stats?.top_clinica_mes || null;
     const topProductosMes = stats?.top_productos_mes || [];
     const topClinicasMes = stats?.top_clinicas_mes || [];
+    const maxTopProductoCantidad = Math.max(
+        ...topProductosMes.map((row) => Number(row.cantidad) || 0),
+        1,
+    );
+    const maxTopClinicaPedidos = Math.max(
+        ...topClinicasMes.map((row) => Number(row.pedidos) || 0),
+        1,
+    );
     const historicoOperativo = stats?.historico_operativo_12m || [];
     const historicoTopProducto = stats?.historico_top_producto_12m || [];
     const historicoTopClinica = stats?.historico_top_clinica_12m || [];
@@ -178,6 +238,14 @@ const Dashboard = () => {
     const historicoOperativoSlice = historicoOperativo.slice(-selectedMonths);
     const historicoTopProductoSlice = historicoTopProducto.slice(-12);
     const historicoTopClinicaSlice = historicoTopClinica.slice(-12);
+    const maxHistoricoTopProducto = Math.max(
+        ...historicoTopProductoSlice.map((item) => Number(item.cantidad) || 0),
+        1,
+    );
+    const maxHistoricoTopClinica = Math.max(
+        ...historicoTopClinicaSlice.map((item) => Number(item.pedidos) || 0),
+        1,
+    );
 
     const operativoBarDataSlice = {
         labels: historicoOperativoSlice.map((item) => toMonthLabel(item.periodo)),
@@ -346,15 +414,15 @@ const Dashboard = () => {
             <div key={options.key || i} className={`card kpi-card dashboard-kpi-card ${options.className || ''}`.trim()}>
                 <div className="dashboard-kpi-shell">
                     <div className="dashboard-kpi-row">
-                        <div className="dashboard-kpi-heading-group">
-                            <div className="dashboard-kpi-heading">{kpi.label}</div>
-                        </div>
-                        <div className="kpi-icon dashboard-kpi-icon-right">
+                        <div className="kpi-icon" aria-hidden="true">
                             <i className={`bi ${kpi.icon}`}></i>
                         </div>
+                        <div className="dashboard-kpi-heading-group">
+                            <div className="dashboard-kpi-heading">{kpi.label}</div>
+                            <div className={valueClassName}>{kpi.value ?? 0}</div>
+                            {kpi.detail && <div className={`dashboard-kpi-note ${options.noteClassName || ''}`.trim()}>{kpi.detail}</div>}
+                        </div>
                     </div>
-                    <div className={valueClassName}>{kpi.value ?? 0}</div>
-                    {kpi.detail && <div className={`dashboard-kpi-note ${options.noteClassName || ''}`.trim()}>{kpi.detail}</div>}
                 </div>
             </div>
         );
@@ -369,10 +437,10 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <div className="dashboard-view-switcher" role="group" aria-label="Vista principal del dashboard">
+            <div className="section-tabs dashboard-view-switcher" role="group" aria-label="Vista principal del dashboard">
                 <button
                     type="button"
-                    className={`btn dashboard-view-tab ${activeView === 'operativo' ? 'btn-primary' : 'btn-ghost'}`}
+                    className={`btn section-tab dashboard-view-tab ${activeView === 'operativo' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveView('operativo')}
                     aria-pressed={activeView === 'operativo'}
                 >
@@ -381,7 +449,7 @@ const Dashboard = () => {
                 {canAccessFinance ? (
                     <button
                         type="button"
-                        className={`btn dashboard-view-tab ${activeView === 'financiero' ? 'btn-primary' : 'btn-ghost'}`}
+                        className={`btn section-tab dashboard-view-tab ${activeView === 'financiero' ? 'btn-primary' : 'btn-ghost'}`}
                         onClick={() => setActiveView('financiero')}
                         aria-pressed={activeView === 'financiero'}
                     >
@@ -392,92 +460,128 @@ const Dashboard = () => {
 
             {activeView === 'financiero' && (
                 <>
-            <div className="card dashboard-filters-card">
-                <div className="dashboard-filters-grid">
-                    <div className="form-group">
-                        <label className="form-label">Desde</label>
-                        <input
-                            type="date"
-                            className="form-input"
-                            value={filters.from}
-                            onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))}
-                        />
+            <div className="card dashboard-finance-controls">
+                <div className="dashboard-finance-controls-row">
+                    <div className="dashboard-finance-controls-dates">
+                        <div className="dashboard-filters-grid">
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="dashboard-finance-from">Desde</label>
+                                <FormDatePicker
+                                    id="dashboard-finance-from"
+                                    value={filters.from}
+                                    max={filters.to || undefined}
+                                    onChange={(from) => setFilters((prev) => ({ ...prev, from }))}
+                                    aria-label="Fecha desde"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="dashboard-finance-to">Hasta</label>
+                                <FormDatePicker
+                                    id="dashboard-finance-to"
+                                    className="form-date-picker--end"
+                                    value={filters.to}
+                                    min={filters.from || undefined}
+                                    onChange={(to) => setFilters((prev) => ({ ...prev, to }))}
+                                    aria-label="Fecha hasta"
+                                />
+                            </div>
+                        </div>
+                        <div className="dashboard-filters-actions pedidos-status-filters" role="group" aria-label="Rangos rápidos del dashboard financiero">
+                            {[30, 60, 90].map((days) => {
+                                const active = filters.from === daysAgoIso(days) && filters.to === todayIso();
+                                return (
+                                    <button
+                                        key={days}
+                                        type="button"
+                                        className={`btn btn-sm pedidos-filter-chip${active ? ' is-active' : ''}`}
+                                        aria-pressed={active}
+                                        onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(days), to: todayIso() }))}
+                                    >
+                                        Últimos {days} días
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <div className="form-group">
-                        <label className="form-label">Hasta</label>
-                        <input
-                            type="date"
-                            className="form-input"
-                            value={filters.to}
-                            onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))}
-                        />
+                    <div className="form-group dashboard-finance-view-group">
+                        <span className="form-label" id="dashboard-finance-view-label">Vista</span>
+                        <div
+                            className="segmented-control dashboard-finance-view-switch"
+                            role="group"
+                            aria-labelledby="dashboard-finance-view-label"
+                        >
+                            <button
+                                type="button"
+                                aria-pressed={financeView === 'resumen'}
+                                className={`segmented-control__btn${financeView === 'resumen' ? ' is-active' : ''}`}
+                                onClick={() => setFinanceView('resumen')}
+                            >
+                                <i className="bi bi-grid" aria-hidden="true"></i>
+                                Resumen
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={financeView === 'estrategicos'}
+                                className={`segmented-control__btn${financeView === 'estrategicos' ? ' is-active' : ''}`}
+                                onClick={() => setFinanceView('estrategicos')}
+                            >
+                                <i className="bi bi-bar-chart-line" aria-hidden="true"></i>
+                                Estratégicos
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div className="dashboard-filters-actions" role="group" aria-label="Rangos rapidos del dashboard financiero">
-                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(30), to: todayIso() }))}>Últimos 30 días</button>
-                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(60), to: todayIso() }))}>Últimos 60 días</button>
-                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, from: daysAgoIso(90), to: todayIso() }))}>Últimos 90 días</button>
-                </div>
-            </div>
-
-            <div className="card dashboard-toolbar-card dashboard-toolbar-card--padded">
-                <div className="dashboard-toolbar-group" role="group" aria-label="Vista financiera">
-                    <button type="button" aria-pressed={financeView === 'resumen'} className={`btn btn-sm ${financeView === 'resumen' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFinanceView('resumen')}>
-                        <i className="bi bi-grid" aria-hidden="true"></i> Resumen financiero
-                    </button>
-                    <button type="button" aria-pressed={financeView === 'estrategicos'} className={`btn btn-sm ${financeView === 'estrategicos' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFinanceView('estrategicos')}>
-                        <i className="bi bi-bar-chart-line" aria-hidden="true"></i> Estratégicos
-                    </button>
                 </div>
             </div>
 
             {financeView === 'resumen' && (
                 <>
 
-            <div className="card dashboard-stack">
-                <div className="card-header dashboard-card-header">
-                    <div>
-                        <h3 className="card-title">Indicadores de liquidez</h3>
-                        <p className="card-subtitle">Control de caja y flujo en tiempo real</p>
+            <div className="dashboard-ops-split is-equal dashboard-stack">
+                <div className="card dashboard-ops-panel">
+                    <div className="card-header dashboard-card-header">
+                        <div>
+                            <h3 className="card-title">Indicadores de liquidez</h3>
+                            <p className="card-subtitle">Control de caja y flujo en tiempo real</p>
+                        </div>
                     </div>
+                    {loadingFinance ? (
+                        <div className="grid dashboard-kpi-grid-ops-2x2 dashboard-staggered-grid">
+                            {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton dashboard-loading-card" />)}
+                        </div>
+                    ) : (
+                        <div className="grid dashboard-kpi-grid-ops-2x2 dashboard-staggered-grid">
+                            {liquidityCards.map((kpi, i) => (
+                                renderDashboardMetricCard(kpi, i, {
+                                    currency: true,
+                                    className: 'animate-slide-up'
+                                })
+                            ))}
+                        </div>
+                    )}
                 </div>
-                {loadingFinance ? (
-                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
-                        {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton dashboard-loading-card" />)}
-                    </div>
-                ) : (
-                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
-                        {liquidityCards.map((kpi, i) => (
-                            renderDashboardMetricCard(kpi, i, {
-                                currency: true,
-                                className: 'animate-slide-up'
-                            })
-                        ))}
-                    </div>
-                )}
-            </div>
 
-            <div className="card dashboard-stack">
-                <div className="card-header dashboard-card-header">
-                    <div>
-                        <h3 className="card-title">Control de ingresos y gastos</h3>
-                        <p className="card-subtitle">Indicadores clave mensuales para decisiones rápidas</p>
+                <div className="card dashboard-ops-panel">
+                    <div className="card-header dashboard-card-header">
+                        <div>
+                            <h3 className="card-title">Control de ingresos y gastos</h3>
+                            <p className="card-subtitle">Indicadores clave mensuales para decisiones rápidas</p>
+                        </div>
                     </div>
+                    {loadingFinance ? (
+                        <div className="grid dashboard-kpi-grid-ops-2x2 dashboard-staggered-grid">
+                            {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton dashboard-loading-card" />)}
+                        </div>
+                    ) : (
+                        <div className="grid dashboard-kpi-grid-ops-2x2 dashboard-staggered-grid">
+                            {businessCards.map((kpi, i) => (
+                                renderDashboardMetricCard(kpi, i, {
+                                    currency: true,
+                                    className: 'animate-slide-up'
+                                })
+                            ))}
+                        </div>
+                    )}
                 </div>
-                {loadingFinance ? (
-                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
-                        {[1, 2, 3, 4].map((i) => <div key={i} className="skeleton dashboard-loading-card" />)}
-                    </div>
-                ) : (
-                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
-                        {businessCards.map((kpi, i) => (
-                            renderDashboardMetricCard(kpi, i, {
-                                currency: true,
-                                className: 'animate-slide-up'
-                            })
-                        ))}
-                    </div>
-                )}
             </div>
 
             <div className="grid grid-cols-3 dashboard-stack">
@@ -531,58 +635,62 @@ const Dashboard = () => {
                                 <p className="card-subtitle">Identifica rápidamente qué clínica y qué producto impulsan tus ingresos</p>
                             </div>
                             <div className="dashboard-toolbar-group" role="group" aria-label="Opciones del centro estrategico">
-                                <button type="button" aria-pressed={strategicTopN === 5} className={`btn btn-sm ${strategicTopN === 5 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(5)}>Top 5</button>
-                                <button type="button" aria-pressed={strategicTopN === 10} className={`btn btn-sm ${strategicTopN === 10 ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setStrategicTopN(10)}>Top 10</button>
-                                <button type="button" aria-pressed={strategicMetric === 'monto'} aria-label="Ver montos en soles" className={`btn btn-sm ${strategicMetric === 'monto' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStrategicMetric('monto')}>S/.</button>
-                                <button type="button" aria-pressed={strategicMetric === 'pct'} aria-label="Ver porcentajes" className={`btn btn-sm ${strategicMetric === 'pct' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStrategicMetric('pct')}>%</button>
+                                <button type="button" aria-pressed={strategicTopN === 5} className={`btn btn-sm pedidos-filter-chip${strategicTopN === 5 ? ' is-active' : ''}`} onClick={() => setStrategicTopN(5)}>Top 5</button>
+                                <button type="button" aria-pressed={strategicTopN === 10} className={`btn btn-sm pedidos-filter-chip${strategicTopN === 10 ? ' is-active' : ''}`} onClick={() => setStrategicTopN(10)}>Top 10</button>
+                                <button type="button" aria-pressed={strategicMetric === 'monto'} aria-label="Ver montos en soles" className={`btn btn-sm pedidos-filter-chip${strategicMetric === 'monto' ? ' is-active' : ''}`} onClick={() => setStrategicMetric('monto')}>S/.</button>
+                                <button type="button" aria-pressed={strategicMetric === 'pct'} aria-label="Ver porcentajes" className={`btn btn-sm pedidos-filter-chip${strategicMetric === 'pct' ? ' is-active' : ''}`} onClick={() => setStrategicMetric('pct')}>%</button>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid dashboard-stack">
-                        {renderDashboardMetricCard({
-                            label: 'Clínica líder del período',
-                            value: topClinicaActual ? topClinicaActual.clinica : 'Sin datos',
-                            detail: topClinicaActual ? formatCurrency(topClinicaActual.total) : 'S/. 0.00',
-                            icon: 'bi-building-check'
-                        }, 'strategic-clinic', { className: 'strategic-kpi-card' })}
-                        {renderDashboardMetricCard({
-                            label: 'Producto líder del período',
-                            value: topProductoActual ? topProductoActual.producto : 'Sin datos',
-                            detail: topProductoActual ? formatCurrency(topProductoActual.total) : 'S/. 0.00',
-                            icon: 'bi-box-seam'
-                        }, 'strategic-product', { className: 'strategic-kpi-card' })}
-                        {renderDashboardMetricCard({
-                            label: 'Concentración top 3 clínicas',
-                            value: formatPercent(estrategicosKpis.concentracion_top3_clinicas_pct),
-                            detail: 'Participación sobre ingresos',
-                            icon: 'bi-pie-chart'
-                        }, 'strategic-clinics-pct', { className: 'strategic-kpi-card', currency: true })}
-                        {renderDashboardMetricCard({
-                            label: 'Concentración top 3 productos',
-                            value: formatPercent(estrategicosKpis.concentracion_top3_productos_pct),
-                            detail: 'Participación sobre ingresos',
-                            icon: 'bi-bar-chart'
-                        }, 'strategic-products-pct', { className: 'strategic-kpi-card', currency: true })}
+                    <div className="card dashboard-ops-panel dashboard-stack dashboard-strategic-summary">
+                        <div className="grid dashboard-kpi-grid-ops-2x2 dashboard-strategic-kpis dashboard-staggered-grid">
+                            {renderDashboardMetricCard({
+                                label: 'Clínica líder del período',
+                                value: topClinicaActual ? topClinicaActual.clinica : 'Sin datos',
+                                detail: topClinicaActual ? formatCurrency(topClinicaActual.total) : 'S/. 0.00',
+                                icon: 'bi-building-check'
+                            }, 'strategic-clinic', {
+                                className: 'animate-slide-up',
+                                valueClassName: 'dashboard-kpi-main-value-featured',
+                                noteClassName: 'dashboard-kpi-note-featured'
+                            })}
+                            {renderDashboardMetricCard({
+                                label: 'Producto líder del período',
+                                value: topProductoActual ? topProductoActual.producto : 'Sin datos',
+                                detail: topProductoActual ? formatCurrency(topProductoActual.total) : 'S/. 0.00',
+                                icon: 'bi-box-seam'
+                            }, 'strategic-product', {
+                                className: 'animate-slide-up',
+                                valueClassName: 'dashboard-kpi-main-value-featured',
+                                noteClassName: 'dashboard-kpi-note-featured'
+                            })}
+                            {renderDashboardMetricCard({
+                                label: 'Concentración top 3 clínicas',
+                                value: formatPercent(estrategicosKpis.concentracion_top3_clinicas_pct),
+                                detail: 'Participación sobre ingresos',
+                                icon: 'bi-pie-chart'
+                            }, 'strategic-clinics-pct', { className: 'animate-slide-up' })}
+                            {renderDashboardMetricCard({
+                                label: 'Concentración top 3 productos',
+                                value: formatPercent(estrategicosKpis.concentracion_top3_productos_pct),
+                                detail: 'Participación sobre ingresos',
+                                icon: 'bi-bar-chart'
+                            }, 'strategic-products-pct', { className: 'animate-slide-up' })}
+                        </div>
                     </div>
 
                     <div className="grid strategic-bento-main dashboard-stack">
                         <div className="card">
                             <div className="card-header"><h3 className="card-title">Ranking de clínicas</h3></div>
                             {topClinicasEstrategico.length > 0 ? (
-                                <div className="strategic-chart-shell">
+                                <div
+                                    className="strategic-chart-shell strategic-chart-shell--rank"
+                                    style={getStrategicRankShellStyle(topClinicasEstrategico.length)}
+                                >
                                     <Bar
                                         data={topClinicasChartData}
-                                        options={{
-                                            indexAxis: 'y',
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            plugins: { legend: { display: false } },
-                                            scales: {
-                                                x: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } },
-                                                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
-                                            }
-                                        }}
+                                        options={STRATEGIC_RANK_CHART_OPTIONS}
                                     />
                                 </div>
                             ) : (
@@ -592,19 +700,13 @@ const Dashboard = () => {
                         <div className="card">
                             <div className="card-header"><h3 className="card-title">Ranking de productos</h3></div>
                             {topProductosEstrategico.length > 0 ? (
-                                <div className="strategic-chart-shell">
+                                <div
+                                    className="strategic-chart-shell strategic-chart-shell--rank"
+                                    style={getStrategicRankShellStyle(topProductosEstrategico.length)}
+                                >
                                     <Bar
                                         data={topProductosChartData}
-                                        options={{
-                                            indexAxis: 'y',
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            plugins: { legend: { display: false } },
-                                            scales: {
-                                                x: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } },
-                                                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
-                                            }
-                                        }}
+                                        options={STRATEGIC_RANK_CHART_OPTIONS}
                                     />
                                 </div>
                             ) : (
@@ -643,13 +745,15 @@ const Dashboard = () => {
             {/* KPIs */}
             {activeView === 'operativo' && (
                 <>
-            <div className="card dashboard-stack">
+            <div className="card dashboard-stack dashboard-filter-bar">
                 <div className="dashboard-toolbar-row">
-                    <div className="dashboard-toolbar-group" role="group" aria-label="Vista operativa">
-                        <button type="button" aria-pressed={operativeView === 'produccion'} className={`btn btn-sm ${operativeView === 'produccion' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('produccion')}>Producción</button>
-                        <button type="button" aria-pressed={operativeView === 'resumen'} className={`btn btn-sm ${operativeView === 'resumen' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('resumen')}>Resumen del mes</button>
-                        <button type="button" aria-pressed={operativeView === 'historico'} className={`btn btn-sm ${operativeView === 'historico' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('historico')}>Histórico</button>
-                        <button type="button" aria-pressed={operativeView === 'tops'} className={`btn btn-sm ${operativeView === 'tops' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOperativeView('tops')}>Tops</button>
+                    <div className="pedidos-status-filters-scroller dashboard-filter-scroller">
+                        <div className="dashboard-toolbar-group pedidos-status-filters" role="group" aria-label="Vista operativa">
+                            <button type="button" aria-pressed={operativeView === 'produccion'} className={`btn btn-sm pedidos-filter-chip${operativeView === 'produccion' ? ' is-active' : ''}`} onClick={() => setOperativeView('produccion')}>Producción</button>
+                            <button type="button" aria-pressed={operativeView === 'resumen'} className={`btn btn-sm pedidos-filter-chip${operativeView === 'resumen' ? ' is-active' : ''}`} onClick={() => setOperativeView('resumen')}>Resumen del mes</button>
+                            <button type="button" aria-pressed={operativeView === 'historico'} className={`btn btn-sm pedidos-filter-chip${operativeView === 'historico' ? ' is-active' : ''}`} onClick={() => setOperativeView('historico')}>Histórico</button>
+                            <button type="button" aria-pressed={operativeView === 'tops'} className={`btn btn-sm pedidos-filter-chip${operativeView === 'tops' ? ' is-active' : ''}`} onClick={() => setOperativeView('tops')}>Tops</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -665,16 +769,6 @@ const Dashboard = () => {
                         </div>
                         <div className="dashboard-summary-groups">
                             <div>
-                                <div className="dashboard-summary-group-title">Métricas numéricas</div>
-                                <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-numeric dashboard-staggered-grid">
-                                    {kpiCardsMesNumericos.map((kpi, i) => (
-                                        renderDashboardMetricCard(kpi, i, {
-                                            className: 'animate-slide-up dashboard-kpi-card-numeric'
-                                        })
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
                                 <div className="dashboard-summary-group-title">Datos destacados</div>
                                 <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-featured dashboard-staggered-grid">
                                     {kpiCardsMesDatos.map((kpi, i) => (
@@ -687,46 +781,110 @@ const Dashboard = () => {
                                     ))}
                                 </div>
                             </div>
+                            <div>
+                                <div className="dashboard-summary-group-title">Métricas numéricas</div>
+                                <div className="grid dashboard-kpi-grid-liquid dashboard-kpi-grid-numeric dashboard-staggered-grid">
+                                    {kpiCardsMesNumericos.map((kpi, i) => (
+                                        renderDashboardMetricCard(kpi, i, {
+                                            className: 'animate-slide-up dashboard-kpi-card-numeric'
+                                        })
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 dashboard-stack">
-                        <div className="card">
+                        <div className="card dashboard-top-featured">
                             <div className="card-header">
-                                <div>
-                                    <h3 className="card-title">Top 5 productos del mes</h3>
-                                    <p className="card-subtitle">Los productos con mayor volumen de pedidos</p>
+                                <div className="dashboard-top-featured-heading">
+                                    <span className="dashboard-top-featured-icon" aria-hidden="true">
+                                        <i className="bi bi-trophy-fill"></i>
+                                    </span>
+                                    <div>
+                                        <h3 className="card-title">Top 5 productos del mes</h3>
+                                        <p className="card-subtitle">Los productos con mayor volumen de pedidos</p>
+                                    </div>
                                 </div>
                             </div>
                             {topProductosMes.length > 0 ? (
-                                <div className="dashboard-list compact">
-                                    {topProductosMes.map((row, index) => (
-                                        <div key={`${row.producto}-${index}`} className="dashboard-list-item">
-                                            <span>{index + 1}. {row.producto}</span>
-                                            <strong>{row.cantidad}</strong>
-                                        </div>
-                                    ))}
+                                <div className="dashboard-rank-list" role="list">
+                                    {topProductosMes.map((row, index) => {
+                                        const cantidad = Number(row.cantidad) || 0;
+                                        const pct = Math.max(8, Math.round((cantidad / maxTopProductoCantidad) * 100));
+                                        const rank = index + 1;
+                                        return (
+                                            <div
+                                                key={`${row.producto}-${index}`}
+                                                className={`dashboard-rank-item${rank === 1 ? ' is-leader' : ''}`}
+                                                role="listitem"
+                                            >
+                                                <span className={`dashboard-rank-badge is-rank-${Math.min(rank, 4)}`} aria-hidden="true">
+                                                    {rank === 1 ? <i className="bi bi-trophy-fill"></i> : rank}
+                                                </span>
+                                                <span className="dashboard-rank-icon" aria-hidden="true">
+                                                    <i className="bi bi-box-seam"></i>
+                                                </span>
+                                                <div className="dashboard-rank-body">
+                                                    <div className="dashboard-rank-row">
+                                                        <span className="dashboard-rank-name">{row.producto}</span>
+                                                        <strong className="dashboard-rank-value">{cantidad}</strong>
+                                                    </div>
+                                                    <div className="dashboard-rank-track" aria-hidden="true">
+                                                        <span className="dashboard-rank-fill" style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="empty-state"><p className="empty-state-text">Sin productos del mes</p></div>
                             )}
                         </div>
 
-                        <div className="card">
+                        <div className="card dashboard-top-featured">
                             <div className="card-header">
-                                <div>
-                                    <h3 className="card-title">Top 5 clínicas del mes</h3>
-                                    <p className="card-subtitle">Las clínicas que más pedidos enviaron</p>
+                                <div className="dashboard-top-featured-heading">
+                                    <span className="dashboard-top-featured-icon" aria-hidden="true">
+                                        <i className="bi bi-building-fill"></i>
+                                    </span>
+                                    <div>
+                                        <h3 className="card-title">Top 5 clínicas del mes</h3>
+                                        <p className="card-subtitle">Las clínicas que más pedidos enviaron</p>
+                                    </div>
                                 </div>
                             </div>
                             {topClinicasMes.length > 0 ? (
-                                <div className="dashboard-list compact">
-                                    {topClinicasMes.map((row, index) => (
-                                        <div key={`${row.clinica}-${index}`} className="dashboard-list-item">
-                                            <span>{index + 1}. {row.clinica}</span>
-                                            <strong>{row.pedidos}</strong>
-                                        </div>
-                                    ))}
+                                <div className="dashboard-rank-list" role="list">
+                                    {topClinicasMes.map((row, index) => {
+                                        const pedidos = Number(row.pedidos) || 0;
+                                        const pct = Math.max(8, Math.round((pedidos / maxTopClinicaPedidos) * 100));
+                                        const rank = index + 1;
+                                        return (
+                                            <div
+                                                key={`${row.clinica}-${index}`}
+                                                className={`dashboard-rank-item${rank === 1 ? ' is-leader' : ''}`}
+                                                role="listitem"
+                                            >
+                                                <span className={`dashboard-rank-badge is-rank-${Math.min(rank, 4)}`} aria-hidden="true">
+                                                    {rank === 1 ? <i className="bi bi-trophy-fill"></i> : rank}
+                                                </span>
+                                                <span className="dashboard-rank-icon" aria-hidden="true">
+                                                    <i className="bi bi-building"></i>
+                                                </span>
+                                                <div className="dashboard-rank-body">
+                                                    <div className="dashboard-rank-row">
+                                                        <span className="dashboard-rank-name">{row.clinica}</span>
+                                                        <strong className="dashboard-rank-value">{pedidos}</strong>
+                                                    </div>
+                                                    <div className="dashboard-rank-track" aria-hidden="true">
+                                                        <span className="dashboard-rank-fill" style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="empty-state"><p className="empty-state-text">Sin clínicas del mes</p></div>
@@ -737,27 +895,30 @@ const Dashboard = () => {
             )}
 
             {operativeView === 'historico' && (
-                <div className="card dashboard-stack">
+                <div className="card dashboard-stack dashboard-historico-card">
                     <div className="card-header dashboard-card-header dashboard-card-header--split">
                         <div>
                             <h3 className="card-title">Histórico {selectedMonths} meses: pedidos y nuevos clientes</h3>
                             <p className="card-subtitle">El rango aplica solo al histórico operativo</p>
                         </div>
                         <div className="dashboard-toolbar-group dashboard-range-group" role="group" aria-label="Rango del histórico operativo">
-                            <button type="button" aria-pressed={operativeRange === '3m'} aria-label="Últimos 3 meses" className={`btn btn-sm ${operativeRange === '3m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('3m')}>3m</button>
-                            <button type="button" aria-pressed={operativeRange === '6m'} aria-label="Últimos 6 meses" className={`btn btn-sm ${operativeRange === '6m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('6m')}>6m</button>
-                            <button type="button" aria-pressed={operativeRange === '12m'} aria-label="Últimos 12 meses" className={`btn btn-sm ${operativeRange === '12m' ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setOperativeRange('12m')}>12m</button>
+                            <button type="button" aria-pressed={operativeRange === '3m'} aria-label="Últimos 3 meses" className={`btn btn-sm pedidos-filter-chip${operativeRange === '3m' ? ' is-active' : ''}`} onClick={() => setOperativeRange('3m')}>3m</button>
+                            <button type="button" aria-pressed={operativeRange === '6m'} aria-label="Últimos 6 meses" className={`btn btn-sm pedidos-filter-chip${operativeRange === '6m' ? ' is-active' : ''}`} onClick={() => setOperativeRange('6m')}>6m</button>
+                            <button type="button" aria-pressed={operativeRange === '12m'} aria-label="Últimos 12 meses" className={`btn btn-sm pedidos-filter-chip${operativeRange === '12m' ? ' is-active' : ''}`} onClick={() => setOperativeRange('12m')}>12m</button>
                         </div>
                     </div>
                     {historicoOperativoSlice.length > 0 ? (
-                        <Bar data={operativoBarDataSlice} options={{
-                            responsive: true,
-                            plugins: { legend: { display: true } },
-                            scales: {
-                                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                                y: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } }
-                            }
-                        }} />
+                        <div className="dashboard-chart-shell dashboard-chart-shell--short">
+                            <Bar data={operativoBarDataSlice} options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: true } },
+                                scales: {
+                                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                                    y: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } }
+                                }
+                            }} />
+                        </div>
                     ) : (
                         <div className="empty-state"><p className="empty-state-text">Sin histórico disponible</p></div>
                     )}
@@ -765,156 +926,298 @@ const Dashboard = () => {
             )}
 
             {operativeView === 'tops' && (
-                <div className="dashboard-tops-grid dashboard-stack">
-                    <div className="card dashboard-top-card dashboard-top-card--hero">
-                        <div className="card-header">
-                            <div>
-                                <h3 className="card-title">Top actual del mes</h3>
-                                <p className="card-subtitle">Los líderes que más pesan en la operación actual</p>
+                <div className="dashboard-tops-stack dashboard-stack">
+                    <div className="card dashboard-ops-panel dashboard-top-featured">
+                        <div className="card-header dashboard-card-header">
+                            <div className="dashboard-top-featured-heading">
+                                <span className="dashboard-top-featured-icon" aria-hidden="true">
+                                    <i className="bi bi-stars"></i>
+                                </span>
+                                <div>
+                                    <h3 className="card-title">Top actual del mes</h3>
+                                    <p className="card-subtitle">Producto y clínica con más pedidos este mes</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="dashboard-top-current-list">
-                            <div className="dashboard-top-current-item">
-                                <span className="dashboard-top-eyebrow">Producto líder</span>
-                                <strong className="dashboard-top-current-value">{topProductoMes ? topProductoMes.producto : 'Sin pedidos'}</strong>
-                                <span className="dashboard-top-current-badge">{topProductoMes ? `${topProductoMes.cantidad} pedidos` : '0 pedidos'}</span>
-                            </div>
-                            <div className="dashboard-top-current-item">
-                                <span className="dashboard-top-eyebrow">Clínica líder</span>
-                                <strong className="dashboard-top-current-value">{topClinicaMes ? topClinicaMes.clinica : 'Sin pedidos'}</strong>
-                                <span className="dashboard-top-current-badge">{topClinicaMes ? `${topClinicaMes.pedidos} pedidos` : '0 pedidos'}</span>
-                            </div>
+                        <div className="dashboard-tops-current-grid">
+                            <article className="dashboard-tops-current-tile">
+                                <span className="dashboard-tops-current-icon" aria-hidden="true">
+                                    <i className="bi bi-box-seam"></i>
+                                </span>
+                                <div className="dashboard-tops-current-copy">
+                                    <p className="dashboard-tops-current-label">Producto top del mes</p>
+                                    <p className="dashboard-tops-current-value">
+                                        {topProductoMes ? topProductoMes.producto : 'Sin pedidos'}
+                                    </p>
+                                    <span className="dashboard-tops-current-meta">
+                                        {topProductoMes ? `${topProductoMes.cantidad} pedidos` : '0 pedidos'}
+                                    </span>
+                                </div>
+                            </article>
+                            <article className="dashboard-tops-current-tile">
+                                <span className="dashboard-tops-current-icon" aria-hidden="true">
+                                    <i className="bi bi-building"></i>
+                                </span>
+                                <div className="dashboard-tops-current-copy">
+                                    <p className="dashboard-tops-current-label">Clínica top del mes</p>
+                                    <p className="dashboard-tops-current-value">
+                                        {topClinicaMes ? topClinicaMes.clinica : 'Sin pedidos'}
+                                    </p>
+                                    <span className="dashboard-tops-current-meta">
+                                        {topClinicaMes ? `${topClinicaMes.pedidos} pedidos` : '0 pedidos'}
+                                    </span>
+                                </div>
+                            </article>
                         </div>
                     </div>
-                    <div className="card dashboard-top-card">
-                        <div className="card-header">
-                            <div>
-                                <h3 className="card-title">Top producto por mes</h3>
-                                <p className="card-subtitle">Lectura histórica de últimos 12 meses</p>
-                            </div>
-                        </div>
-                        {historicoTopProductoSlice.length > 0 ? (
-                            <div className="dashboard-list compact dashboard-top-history-list">
-                                {historicoTopProductoSlice.map((row, index) => (
-                                    <div key={`${row.periodo}-${row.producto}`} className="dashboard-list-item dashboard-top-history-item">
-                                        <span className="dashboard-top-rank">{index + 1}</span>
-                                        <span className="dashboard-top-label">
-                                            <span className="dashboard-top-month">{toMonthLabel(row.periodo)}</span>
-                                            {row.producto}
-                                        </span>
-                                        <strong>{row.cantidad}</strong>
+
+                    <div className="dashboard-tops-history-grid">
+                        <div className="card dashboard-ops-panel dashboard-top-featured">
+                            <div className="card-header dashboard-card-header">
+                                <div className="dashboard-top-featured-heading">
+                                    <span className="dashboard-top-featured-icon" aria-hidden="true">
+                                        <i className="bi bi-box-seam"></i>
+                                    </span>
+                                    <div>
+                                        <h3 className="card-title">Top producto por mes</h3>
+                                        <p className="card-subtitle">Lectura histórica de últimos 12 meses</p>
                                     </div>
-                                ))}
+                                </div>
                             </div>
-                        ) : (
-                            <div className="empty-state"><p className="empty-state-text">Sin datos de producto top</p></div>
-                        )}
+                            {historicoTopProductoSlice.length > 0 ? (
+                                <div className="dashboard-rank-list" role="list">
+                                    {historicoTopProductoSlice.map((row, index) => {
+                                        const cantidad = Number(row.cantidad) || 0;
+                                        const pct = Math.max(8, Math.round((cantidad / maxHistoricoTopProducto) * 100));
+                                        const rank = index + 1;
+                                        return (
+                                            <div
+                                                key={`${row.periodo}-${row.producto}`}
+                                                className={`dashboard-rank-item${rank === 1 ? ' is-leader' : ''}`}
+                                                role="listitem"
+                                            >
+                                                <span className={`dashboard-rank-badge is-rank-${Math.min(rank, 4)}`} aria-hidden="true">
+                                                    {rank === 1 ? <i className="bi bi-trophy-fill"></i> : rank}
+                                                </span>
+                                                <span className="dashboard-rank-icon" aria-hidden="true">
+                                                    <i className="bi bi-box-seam"></i>
+                                                </span>
+                                                <div className="dashboard-rank-body">
+                                                    <div className="dashboard-rank-row">
+                                                        <span className="dashboard-rank-name">
+                                                            <span className="dashboard-top-month">{toMonthLabel(row.periodo)}</span>
+                                                            {row.producto}
+                                                        </span>
+                                                        <strong className="dashboard-rank-value">{cantidad}</strong>
+                                                    </div>
+                                                    <div className="dashboard-rank-track" aria-hidden="true">
+                                                        <span className="dashboard-rank-fill" style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="empty-state"><p className="empty-state-text">Sin datos de producto top</p></div>
+                            )}
+                        </div>
+                        <div className="card dashboard-ops-panel dashboard-top-featured">
+                            <div className="card-header dashboard-card-header">
+                                <div className="dashboard-top-featured-heading">
+                                    <span className="dashboard-top-featured-icon" aria-hidden="true">
+                                        <i className="bi bi-building-fill"></i>
+                                    </span>
+                                    <div>
+                                        <h3 className="card-title">Top clínica por mes</h3>
+                                        <p className="card-subtitle">Lectura histórica de últimos 12 meses</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {historicoTopClinicaSlice.length > 0 ? (
+                                <div className="dashboard-rank-list" role="list">
+                                    {historicoTopClinicaSlice.map((row, index) => {
+                                        const pedidos = Number(row.pedidos) || 0;
+                                        const pct = Math.max(8, Math.round((pedidos / maxHistoricoTopClinica) * 100));
+                                        const rank = index + 1;
+                                        return (
+                                            <div
+                                                key={`${row.periodo}-${row.clinica}`}
+                                                className={`dashboard-rank-item${rank === 1 ? ' is-leader' : ''}`}
+                                                role="listitem"
+                                            >
+                                                <span className={`dashboard-rank-badge is-rank-${Math.min(rank, 4)}`} aria-hidden="true">
+                                                    {rank === 1 ? <i className="bi bi-trophy-fill"></i> : rank}
+                                                </span>
+                                                <span className="dashboard-rank-icon" aria-hidden="true">
+                                                    <i className="bi bi-building"></i>
+                                                </span>
+                                                <div className="dashboard-rank-body">
+                                                    <div className="dashboard-rank-row">
+                                                        <span className="dashboard-rank-name">
+                                                            <span className="dashboard-top-month">{toMonthLabel(row.periodo)}</span>
+                                                            {row.clinica}
+                                                        </span>
+                                                        <strong className="dashboard-rank-value">{pedidos}</strong>
+                                                    </div>
+                                                    <div className="dashboard-rank-track" aria-hidden="true">
+                                                        <span className="dashboard-rank-fill" style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="empty-state"><p className="empty-state-text">Sin datos de clínica top</p></div>
+                            )}
+                        </div>
                     </div>
-                    <div className="card dashboard-top-card">
+                </div>
+            )}
+
+            {operativeView === 'produccion' && (
+                <div className="dashboard-ops-split dashboard-stack">
+                    <div className="card dashboard-ops-panel">
                         <div className="card-header">
                             <div>
-                                <h3 className="card-title">Top clínica por mes</h3>
-                                <p className="card-subtitle">Lectura histórica de últimos 12 meses</p>
+                                <h3 className="card-title">Operación del laboratorio</h3>
+                                <p className="card-subtitle">Prioriza lo pendiente por cerrar, la carga real en producción y los pedidos atrasados</p>
                             </div>
                         </div>
-                        {historicoTopClinicaSlice.length > 0 ? (
-                            <div className="dashboard-list compact dashboard-top-history-list">
-                                {historicoTopClinicaSlice.map((row, index) => (
-                                    <div key={`${row.periodo}-${row.clinica}`} className="dashboard-list-item dashboard-top-history-item">
-                                        <span className="dashboard-top-rank">{index + 1}</span>
-                                        <span className="dashboard-top-label">
-                                            <span className="dashboard-top-month">{toMonthLabel(row.periodo)}</span>
-                                            {row.clinica}
-                                        </span>
-                                        <strong>{row.pedidos}</strong>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="empty-state"><p className="empty-state-text">Sin datos de clínica top</p></div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {operativeView === 'produccion' && (
-                <div className="card dashboard-stack">
-                    <div className="card-header">
-                        <div>
-                            <h3 className="card-title">Operación del laboratorio</h3>
-                            <p className="card-subtitle">Prioriza lo pendiente por cerrar, la carga real en producción y los pedidos atrasados</p>
+                        <div className="grid dashboard-kpi-grid-ops-2x2">
+                            {kpiCardsOperacion.map((kpi, i) => (
+                                renderDashboardMetricCard(kpi, i)
+                            ))}
                         </div>
                     </div>
-                    <div className="grid dashboard-kpi-grid-liquid">
-                        {kpiCardsOperacion.map((kpi, i) => (
-                            renderDashboardMetricCard(kpi, i)
-                        ))}
+
+                    <div className="card dashboard-ops-panel dashboard-ops-estado">
+                        <div className="card-header">
+                            <h3 className="card-title">Pedidos por Estado</h3>
+                        </div>
+                        <div className="dashboard-chart-donut-shell">
+                            {(stats?.por_estado || []).length > 0 ? (
+                                <Doughnut data={doughnutData} options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position: 'bottom',
+                                            labels: {
+                                                padding: 10,
+                                                boxWidth: 10,
+                                                usePointStyle: true,
+                                                pointStyle: 'circle',
+                                                font: { size: 11 },
+                                            },
+                                        },
+                                    },
+                                    cutout: '65%',
+                                }} />
+                            ) : (
+                                <div className="empty-state"><p className="empty-state-text">Sin datos</p></div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
 
             {operativeView === 'produccion' && (
-                <div className="card dashboard-stack">
-                    <div className="card-header"><h3 className="card-title">Pedidos por Estado</h3></div>
-                    <div className="dashboard-chart-donut-shell">
-                        {(stats?.por_estado || []).length > 0 ? (
-                            <Doughnut data={doughnutData} options={{
-                                plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } } },
-                                cutout: '65%'
-                            }} />
-                        ) : (
-                            <div className="empty-state"><p className="empty-state-text">Sin datos</p></div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {operativeView === 'produccion' && (
-                <div className="card dashboard-stack">
+                <div className="card dashboard-stack dashboard-recent-panel">
                     <div className="card-header">
                         <h3 className="card-title">Pedidos Recientes</h3>
                         <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/pedidos')}>Ver todos →</button>
                     </div>
                     {(stats?.recientes || []).length > 0 ? (
-                        <>
-                            <div className="data-table-wrapper desktop-only dashboard-data-table-shell">
-                            <table className="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Código</th><th>Paciente</th><th>Clínica</th><th>Estado</th><th>Entrega</th><th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stats.recientes.map(p => (
-                                        <tr key={p.id} className="dashboard-clickable-row" onClick={() => navigate(`/pedidos/${p.id}`)}>
-                                            <td><strong>{p.codigo}</strong></td>
-                                            <td>{p.paciente_nombre}</td>
-                                            <td>{p.clinica_nombre}</td>
-                                            <td><span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span></td>
-                                            <td>{formatDateShort(p.fecha_entrega)}</td>
-                                            <td><strong>S/. {parseFloat(p.total ?? 0).toFixed(2)}</strong></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            </div>
-                            <div className="mobile-cards mobile-only recent-orders-mobile">
-                                {stats.recientes.map(p => (
-                                    <div key={p.id} className="mobile-card recent-order-card dashboard-mobile-card" onClick={() => navigate(`/pedidos/${p.id}`)}>
-                                        <div className="mobile-card-head">
-                                            <div className="mobile-card-title">{p.codigo}</div>
-                                            <span className={`badge badge-dot badge-${p.estado}`}>{statusLabels[p.estado]}</span>
-                                        </div>
-                                        <div className="mobile-card-grid">
-                                            <div className="mobile-field"><span className="mobile-field-label">Paciente</span><span className="mobile-field-value">{p.paciente_nombre}</span></div>
-                                            <div className="mobile-field"><span className="mobile-field-label">Clinica</span><span className="mobile-field-value">{p.clinica_nombre}</span></div>
-                                            <div className="mobile-field"><span className="mobile-field-label">Entrega</span><span className="mobile-field-value">{formatDateShort(p.fecha_entrega)}</span></div>
-                                            <div className="mobile-field"><span className="mobile-field-label">Total</span><span className="mobile-field-value"><strong>S/. {parseFloat(p.total ?? 0).toFixed(2)}</strong></span></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
+                        <ul className="pedidos-order-list dashboard-recent-orders">
+                            {(stats.recientes || []).map((p) => {
+                                const productName = p.producto_principal || '';
+                                const itemsCount = Number(p.items_count) || 0;
+                                const teethAll = sortTeethByArchOrder(p.producto_piezas || []);
+                                const teeth = teethAll.slice(0, MAX_TEETH_PREVIEW);
+                                const extraTeeth = Math.max(0, teethAll.length - MAX_TEETH_PREVIEW);
+                                const tone = String(p.producto_color || '').trim();
+                                const product = {
+                                    id: p.id,
+                                    nombre: productName,
+                                    image_url: p.producto_image_url || '',
+                                };
+                                const hasClinicalLoad = teethAll.length > 0 || Boolean(tone) || itemsCount > 1;
+                                return (
+                                    <li key={p.id}>
+                                        <button
+                                            type="button"
+                                            className="pedidos-order-card"
+                                            onClick={() => navigate(`/pedidos/${p.id}`)}
+                                        >
+                                            <span className="pedidos-order-thumb" aria-hidden="true">
+                                                {productName ? (
+                                                    <OrderProductThumb product={product} />
+                                                ) : (
+                                                    <i className="bi bi-clipboard2-pulse"></i>
+                                                )}
+                                            </span>
+                                            <span className="pedidos-order-main">
+                                                <span className="pedidos-order-top">
+                                                    <strong className="pedidos-order-patient">
+                                                        {p.paciente_nombre || 'Sin paciente'}
+                                                    </strong>
+                                                    <span className={`badge badge-dot badge-${p.estado}`}>
+                                                        {getOrderStatusLabel(p.estado)}
+                                                    </span>
+                                                </span>
+                                                <span className="pedidos-order-meta">
+                                                    <span className="pedidos-order-code">{p.codigo}</span>
+                                                    {p.clinica_nombre ? (
+                                                        <span>· {p.clinica_nombre}</span>
+                                                    ) : null}
+                                                </span>
+                                                {hasClinicalLoad ? (
+                                                    <span className="pedidos-order-product" aria-label="Carga del pedido">
+                                                        <span className="pedidos-order-product-tags">
+                                                            {teeth.map((tooth) => (
+                                                                <span key={`${p.id}-${tooth}`} className="pedidos-order-tooth">
+                                                                    {tooth}
+                                                                </span>
+                                                            ))}
+                                                            {extraTeeth > 0 ? (
+                                                                <span className="pedidos-order-tooth is-more">+{extraTeeth}</span>
+                                                            ) : null}
+                                                            {tone ? (
+                                                                <span className="pedidos-order-chip">Tono {tone}</span>
+                                                            ) : null}
+                                                            {itemsCount > 1 ? (
+                                                                <span className="pedidos-order-chip">+{itemsCount - 1} ítems</span>
+                                                            ) : null}
+                                                        </span>
+                                                    </span>
+                                                ) : null}
+                                                <span className="pedidos-order-dates">
+                                                    <span>
+                                                        <i className="bi bi-calendar3" aria-hidden="true"></i>
+                                                        {formatDateShort(p.fecha || p.created_at)}
+                                                    </span>
+                                                    <span>
+                                                        <i className="bi bi-truck" aria-hidden="true"></i>
+                                                        Entrega {formatDateShort(p.fecha_entrega)}
+                                                    </span>
+                                                </span>
+                                            </span>
+                                            <span className="pedidos-order-aside">
+                                                <strong className="pedidos-order-total">
+                                                    S/. {parseFloat(p.total ?? 0).toFixed(2)}
+                                                </strong>
+                                                <span className="pedidos-order-cta">
+                                                    Ver detalle
+                                                    <i className="bi bi-chevron-right" aria-hidden="true"></i>
+                                                </span>
+                                            </span>
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
                     ) : (
                         <div className="empty-state">
                             <i className="bi bi-clipboard2 empty-state-icon"></i>

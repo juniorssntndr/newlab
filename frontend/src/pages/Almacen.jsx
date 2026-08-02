@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import { API_URL } from '../config.js';
 
 const materialTemplates = {
@@ -267,72 +268,113 @@ const Almacen = () => {
                 </button>
             </div>
 
-            <div className="grid grid-cols-4" style={{ marginBottom: 'var(--space-6)' }}>
-                <div className="card kpi-card">
-                    <div className="kpi-icon" style={{ background: 'rgba(8,145,178,0.1)', color: 'var(--color-primary)' }}>
-                        <i className="bi bi-box-seam"></i>
+            <div className="grid grid-cols-4 almacen-kpi-grid">
+                <div className="card kpi-card almacen-kpi-card">
+                    <div className="almacen-kpi-row">
+                        <div className="kpi-icon" style={{ background: 'rgba(8,145,178,0.1)', color: 'var(--color-primary)' }}>
+                            <i className="bi bi-box-seam" aria-hidden="true"></i>
+                        </div>
+                        <div className="almacen-kpi-copy">
+                            <div className="kpi-label">Materiales</div>
+                            <div className="kpi-value">{totalMateriales}</div>
+                        </div>
                     </div>
-                    <div className="kpi-value">{totalMateriales}</div>
-                    <div className="kpi-label">Materiales</div>
                 </div>
-                <div className="card kpi-card">
-                    <div className="kpi-icon" style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--color-warning)' }}>
-                        <i className="bi bi-exclamation-triangle"></i>
+                <div className="card kpi-card almacen-kpi-card">
+                    <div className="almacen-kpi-row">
+                        <div className="kpi-icon" style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--color-warning)' }}>
+                            <i className="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        </div>
+                        <div className="almacen-kpi-copy">
+                            <div className="kpi-label">Bajo stock</div>
+                            <div className="kpi-value">{totalLowStock}</div>
+                        </div>
                     </div>
-                    <div className="kpi-value">{totalLowStock}</div>
-                    <div className="kpi-label">Bajo stock</div>
                 </div>
-                <div className="card kpi-card">
-                    <div className="kpi-icon" style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--color-success)' }}>
-                        <i className="bi bi-archive"></i>
+                <div className="card kpi-card almacen-kpi-card">
+                    <div className="almacen-kpi-row">
+                        <div className="kpi-icon" style={{ background: 'rgba(var(--color-primary-rgb), 0.12)', color: 'var(--color-primary)' }}>
+                            <i className="bi bi-archive" aria-hidden="true"></i>
+                        </div>
+                        <div className="almacen-kpi-copy">
+                            <div className="kpi-label">Stock total</div>
+                            <div className="kpi-value">{totalStock.toFixed(2)}</div>
+                        </div>
                     </div>
-                    <div className="kpi-value">{totalStock.toFixed(2)}</div>
-                    <div className="kpi-label">Stock total</div>
                 </div>
-                <div className="card kpi-card">
-                    <div className="kpi-icon" style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--color-info)' }}>
-                        <i className="bi bi-arrow-counterclockwise"></i>
+                <div className="card kpi-card almacen-kpi-card">
+                    <div className="almacen-kpi-row">
+                        <div className="kpi-icon" style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--color-info)' }}>
+                            <i className="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                        </div>
+                        <div className="almacen-kpi-copy">
+                            <div className="kpi-label">Inactivos</div>
+                            <div className="kpi-value">{totalInactive}</div>
+                        </div>
                     </div>
-                    <div className="kpi-value">{totalInactive}</div>
-                    <div className="kpi-label">Inactivos</div>
                 </div>
             </div>
 
             <div className="card">
                 <div className="inventory-toolbar">
-                    <div className="search-box" style={{ flex: 1, minWidth: 220 }}>
-                        <i className="bi bi-search"></i>
-                        <input
-                            className="form-input"
-                            placeholder="Buscar material..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
+                    <div className="inventory-toolbar-main">
+                        <div className="search-box inventory-search-box">
+                            <i className="bi bi-search"></i>
+                            <input
+                                className="form-input"
+                                placeholder="Buscar material..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="inventory-filters" role="group" aria-label="Nivel de stock">
+                            <button
+                                type="button"
+                                className={`btn btn-sm pedidos-filter-chip${!filtroEstado ? ' is-active' : ''}`}
+                                onClick={() => setFiltroEstado('')}
+                            >
+                                Cualquier stock
+                            </button>
+                            <button
+                                type="button"
+                                className={`btn btn-sm pedidos-filter-chip${filtroEstado === 'low' ? ' is-active' : ''}`}
+                                onClick={() => setFiltroEstado(filtroEstado === 'low' ? '' : 'low')}
+                            >
+                                Bajo stock
+                            </button>
+                            <button
+                                type="button"
+                                className={`btn btn-sm pedidos-filter-chip${filtroEstado === 'ok' ? ' is-active' : ''}`}
+                                onClick={() => setFiltroEstado(filtroEstado === 'ok' ? '' : 'ok')}
+                            >
+                                Normal
+                            </button>
+                        </div>
                     </div>
-                    <div className="inventory-filters">
-                        <button className={`btn btn-sm ${materialView === 'activos' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => setMaterialView('activos')}>
+                    <div className="segmented-control inventory-status-switch" role="group" aria-label="Estado del material">
+                        <button
+                            type="button"
+                            className={`segmented-control__btn${materialView === 'activos' ? ' is-active' : ''}`}
+                            aria-pressed={materialView === 'activos'}
+                            onClick={() => setMaterialView('activos')}
+                        >
                             Activos
                         </button>
-                        <button className={`btn btn-sm ${materialView === 'inactivos' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => setMaterialView('inactivos')}>
+                        <button
+                            type="button"
+                            className={`segmented-control__btn${materialView === 'inactivos' ? ' is-active' : ''}`}
+                            aria-pressed={materialView === 'inactivos'}
+                            onClick={() => setMaterialView('inactivos')}
+                        >
                             Inactivos
                         </button>
-                        <button className={`btn btn-sm ${materialView === 'todos' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => setMaterialView('todos')}>
+                        <button
+                            type="button"
+                            className={`segmented-control__btn${materialView === 'todos' ? ' is-active' : ''}`}
+                            aria-pressed={materialView === 'todos'}
+                            onClick={() => setMaterialView('todos')}
+                        >
                             Todos
-                        </button>
-                        <button className={`btn btn-sm ${!filtroEstado ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => setFiltroEstado('')}>
-                            Stock: todos
-                        </button>
-                        <button className={`btn btn-sm ${filtroEstado === 'low' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => setFiltroEstado(filtroEstado === 'low' ? '' : 'low')}>
-                            Bajo stock
-                        </button>
-                        <button className={`btn btn-sm ${filtroEstado === 'ok' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => setFiltroEstado(filtroEstado === 'ok' ? '' : 'ok')}>
-                            Normal
                         </button>
                     </div>
                 </div>
@@ -386,7 +428,7 @@ const Almacen = () => {
                                                 ) : lowStock ? (
                                                     <span className="badge badge-error">Bajo stock</span>
                                                 ) : (
-                                                    <span className="badge badge-success">Normal</span>
+                                                    <span className="badge badge-en_produccion">Normal</span>
                                                 )}
                                             </td>
                                             <td>
@@ -424,7 +466,7 @@ const Almacen = () => {
                         </tbody>
                     </table>
                 </div>
-                <div className="mobile-cards mobile-only" style={{ marginTop: 'var(--space-4)' }}>
+                <div className="mobile-cards mobile-only almacen-mobile-cards" style={{ marginTop: 'var(--space-4)' }}>
                     {loading ? (
                         [1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 12 }} />)
                     ) : filteredMateriales.length === 0 ? (
@@ -443,7 +485,7 @@ const Almacen = () => {
                                         ) : lowStock ? (
                                             <span className="badge badge-error">Bajo stock</span>
                                         ) : (
-                                            <span className="badge badge-success">Normal</span>
+                                            <span className="badge badge-en_produccion">Normal</span>
                                         )}
                                     </div>
                                     <div className="mobile-card-grid">
@@ -562,25 +604,22 @@ const Almacen = () => {
                 </div>
             </Modal>
 
-            <Modal
+            <ConfirmDialog
                 open={!!confirmDeleteMaterial}
-                onClose={() => setConfirmDeleteMaterial(null)}
+                onClose={() => { if (!deletingId) setConfirmDeleteMaterial(null); }}
+                onConfirm={confirmRemoveMaterial}
+                confirming={!!deletingId}
+                variant="danger"
                 title="Eliminar material"
-                size="lg"
-                footer={
-                    <>
-                        <button className="btn btn-secondary" onClick={() => setConfirmDeleteMaterial(null)} disabled={!!deletingId}>Cancelar</button>
-                        <button className="btn btn-danger" onClick={confirmRemoveMaterial} disabled={!!deletingId}>
-                            <i className="bi bi-trash"></i> Confirmar eliminación
-                        </button>
-                    </>
-                }
-            >
-                <p style={{ margin: 0, color: 'var(--color-text)' }}>
-                    ¿Eliminar el material <strong>{confirmDeleteMaterial?.nombre}</strong>? Se ocultará del inventario activo,
-                    pero podrá restaurarse más adelante desde la vista de inactivos.
-                </p>
-            </Modal>
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                message={(
+                    <p>
+                        ¿Eliminar el material <strong>{confirmDeleteMaterial?.nombre}</strong>? Se ocultará del inventario activo,
+                        pero podrá restaurarse más adelante desde la vista de inactivos.
+                    </p>
+                )}
+            />
         </div>
     );
 };

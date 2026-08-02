@@ -1,0 +1,242 @@
+/* ModalPagoMasivo — scoped to system cards / forms */
+
+.bulk-pay-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    gap: var(--space-5);
+    align-items: start;
+}
+
+.bulk-pay-statement,
+.bulk-pay-form {
+    border-radius: 16px;
+    border: 1px solid var(--color-border-light);
+    background: var(--color-surface);
+    padding: var(--space-4);
+    min-width: 0;
+}
+
+.bulk-pay-statement {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.bulk-pay-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.bulk-pay-summary-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+}
+
+.bulk-pay-summary-label > i {
+    font-size: 1rem;
+    color: var(--color-primary);
+    line-height: 1;
+}
+
+.bulk-pay-summary-amount {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.bulk-pay-summary-amount.is-debt {
+    color: var(--color-danger);
+}
+
+.bulk-pay-summary-meta {
+    flex: 0 0 auto;
+    text-align: right;
+    padding-top: 0.15rem;
+}
+
+.bulk-pay-table-shell {
+    max-height: 350px;
+    overflow: auto;
+    border: 1px solid var(--color-border-light);
+    border-radius: 12px;
+}
+
+.bulk-pay-table-shell .data-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.bulk-pay-table-shell .data-table th,
+.bulk-pay-table-shell .data-table td {
+    white-space: nowrap;
+}
+
+.bulk-pay-code {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.bulk-pay-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.bulk-pay-num.is-debt {
+    font-weight: 700;
+    color: var(--color-danger);
+}
+
+.bulk-pay-empty {
+    padding: var(--space-6) var(--space-4);
+    text-align: center;
+}
+
+.bulk-pay-empty-icon {
+    font-size: 2rem;
+    color: var(--color-success, #16a34a);
+    line-height: 1;
+}
+
+.bulk-pay-empty-text {
+    margin: var(--space-2) 0 0;
+    color: var(--color-text-secondary);
+}
+
+.bulk-pay-form-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border-light);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.bulk-pay-form-title > i {
+    color: var(--color-primary);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.bulk-pay-fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+}
+
+.bulk-pay-fields-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-3);
+}
+
+.bulk-pay-fields .form-group {
+    margin-bottom: 0;
+}
+
+.bulk-pay-required {
+    color: var(--color-danger);
+}
+
+.bulk-pay-amount-wrap {
+    position: relative;
+}
+
+.bulk-pay-amount-prefix {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.bulk-pay-amount-input.form-input,
+.bulk-pay-amount-input {
+    padding-left: 3.35rem;
+    font-weight: 700;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.bulk-pay-cascade {
+    padding: 0.75rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+    background: rgba(var(--color-primary-rgb), 0.08);
+    font-size: 0.875rem;
+}
+
+.bulk-pay-cascade-title {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 0 0.25rem;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.bulk-pay-cascade-body {
+    margin: 0;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+}
+
+.bulk-pay-cascade-body strong {
+    color: var(--color-primary);
+}
+
+.bulk-pay-cascade-note {
+    margin: 0.35rem 0 0;
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+}
+
+.bulk-pay-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 12rem;
+    padding: var(--space-6);
+}
+
+@media (max-width: 860px) {
+    .bulk-pay-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .bulk-pay-fields-row {
+        grid-template-columns: 1fr;
+    }
+
+    .bulk-pay-summary {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bulk-pay-summary-meta {
+        text-align: left;
+    }
+}

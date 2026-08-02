@@ -2,6 +2,69 @@
     --detail-finanza-radius: 14px;
 }
 
+.detail-finanza-layout {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    column-gap: 0.75rem;
+    row-gap: var(--space-6);
+    align-items: stretch;
+    grid-template-areas:
+        "main main main main side side"
+        "files files files files files files";
+}
+
+.detail-finanza-layout > .detail-finanza-main {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.detail-finanza-main > .pedido-detail-items,
+.detail-finanza-main > .pedido-detail-history {
+    align-self: stretch;
+    height: auto;
+    min-height: 0;
+}
+
+.detail-finanza-layout > .pedido-detail-side {
+    grid-area: side;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+.detail-finanza-layout > .pedido-detail-side > .pedido-detail-info {
+    flex: 1 1 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.detail-finanza-layout > .pedido-detail-side > .pedido-detail-info > .card-header {
+    flex: 0 0 auto;
+}
+
+.detail-finanza-layout > .pedido-detail-files,
+.detail-finanza-layout > .detail-finanza-comprobantes-card {
+    grid-area: files;
+}
+
+.detail-finanza-layout .pedido-detail-items,
+.detail-finanza-layout .pedido-detail-info,
+.detail-finanza-layout .pedido-detail-history,
+.detail-finanza-layout .detail-finanza-comprobantes-card {
+    border-radius: 16px;
+    border-color: var(--color-border-light);
+}
+
+.detail-finanza-layout .detail-finanza-comprobantes-card {
+    margin-bottom: 0;
+    height: 100%;
+}
+
 .detail-finanza-loading-card {
     padding: 0;
     overflow: hidden;
@@ -103,6 +166,22 @@
     gap: var(--space-3);
 }
 
+.detail-finanza-info-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
+    min-height: 0;
+    align-content: stretch;
+}
+
+.detail-finanza-info-grid .pedido-detail-field {
+    padding: 0.65rem 0.75rem;
+    height: 100%;
+    justify-content: center;
+}
+
 .detail-finanza-card-title {
     margin-bottom: var(--space-3);
 }
@@ -129,6 +208,11 @@
     align-items: center;
     gap: 0.75rem;
     background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg-alt) 100%);
+}
+
+.detail-finanza-section-copy {
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .detail-finanza-section-icon {
@@ -223,10 +307,18 @@
 }
 
 .detail-finanza-comprobantes-empty {
-    padding: 2rem;
+    padding: 2rem 1.25rem;
     text-align: center;
     color: var(--color-text-tertiary);
     font-size: 0.875rem;
+}
+
+.detail-finanza-comprobantes-empty-text {
+    margin: 0;
+    max-width: 22rem;
+    margin-inline: auto;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
 }
 
 .detail-finanza-comprobantes-empty-icon {
@@ -338,6 +430,41 @@
     cursor: pointer;
 }
 
+.btn.detail-finanza-retry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    margin-left: 4px;
+    border-radius: 7px;
+    border: 1px solid var(--color-warning, #d97706);
+    color: var(--color-warning, #b45309);
+    background: rgba(217, 119, 6, 0.08);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.detail-finanza-retry-btn:hover:not(:disabled) {
+    background: var(--color-warning, #d97706);
+    color: #fff;
+}
+
+.detail-finanza-retry-btn:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.detail-finanza-spin {
+    display: inline-block;
+    animation: detail-finanza-spin 0.8s linear infinite;
+}
+
+@keyframes detail-finanza-spin {
+    to { transform: rotate(360deg); }
+}
+
 .detail-finanza-muted-italic {
     font-size: 0.78rem;
     color: var(--color-text-tertiary);
@@ -374,6 +501,13 @@
 
 .detail-finanza-required {
     color: var(--color-danger, #ef4444);
+}
+
+.detail-finanza-field-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: var(--color-text-tertiary);
 }
 
 .detail-finanza-currency-wrap {
@@ -479,6 +613,14 @@
 }
 
 @media (max-width: 960px) {
+    .detail-finanza-layout {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "main"
+            "side"
+            "files";
+    }
+
     .detail-finanza-header-actions {
         width: 100%;
         justify-content: flex-start;
@@ -491,21 +633,45 @@
 }
 
 @media (max-width: 768px) {
-    .detail-finanza-summary-grid {
-        grid-template-columns: 1fr;
+    .detail-finanza-section-header {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        padding: 1rem 1.1rem;
+        row-gap: 0.75rem;
     }
 
-    .detail-finanza-section-header {
-        padding: 1rem 1.1rem;
+    .detail-finanza-section-copy {
+        flex: 1 1 calc(100% - 3rem);
     }
 
     .detail-finanza-section-actions {
         width: 100%;
-        justify-content: flex-start;
+        margin-left: 0;
+        justify-content: stretch;
+    }
+
+    .detail-finanza-section-actions .btn {
+        width: 100%;
+        justify-content: center;
     }
 
     .detail-finanza-comprobantes-card {
         border-radius: 16px;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .detail-finanza-comprobantes-scroll {
+        max-width: 100%;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .detail-finanza-comprobantes-empty {
+        padding: 1.5rem 1rem;
+    }
+
+    .detail-finanza-page .pedido-detail-hero {
+        grid-template-columns: 1fr;
     }
 }
 

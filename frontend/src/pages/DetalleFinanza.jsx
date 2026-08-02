@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import BillingConfirmModal from '../components/billing/BillingConfirmModal.jsx';
 import BillingResultModal from '../components/billing/BillingResultModal.jsx';
 import ComprobantePrintModal from '../components/billing/ComprobantePrintModal.jsx';
@@ -13,6 +14,8 @@ import { useAnnulInvoiceMutation } from '../modules/billing/mutations/useAnnulIn
 import { useCreateCreditNoteMutation } from '../modules/billing/mutations/useCreateCreditNoteMutation.js';
 import logoAfinixPrint from '../assets/branding/logo-light.png';
 import isoAfinixPrint from '../assets/branding/iso-light.png';
+import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
+import { formatDentalSelection, sortTeethByArchOrder } from '../utils/odontograma.js';
 import '../styles/detalle-finanza-ui-consistency.css';
 
 /** URL absoluta del asset (ventana de impresión = about:blank). */
@@ -42,11 +45,14 @@ const DetalleFinanza = () => {
     const voidingKeyRef = useRef(null);
     const creditNoteKeyRef = useRef(null);
     const emitirKeyRef = useRef(null);
+    const reenvioTargetRef = useRef(null);
 
     // Modales de emit rápido
     const [emitirConfirm, setEmitirConfirm] = useState({ open: false, tipoComprobante: '03' });
     const [emitirResult, setEmitirResult] = useState({ open: false, status: 'aceptado', data: {} });
     const [printModal, setPrintModal] = useState({ open: false, comprobanteId: null });
+    const [reenvioConfirm, setReenvioConfirm] = useState(null);
+    const [reenviandoId, setReenviandoId] = useState(null);
     const [form, setForm] = useState({
         monto: '',
         metodo: 'transferencia',
@@ -109,6 +115,18 @@ const DetalleFinanza = () => {
         }
     }, [cuentasFiltradas, form.cuenta_id]);
 
+    const openRegistrarPago = () => {
+        const saldo = Number(finanza?.saldo);
+        setForm((prev) => ({
+            ...prev,
+            monto: Number.isFinite(saldo) && saldo > 0 ? saldo.toFixed(2) : '',
+            referencia: '',
+            fecha_pago: new Date().toISOString().split('T')[0],
+            notas: ''
+        }));
+        setModalOpen(true);
+    };
+
     const submitPago = async () => {
         if (!form.monto || Number.isNaN(parseFloat(form.monto))) {
             alert('Ingresa un monto válido');
@@ -145,6 +163,7 @@ const DetalleFinanza = () => {
 
     const handleConfirmEmitir = async () => {
         const { tipoComprobante } = emitirConfirm;
+        reenvioTargetRef.current = null;
         try {
             emitirKeyRef.current ||= crypto.randomUUID();
             const result = await createInvoiceMutation.mutateAsync({
@@ -188,8 +207,12 @@ const DetalleFinanza = () => {
     };
 
     const handleRetryEmitir = () => {
-        const tipoComprobante = emitirConfirm.tipoComprobante || '03';
         setEmitirResult({ open: false, status: 'aceptado', data: {} });
+        if (reenvioTargetRef.current) {
+            void reenviarComprobante(reenvioTargetRef.current, { askConfirm: false });
+            return;
+        }
+        const tipoComprobante = emitirConfirm.tipoComprobante || '03';
         setEmitirConfirm({ open: true, tipoComprobante });
     };
 
@@ -244,6 +267,64 @@ const DetalleFinanza = () => {
 
     const handlePrintComprobante = (comp) => {
         setPrintModal({ open: true, comprobanteId: comp.id });
+    };
+
+    const reenviarComprobante = async (comp, { askConfirm = true } = {}) => {
+        if (!comp?.idempotency_key) {
+            alert('Este comprobante no tiene clave de reenvío. No se puede reintentar desde aquí.');
+            return;
+        }
+        if (askConfirm) {
+            setReenvioConfirm(comp);
+            return;
+        }
+
+        reenvioTargetRef.current = comp;
+        setReenviandoId(comp.id);
+        try {
+            const result = await createInvoiceMutation.mutateAsync({
+                orderId: id,
+                payload: {
+                    tipoComprobante: comp.tipo_comprobante,
+                    idempotencyKey: comp.idempotency_key
+                }
+            });
+            setEmitirResult({
+                open: true,
+                status: 'aceptado',
+                data: {
+                    serie: result?.serie,
+                    correlativo: result?.correlativo,
+                    cdrCode: result?.cdr_code,
+                    cdrDescription: result?.cdr_description,
+                    hash: result?.hash,
+                    pdfUrl: result?.pdf_url,
+                    xmlUrl: result?.xml_url,
+                    cdrUrl: result?.cdr_url,
+                    comprobanteId: result?.id || comp.id,
+                    isDemoAsset: !!(result?.pdf_url && (result.pdf_url.includes('/demo/') || result.pdf_url.includes('demo.apisperu'))),
+                },
+            });
+        } catch (err) {
+            const is422 = err.status === 422;
+            const isNetworkOrServer = !err.status || err.status >= 500;
+            setEmitirResult({
+                open: true,
+                status: is422 ? 'rechazado' : isNetworkOrServer ? 'no_confirmado' : 'rechazado',
+                data: {
+                    cdrCode: err.payload?.cdr_code || err.payload?.code,
+                    cdrDescription: err.payload?.cdr_description || err.message,
+                    message: err.message,
+                    requestId: err.payload?.requestId || err.payload?.request_id,
+                },
+            });
+        } finally {
+            setReenviandoId(null);
+        }
+    };
+
+    const handleReenviarComprobante = (comp) => {
+        void reenviarComprobante(comp, { askConfirm: true });
     };
 
     const escapeHtml = (value) => {
@@ -518,30 +599,42 @@ const DetalleFinanza = () => {
     }
 
     return (
-        <div className="animate-fade-in detail-finanza-page">
-            <div className="page-header">
+        <div className="animate-fade-in detail-finanza-page pedido-detail">
+            <div className="page-header pedido-detail-header">
                 <div className="page-header-left">
-                    <h1>Detalle de finanzas</h1>
-                    <p>Pedido {finanza.codigo} · {finanza.paciente_nombre}</p>
+                    <button
+                        type="button"
+                        className="btn btn-ghost btn-sm btn-icon"
+                        onClick={() => navigate('/finanzas')}
+                        aria-label="Volver a finanzas"
+                    >
+                        <i className="bi bi-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h1 className="pedido-detail-title">
+                            {finanza.codigo}
+                            <span className={`badge badge-dot badge-${finanza.estado_pago}`}>
+                                {statusLabels[finanza.estado_pago]}
+                            </span>
+                        </h1>
+                        <p>Finanzas · {finanza.paciente_nombre}</p>
+                    </div>
                 </div>
                 <div className="pedido-actions detail-finanza-header-actions">
-                    <button className="btn btn-ghost" onClick={() => navigate('/finanzas')}>
-                        <i className="bi bi-arrow-left"></i> Volver
-                    </button>
                     <div className="detail-finanza-print-menu">
-                        <button className="btn btn-ghost" onClick={() => setPrintMenuOpen(p => !p)}>
+                        <button type="button" className="btn btn-secondary" onClick={() => setPrintMenuOpen(p => !p)}>
                             <i className="bi bi-printer"></i> Imprimir interno <i className="bi bi-chevron-down detail-finanza-chevron"></i>
                         </button>
                         {printMenuOpen && (
                             <div className="detail-finanza-print-popover">
-                                <button className="btn btn-ghost detail-finanza-print-option" onClick={handlePrintA4}>
+                                <button type="button" className="btn btn-ghost detail-finanza-print-option" onClick={handlePrintA4}>
                                     <i className="bi bi-file-earmark-text detail-finanza-icon-tone"></i>
                                     <div className="detail-finanza-print-option-content">
                                         <div className="detail-finanza-print-option-title">Formato A4</div>
                                         <div className="detail-finanza-print-option-subtitle">Impresora estándar</div>
                                     </div>
                                 </button>
-                                <button className="btn btn-ghost detail-finanza-print-option" onClick={handlePrint80mm}>
+                                <button type="button" className="btn btn-ghost detail-finanza-print-option" onClick={handlePrint80mm}>
                                     <i className="bi bi-receipt detail-finanza-icon-tone"></i>
                                     <div className="detail-finanza-print-option-content">
                                         <div className="detail-finanza-print-option-title">Ticketera 80mm</div>
@@ -552,67 +645,147 @@ const DetalleFinanza = () => {
                         )}
                     </div>
                     {finanza.estado_pago !== 'cancelado' && (
-                        <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
+                        <button type="button" className="btn btn-primary" onClick={openRegistrarPago}>
                             <i className="bi bi-plus-lg"></i> Registrar pago
                         </button>
                     )}
                 </div>
             </div>
 
-            <div className="detail-finanza-metrics-grid">
-                <div className="detail-metric">
-                    <span className="detail-label">Estado de pago</span>
-                    <span className="detail-value">
-                        <span className={`badge badge-dot badge-${finanza.estado_pago}`}>{statusLabels[finanza.estado_pago]}</span>
-                    </span>
+            <div className="order-wizard-confirm-hero pedido-detail-hero" aria-label="Resumen financiero">
+                <div className="order-wizard-confirm-stat">
+                    <div className="order-wizard-confirm-stat-copy">
+                        <span className="order-wizard-confirm-label">
+                            <i className="bi bi-cash-stack" aria-hidden="true"></i>
+                            Total
+                        </span>
+                        <strong>{formatCurrency(finanza.total)}</strong>
+                        <em className="order-wizard-confirm-meta">
+                            {finanza.clinica_nombre || 'Sin clínica'} · Pedido {formatDate(finanza.fecha || finanza.created_at)}
+                        </em>
+                    </div>
                 </div>
-                <div className="detail-metric">
-                    <span className="detail-label">Total</span>
-                    <span className="detail-value">{formatCurrency(finanza.total)}</span>
+                <div className="order-wizard-confirm-stat">
+                    <div className="order-wizard-confirm-stat-copy">
+                        <span className="order-wizard-confirm-label">
+                            <i className="bi bi-wallet2" aria-hidden="true"></i>
+                            Pagado
+                        </span>
+                        <strong>{formatCurrency(finanza.monto_pagado)}</strong>
+                        <em className="order-wizard-confirm-meta">
+                            Caja {formatCurrency(finanza.monto_pagado_caja)} · Bancos {formatCurrency(finanza.monto_pagado_bancos)}
+                        </em>
+                    </div>
                 </div>
-                <div className="detail-metric">
-                    <span className="detail-label">Pagado</span>
-                    <span className="detail-value">{formatCurrency(finanza.monto_pagado)}</span>
-                </div>
-                <div className="detail-metric">
-                    <span className="detail-label">Saldo</span>
-                    <span className="detail-value">{formatCurrency(finanza.saldo)}</span>
-                    {saldoMeta && <span className={`date-chip is-${saldoMeta.tone}`}>{saldoMeta.label}</span>}
-                </div>
-                <div className="detail-metric">
-                    <span className="detail-label">Pagado en caja</span>
-                    <span className="detail-value">{formatCurrency(finanza.monto_pagado_caja)}</span>
-                </div>
-                <div className="detail-metric">
-                    <span className="detail-label">Pagado en bancos</span>
-                    <span className="detail-value">{formatCurrency(finanza.monto_pagado_bancos)}</span>
+                <div className="order-wizard-confirm-stat">
+                    <div className="order-wizard-confirm-stat-copy">
+                        <span className="order-wizard-confirm-label">
+                            <i className="bi bi-piggy-bank" aria-hidden="true"></i>
+                            Saldo
+                        </span>
+                        <strong>{formatCurrency(finanza.saldo)}</strong>
+                        {saldoMeta ? (
+                            <em className="order-wizard-confirm-meta">{saldoMeta.label}</em>
+                        ) : (
+                            <em className="order-wizard-confirm-meta">Entrega {formatDate(finanza.fecha_entrega)}</em>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="detail-finanza-summary-grid">
-                <div className="card">
-                    <h3 className="card-title detail-finanza-card-title">Datos del pedido</h3>
-                    <div className="detail-finanza-summary-content">
-                        <div>
-                            <div className="detail-label">Clínica</div>
-                            <div className="detail-value">{finanza.clinica_nombre || '—'}</div>
-                        </div>
-                        <div>
-                            <div className="detail-label">Paciente</div>
-                            <div className="detail-value">{finanza.paciente_nombre}</div>
-                        </div>
-                        <div>
-                            <div className="detail-label">Fecha de pedido</div>
-                            <div className="detail-value">{formatDate(finanza.fecha || finanza.created_at)}</div>
-                        </div>
-                        <div>
-                            <div className="detail-label">Fecha de entrega</div>
-                            <div className="detail-value">{formatDate(finanza.fecha_entrega)}</div>
-                        </div>
+            <div className="detail-finanza-layout">
+                <div className="detail-finanza-main">
+                <div className="card pedido-detail-items">
+                    <div className="card-header">
+                        <h3 className="card-title">
+                            <i className="bi bi-box-seam" aria-hidden="true"></i>
+                            Detalle de items
+                        </h3>
                     </div>
+                    {finanza.items?.length ? (
+                        <>
+                            <ul className="order-wizard-confirm-items pedido-detail-confirm-items">
+                                {finanza.items.map((item, i) => {
+                                    const subtotal = parseFloat(item.subtotal) || (item.cantidad * parseFloat(item.precio_unitario));
+                                    const tone = String(item.color_vita || item.color || '').trim();
+                                    const teeth = sortTeethByArchOrder(item.piezas_dentales || []);
+                                    const isBridge = Boolean(item.es_puente && item.pieza_inicio && item.pieza_fin);
+                                    const product = {
+                                        id: item.producto_id,
+                                        nombre: item.producto_nombre || `Producto #${item.producto_id}`,
+                                        image_url: item.producto_image_url || item.image_url || '',
+                                    };
+                                    const teethDenseClass = teeth.length > 24
+                                        ? 'is-dense-xl'
+                                        : teeth.length > 16
+                                            ? 'is-dense-lg'
+                                            : teeth.length > 8
+                                                ? 'is-dense-md'
+                                                : '';
+                                    return (
+                                        <li key={item.id || i} className="order-wizard-confirm-item">
+                                            <div className="order-wizard-confirm-item-media" aria-hidden="true">
+                                                <OrderProductThumb product={product} />
+                                            </div>
+                                            <div className="order-wizard-confirm-item-main">
+                                                <div className="pedido-detail-confirm-item-top">
+                                                    <div className="pedido-detail-confirm-item-heading">
+                                                        <strong>{product.nombre}</strong>
+                                                    </div>
+                                                    <div className="order-wizard-confirm-clinical">
+                                                        {isBridge ? (
+                                                            <span className="order-wizard-confirm-qty">{formatDentalSelection(item)}</span>
+                                                        ) : teeth.length > 0 ? (
+                                                            <div
+                                                                className={[
+                                                                    'order-wizard-confirm-teeth',
+                                                                    teethDenseClass,
+                                                                ].filter(Boolean).join(' ')}
+                                                                data-count={teeth.length}
+                                                                aria-label="Piezas seleccionadas"
+                                                            >
+                                                                {teeth.map((tooth) => (
+                                                                    <span key={`${item.id || i}-${tooth}`} className="order-wizard-confirm-tooth">
+                                                                        {tooth}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="order-wizard-confirm-qty">
+                                                                {item.cantidad} {parseFloat(item.cantidad) === 1 ? 'pieza' : 'piezas'}
+                                                            </span>
+                                                        )}
+                                                        {tone ? (
+                                                            <span className="order-wizard-confirm-tone">Tono {tone}</span>
+                                                        ) : null}
+                                                    </div>
+                                                    <span className="pedido-detail-item-subtotal">{formatCurrency(subtotal)}</span>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            {(finanza.items?.length || 0) > 1 ? (
+                                <div className="pedido-detail-items-total">
+                                    Total: {formatCurrency(finanza.total)}
+                                </div>
+                            ) : null}
+                        </>
+                    ) : (
+                        <div className="empty-state" style={{ padding: '1.5rem 0' }}>
+                            <p className="empty-state-text">Sin items registrados</p>
+                        </div>
+                    )}
                 </div>
-                <div className="card">
-                    <h3 className="card-title detail-finanza-card-title">Resumen de pagos</h3>
+
+                <div className="card pedido-detail-history">
+                    <div className="card-header">
+                        <h3 className="card-title">
+                            <i className="bi bi-receipt" aria-hidden="true"></i>
+                            Resumen de pagos
+                        </h3>
+                    </div>
                     <div className="data-table-wrapper table-scroll-dense desktop-only detail-finanza-table-shell">
                         <table className="data-table">
                             <thead>
@@ -623,7 +796,7 @@ const DetalleFinanza = () => {
                                     <th>Cuenta</th>
                                     <th>Referencia</th>
                                     <th>Monto</th>
-                                <th className="detail-finanza-table-icon-col"></th>
+                                    <th className="detail-finanza-table-icon-col"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -637,6 +810,7 @@ const DetalleFinanza = () => {
                                         <td><strong>{formatCurrency(pago.monto)}</strong></td>
                                         <td className="detail-finanza-table-action-cell">
                                             <button
+                                                type="button"
                                                 className="btn btn-ghost btn-icon btn-sm"
                                                 title="Imprimir ticket"
                                                 onClick={() => printTicketPago(pago)}
@@ -678,15 +852,56 @@ const DetalleFinanza = () => {
                         )}
                     </div>
                 </div>
-            </div>
+                </div>
 
-            <div className="card detail-finanza-comprobantes-card">
+                <aside className="pedido-detail-side">
+                    <div className="card pedido-detail-info">
+                        <div className="card-header">
+                            <h3 className="card-title">
+                                <i className="bi bi-info-circle" aria-hidden="true"></i>
+                                Datos del pedido
+                            </h3>
+                        </div>
+                        <div className="pedido-detail-info-grid detail-finanza-info-grid">
+                            <div className="pedido-detail-field">
+                                <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-building" aria-hidden="true"></i>
+                                    Clínica
+                                </span>
+                                <strong>{finanza.clinica_nombre || '—'}</strong>
+                            </div>
+                            <div className="pedido-detail-field">
+                                <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-person" aria-hidden="true"></i>
+                                    Paciente
+                                </span>
+                                <strong>{finanza.paciente_nombre}</strong>
+                            </div>
+                            <div className="pedido-detail-field">
+                                <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-calendar3" aria-hidden="true"></i>
+                                    Fecha de pedido
+                                </span>
+                                <strong>{formatDate(finanza.fecha || finanza.created_at)}</strong>
+                            </div>
+                            <div className="pedido-detail-field">
+                                <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-calendar-check" aria-hidden="true"></i>
+                                    Fecha de entrega
+                                </span>
+                                <strong>{formatDate(finanza.fecha_entrega)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <div className="card detail-finanza-comprobantes-card pedido-detail-files">
                     {/* Header */}
                     <div className="detail-finanza-section-header">
                         <div className="detail-finanza-section-icon">
                             <i className="bi bi-file-earmark-check-fill detail-finanza-section-icon-mark"></i>
                         </div>
-                        <div>
+                        <div className="detail-finanza-section-copy">
                             <div className="detail-finanza-section-title">Comprobantes Electrónicos</div>
                             <div className="detail-finanza-section-subtitle">Registrados ante SUNAT</div>
                         </div>
@@ -712,7 +927,12 @@ const DetalleFinanza = () => {
                         </div>
                     </div>
 
-                    {/* Table */}
+                    {comprobantes.length === 0 ? (
+                        <div className="detail-finanza-comprobantes-empty" role="status">
+                            <i className="bi bi-file-earmark-x detail-finanza-comprobantes-empty-icon" aria-hidden="true"></i>
+                            <p className="detail-finanza-comprobantes-empty-text">Sin comprobantes electrónicos emitidos</p>
+                        </div>
+                    ) : (
                     <div className="detail-finanza-comprobantes-scroll">
                         <table className="detail-finanza-comprobantes-table">
                             <thead>
@@ -723,17 +943,13 @@ const DetalleFinanza = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {comprobantes.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="detail-finanza-comprobantes-empty">
-                                            <i className="bi bi-file-earmark-x detail-finanza-comprobantes-empty-icon"></i>
-                                            Sin comprobantes electrónicos emitidos
-                                        </td>
-                                    </tr>
-                                ) : comprobantes.map((comp) => {
+                                {comprobantes.map((comp) => {
                                     const isVoided = comp.estado_sunat === 'anulado';
                                     const isActive = comp.estado_sunat === 'aceptado' || comp.estado_sunat === 'generado';
+                                    const isRetryable = comp.estado_sunat === 'error' || comp.estado_sunat === 'generado';
+                                    const canFiscalActions = !isVoided && !isRetryable;
                                     const isDemo = !!(comp.pdf_url && (comp.pdf_url.includes('/demo/') || comp.pdf_url.includes('demo.apisperu')));
+                                    const isReenviando = reenviandoId === comp.id;
                                     return (
                                         <tr key={comp.id} className={`detail-finanza-comprobante-row${isVoided ? ' is-voided' : ''}`}>
                                             <td>{formatDate(comp.fecha_emision)}</td>
@@ -785,7 +1001,20 @@ const DetalleFinanza = () => {
                                                 >
                                                     <i className="bi bi-printer"></i> Imprimir
                                                 </button>
-                                                {!isVoided && (
+                                                {isRetryable && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleReenviarComprobante(comp)}
+                                                        disabled={isReenviando || createInvoiceMutation.isPending}
+                                                        className="btn btn-sm detail-finanza-retry-btn"
+                                                        title="Reenviar este comprobante a SUNAT"
+                                                    >
+                                                        {isReenviando
+                                                            ? <><i className="bi bi-arrow-repeat detail-finanza-spin"></i> Reenviando…</>
+                                                            : <><i className="bi bi-send"></i> Reenviar</>}
+                                                    </button>
+                                                )}
+                                                {canFiscalActions && (
                                                     <button
                                                         onClick={() => handleAnularComprobante(comp)}
                                                         disabled={annulInvoiceMutation.isPending}
@@ -794,7 +1023,7 @@ const DetalleFinanza = () => {
                                                         <><i className="bi bi-x-circle"></i> Anular</>
                                                     </button>
                                                 )}
-                                                {!isVoided && (
+                                                {canFiscalActions && (
                                                     <button
                                                         onClick={() => handleNotaCredito(comp)}
                                                         disabled={createCreditNoteMutation.isPending}
@@ -814,60 +1043,8 @@ const DetalleFinanza = () => {
                             </tbody>
                         </table>
                     </div>
-            </div>
-
-            <div className="card">
-                <h3 className="card-title detail-finanza-card-title">Detalle de items</h3>
-                <div className="data-table-wrapper table-scroll-dense desktop-only detail-finanza-table-shell">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th>Cantidad</th>
-                                <th>Precio</th>
-                                <th>Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {finanza.items?.length ? finanza.items.map((item) => (
-                                <tr key={item.id}>
-                                    <td>{item.producto_nombre || '—'}</td>
-                                    <td>{item.cantidad || 1}</td>
-                                    <td>{formatCurrency(item.precio_unitario)}</td>
-                                    <td><strong>{formatCurrency(item.subtotal)}</strong></td>
-                                </tr>
-                            )) : (
-                                <tr>
-                            <td colSpan={4} className="detail-finanza-empty-cell">Sin items registrados</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-                <div className="mobile-cards mobile-only">
-                    {finanza.items?.length ? finanza.items.map((item) => (
-                        <article className="mobile-card" key={`item-mobile-${item.id}`}>
-                            <div className="mobile-card-head">
-                                <div className="mobile-card-title">{item.producto_nombre || '—'}</div>
-                                <span className="badge badge-enviado">{item.cantidad || 1}</span>
-                            </div>
-                            <div className="mobile-card-grid">
-                                <div className="mobile-field">
-                                    <span className="mobile-field-label">Precio</span>
-                                    <span className="mobile-field-value">{formatCurrency(item.precio_unitario)}</span>
-                                </div>
-                                <div className="mobile-field">
-                                    <span className="mobile-field-label">Subtotal</span>
-                                    <span className="mobile-field-value"><strong>{formatCurrency(item.subtotal)}</strong></span>
-                                </div>
-                            </div>
-                        </article>
-                    )) : (
-                        <div className="mobile-card">
-                            <p className="mobile-field-value">Sin items registrados</p>
-                        </div>
                     )}
-                </div>
+            </div>
             </div>
 
             {/* ── Modales de emisión rápida ──────────────────────── */}
@@ -928,6 +1105,11 @@ const DetalleFinanza = () => {
                                 autoFocus
                             />
                         </div>
+                        {Number(finanza?.saldo) > 0 && (
+                            <p className="detail-finanza-field-hint">
+                                Precargado con el saldo pendiente ({formatCurrency(finanza.saldo)}). Puedes editarlo para un pago parcial.
+                            </p>
+                        )}
                     </div>
                     <div className="form-group detail-finanza-form-group">
                         <label className="form-label detail-finanza-form-label">
@@ -1124,6 +1306,26 @@ const DetalleFinanza = () => {
                     />
                 </div>
             </Modal>
+
+            <ConfirmDialog
+                open={!!reenvioConfirm}
+                onClose={() => setReenvioConfirm(null)}
+                onConfirm={() => {
+                    const comp = reenvioConfirm;
+                    setReenvioConfirm(null);
+                    if (comp) void reenviarComprobante(comp, { askConfirm: false });
+                }}
+                variant="primary"
+                icon="bi-arrow-repeat"
+                title="Reenviar a SUNAT"
+                confirmLabel="Reenviar"
+                cancelLabel="Cancelar"
+                message={(
+                    <p>
+                        ¿Reenviar <strong>{reenvioConfirm ? `${reenvioConfirm.serie}-${reenvioConfirm.correlativo}` : ''}</strong> a SUNAT?
+                    </p>
+                )}
+            />
         </div>
     );
 };

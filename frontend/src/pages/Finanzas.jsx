@@ -55,20 +55,22 @@ const Finanzas = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-color)' }}>
+            <div className="section-tabs dashboard-view-switcher" role="group" aria-label="Secciones de finanzas">
                 <button
-                    className={`btn ${activeTab === 'finanzas' ? 'btn-primary' : 'btn-ghost'}`}
-                    style={{ borderRadius: '8px 8px 0 0', padding: '0.75rem 1.5rem' }}
+                    type="button"
+                    className={`btn section-tab dashboard-view-tab ${activeTab === 'finanzas' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveTab('finanzas')}
+                    aria-pressed={activeTab === 'finanzas'}
                 >
-                    <i className="bi bi-wallet2"></i> Estado de Cuentas
+                    <i className="bi bi-wallet2" aria-hidden="true"></i> Estado de Cuentas
                 </button>
                 <button
-                    className={`btn ${activeTab === 'comprobantes' ? 'btn-primary' : 'btn-ghost'}`}
-                    style={{ borderRadius: '8px 8px 0 0', padding: '0.75rem 1.5rem' }}
+                    type="button"
+                    className={`btn section-tab dashboard-view-tab ${activeTab === 'comprobantes' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveTab('comprobantes')}
+                    aria-pressed={activeTab === 'comprobantes'}
                 >
-                    <i className="bi bi-receipt"></i> Historial de Facturación
+                    <i className="bi bi-receipt" aria-hidden="true"></i> Historial de Facturación
                 </button>
             </div>
 
@@ -85,16 +87,19 @@ const Finanzas = () => {
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
-                            <div style={{ display: 'flex', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
-                                {estados.map((estado) => (
-                                    <button
-                                        key={estado}
-                                        className={`btn btn-sm ${filtroEstado === estado ? 'btn-primary' : 'btn-ghost'}`}
-                                        onClick={() => setFiltroEstado(estado)}
-                                    >
-                                        {estado ? statusLabels[estado] : 'Todos'}
-                                    </button>
-                                ))}
+                            <div className="pedidos-status-filters-scroller" style={{ minWidth: 0 }}>
+                                <div className="pedidos-status-filters" role="group" aria-label="Filtrar por estado de pago">
+                                    {estados.map((estado) => (
+                                        <button
+                                            key={estado || 'all'}
+                                            type="button"
+                                            className={`btn btn-sm pedidos-filter-chip${filtroEstado === estado ? ' is-active' : ''}`}
+                                            onClick={() => setFiltroEstado(estado)}
+                                        >
+                                            {estado ? statusLabels[estado] : 'Todos'}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>

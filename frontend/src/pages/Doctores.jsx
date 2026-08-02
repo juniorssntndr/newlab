@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useId } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import Modal from '../components/Modal.jsx';
+import FormDatePicker from '../components/FormDatePicker.jsx';
 import { API_URL } from '../config.js';
 import { previewDNI, confirmDoctor } from '../modules/identity/api/identityApi.js';
 import { toast } from 'react-hot-toast';
+import '../styles/doctores-modal.css';
 
 const FORM_EMPTY = {
     nombre: '',
@@ -12,6 +14,31 @@ const FORM_EMPTY = {
     email: '',
     telefono: '',
     especialidad: '',
+    fecha_nacimiento: '',
+};
+
+/** Normalize PG DATE / ISO string → `YYYY-MM-DD` for FormDatePicker. */
+const toIsoDateOnly = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') {
+        const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+        return match ? match[1] : '';
+    }
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const y = value.getUTCFullYear();
+        const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(value.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    return '';
+};
+
+const todayIsoLocal = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 };
 
 const Doctores = () => {
@@ -74,6 +101,7 @@ const Doctores = () => {
             email: doc.email || '',
             telefono: doc.telefono || '',
             especialidad: doc.especialidad || '',
+            fecha_nacimiento: toIsoDateOnly(doc.fecha_nacimiento),
         });
         setSelectedClinicas((doc.clinicas || []).map(c => String(c.id || c)));
         setStep('form');
@@ -111,6 +139,10 @@ const Doctores = () => {
             await confirmDoctor({
                 dni: dniPreview.dni,
                 overrides: {
+                    cop: form.cop || null,
+                    email: form.email || null,
+                    telefono: form.telefono || null,
+                    fecha_nacimiento: form.fecha_nacimiento || null,
                     clinicaIds: selectedClinicas,
                 },
                 headers: getHeaders(),
@@ -138,6 +170,7 @@ const Doctores = () => {
                     cop: form.cop || null,
                     email: form.email || null,
                     telefono: form.telefono || null,
+                    fecha_nacimiento: form.fecha_nacimiento || null,
                 }),
             });
             if (!res.ok) {
@@ -341,20 +374,21 @@ const Doctores = () => {
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 title={modalTitle}
-                size="lg"
+                size={(!editing && step === 'dni') ? undefined : 'lg'}
                 footer={
                     <>
                         {!editing && step === 'dni' && (
                             <>
-                                <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
+                                <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button>
                                 <button
+                                    type="button"
                                     className="btn btn-primary"
                                     onClick={handleConsultarDNI}
                                     disabled={dniLoading || dniInput.replace(/\D/g, '').length !== 8}
                                 >
                                     {dniLoading
-                                        ? <><span className="spinner" style={{ width: '1rem', height: '1rem', borderWidth: '2px', display: 'inline-block' }} /> Consultando...</>
-                                        : <><i className="bi bi-search" /> Consultar RENIEC</>
+                                        ? <><span className="spinner doctor-modal-footer-spinner" aria-hidden="true" /> Consultando...</>
+                                        : <><i className="bi bi-search" aria-hidden="true" /> Consultar RENIEC</>
                                     }
                                 </button>
                             </>
@@ -362,13 +396,13 @@ const Doctores = () => {
 
                         {!editing && step === 'preview' && (
                             <>
-                                <button className="btn btn-ghost" onClick={() => setStep('dni')}>
-                                    <i className="bi bi-arrow-left" /> Volver
+                                <button type="button" className="btn btn-secondary" onClick={() => setStep('dni')}>
+                                    <i className="bi bi-arrow-left" aria-hidden="true" /> Volver
                                 </button>
-                                <button className="btn btn-primary" onClick={handleConfirmDNI} disabled={saving}>
+                                <button type="button" className="btn btn-primary" onClick={handleConfirmDNI} disabled={saving}>
                                     {saving
-                                        ? <><span className="spinner" style={{ width: '1rem', height: '1rem', borderWidth: '2px', display: 'inline-block' }} /> Guardando...</>
-                                        : <><i className="bi bi-check-lg" /> Confirmar y guardar</>
+                                        ? <><span className="spinner doctor-modal-footer-spinner" aria-hidden="true" /> Guardando...</>
+                                        : <><i className="bi bi-check-lg" aria-hidden="true" /> Confirmar y guardar</>
                                     }
                                 </button>
                             </>
@@ -376,11 +410,11 @@ const Doctores = () => {
 
                         {(editing || step === 'form') && (
                             <>
-                                <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
-                                <button className="btn btn-primary" onClick={save} disabled={saving}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button>
+                                <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
                                     {saving
                                         ? 'Guardando...'
-                                        : <><i className="bi bi-check-lg" /> {editing ? 'Guardar cambios' : 'Crear'}</>
+                                        : <><i className="bi bi-check-lg" aria-hidden="true" /> {editing ? 'Guardar cambios' : 'Crear'}</>
                                     }
                                 </button>
                             </>
@@ -390,29 +424,21 @@ const Doctores = () => {
             >
                 {/* ──────── Paso 1: Ingresar DNI ──────── */}
                 {!editing && step === 'dni' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <div style={{
-                            background: 'rgba(59,130,246,0.06)',
-                            border: '1px solid rgba(59,130,246,0.2)',
-                            borderRadius: '8px',
-                            padding: '0.875rem 1rem',
-                            fontSize: '0.875rem',
-                            color: 'var(--color-text-secondary)',
-                            lineHeight: 1.45,
-                            display: 'flex',
-                            gap: '0.5rem',
-                        }}>
-                            <i className="bi bi-info-circle-fill" style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '1px' }} />
+                    <div className="doctor-modal-stack">
+                        <div className="doctor-modal-callout" role="note">
+                            <i className="bi bi-info-circle-fill" aria-hidden="true" />
                             <span>
                                 Ingresa el DNI del doctor para consultar su nombre en RENIEC automáticamente.
                                 Luego podrás completar el COP y asociar clínicas.
                             </span>
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">DNI del doctor <span style={{ color: 'red' }}>*</span></label>
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="doctor-dni-input">
+                                DNI del doctor <span className="doctor-modal-required" aria-hidden="true">*</span>
+                            </label>
                             <input
-                                className="form-input"
-                                style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '1.1rem', letterSpacing: '0.05em' }}
+                                id="doctor-dni-input"
+                                className="form-input doctor-modal-dni-input"
                                 placeholder="12345678 (8 dígitos)"
                                 value={dniInput}
                                 onChange={e => setDniInput(e.target.value.replace(/\D/g, '').slice(0, 8))}
@@ -420,6 +446,8 @@ const Doctores = () => {
                                     if (e.key === 'Enter' && dniInput.replace(/\D/g, '').length === 8) handleConsultarDNI();
                                 }}
                                 maxLength={8}
+                                inputMode="numeric"
+                                autoComplete="off"
                                 autoFocus
                             />
                         </div>
@@ -428,39 +456,31 @@ const Doctores = () => {
 
                 {/* ──────── Paso 2: Preview RENIEC ──────── */}
                 {!editing && step === 'preview' && dniPreview && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {/* Resumen de datos */}
-                        <div style={{
-                            background: '#f0fdf4',
-                            border: '1px solid #86efac',
-                            borderLeft: '4px solid #16a34a',
-                            borderRadius: '0 8px 8px 0',
-                            padding: '0.875rem 1rem',
-                        }}>
-                            <div style={{ fontSize: '0.8rem', color: '#166534', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <div className="doctor-modal-stack">
+                        <div className="doctor-modal-callout doctor-modal-callout--summary" role="status">
+                            <p className="doctor-modal-callout-kicker">
+                                <i className="bi bi-person-vcard" aria-hidden="true" />
                                 Datos obtenidos de RENIEC
-                            </div>
-                            <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{dniPreview.nombre}</div>
-                            <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.85rem', color: '#166534', marginTop: '2px' }}>
-                                DNI: {dniPreview.dni}
-                            </div>
+                            </p>
+                            <p className="doctor-modal-callout-title">{dniPreview.nombre}</p>
+                            <p className="doctor-modal-callout-meta">DNI: {dniPreview.dni}</p>
                         </div>
 
-                        {/* COP / Especialidad */}
-                        <div className="grid grid-cols-2">
+                        <div className="doctor-modal-fields">
                             <div className="form-group">
-                                <label className="form-label">N° COP (opcional)</label>
+                                <label className="form-label" htmlFor="doctor-preview-cop">N° COP (opcional)</label>
                                 <input
-                                    className="form-input"
-                                    style={{ fontFamily: 'var(--font-mono, monospace)' }}
+                                    id="doctor-preview-cop"
+                                    className="form-input doctor-modal-mono-input"
                                     placeholder="Ej: 12345"
                                     value={form.cop}
                                     onChange={e => setForm(p => ({ ...p, cop: e.target.value }))}
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Especialidad (opcional)</label>
+                                <label className="form-label" htmlFor="doctor-preview-esp">Especialidad (opcional)</label>
                                 <input
+                                    id="doctor-preview-esp"
                                     className="form-input"
                                     placeholder="Ej: Ortodoncia"
                                     value={form.especialidad}
@@ -468,8 +488,9 @@ const Doctores = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Email (opcional)</label>
+                                <label className="form-label" htmlFor="doctor-preview-email">Email (opcional)</label>
                                 <input
+                                    id="doctor-preview-email"
                                     className="form-input"
                                     type="email"
                                     value={form.email}
@@ -477,16 +498,26 @@ const Doctores = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Teléfono (opcional)</label>
+                                <label className="form-label" htmlFor="doctor-preview-tel">Teléfono (opcional)</label>
                                 <input
+                                    id="doctor-preview-tel"
                                     className="form-input"
                                     value={form.telefono}
                                     onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
                                 />
                             </div>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="doctor-preview-bday">Cumpleaños (opcional)</label>
+                                <FormDatePicker
+                                    id="doctor-preview-bday"
+                                    value={form.fecha_nacimiento}
+                                    onChange={(fecha_nacimiento) => setForm((p) => ({ ...p, fecha_nacimiento }))}
+                                    max={todayIsoLocal()}
+                                    aria-label="Fecha de cumpleaños"
+                                />
+                            </div>
                         </div>
 
-                        {/* Asociar clínicas */}
                         <ClinicasSelector
                             clinicas={clinicas}
                             selected={selectedClinicas}
@@ -497,39 +528,44 @@ const Doctores = () => {
 
                 {/* ──────── Edición / formulario completo ──────── */}
                 {(editing || step === 'form') && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <div className="grid grid-cols-2">
+                    <div className="doctor-modal-stack doctor-modal-stack--tight">
+                        <div className="doctor-modal-fields">
                             <div className="form-group">
-                                <label className="form-label">Nombre *</label>
+                                <label className="form-label" htmlFor="doctor-edit-nombre">
+                                    Nombre <span className="doctor-modal-required" aria-hidden="true">*</span>
+                                </label>
                                 <input
+                                    id="doctor-edit-nombre"
                                     className="form-input"
                                     value={form.nombre}
                                     onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">DNI</label>
+                                <label className="form-label" htmlFor="doctor-edit-dni">DNI</label>
                                 <input
-                                    className="form-input"
-                                    style={{ fontFamily: 'var(--font-mono, monospace)' }}
+                                    id="doctor-edit-dni"
+                                    className="form-input doctor-modal-mono-input"
                                     value={form.dni}
                                     maxLength={8}
+                                    inputMode="numeric"
                                     onChange={e => setForm(p => ({ ...p, dni: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">N° COP</label>
+                                <label className="form-label" htmlFor="doctor-edit-cop">N° COP</label>
                                 <input
-                                    className="form-input"
-                                    style={{ fontFamily: 'var(--font-mono, monospace)' }}
+                                    id="doctor-edit-cop"
+                                    className="form-input doctor-modal-mono-input"
                                     placeholder="Ej: 12345"
                                     value={form.cop}
                                     onChange={e => setForm(p => ({ ...p, cop: e.target.value }))}
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Especialidad</label>
+                                <label className="form-label" htmlFor="doctor-edit-esp">Especialidad</label>
                                 <input
+                                    id="doctor-edit-esp"
                                     className="form-input"
                                     placeholder="Ej: Ortodoncia"
                                     value={form.especialidad}
@@ -537,8 +573,9 @@ const Doctores = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Email</label>
+                                <label className="form-label" htmlFor="doctor-edit-email">Email</label>
                                 <input
+                                    id="doctor-edit-email"
                                     className="form-input"
                                     type="email"
                                     value={form.email}
@@ -546,11 +583,22 @@ const Doctores = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Teléfono</label>
+                                <label className="form-label" htmlFor="doctor-edit-tel">Teléfono</label>
                                 <input
+                                    id="doctor-edit-tel"
                                     className="form-input"
                                     value={form.telefono}
                                     onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="doctor-edit-bday">Cumpleaños</label>
+                                <FormDatePicker
+                                    id="doctor-edit-bday"
+                                    value={form.fecha_nacimiento}
+                                    onChange={(fecha_nacimiento) => setForm((p) => ({ ...p, fecha_nacimiento }))}
+                                    max={todayIsoLocal()}
+                                    aria-label="Fecha de cumpleaños"
                                 />
                             </div>
                         </div>
@@ -568,56 +616,76 @@ const Doctores = () => {
 };
 
 /** Sub-componente: selector multi-clínica */
-const ClinicasSelector = ({ clinicas, selected, onToggle }) => (
-    <div className="form-group" style={{ marginBottom: 0 }}>
-        <label className="form-label">Clínicas asociadas (opcional)</label>
-        {clinicas.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: '0.5rem 0' }}>
-                No hay clínicas registradas aún.
-            </p>
-        ) : (
-            <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.5rem',
-                padding: '0.75rem',
-                background: 'var(--color-bg-alt)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                maxHeight: '160px',
-                overflowY: 'auto',
-            }}>
-                {clinicas.map(c => {
-                    const id = String(c.id);
-                    const active = selected.includes(id);
-                    return (
-                        <button
-                            key={id}
-                            type="button"
-                            onClick={() => onToggle(id)}
-                            style={{
-                                padding: '0.3rem 0.75rem',
-                                borderRadius: '999px',
-                                border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                                background: active ? 'rgba(var(--color-primary-rgb, 20,184,166), 0.1)' : 'var(--color-surface)',
-                                color: active ? 'var(--color-primary)' : 'var(--color-text)',
-                                fontWeight: active ? 600 : 400,
-                                fontSize: '0.82rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s',
-                            }}
-                        >
-                            {active && <i className="bi bi-check2" style={{ marginRight: '0.25rem' }} />}
-                            {c.nombre}
-                        </button>
-                    );
-                })}
-            </div>
-        )}
-        {selected.length > 0 && (
-            <span className="form-help">{selected.length} clínica{selected.length !== 1 ? 's' : ''} seleccionada{selected.length !== 1 ? 's' : ''}</span>
-        )}
-    </div>
-);
+const CLINICAS_SEARCH_THRESHOLD = 5;
+
+const ClinicasSelector = ({ clinicas, selected, onToggle }) => {
+    const [query, setQuery] = useState('');
+    const searchId = useId();
+    const showSearch = clinicas.length >= CLINICAS_SEARCH_THRESHOLD;
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const visibleClinicas = !normalizedQuery
+        ? clinicas
+        : clinicas.filter((c) => String(c.nombre || '').toLowerCase().includes(normalizedQuery));
+
+    return (
+        <div className="form-group">
+            <label className="form-label" htmlFor={showSearch ? searchId : undefined}>
+                Clínicas asociadas (opcional)
+            </label>
+            {clinicas.length === 0 ? (
+                <p className="doctor-modal-empty-hint">
+                    No hay clínicas registradas aún.
+                </p>
+            ) : (
+                <div className="doctor-modal-clinicas-wrap">
+                    {showSearch ? (
+                        <div className="search-box doctor-modal-clinicas-search">
+                            <i className="bi bi-search" aria-hidden="true" />
+                            <input
+                                id={searchId}
+                                className="form-input"
+                                type="search"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Buscar clínica..."
+                                autoComplete="off"
+                            />
+                        </div>
+                    ) : null}
+                    <div className="doctor-modal-clinicas" role="group" aria-label="Lista de clínicas">
+                        {visibleClinicas.length > 0 ? (
+                            visibleClinicas.map((c) => {
+                                const id = String(c.id);
+                                const active = selected.includes(id);
+                                return (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        className={`doctor-modal-clinica-chip${active ? ' is-active' : ''}`}
+                                        onClick={() => onToggle(id)}
+                                        aria-pressed={active}
+                                    >
+                                        {active ? <i className="bi bi-check2" aria-hidden="true" /> : null}
+                                        {c.nombre}
+                                    </button>
+                                );
+                            })
+                        ) : (
+                            <p className="doctor-modal-empty-hint">
+                                Ninguna clínica coincide con “{query.trim()}”.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
+            {selected.length > 0 && (
+                <span className="form-help">
+                    {selected.length} clínica{selected.length !== 1 ? 's' : ''} seleccionada{selected.length !== 1 ? 's' : ''}
+                </span>
+            )}
+        </div>
+    );
+};
 
 export default Doctores;

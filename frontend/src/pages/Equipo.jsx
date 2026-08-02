@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';
 import { API_URL } from '../config.js';
 import Modal from '../components/Modal.jsx';
+import '../styles/equipo-modal.css';
 
 const Equipo = () => {
     const { user, getHeaders } = useAuth();
@@ -60,9 +62,10 @@ const Equipo = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Error al guardar');
             setModalOpen(false);
+            toast.success(editing ? 'Usuario actualizado.' : 'Usuario creado.');
             fetchUsuarios();
         } catch (err) {
-            alert(err.message);
+            toast.error(err.message || 'Error al guardar');
         } finally {
             setSaving(false);
         }
@@ -165,49 +168,92 @@ const Equipo = () => {
                 title={editing ? 'Editar Usuario' : 'Nuevo Usuario'}
                 footer={
                     <>
-                        <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={save} disabled={saving}>
-                            <i className="bi bi-check-lg"></i> {saving ? 'Guardando...' : 'Guardar'}
+                        <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={saving}>
+                            Cancelar
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
+                            {saving ? (
+                                <><span className="spinner equipo-modal-footer-spinner" aria-hidden="true" /> Guardando...</>
+                            ) : (
+                                <><i className="bi bi-check-lg" aria-hidden="true" /> Guardar</>
+                            )}
                         </button>
                     </>
                 }
             >
-                <div className="grid grid-cols-2">
+                <div className="equipo-modal-fields">
                     <div className="form-group">
-                        <label className="form-label">Nombre *</label>
-                        <input className="form-input" value={form.nombre}
-                            onChange={e => setForm({ ...form, nombre: e.target.value })} />
+                        <label className="form-label" htmlFor="equipo-user-nombre">
+                            Nombre <span className="equipo-modal-required" aria-hidden="true">*</span>
+                        </label>
+                        <input
+                            id="equipo-user-nombre"
+                            className="form-input"
+                            value={form.nombre}
+                            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                            autoComplete="name"
+                        />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Email *</label>
-                        <input className="form-input" type="email" value={form.email}
-                            onChange={e => setForm({ ...form, email: e.target.value })} />
+                        <label className="form-label" htmlFor="equipo-user-email">
+                            Email <span className="equipo-modal-required" aria-hidden="true">*</span>
+                        </label>
+                        <input
+                            id="equipo-user-email"
+                            className="form-input"
+                            type="email"
+                            value={form.email}
+                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            autoComplete="email"
+                        />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Teléfono</label>
-                        <input className="form-input" value={form.telefono}
-                            onChange={e => setForm({ ...form, telefono: e.target.value })} />
+                        <label className="form-label" htmlFor="equipo-user-tel">Teléfono</label>
+                        <input
+                            id="equipo-user-tel"
+                            className="form-input"
+                            value={form.telefono}
+                            onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                            autoComplete="tel"
+                        />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Tipo</label>
-                        <select className="form-select" value={form.tipo}
-                            onChange={e => setForm({ ...form, tipo: e.target.value })}>
+                        <label className="form-label" htmlFor="equipo-user-tipo">Tipo</label>
+                        <select
+                            id="equipo-user-tipo"
+                            className="form-select"
+                            value={form.tipo}
+                            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+                        >
                             <option value="admin">Administrador</option>
-                            <option value="tecnico">Tecnico</option>
+                            <option value="tecnico">Técnico</option>
                         </select>
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Estado</label>
-                        <select className="form-select" value={form.estado}
-                            onChange={e => setForm({ ...form, estado: e.target.value })}>
+                        <label className="form-label" htmlFor="equipo-user-estado">Estado</label>
+                        <select
+                            id="equipo-user-estado"
+                            className="form-select"
+                            value={form.estado}
+                            onChange={(e) => setForm({ ...form, estado: e.target.value })}
+                        >
                             <option value="activo">Activo</option>
                             <option value="inactivo">Inactivo</option>
                         </select>
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Contrasena {editing ? '(opcional)' : '*'}</label>
-                        <input className="form-input" type="password" value={form.password}
-                            onChange={e => setForm({ ...form, password: e.target.value })} />
+                        <label className="form-label" htmlFor="equipo-user-password">
+                            Contraseña {editing ? '(opcional)' : <span className="equipo-modal-required" aria-hidden="true">*</span>}
+                        </label>
+                        <input
+                            id="equipo-user-password"
+                            className="form-input"
+                            type="password"
+                            value={form.password}
+                            onChange={(e) => setForm({ ...form, password: e.target.value })}
+                            autoComplete={editing ? 'new-password' : 'new-password'}
+                            placeholder={editing ? 'Dejar vacío para no cambiar' : undefined}
+                        />
                     </div>
                 </div>
             </Modal>

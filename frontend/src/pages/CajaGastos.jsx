@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import Modal from '../components/Modal.jsx';
+import FormDatePicker from '../components/FormDatePicker.jsx';
 import { useFinanceCatalogsQuery } from '../modules/finance/queries/useFinanceCatalogsQuery.js';
 import { useFinanceMovementsQuery } from '../modules/finance/queries/useFinanceMovementsQuery.js';
 import { useCreateFinanceMovementMutation } from '../modules/finance/mutations/useCreateFinanceMovementMutation.js';
@@ -14,12 +15,20 @@ const FALLBACK_CATEGORIES = {
     otro: ['otros']
 };
 
-const createDefaultForm = (defaultCategory = 'alquiler') => ({
+const localDateInputValue = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const createDefaultForm = (defaultCategory = 'alquiler', overrides = {}) => ({
     tipo_fondo: 'banco',
-    fecha_movimiento: new Date().toISOString().slice(0, 10),
+    fecha_movimiento: localDateInputValue(),
     monto: '',
     categoria_gasto: defaultCategory,
-    descripcion: ''
+    descripcion: '',
+    ...overrides,
 });
 
 const prettifyLabel = (value = '') => {
@@ -54,14 +63,14 @@ const ExpenseFormFields = ({ form, setForm, categoryOptions, mode = 'create' }) 
 
     return (
         <>
-            <div className="expense-origin-toggle" role="group" aria-label="Origen del gasto">
+            <div className="segmented-control expense-origin-toggle" role="group" aria-label="Origen del gasto">
                 {['banco', 'caja'].map((origin) => {
                     const active = form.tipo_fondo === origin;
                     return (
                         <button
                             key={origin}
                             type="button"
-                            className={`expense-origin-chip ${active ? 'is-active' : ''}`}
+                            className={`segmented-control__btn${active ? ' is-active' : ''}`}
                             aria-pressed={active}
                             onClick={() => setForm((prev) => ({ ...prev, tipo_fondo: origin }))}
                         >
@@ -75,12 +84,11 @@ const ExpenseFormFields = ({ form, setForm, categoryOptions, mode = 'create' }) 
             <div className="expense-form-grid">
                 <div className="form-group">
                     <label className="form-label" htmlFor={dateInputId}>Fecha</label>
-                    <input
+                    <FormDatePicker
                         id={dateInputId}
-                        className="form-input"
-                        type="date"
                         value={form.fecha_movimiento}
-                        onChange={(event) => setForm((prev) => ({ ...prev, fecha_movimiento: event.target.value }))}
+                        onChange={(fecha_movimiento) => setForm((prev) => ({ ...prev, fecha_movimiento }))}
+                        aria-label="Fecha del gasto"
                     />
                 </div>
 
@@ -113,14 +121,14 @@ const ExpenseFormFields = ({ form, setForm, categoryOptions, mode = 'create' }) 
                 </div>
 
                 <div className="form-group expense-form-grid-span">
-                    <label className="form-label" htmlFor={detailInputId}>Detalle libre</label>
+                    <label className="form-label" htmlFor={detailInputId}>Detalle</label>
                     <textarea
                         id={detailInputId}
                         className="form-textarea"
-                        rows={mode === 'edit' ? 3 : 4}
+                        rows={2}
                         value={form.descripcion}
                         onChange={(event) => setForm((prev) => ({ ...prev, descripcion: event.target.value }))}
-                        placeholder="Ej. Pago de alquiler del local, servicio de internet o compra puntual."
+                        placeholder="Ej. Alquiler del local, internet o compra puntual"
                     ></textarea>
                 </div>
             </div>
@@ -131,6 +139,7 @@ const ExpenseFormFields = ({ form, setForm, categoryOptions, mode = 'create' }) 
 const CajaGastos = () => {
     const [movSearch, setMovSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
+    const [originFilter, setOriginFilter] = useState('all');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingMovement, setEditingMovement] = useState(null);
     const [movementToDelete, setMovementToDelete] = useState(null);
@@ -162,9 +171,20 @@ const CajaGastos = () => {
     const [editForm, setEditForm] = useState(() => createDefaultForm(defaultCategory));
 
     const movimientos = movimientosQuery.data || [];
+    const filteredMovimientos = useMemo(() => {
+        if (originFilter === 'all') return movimientos;
+        return movimientos.filter((movement) => movement.tipo_fondo === originFilter);
+    }, [movimientos, originFilter]);
     const loadingMovimientos = (catalogosQuery.isLoading || movimientosQuery.isLoading) && movimientos.length === 0;
     const creatingMovimiento = createMovementMutation.isPending;
     const updatingMovimiento = updateMovementMutation.isPending;
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setMovSearch(searchInput.trim());
+        }, 250);
+        return () => window.clearTimeout(timer);
+    }, [searchInput]);
 
     useEffect(() => {
         if (!createForm.categoria_gasto && defaultCategory) {
@@ -175,15 +195,11 @@ const CajaGastos = () => {
         }
     }, [defaultCategory, createForm.categoria_gasto, editForm.categoria_gasto]);
 
-    const visibleCajaCount = useMemo(() => movimientos.filter((movement) => movement.tipo_fondo === 'caja').length, [movimientos]);
-    const visibleBancoCount = movimientos.length - visibleCajaCount;
-
-    const applyMovementSearch = () => {
-        setMovSearch(searchInput.trim());
-    };
-
     const resetCreateForm = () => {
-        setCreateForm(createDefaultForm(defaultCategory));
+        setCreateForm((prev) => createDefaultForm(defaultCategory, {
+            tipo_fondo: prev.tipo_fondo,
+            fecha_movimiento: prev.fecha_movimiento || localDateInputValue(),
+        }));
     };
 
     const resetModalState = () => {
@@ -196,7 +212,9 @@ const CajaGastos = () => {
         setEditingMovement(movement);
         setEditForm({
             tipo_fondo: movement.tipo_fondo || 'banco',
-            fecha_movimiento: movement.fecha_movimiento ? String(movement.fecha_movimiento).slice(0, 10) : new Date().toISOString().slice(0, 10),
+            fecha_movimiento: movement.fecha_movimiento
+                ? String(movement.fecha_movimiento).slice(0, 10)
+                : localDateInputValue(),
             monto: movement.monto ? String(movement.monto) : '',
             categoria_gasto: movement.categoria_gasto || defaultCategory,
             descripcion: movement.descripcion || ''
@@ -284,10 +302,8 @@ const CajaGastos = () => {
             <div className="expenses-layout">
                 <section className="card expenses-create-card">
                     <div className="expenses-panel-head">
-                        <div>
-                            <span className="expenses-panel-kicker">Registro directo</span>
-                            <h2 className="card-title">Nuevo gasto</h2>
-                        </div>
+                        <h2 className="card-title">Nuevo gasto</h2>
+                        <p className="expenses-panel-sub">Registra egresos desde caja o banco</p>
                     </div>
 
                     <form className="expenses-form-card" onSubmit={handleCreateMovimiento}>
@@ -300,7 +316,7 @@ const CajaGastos = () => {
 
                         <div className="expenses-form-footer">
                             <button type="submit" className="btn btn-primary expenses-submit-btn" disabled={creatingMovimiento}>
-                                <i className="bi bi-plus-circle" aria-hidden="true"></i>
+                                <i className="bi bi-plus-lg" aria-hidden="true"></i>
                                 {creatingMovimiento ? 'Registrando...' : 'Registrar gasto'}
                             </button>
                         </div>
@@ -310,35 +326,69 @@ const CajaGastos = () => {
                 <section className="card expenses-table-card">
                     <div className="expenses-panel-head expenses-panel-head--table">
                         <div>
-                            <span className="expenses-panel-kicker">Historial reciente</span>
                             <h2 className="card-title">Gastos registrados</h2>
+                            <p className="expenses-panel-sub">Historial reciente de egresos</p>
                         </div>
 
                         <div className="expenses-table-toolbar">
-                            <div className="expenses-table-pills" aria-label="Resumen rápido de origen">
-                                <span className="expenses-table-pill">Caja: {visibleCajaCount}</span>
-                                <span className="expenses-table-pill">Banco: {visibleBancoCount}</span>
-                            </div>
                             <div className="search-box expenses-search-box">
                                 <i className="bi bi-search" aria-hidden="true"></i>
                                 <input
                                     className="form-input"
-                                    placeholder="Buscar categoría o detalle"
+                                    placeholder="Buscar categoría o detalle..."
                                     value={searchInput}
                                     onChange={(event) => setSearchInput(event.target.value)}
-                                    onKeyDown={(event) => event.key === 'Enter' && applyMovementSearch()}
+                                    aria-label="Buscar gastos"
                                 />
+                            </div>
+                            <div className="expenses-table-pills" role="group" aria-label="Filtrar por origen">
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm pedidos-filter-chip${originFilter === 'all' ? ' is-active' : ''}`}
+                                    aria-pressed={originFilter === 'all'}
+                                    onClick={() => setOriginFilter('all')}
+                                >
+                                    Todos
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm pedidos-filter-chip${originFilter === 'caja' ? ' is-active' : ''}`}
+                                    aria-pressed={originFilter === 'caja'}
+                                    onClick={() => setOriginFilter('caja')}
+                                >
+                                    <i className="bi bi-cash-coin" aria-hidden="true"></i>
+                                    Caja
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm pedidos-filter-chip${originFilter === 'banco' ? ' is-active' : ''}`}
+                                    aria-pressed={originFilter === 'banco'}
+                                    onClick={() => setOriginFilter('banco')}
+                                >
+                                    <i className="bi bi-bank" aria-hidden="true"></i>
+                                    Banco
+                                </button>
                             </div>
                         </div>
                     </div>
 
                     {loadingMovimientos ? (
-                        <div>{[1, 2, 3].map((item) => <div key={item} className="skeleton" style={{ height: 72, marginBottom: 10, borderRadius: 12 }} />)}</div>
-                    ) : movimientos.length === 0 ? (
+                        <div className="expenses-skeleton-list" aria-busy="true">
+                            {[1, 2, 3].map((item) => (
+                                <div key={item} className="skeleton expenses-skeleton-row" />
+                            ))}
+                        </div>
+                    ) : filteredMovimientos.length === 0 ? (
                         <div className="empty-state expenses-empty-state">
                             <i className="bi bi-receipt-cutoff empty-state-icon" aria-hidden="true"></i>
-                            <h3 className="empty-state-title">Sin gastos registrados</h3>
-                            <p className="empty-state-text">Usa el formulario de la izquierda para empezar a construir el historial financiero del laboratorio.</p>
+                            <h3 className="empty-state-title">
+                                {movimientos.length === 0 ? 'Sin gastos registrados' : 'Sin resultados'}
+                            </h3>
+                            <p className="empty-state-text">
+                                {movimientos.length === 0
+                                    ? 'Registra el primer gasto con el formulario.'
+                                    : 'Prueba otro origen o cambia la búsqueda.'}
+                            </p>
                         </div>
                     ) : (
                         <div className="data-table-wrapper expenses-table-wrapper">
@@ -350,18 +400,13 @@ const CajaGastos = () => {
                                         <th>Categoría</th>
                                         <th>Detalle</th>
                                         <th>Monto</th>
-                                        <th style={{ width: 132 }}>Acciones</th>
+                                        <th style={{ width: 110 }}>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {movimientos.map((movimiento, index) => (
+                                    {filteredMovimientos.map((movimiento) => (
                                         <tr key={movimiento.id}>
-                                            <td>
-                                                <div className="expenses-date-cell">
-                                                    <strong>{formatDateShort(movimiento.fecha_movimiento)}</strong>
-                                                    <span>{index === 0 ? 'Más reciente' : 'Registrado'}</span>
-                                                </div>
-                                            </td>
+                                            <td>{formatDateShort(movimiento.fecha_movimiento)}</td>
                                             <td>
                                                 <span className={`expenses-origin-badge ${movimiento.tipo_fondo === 'caja' ? 'is-cash' : 'is-bank'}`}>
                                                     <i className={`bi ${movimiento.tipo_fondo === 'caja' ? 'bi-cash-coin' : 'bi-bank'}`} aria-hidden="true"></i>
@@ -372,7 +417,7 @@ const CajaGastos = () => {
                                                 <span className="expenses-category-badge">{prettifyLabel(movimiento.categoria_gasto) || '—'}</span>
                                             </td>
                                             <td>
-                                                <div className="expenses-detail-cell">{movimiento.descripcion || 'Sin detalle adicional'}</div>
+                                                <div className="expenses-detail-cell">{movimiento.descripcion || '—'}</div>
                                             </td>
                                             <td>
                                                 <strong className="expenses-amount-cell">{formatCurrency(movimiento.monto)}</strong>
@@ -380,7 +425,7 @@ const CajaGastos = () => {
                                             <td>
                                                 <div className="expenses-action-row">
                                                     <button type="button" className="btn btn-ghost btn-sm btn-icon expenses-action-btn" title="Editar gasto" aria-label="Editar gasto" onClick={() => openEditModal(movimiento)}>
-                                                        <i className="bi bi-pencil-square" aria-hidden="true"></i>
+                                                        <i className="bi bi-pencil" aria-hidden="true"></i>
                                                     </button>
                                                     <button type="button" className="btn btn-ghost btn-sm btn-icon expenses-action-btn is-danger" title="Eliminar gasto" aria-label="Eliminar gasto" onClick={() => setMovementToDelete(movimiento)} disabled={deleteMovementMutation.isPending}>
                                                         <i className="bi bi-trash" aria-hidden="true"></i>
@@ -414,9 +459,6 @@ const CajaGastos = () => {
                 )}
             >
                 <form id="gasto-edit-form" onSubmit={handleUpdateMovimiento}>
-                    <div className="expenses-edit-copy">
-                        <p>Corrige origen, categoría o detalle sin perder el contexto del historial.</p>
-                    </div>
                     <ExpenseFormFields
                         form={editForm}
                         setForm={setEditForm}

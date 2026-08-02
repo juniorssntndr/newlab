@@ -1,12 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
 import { isClientRole } from '../utils/accessControl.js';
 import { getOrderStatusLabel, ORDER_STATUS_FLOW } from '../utils/orderStatusLabels.js';
+import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
+import { sortTeethByArchOrder } from '../utils/odontograma.js';
+import { fetchVisibleCatalog } from '../modules/orders/catalog/visibleCatalogCache.js';
+
+const MAX_TEETH_PREVIEW = 4;
 
 const Pedidos = () => {
-    const { user } = useAuth();
+    const { user, getHeaders } = useAuth();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const isClient = isClientRole(user);
@@ -18,6 +23,32 @@ const Pedidos = () => {
     useEffect(() => {
         setFiltroEstado(estadoFromUrl);
     }, [estadoFromUrl]);
+
+    // Prefetch catálogo para lab: Nuevo Pedido abre sin flash vacío.
+    useEffect(() => {
+        if (isClient) return undefined;
+        let cancelled = false;
+        void fetchVisibleCatalog(getHeaders).catch(() => {
+            if (cancelled) return;
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [getHeaders, isClient]);
+
+    const prefetchCatalog = useCallback(() => {
+        if (isClient) return;
+        void fetchVisibleCatalog(getHeaders);
+    }, [getHeaders, isClient]);
+
+    const goNewOrder = useCallback(() => {
+        if (isClient) {
+            navigate('/catalogo');
+            return;
+        }
+        void fetchVisibleCatalog(getHeaders);
+        navigate('/pedidos/nuevo');
+    }, [getHeaders, isClient, navigate]);
 
     const filters = useMemo(() => ({
         estado: filtroEstado,
@@ -39,7 +70,19 @@ const Pedidos = () => {
         : 0;
 
     const loading = isLoading || isFetching;
-    const estados = ['', ...ORDER_STATUS_FLOW];
+    const estados = useMemo(() => {
+        if (!isClient) return ['', ...ORDER_STATUS_FLOW];
+        // Cliente: primero lo accionable / útil; "Recibido" al final.
+        return [
+            '',
+            'esperando_aprobacion',
+            'terminado',
+            'en_produccion',
+            'enviado',
+            'en_diseno',
+            'pendiente',
+        ];
+    }, [isClient]);
 
     const setEstadoFilter = (estado) => {
         setFiltroEstado(estado);
@@ -77,7 +120,9 @@ const Pedidos = () => {
                 <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => navigate(isClient ? '/catalogo' : '/pedidos/nuevo')}
+                    onClick={goNewOrder}
+                    onMouseEnter={prefetchCatalog}
+                    onFocus={prefetchCatalog}
                 >
                     <i className="bi bi-plus-lg" aria-hidden="true"></i> {isClient ? 'Pedir' : 'Nuevo Pedido'}
                 </button>
@@ -119,31 +164,34 @@ const Pedidos = () => {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <div className="pedidos-status-filters" role="group" aria-label="Filtrar por estado">
-                        {estados.map((e) => {
-                            const isApprovalChip = e === 'esperando_aprobacion';
-                            const showChipBadge = isClient && isApprovalChip && pendingApprovalCount > 0;
-                            return (
-                                <button
-                                    key={e || 'all'}
-                                    type="button"
-                                    className={[
-                                        'btn',
-                                        'btn-sm',
-                                        filtroEstado === e ? 'btn-primary' : 'btn-ghost',
-                                        showChipBadge && filtroEstado !== e ? 'pedidos-filter-chip is-attention' : '',
-                                    ].filter(Boolean).join(' ')}
-                                    onClick={() => setEstadoFilter(e)}
-                                >
-                                    {e ? getOrderStatusLabel(e, { forClient: isClient }) : 'Todos'}
-                                    {showChipBadge ? (
-                                        <span className="pedidos-filter-badge" aria-hidden="true">
-                                            {pendingApprovalCount > 99 ? '99+' : pendingApprovalCount}
-                                        </span>
-                                    ) : null}
-                                </button>
-                            );
-                        })}
+                    <div className="pedidos-status-filters-scroller">
+                        <div className="pedidos-status-filters" role="group" aria-label="Filtrar por estado">
+                            {estados.map((e) => {
+                                const isApprovalChip = e === 'esperando_aprobacion';
+                                const showChipBadge = isClient && isApprovalChip && pendingApprovalCount > 0;
+                                return (
+                                    <button
+                                        key={e || 'all'}
+                                        type="button"
+                                        className={[
+                                            'btn',
+                                            'btn-sm',
+                                            'pedidos-filter-chip',
+                                            filtroEstado === e ? 'is-active' : '',
+                                            showChipBadge && filtroEstado !== e ? 'is-attention' : '',
+                                        ].filter(Boolean).join(' ')}
+                                        onClick={() => setEstadoFilter(e)}
+                                    >
+                                        {e ? getOrderStatusLabel(e, { forClient: isClient }) : 'Todos'}
+                                        {showChipBadge ? (
+                                            <span className="pedidos-filter-badge" aria-hidden="true">
+                                                {pendingApprovalCount > 99 ? '99+' : pendingApprovalCount}
+                                            </span>
+                                        ) : null}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </section>
@@ -170,7 +218,9 @@ const Pedidos = () => {
                             <button
                                 type="button"
                                 className="btn btn-primary"
-                                onClick={() => navigate(isClient ? '/catalogo' : '/pedidos/nuevo')}
+                                onClick={goNewOrder}
+                                onMouseEnter={prefetchCatalog}
+                                onFocus={prefetchCatalog}
                             >
                                 <i className="bi bi-plus-lg" aria-hidden="true"></i> {isClient ? 'Ir a Pedir' : 'Crear Pedido'}
                             </button>
@@ -180,6 +230,18 @@ const Pedidos = () => {
                     <ul className="pedidos-order-list">
                         {pedidos.map((p) => {
                             const needsReview = isClient && p.estado === 'esperando_aprobacion';
+                            const productName = p.producto_principal || '';
+                            const itemsCount = Number(p.items_count) || 0;
+                            const teethAll = sortTeethByArchOrder(p.producto_piezas || []);
+                            const teeth = teethAll.slice(0, MAX_TEETH_PREVIEW);
+                            const extraTeeth = Math.max(0, teethAll.length - MAX_TEETH_PREVIEW);
+                            const tone = String(p.producto_color || '').trim();
+                            const product = {
+                                id: p.id,
+                                nombre: productName,
+                                image_url: p.producto_image_url || '',
+                            };
+                            const hasClinicalLoad = teethAll.length > 0 || Boolean(tone) || itemsCount > 1;
                             return (
                                 <li key={p.id}>
                                     <button
@@ -187,22 +249,48 @@ const Pedidos = () => {
                                         className={`pedidos-order-card${needsReview ? ' is-attention' : ''}`}
                                         onClick={() => navigate(`/pedidos/${p.id}`)}
                                     >
-                                        <span className="pedidos-stat-icon" aria-hidden="true">
-                                            <i className={`bi ${needsReview ? 'bi-check2-square' : 'bi-clipboard2-pulse'}`}></i>
+                                        <span className="pedidos-order-thumb" aria-hidden="true">
+                                            {productName ? (
+                                                <OrderProductThumb product={product} />
+                                            ) : (
+                                                <i className={`bi ${needsReview ? 'bi-check2-square' : 'bi-clipboard2-pulse'}`}></i>
+                                            )}
                                         </span>
                                         <span className="pedidos-order-main">
                                             <span className="pedidos-order-top">
-                                                <strong className="pedidos-order-code">{p.codigo}</strong>
+                                                <strong className="pedidos-order-patient">
+                                                    {p.paciente_nombre || 'Sin paciente'}
+                                                </strong>
                                                 <span className={`badge badge-dot badge-${p.estado}`}>
                                                     {getOrderStatusLabel(p.estado, { forClient: isClient })}
                                                 </span>
                                             </span>
                                             <span className="pedidos-order-meta">
-                                                <span>{p.paciente_nombre}</span>
+                                                <span className="pedidos-order-code">{p.codigo}</span>
                                                 {!isClient && p.clinica_nombre ? (
                                                     <span>· {p.clinica_nombre}</span>
                                                 ) : null}
                                             </span>
+                                            {hasClinicalLoad ? (
+                                                <span className="pedidos-order-product" aria-label="Carga del pedido">
+                                                    <span className="pedidos-order-product-tags">
+                                                        {teeth.map((tooth) => (
+                                                            <span key={`${p.id}-${tooth}`} className="pedidos-order-tooth">
+                                                                {tooth}
+                                                            </span>
+                                                        ))}
+                                                        {extraTeeth > 0 ? (
+                                                            <span className="pedidos-order-tooth is-more">+{extraTeeth}</span>
+                                                        ) : null}
+                                                        {tone ? (
+                                                            <span className="pedidos-order-chip">Tono {tone}</span>
+                                                        ) : null}
+                                                        {itemsCount > 1 ? (
+                                                            <span className="pedidos-order-chip">+{itemsCount - 1} ítems</span>
+                                                        ) : null}
+                                                    </span>
+                                                </span>
+                                            ) : null}
                                             <span className="pedidos-order-dates">
                                                 <span>
                                                     <i className="bi bi-calendar3" aria-hidden="true"></i>
