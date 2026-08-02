@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
-import { apiClient } from '../services/http/apiClient.js';
 import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
+import { fetchVisibleCatalog } from '../modules/orders/catalog/visibleCatalogCache.js';
 
 const Skeleton = () => (
     <div className="catalog-products-grid">
@@ -13,7 +13,7 @@ const Skeleton = () => (
 );
 
 export default function CatalogoCliente() {
-    const { getHeaders } = useAuth();
+    const { getHeaders, token } = useAuth();
     const navigate = useNavigate();
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
@@ -22,20 +22,15 @@ export default function CatalogoCliente() {
     const [search, setSearch] = useState('');
 
     useEffect(() => {
+        if (!token) return undefined;
         let cancelled = false;
         (async () => {
             try {
                 setLoading(true);
-                const [prods, cats] = await Promise.all([
-                    apiClient('/productos', {
-                        headers: getHeaders(),
-                        query: { activo: true, visible: true },
-                    }),
-                    apiClient('/categorias', { headers: getHeaders() }),
-                ]);
+                const { products, categories } = await fetchVisibleCatalog(getHeaders);
                 if (cancelled) return;
-                setProductos(Array.isArray(prods) ? prods : []);
-                setCategorias(Array.isArray(cats) ? cats : []);
+                setProductos(products);
+                setCategorias(categories);
             } catch {
                 if (!cancelled) {
                     setProductos([]);
@@ -48,7 +43,13 @@ export default function CatalogoCliente() {
         return () => {
             cancelled = true;
         };
-    }, [getHeaders]);
+    }, [token, getHeaders]);
+
+    useEffect(() => {
+        if (selectedCat === 'all') return;
+        const stillValid = categorias.some((category) => String(category.id) === String(selectedCat));
+        if (!stillValid) setSelectedCat('all');
+    }, [categorias, selectedCat]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -106,7 +107,7 @@ export default function CatalogoCliente() {
                     <button
                         type="button"
                         onClick={() => setSelectedCat('all')}
-                        className={`btn ${selectedCat === 'all' ? 'btn-primary' : 'btn-ghost'} catalog-filter-chip`}
+                        className={`btn btn-sm pedidos-filter-chip${selectedCat === 'all' ? ' is-active' : ''}`}
                     >
                         Todos
                     </button>
@@ -115,7 +116,7 @@ export default function CatalogoCliente() {
                             key={cat.id}
                             type="button"
                             onClick={() => setSelectedCat(String(cat.id))}
-                            className={`btn ${String(selectedCat) === String(cat.id) ? 'btn-primary' : 'btn-ghost'} catalog-filter-chip`}
+                            className={`btn btn-sm pedidos-filter-chip${String(selectedCat) === String(cat.id) ? ' is-active' : ''}`}
                         >
                             {cat.nombre}
                         </button>

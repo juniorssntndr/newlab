@@ -10,14 +10,14 @@ export const ORDER_INTAKE_MODES = [
     },
     {
         id: 'envio',
-        label: 'Envío de modelos',
-        description: 'Envías impresiones o modelos al lab.',
+        label: 'Envío o entrega',
+        description: 'Envías o entregas modelos en AFINIX LAB.',
         icon: 'bi-box-seam',
     },
     {
         id: 'digital',
-        label: 'Archivos digitales',
-        description: 'STL u otros archivos después del pedido.',
+        label: 'Envío de modelos STL',
+        description: 'Envías el STL por WhatsApp o WeTransfer.',
         icon: 'bi-cloud-arrow-up',
     },
 ];

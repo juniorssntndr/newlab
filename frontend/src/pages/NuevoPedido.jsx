@@ -5,11 +5,13 @@ import OrderWizardShell from '../components/orders/wizard/OrderWizardShell.jsx';
 import OrderWizardTimeline from '../components/orders/wizard/OrderWizardTimeline.jsx';
 import OrderTeethStep from '../components/orders/wizard/OrderTeethStep.jsx';
 import OrderIntakeStep from '../components/orders/wizard/OrderIntakeStep.jsx';
+import { AFINIX_LAB_ADDRESS } from '../constants/labInfo.js';
 import OrderSelectedProductCard from '../components/orders/wizard/OrderSelectedProductCard.jsx';
 import DeliveryDateCoordModal from '../components/orders/wizard/DeliveryDateCoordModal.jsx';
 import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
 import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
 import { useOrderComposerState } from '../modules/orders/composer/useOrderComposerState.js';
+import { fetchVisibleCatalog, peekVisibleCatalog } from '../modules/orders/catalog/visibleCatalogCache.js';
 import { apiClient } from '../services/http/apiClient.js';
 import { isClientRole } from '../utils/accessControl.js';
 import {
@@ -25,7 +27,6 @@ import {
     saveOrderWizardDraft,
 } from '../modules/orders/wizard/orderWizardDraft.js';
 import { buildItemSelection } from '../utils/odontograma.js';
-import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
 
 const formatDateForInput = (date) => {
     const year = date.getFullYear();
@@ -74,15 +75,17 @@ const NuevoPedido = () => {
     const [searchParams] = useSearchParams();
     const isClient = isClientRole(user);
     const preselectProductId = searchParams.get('productoId');
+    const warmCatalog = peekVisibleCatalog();
+    const startsOnProductPicker = !isClient && !preselectProductId;
 
     const [clinicas, setClinicas] = useState([]);
-    const [productos, setProductos] = useState([]);
-    const [categorias, setCategorias] = useState([]);
+    const [productos, setProductos] = useState(() => warmCatalog?.products || []);
+    const [categorias, setCategorias] = useState(() => warmCatalog?.categories || []);
     const [clinicSearch, setClinicSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [productSearch, setProductSearch] = useState('');
     const [form, setForm] = useState({
-        clinica_id: '',
+        clinica_id: user?.clinica_id || '',
         paciente_nombre: '',
         fecha_entrega: '',
         observaciones: '',
@@ -94,9 +97,9 @@ const NuevoPedido = () => {
     const [saving, setSaving] = useState(false);
     /** @type {['paciente'|'piezas'|'confirmar', Function]} */
     const [macroStep, setMacroStep] = useState('paciente');
-    const [pickingProduct, setPickingProduct] = useState(false);
+    const [pickingProduct, setPickingProduct] = useState(startsOnProductPicker);
     const [appliedProductId, setAppliedProductId] = useState(null);
-    const [catalogReady, setCatalogReady] = useState(false);
+    const [catalogReady, setCatalogReady] = useState(() => Boolean(warmCatalog));
     const [coordinatingDelivery, setCoordinatingDelivery] = useState(false);
 
     const createOrderMutation = useCreateOrderMutation();
@@ -164,26 +167,41 @@ const NuevoPedido = () => {
     };
 
     useEffect(() => {
-        Promise.all([
-            apiClient('/clinicas', { headers: getHeaders() }),
-            apiClient('/productos', {
-                headers: getHeaders(),
-                query: { activo: true, visible: true },
-            }),
-            apiClient('/categorias', { headers: getHeaders() }),
-        ]).then(([clinics, products, categories]) => {
-            setClinicas(clinics);
-            const visibleProducts = (Array.isArray(products) ? products : []).filter(
-                (product) => product?.activo !== false && product?.visible !== false
-            );
-            setProductos(visibleProducts);
-            setCategorias(categories);
-            if (user?.clinica_id) {
-                setForm((prev) => ({ ...prev, clinica_id: user.clinica_id }));
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const catalogPromise = fetchVisibleCatalog(getHeaders);
+                const clinicsPromise = isClient
+                    ? Promise.resolve([])
+                    : apiClient('/clinicas', { headers: getHeaders() });
+                const [{ products, categories }, clinics] = await Promise.all([
+                    catalogPromise,
+                    clinicsPromise,
+                ]);
+                if (cancelled) return;
+                setProductos(products);
+                setCategorias(categories);
+                setClinicas(Array.isArray(clinics) ? clinics : []);
+                setCatalogReady(true);
+            } catch (err) {
+                if (!cancelled) setError(err.message || 'No se pudo cargar el catálogo');
             }
-            setCatalogReady(true);
-        }).catch((err) => setError(err.message || 'No se pudo cargar el catálogo'));
-    }, [getHeaders, user?.clinica_id]);
+        };
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, [getHeaders, isClient]);
+
+    // Clínica del cliente: no esperar /clinicas (evita flash "Tu clínica")
+    useEffect(() => {
+        if (!user?.clinica_id) return;
+        setForm((prev) => (
+            String(prev.clinica_id) === String(user.clinica_id)
+                ? prev
+                : { ...prev, clinica_id: user.clinica_id }
+        ));
+    }, [user?.clinica_id]);
 
     useEffect(() => {
         const draft = readOrderWizardDraft();
@@ -240,6 +258,9 @@ const NuevoPedido = () => {
         () => clinicas.find((clinic) => String(clinic.id) === String(form.clinica_id)) || null,
         [clinicas, form.clinica_id]
     );
+    const clinicDisplayName = selectedClinic?.nombre || user?.clinica_nombre || '';
+    const awaitingPreselectedProduct = Boolean(preselectProductId) && !selectedItem;
+    const productCardLoading = !catalogReady || awaitingPreselectedProduct;
 
     const clinicSearchValue = clinicSearch.trim().toLowerCase();
     const filteredClinicas = useMemo(() => {
@@ -264,10 +285,10 @@ const NuevoPedido = () => {
     }, [productForUi, items, isExpressOrder]);
 
     useEffect(() => {
-        if (user?.clinica_id && selectedClinic?.nombre) {
-            setClinicSearch(selectedClinic.nombre);
+        if (user?.clinica_id && clinicDisplayName) {
+            setClinicSearch(clinicDisplayName);
         }
-    }, [user?.clinica_id, selectedClinic?.nombre]);
+    }, [user?.clinica_id, clinicDisplayName]);
 
     useEffect(() => {
         setForm((prev) => {
@@ -297,16 +318,14 @@ const NuevoPedido = () => {
 
     const checklistItems = useMemo(() => {
         const productDone = items.length > 0;
-        const pacienteDone = Boolean(form.paciente_nombre?.trim() && form.clinica_id);
-        const piezasDone = needsDental
-            ? Boolean(selectedItem?.piezas_dentales?.length)
-            : (macroStep === 'confirmar' || Boolean(selectedItem?.color_vita || selectedItem?.notas));
-        const confirmarDone = Boolean(intakeMode);
+        const stepOrder = { paciente: 0, piezas: 1, confirmar: 2 };
+        // En picker de producto aún no hay paso activo en la guía.
+        const currentIndex = pickingProduct ? -1 : (stepOrder[macroStep] ?? 0);
 
-        const status = (done, isCurrent) => {
-            if (done && !isCurrent) return 'done';
-            if (isCurrent) return 'current';
-            if (done) return 'done';
+        const statusFor = (stepKey) => {
+            const stepIndex = stepOrder[stepKey];
+            if (stepIndex < currentIndex) return 'done';
+            if (stepIndex === currentIndex) return 'current';
             return 'pending';
         };
 
@@ -328,32 +347,28 @@ const NuevoPedido = () => {
                 detail: productDone
                     ? (form.paciente_nombre?.trim() || selectedItem?.nombre || 'Producto listo')
                     : 'Elige un producto primero',
-                status: status(
-                    pacienteDone,
-                    !pickingProduct && macroStep === 'paciente'
-                ),
+                status: statusFor('paciente'),
             },
             {
                 id: 'piezas',
                 label: needsDental ? 'Piezas e indicaciones' : 'Tono e indicaciones',
                 description: needsDental
-                    ? 'Selecciona dientes, tono VITA y notas clínicas.'
+                    ? 'Selecciona las piezas en el odontograma.'
                     : 'Define tono e instrucciones del trabajo.',
                 detail: piezasDetail,
-                status: status(piezasDone, macroStep === 'piezas'),
+                status: statusFor('piezas'),
             },
             {
                 id: 'confirmar',
                 label: 'Confirmar e ingreso',
                 description: 'Revisa el resumen y cómo llega el caso al lab.',
                 detail: intakeMode || 'Pendiente de coordinar',
-                status: status(confirmarDone, macroStep === 'confirmar'),
+                status: statusFor('confirmar'),
             },
         ];
     }, [
         items.length,
         form.paciente_nombre,
-        form.clinica_id,
         needsDental,
         selectedItem,
         macroStep,
@@ -395,7 +410,6 @@ const NuevoPedido = () => {
 
     const continueFromPaciente = () => {
         if (!form.clinica_id || !form.paciente_nombre?.trim()) {
-            setError('Completa clínica y nombre del paciente.');
             return;
         }
         if (!items.length) {
@@ -410,6 +424,10 @@ const NuevoPedido = () => {
     const continueFromTeeth = () => {
         if (needsDental && (!selectedItem?.piezas_dentales || selectedItem.piezas_dentales.length < 1)) {
             setError('Selecciona al menos un diente.');
+            return;
+        }
+        if (!String(selectedItem?.color_vita || '').trim()) {
+            setError('Elige un tono VITA para continuar.');
             return;
         }
         setError('');
@@ -500,12 +518,14 @@ const NuevoPedido = () => {
                                     placeholder="Buscar producto..."
                                     value={productSearch}
                                     onChange={(e) => setProductSearch(e.target.value)}
+                                    disabled={!catalogReady}
                                 />
                                 <select
                                     className="form-select"
                                     value={categoryFilter}
                                     onChange={(e) => setCategoryFilter(e.target.value)}
                                     aria-label="Filtrar por categoría"
+                                    disabled={!catalogReady}
                                 >
                                     <option value="all">Todas las categorías</option>
                                     {categorias.map((cat) => (
@@ -513,7 +533,13 @@ const NuevoPedido = () => {
                                     ))}
                                 </select>
                             </div>
-                            {filteredProductos.length === 0 ? (
+                            {!catalogReady ? (
+                                <div className="order-wizard-product-grid catalog-products-grid" aria-busy="true" aria-label="Cargando catálogo">
+                                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                                        <div key={i} className="skeleton catalog-product-skeleton" />
+                                    ))}
+                                </div>
+                            ) : filteredProductos.length === 0 ? (
                                 <p className="order-wizard-empty-hint">No hay productos visibles para mostrar.</p>
                             ) : (
                                 <div className="order-wizard-product-grid catalog-products-grid">
@@ -542,6 +568,8 @@ const NuevoPedido = () => {
                                     etaLabel={etaLabel}
                                     priceNote={priceNote}
                                 />
+                            ) : productCardLoading ? (
+                                <OrderSelectedProductCard loading variant="featured" />
                             ) : isClient ? (
                                 <OrderSelectedProductCard
                                     empty
@@ -558,91 +586,103 @@ const NuevoPedido = () => {
                                 />
                             )}
 
-                            <div className="order-wizard-paciente-fields">
-                                {!isClient ? (
-                                    <div className="form-group">
-                                        <label className="form-label" htmlFor="wizard-clinica">Clínica *</label>
-                                        <input
-                                            className="form-input"
-                                            placeholder="Buscar clínica..."
-                                            value={clinicSearch}
-                                            onChange={(e) => setClinicSearch(e.target.value)}
-                                            disabled={Boolean(user?.clinica_id)}
-                                            style={{ marginBottom: '0.5rem' }}
-                                        />
-                                        <select
-                                            id="wizard-clinica"
-                                            className="form-select"
-                                            value={form.clinica_id}
-                                            onChange={(e) => setForm((prev) => ({ ...prev, clinica_id: e.target.value }))}
-                                            disabled={Boolean(user?.clinica_id)}
-                                        >
-                                            <option value="">Seleccionar clínica</option>
-                                            {filteredClinicas.map((clinic) => (
-                                                <option key={clinic.id} value={clinic.id}>{clinic.nombre}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ) : (
-                                    <div className="form-group">
-                                        <label className="form-label">Clínica</label>
-                                        <input className="form-input" value={selectedClinic?.nombre || 'Tu clínica'} readOnly />
-                                    </div>
-                                )}
+                            <div className="order-wizard-paciente-body">
+                                <div className="order-wizard-paciente-fields">
+                                    {!isClient ? (
+                                        <div className="form-group order-wizard-clinic-field">
+                                            <label className="form-label" htmlFor="wizard-clinica">Clínica *</label>
+                                            <input
+                                                className="form-input order-wizard-clinic-search"
+                                                placeholder="Buscar clínica..."
+                                                value={clinicSearch}
+                                                onChange={(e) => setClinicSearch(e.target.value)}
+                                                disabled={Boolean(user?.clinica_id)}
+                                                aria-label="Buscar clínica"
+                                            />
+                                            <select
+                                                id="wizard-clinica"
+                                                className="form-select"
+                                                value={form.clinica_id}
+                                                onChange={(e) => setForm((prev) => ({ ...prev, clinica_id: e.target.value }))}
+                                                disabled={Boolean(user?.clinica_id)}
+                                            >
+                                                <option value="">Seleccionar clínica</option>
+                                                {filteredClinicas.map((clinic) => (
+                                                    <option key={clinic.id} value={clinic.id}>{clinic.nombre}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    ) : null}
 
-                                <div className="form-group">
-                                    <label className="form-label" htmlFor="wizard-paciente">Paciente *</label>
-                                    <input
-                                        id="wizard-paciente"
-                                        className="form-input"
-                                        value={form.paciente_nombre}
-                                        onChange={(e) => setForm((prev) => ({ ...prev, paciente_nombre: e.target.value }))}
-                                        placeholder="Nombre del paciente"
-                                    />
+                                    <div className="form-group order-wizard-paciente-name-field">
+                                        <label className="form-label order-wizard-paciente-name-label" htmlFor="wizard-paciente">
+                                            <i className="bi bi-person-fill" aria-hidden="true"></i>
+                                            <span>Nombre del paciente <span className="order-wizard-required" aria-hidden="true">*</span></span>
+                                        </label>
+                                        <input
+                                            id="wizard-paciente"
+                                            className="form-input"
+                                            value={form.paciente_nombre}
+                                            onChange={(e) => setForm((prev) => ({ ...prev, paciente_nombre: e.target.value }))}
+                                            placeholder="Nombre del paciente"
+                                            autoComplete="name"
+                                            required
+                                            aria-required="true"
+                                        />
+                                        {!String(form.paciente_nombre || '').trim() ? (
+                                            <span className="order-wizard-paciente-name-hint">Escribe el nombre para continuar.</span>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="order-wizard-urgency-block">
+                            <div className="order-wizard-paciente-footer">
+                                <div className="order-wizard-urgency-block">
+                                    <button
+                                        type="button"
+                                        className={`order-wizard-express${isExpressOrder ? ' is-on' : ''}`}
+                                        onClick={() => setIsExpressOrder((prev) => !prev)}
+                                        aria-pressed={isExpressOrder}
+                                        aria-label={
+                                            isExpressOrder
+                                                ? `Pedido Express activo, +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
+                                                : `Activar Pedido Express, +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
+                                        }
+                                    >
+                                        <span className="order-wizard-express-copy">
+                                            <strong>
+                                                <i className="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+                                                Express
+                                            </strong>
+                                            <span className="order-wizard-express-badge">
+                                                +{Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%
+                                            </span>
+                                            {productPrice > 0 ? (
+                                                <span className="order-wizard-express-price">
+                                                    {isExpressOrder
+                                                        ? `S/. ${applyExpressSurcharge(productPrice, true).toFixed(2)}`
+                                                        : `S/. ${productPrice.toFixed(2)} → ${applyExpressSurcharge(productPrice, true).toFixed(2)}`}
+                                                </span>
+                                            ) : null}
+                                        </span>
+                                        <span
+                                            className="order-wizard-express-switch"
+                                            role="presentation"
+                                            aria-hidden="true"
+                                        >
+                                            <span className="order-wizard-express-knob"></span>
+                                        </span>
+                                    </button>
+                                </div>
                                 <button
                                     type="button"
-                                    className={`order-wizard-express${isExpressOrder ? ' is-on' : ''}`}
-                                    onClick={() => setIsExpressOrder((prev) => !prev)}
-                                    aria-pressed={isExpressOrder}
-                                    aria-label={
-                                        isExpressOrder
-                                            ? `Pedido Express activo, +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
-                                            : `Activar Pedido Express, +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
-                                    }
+                                    className="btn btn-primary order-wizard-paciente-cta"
+                                    onClick={continueFromPaciente}
+                                    disabled={!String(form.paciente_nombre || '').trim() || !form.clinica_id}
                                 >
-                                    <span className="order-wizard-express-copy">
-                                        <strong>
-                                            <i className="bi bi-lightning-charge-fill" aria-hidden="true"></i>
-                                            Express
-                                        </strong>
-                                        <span className="order-wizard-express-badge">
-                                            +{Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%
-                                        </span>
-                                        {productPrice > 0 ? (
-                                            <span className="order-wizard-express-price">
-                                                {isExpressOrder
-                                                    ? `S/. ${applyExpressSurcharge(productPrice, true).toFixed(2)}`
-                                                    : `S/. ${productPrice.toFixed(2)} → ${applyExpressSurcharge(productPrice, true).toFixed(2)}`}
-                                            </span>
-                                        ) : null}
-                                    </span>
-                                    <span
-                                        className="order-wizard-express-switch"
-                                        role="presentation"
-                                        aria-hidden="true"
-                                    >
-                                        <span className="order-wizard-express-knob"></span>
-                                    </span>
+                                    Continuar a piezas
                                 </button>
                             </div>
-
-                            <button type="button" className="btn btn-primary order-wizard-paciente-cta" onClick={continueFromPaciente}>
-                                Continuar a piezas
-                            </button>
                         </div>
                     ) : null}
 
@@ -664,9 +704,83 @@ const NuevoPedido = () => {
 
                     {!pickingProduct && macroStep === 'confirmar' ? (
                         <div className="order-wizard-card order-wizard-confirm">
-                            <section className="order-wizard-confirm-section" aria-label="Datos del caso">
-                                <h3 className="order-wizard-confirm-section-title">Datos del caso</h3>
-                                <header className="order-wizard-confirm-hero" aria-label="Resumen del caso">
+                            <section
+                                className="order-wizard-confirm-section order-wizard-confirm-ingreso"
+                                aria-label="Ingreso del caso"
+                            >
+                                <OrderIntakeStep
+                                    compact
+                                    value={intakeMode}
+                                    onChange={setIntakeMode}
+                                    note={intakeNote}
+                                    onNoteChange={setIntakeNote}
+                                    title="¿Cómo llegará el caso?"
+                                    labAddress={user?.laboratorio_direccion || AFINIX_LAB_ADDRESS}
+                                    clinicAddress={
+                                        selectedClinic?.direccion
+                                        || user?.clinica_direccion
+                                        || ''
+                                    }
+                                    patientName={form.paciente_nombre}
+                                    productName={selectedItem?.nombre || productForUi?.nombre || ''}
+                                />
+                            </section>
+
+                            <section
+                                className="order-wizard-confirm-section order-wizard-confirm-clinical-edit"
+                                aria-label="Tono e instrucciones"
+                            >
+                                <h3 className="order-wizard-confirm-section-title">Tono e instrucciones</h3>
+                                {selectedItem ? (
+                                    <div className="order-wizard-confirm-clinical-fields">
+                                        <div className="form-group">
+                                            <label className="form-label" htmlFor="order-confirm-color">Tono VITA</label>
+                                            <select
+                                                id="order-confirm-color"
+                                                className={`form-select${selectedItem.color_vita ? ' has-value' : ''}`}
+                                                value={String(selectedItem.color_vita || '').trim()}
+                                                onChange={(event) => updateItemField(selectedItem.id, 'color_vita', event.target.value)}
+                                                aria-label="Seleccionar tono VITA"
+                                            >
+                                                <option value="">Elegir tono</option>
+                                                <optgroup label="Tonos A">
+                                                    {['A1', 'A2', 'A3', 'A3.5', 'A4'].map((value) => (
+                                                        <option key={value} value={value}>{value}</option>
+                                                    ))}
+                                                </optgroup>
+                                                <optgroup label="Tonos B">
+                                                    {['B1', 'B2', 'B3', 'B4'].map((value) => (
+                                                        <option key={value} value={value}>{value}</option>
+                                                    ))}
+                                                </optgroup>
+                                                <optgroup label="Tonos C / D / Bleach">
+                                                    {['C1', 'D2', 'BL1'].map((value) => (
+                                                        <option key={value} value={value}>{value}</option>
+                                                    ))}
+                                                </optgroup>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label" htmlFor="order-confirm-notes">Instrucciones para el laboratorio</label>
+                                            <textarea
+                                                id="order-confirm-notes"
+                                                className="form-textarea"
+                                                rows={3}
+                                                placeholder="Indicaciones específicas para este trabajo..."
+                                                value={selectedItem.notas || ''}
+                                                onChange={(event) => updateItemField(selectedItem.id, 'notas', event.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </section>
+
+                            <section
+                                className="order-wizard-confirm-section order-wizard-confirm-datos"
+                                aria-label="Datos del caso"
+                            >
+                                <h3 className="order-wizard-confirm-section-title">Resumen del caso</h3>
+                                <div className="order-wizard-confirm-stack">
                                     <div className="order-wizard-confirm-stat">
                                         <div className="order-wizard-confirm-stat-copy">
                                             <span className="order-wizard-confirm-label">
@@ -679,6 +793,52 @@ const NuevoPedido = () => {
                                             ) : null}
                                         </div>
                                     </div>
+
+                                    <ul className="order-wizard-confirm-items">
+                                        {items.map((item) => {
+                                            const teeth = Array.isArray(item.piezas_dentales) ? item.piezas_dentales : [];
+                                            const tone = String(item.color_vita || '').trim();
+                                            return (
+                                                <li key={item.id} className="order-wizard-confirm-item is-text-only">
+                                                    <div className="order-wizard-confirm-item-main">
+                                                        <strong>{item.nombre}</strong>
+                                                        <div className="order-wizard-confirm-clinical">
+                                                            {teeth.length > 0 ? (
+                                                                <div
+                                                                    className={[
+                                                                        'order-wizard-confirm-teeth',
+                                                                        teeth.length > 24 ? 'is-dense-xl' : '',
+                                                                        teeth.length > 16 && teeth.length <= 24 ? 'is-dense-lg' : '',
+                                                                        teeth.length > 8 && teeth.length <= 16 ? 'is-dense-md' : '',
+                                                                    ].filter(Boolean).join(' ')}
+                                                                    data-count={teeth.length}
+                                                                    aria-label="Piezas seleccionadas"
+                                                                >
+                                                                    {teeth.map((tooth) => (
+                                                                        <span key={`${item.id}-${tooth}`} className="order-wizard-confirm-tooth">
+                                                                            {tooth}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="order-wizard-confirm-qty">{item.cantidad} u.</span>
+                                                            )}
+                                                            {tone ? (
+                                                                <span className="order-wizard-confirm-tone">
+                                                                    Tono {tone}
+                                                                </span>
+                                                            ) : null}
+                                                            {String(item.notas || '').trim() ? (
+                                                                <span className="order-wizard-confirm-note" title={String(item.notas).trim()}>
+                                                                    Con instrucciones
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
 
                                     <div className="order-wizard-confirm-stat">
                                         <div className="order-wizard-confirm-stat-copy order-wizard-confirm-entrega">
@@ -724,55 +884,7 @@ const NuevoPedido = () => {
                                             </strong>
                                         </div>
                                     </div>
-                                </header>
-
-                                <ul className="order-wizard-confirm-items">
-                                    {items.map((item) => {
-                                        const teeth = Array.isArray(item.piezas_dentales) ? item.piezas_dentales : [];
-                                        const tone = String(item.color_vita || '').trim();
-                                        const productId = item.producto_id || item.product?.id;
-                                        const product = productos.find((p) => String(p.id) === String(productId))
-                                            || item.product
-                                            || item;
-                                        return (
-                                            <li key={item.id} className="order-wizard-confirm-item">
-                                                <div className="order-wizard-confirm-item-media" aria-hidden="true">
-                                                    <OrderProductThumb product={product} />
-                                                </div>
-                                                <div className="order-wizard-confirm-item-main">
-                                                    <strong>{item.nombre}</strong>
-                                                    <div className="order-wizard-confirm-clinical">
-                                                        {teeth.length > 0 ? (
-                                                            <div
-                                                                className={[
-                                                                    'order-wizard-confirm-teeth',
-                                                                    teeth.length > 24 ? 'is-dense-xl' : '',
-                                                                    teeth.length > 16 && teeth.length <= 24 ? 'is-dense-lg' : '',
-                                                                    teeth.length > 8 && teeth.length <= 16 ? 'is-dense-md' : '',
-                                                                ].filter(Boolean).join(' ')}
-                                                                data-count={teeth.length}
-                                                                aria-label="Piezas seleccionadas"
-                                                            >
-                                                                {teeth.map((tooth) => (
-                                                                    <span key={`${item.id}-${tooth}`} className="order-wizard-confirm-tooth">
-                                                                        {tooth}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="order-wizard-confirm-qty">{item.cantidad} u.</span>
-                                                        )}
-                                                        {tone ? (
-                                                            <span className="order-wizard-confirm-tone">
-                                                                Tono {tone}
-                                                            </span>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
+                                </div>
                             </section>
 
                             <DeliveryDateCoordModal
@@ -789,17 +901,6 @@ const NuevoPedido = () => {
                                     setCoordinatingDelivery(false);
                                 }}
                             />
-
-                            <section className="order-wizard-confirm-section" aria-label="Ingreso del caso">
-                                <OrderIntakeStep
-                                    compact
-                                    value={intakeMode}
-                                    onChange={setIntakeMode}
-                                    note={intakeNote}
-                                    onNoteChange={setIntakeNote}
-                                    title="¿Cómo llegará el caso?"
-                                />
-                            </section>
 
                             <button
                                 type="button"

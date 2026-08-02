@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { API_URL } from '../config.js';
 
 const AuthContext = createContext(null);
@@ -18,30 +18,46 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    const fetchUser = async () => {
+    const logout = useCallback(() => {
+        localStorage.removeItem('nl_token');
+        setToken(null);
+        setUser(null);
+    }, []);
+
+    const fetchUser = useCallback(async () => {
+        const currentToken = localStorage.getItem('nl_token');
+        if (!currentToken) {
+            setLoading(false);
+            return;
+        }
         try {
             const res = await fetch(`${API_URL}/auth/me`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${currentToken}` }
             });
             if (res.ok) {
                 const data = await res.json();
-                setUser(data);
+                // Merge para no borrar campos de sesión si /me viniera parcial.
+                setUser((prev) => ({ ...(prev || {}), ...data }));
             } else {
-                logout();
+                localStorage.removeItem('nl_token');
+                setToken(null);
+                setUser(null);
             }
         } catch {
-            logout();
+            localStorage.removeItem('nl_token');
+            setToken(null);
+            setUser(null);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const refreshUser = async () => {
+    const refreshUser = useCallback(async () => {
         if (!token) return;
         await fetchUser();
-    };
+    }, [token, fetchUser]);
 
-    const login = async (email, password) => {
+    const login = useCallback(async (email, password) => {
         const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -63,21 +79,20 @@ export const AuthProvider = ({ children }) => {
         setToken(data.token);
         setUser(data.user);
         return data.user;
-    };
+    }, []);
 
-    const logout = () => {
-        localStorage.removeItem('nl_token');
-        setToken(null);
-        setUser(null);
-    };
-
-    const getHeaders = () => ({
+    const getHeaders = useCallback(() => ({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
-    });
+    }), [token]);
+
+    const value = useMemo(
+        () => ({ user, token, loading, login, logout, getHeaders, refreshUser, setUser }),
+        [user, token, loading, login, logout, getHeaders, refreshUser]
+    );
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout, getHeaders, refreshUser }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

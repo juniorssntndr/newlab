@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ARCH_ORDER,
+    UPPER_ARCH,
+    LOWER_ARCH,
     sortTeethByArchOrder,
     buildBridgeRange,
     buildItemSelection,
@@ -13,6 +15,8 @@ import {
 import { ODONTOGRAM_TOOTH_PATHS, ODONTOGRAM_QUADRANTS, buildToothCenters } from './odontogramaShapes.js';
 import {
     AFFINITY_VIEWBOX,
+    AFFINITY_UPPER_VIEWBOX,
+    AFFINITY_LOWER_VIEWBOX,
     AFFINITY_DECORATIONS,
     AFFINITY_TEETH,
     AFFINITY_ARCH_ORDER,
@@ -21,6 +25,14 @@ import {
 } from './odontogramaAffinityShapes.js';
 
 const CLASSIC_VIEWBOX = '-4 -4 417 702';
+const CLASSIC_UPPER_VIEWBOX = '-4 -4 417 355';
+const CLASSIC_LOWER_VIEWBOX = '-4 345 417 355';
+const UPPER_ARCH_SET = new Set(UPPER_ARCH);
+const LOWER_ARCH_SET = new Set(LOWER_ARCH);
+
+const resolveArch = (arch) => (
+    arch === 'upper' || arch === 'lower' ? arch : 'both'
+);
 
 const OdontogramaInteractive = ({
     product,
@@ -32,9 +44,11 @@ const OdontogramaInteractive = ({
     showHeader = true,
     preserveAspectRatio = 'xMidYMid meet',
     disabled = false,
-    variant = 'classic'
+    variant = 'classic',
+    arch = 'both'
 }) => {
     const isMinimal = variant === 'minimal';
+    const activeArch = resolveArch(arch);
     const [isDragging, setIsDragging] = useState(false);
     const [dragSelectValue, setDragSelectValue] = useState(true);
     const [bridgeAnchor, setBridgeAnchor] = useState(null);
@@ -50,7 +64,31 @@ const OdontogramaInteractive = ({
         () => (isMinimal ? buildAffinityToothLabels() : null),
         [isMinimal]
     );
-    const svgViewBox = isMinimal ? AFFINITY_VIEWBOX : CLASSIC_VIEWBOX;
+    const visibleToothCodes = useMemo(() => {
+        const order = isMinimal ? AFFINITY_ARCH_ORDER : ARCH_ORDER;
+        if (activeArch === 'upper') return order.filter((code) => UPPER_ARCH_SET.has(code));
+        if (activeArch === 'lower') return order.filter((code) => LOWER_ARCH_SET.has(code));
+        return order;
+    }, [activeArch, isMinimal]);
+    const visibleQuadrants = useMemo(() => {
+        if (isMinimal || activeArch === 'both') return ODONTOGRAM_QUADRANTS;
+        if (activeArch === 'upper') {
+            return ODONTOGRAM_QUADRANTS.filter((q) => q.prefix === '1' || q.prefix === '2');
+        }
+        return ODONTOGRAM_QUADRANTS.filter((q) => q.prefix === '3' || q.prefix === '4');
+    }, [activeArch, isMinimal]);
+    const svgViewBox = useMemo(() => {
+        if (isMinimal) {
+            if (activeArch === 'upper') return AFFINITY_UPPER_VIEWBOX;
+            if (activeArch === 'lower') return AFFINITY_LOWER_VIEWBOX;
+            return AFFINITY_VIEWBOX;
+        }
+        if (activeArch === 'upper') return CLASSIC_UPPER_VIEWBOX;
+        if (activeArch === 'lower') return CLASSIC_LOWER_VIEWBOX;
+        return CLASSIC_VIEWBOX;
+    }, [activeArch, isMinimal]);
+    const showUpperDecor = activeArch === 'both' || activeArch === 'upper';
+    const showLowerDecor = activeArch === 'both' || activeArch === 'lower';
 
     const currentTeeth = useMemo(() => sortTeethByArchOrder(selection?.piezas_dentales || []), [selection?.piezas_dentales]);
     const selectedSet = useMemo(() => new Set(currentTeeth), [currentTeeth]);
@@ -223,20 +261,23 @@ const OdontogramaInteractive = ({
         return classes.join(' ');
     };
 
+    const visibleToothSet = useMemo(() => new Set(visibleToothCodes), [visibleToothCodes]);
+
     const bridgePoints = useMemo(() => {
         if (!selection?.es_puente || currentTeeth.length < 2) return null;
-        
+
         const validPoints = currentTeeth
-            .map(tooth => toothCenters[tooth])
+            .filter((tooth) => visibleToothSet.has(tooth))
+            .map((tooth) => toothCenters[tooth])
             .filter(Boolean);
-            
+
         if (validPoints.length < 2) return null;
-        
-        return validPoints.map(p => `${p.x},${p.y}`).join(' ');
-    }, [selection?.es_puente, currentTeeth, toothCenters]);
+
+        return validPoints.map((p) => `${p.x},${p.y}`).join(' ');
+    }, [selection?.es_puente, currentTeeth, toothCenters, visibleToothSet]);
 
     return (
-        <div className={`odontograma-shell${disabled ? ' is-readonly' : ''}${isMinimal ? ' is-minimal' : ''}`}>
+        <div className={`odontograma-shell${disabled ? ' is-readonly' : ''}${isMinimal ? ' is-minimal' : ''} is-arch-${activeArch}`}>
             {showHeader && (
                 <div className="odontograma-header">
                     <div>
@@ -278,15 +319,17 @@ const OdontogramaInteractive = ({
 
                             {isMinimal && (
                                 <g className="odontograma-decor" aria-hidden="true">
-                                    {(AFFINITY_DECORATIONS.maxilarSuperior || [])
-                                        .filter((d) => d.length < 500)
-                                        .map((d, index) => (
-                                            <path key={`max-sup-${index}`} className="odontograma-arch-guide" d={d} />
-                                        ))}
-                                    {AFFINITY_DECORATIONS.baseSuperior ? (
+                                    {showUpperDecor
+                                        ? (AFFINITY_DECORATIONS.maxilarSuperior || [])
+                                            .filter((d) => d.length < 500)
+                                            .map((d, index) => (
+                                                <path key={`max-sup-${index}`} className="odontograma-arch-guide" d={d} />
+                                            ))
+                                        : null}
+                                    {showUpperDecor && AFFINITY_DECORATIONS.baseSuperior ? (
                                         <path className="odontograma-arch-outline" d={AFFINITY_DECORATIONS.baseSuperior} />
                                     ) : null}
-                                    {AFFINITY_DECORATIONS.maxilarInferior ? (
+                                    {showLowerDecor && AFFINITY_DECORATIONS.maxilarInferior ? (
                                         <path className="odontograma-arch-outline" d={AFFINITY_DECORATIONS.maxilarInferior} />
                                     ) : null}
                                 </g>
@@ -304,7 +347,7 @@ const OdontogramaInteractive = ({
                             )}
 
                             {isMinimal
-                                ? AFFINITY_ARCH_ORDER.map((toothCode) => {
+                                ? visibleToothCodes.map((toothCode) => {
                                     const tooth = AFFINITY_TEETH[toothCode];
                                     if (!tooth) return null;
                                     return (
@@ -320,7 +363,7 @@ const OdontogramaInteractive = ({
                                         </g>
                                     );
                                 })
-                                : ODONTOGRAM_QUADRANTS.map((quadrant) => (
+                                : visibleQuadrants.map((quadrant) => (
                                     <g key={quadrant.prefix} transform={quadrant.transform}>
                                         {ODONTOGRAM_TOOTH_PATHS.map((tooth) => {
                                             const toothCode = `${quadrant.prefix}${tooth.name}`;
@@ -345,7 +388,7 @@ const OdontogramaInteractive = ({
                                     </g>
                                 ))}
 
-                            {(isMinimal ? AFFINITY_ARCH_ORDER : ARCH_ORDER).map((toothCode) => {
+                            {visibleToothCodes.map((toothCode) => {
                                 const center = toothCenters[toothCode];
                                 if (!center) return null;
                                 const isSelected = selectedSet.has(toothCode);
@@ -376,7 +419,7 @@ const OdontogramaInteractive = ({
                                 );
                             })}
 
-                            {selection?.es_puente && (isMinimal ? AFFINITY_ARCH_ORDER : ARCH_ORDER).map((toothCode) => {
+                            {selection?.es_puente && visibleToothCodes.map((toothCode) => {
                                 const center = toothCenters[toothCode];
                                 if (!center) return null;
                                 const roleY = isMinimal ? center.y - 28 : center.y - 17;

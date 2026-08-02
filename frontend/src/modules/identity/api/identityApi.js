@@ -26,6 +26,8 @@ const flattenRucPreview = (data) => {
         distrito: proposal.distrito || data?.distrito || null,
         isActiveHabido: data?.isActiveHabido ?? proposal.isActiveHabido,
         warnings: data?.warnings || [],
+        source: data?.source || null,
+        notInReniec: data?.notInReniec === true,
         // Compat aliases used by existing pages
         nombres: undefined,
         apellidoPaterno: undefined,
@@ -44,6 +46,10 @@ const flattenDniPreview = (data) => {
         apellidoMaterno: proposal.apellido_materno || proposal.apellidoMaterno || data?.apellidoMaterno || '',
         fullName: proposal.nombre_completo || proposal.fullName || data?.fullName || '',
         nombre: proposal.nombre_completo || data?.fullName || '',
+        direccion: data?.direccion || proposal.direccion || null,
+        ubigeo: data?.ubigeo || proposal.ubigeo || null,
+        source: data?.source || null,
+        notInReniec: data?.notInReniec === true,
     };
 };
 
@@ -63,6 +69,19 @@ export const consultarRUC = async ({ ruc, headers }) => {
     const res = await fetch(`${API_URL}/consultas/ruc/${ruc}`, { headers });
     if (!res.ok) await throwFromResponse(res, 'Error consultando RUC');
     return flattenRucPreview(await res.json());
+};
+
+/**
+ * Guarda DNI/RUC en el registro local del laboratorio (fallback RENIEC/SUNAT).
+ */
+export const guardarIdentidadLocal = async ({ payload, headers }) => {
+    const res = await fetch(`${API_URL}/consultas/identidad`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) await throwFromResponse(res, 'No se pudo guardar la identidad local');
+    return res.json();
 };
 
 /**
@@ -135,7 +154,7 @@ export const previewDNI = async ({ dni, headers }) => {
 
 /**
  * Confirma la creación de doctor desde DNI validado.
- * POST /api/doctores/confirm { dni, cop?, email?, telefono?, clinicaIds? }
+ * POST /api/doctores/confirm { dni, cop?, email?, telefono?, fecha_nacimiento?, clinicaIds? }
  */
 export const confirmDoctor = async ({ dni, overrides = {}, headers }) => {
     const clinicaIds = (overrides.clinicaIds || overrides.clinicas || [])
@@ -147,6 +166,7 @@ export const confirmDoctor = async ({ dni, overrides = {}, headers }) => {
         cop: overrides.cop || null,
         email: overrides.email || null,
         telefono: overrides.telefono || null,
+        fecha_nacimiento: overrides.fecha_nacimiento || null,
         clinicaIds,
     };
 

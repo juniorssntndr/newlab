@@ -1,39 +1,83 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { API_URL } from '../config.js';
+import { isClientRole } from '../utils/accessControl.js';
 
 const Cuenta = () => {
-    const { user, getHeaders, refreshUser } = useAuth();
-    const [form, setForm] = useState({ nombre: '', email: '', telefono: '' });
+    const { user, getHeaders, refreshUser, setUser } = useAuth();
+    const [form, setForm] = useState({ nombre: '', email: '', telefono: '', clinica_direccion: '' });
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
     const [passwordForm, setPasswordForm] = useState({ actual: '', nueva: '', confirmar: '' });
     const [savingPassword, setSavingPassword] = useState(false);
+    const isClient = isClientRole(user);
+    const hasClinic = user?.clinica_id != null && String(user.clinica_id) !== '';
+    const canEditClinicAddress = isClient && hasClinic;
+    const showClinicName = Boolean(user?.clinica_nombre) || canEditClinicAddress;
+
+    // Re-sincronizar perfil desde /me al entrar (recupera clinica_id / dirección si el estado local quedó incompleto).
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                await refreshUser();
+            } catch {
+                /* ignore: keep current session user */
+            }
+            if (cancelled) return;
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [refreshUser]);
 
     useEffect(() => {
-        if (user) {
-            setForm({
-                nombre: user.nombre || '',
-                email: user.email || '',
-                telefono: user.telefono || ''
-            });
-        }
-    }, [user]);
+        if (!user) return;
+        setForm({
+            nombre: user.nombre || '',
+            email: user.email || '',
+            telefono: user.telefono || '',
+            clinica_direccion: user.clinica_direccion || '',
+        });
+    }, [user?.id, user?.clinica_direccion, user?.nombre, user?.email, user?.telefono]);
 
     const saveProfile = async () => {
         setSaving(true);
         setMessage(null);
+        const previousUser = user;
         try {
+            const payload = {
+                nombre: form.nombre,
+                email: form.email,
+                telefono: form.telefono,
+            };
+            if (canEditClinicAddress) {
+                payload.clinica_direccion = form.clinica_direccion;
+            }
             const res = await fetch(`${API_URL}/auth/me`, {
                 method: 'PATCH',
                 headers: getHeaders(),
-                body: JSON.stringify(form)
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Error al guardar');
+
+            // Merge: nunca reemplazar el usuario entero (evita perder clinica_id/tipo si la respuesta viene incompleta).
+            if (data?.id && typeof setUser === 'function') {
+                setUser((prev) => ({ ...(prev || {}), ...data }));
+            }
+            setForm({
+                nombre: data.nombre || form.nombre || '',
+                email: data.email || form.email || '',
+                telefono: data.telefono ?? form.telefono ?? '',
+                clinica_direccion: data.clinica_direccion || form.clinica_direccion || '',
+            });
             await refreshUser();
             setMessage({ type: 'success', text: 'Datos actualizados correctamente' });
         } catch (err) {
+            if (previousUser && typeof setUser === 'function') {
+                setUser(previousUser);
+            }
             setMessage({ type: 'error', text: err.message });
         } finally {
             setSaving(false);
@@ -105,10 +149,28 @@ const Cuenta = () => {
                         <input className="form-input" value={form.telefono}
                             onChange={e => setForm({ ...form, telefono: e.target.value })} />
                     </div>
-                    {user?.clinica_nombre && (
+                    {showClinicName && (
                         <div className="form-group">
                             <label className="form-label">Clinica</label>
-                            <input className="form-input" value={user.clinica_nombre} disabled />
+                            <input className="form-input" value={user?.clinica_nombre || ''} disabled />
+                        </div>
+                    )}
+                    {canEditClinicAddress && (
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="cuenta-clinica-direccion">
+                                Dirección del consultorio
+                            </label>
+                            <input
+                                id="cuenta-clinica-direccion"
+                                className="form-input"
+                                value={form.clinica_direccion}
+                                onChange={e => setForm({ ...form, clinica_direccion: e.target.value })}
+                                placeholder="Calle, distrito, ciudad"
+                                aria-describedby="cuenta-clinica-direccion-help"
+                            />
+                            <span id="cuenta-clinica-direccion-help" className="form-help">
+                                Se usa para recolección en consultorio.
+                            </span>
                         </div>
                     )}
                     <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>

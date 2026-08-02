@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNotifications } from '../state/NotificationContext.jsx';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,6 +15,28 @@ const timeAgo = (dateStr) => {
 const NotificationsPanel = () => {
     const { notifications, unreadCount, setPanelOpen, markAsRead, markAllRead } = useNotifications();
     const navigate = useNavigate();
+    const panelRef = useRef(null);
+
+    useEffect(() => {
+        const handlePointerDown = (event) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (panelRef.current?.contains(target)) return;
+            if (target instanceof Element && target.closest('[data-notifications-trigger]')) return;
+            setPanelOpen(false);
+        };
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') setPanelOpen(false);
+        };
+
+        document.addEventListener('mousedown', handlePointerDown);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', handlePointerDown);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [setPanelOpen]);
 
     const handleClick = (notif) => {
         if (!notif.leida) markAsRead(notif.id);
@@ -25,38 +47,71 @@ const NotificationsPanel = () => {
     };
 
     return (
-        <div className="notifications-panel" id="notifications-panel" role="region" aria-label="Notificaciones">
+        <div
+            ref={panelRef}
+            className="notifications-panel"
+            id="notifications-panel"
+            role="dialog"
+            aria-modal="false"
+            aria-label="Notificaciones"
+        >
             <div className="notifications-header">
-                <h4 style={{ fontSize: '0.9375rem', fontWeight: 600 }}>
-                    Notificaciones {unreadCount > 0 && <span className="badge badge-pendiente" style={{ marginLeft: 8 }}>{unreadCount}</span>}
+                <h4 className="notifications-title">
+                    Notificaciones
+                    {unreadCount > 0 ? (
+                        <span className="badge badge-pendiente notifications-unread-badge">{unreadCount}</span>
+                    ) : null}
                 </h4>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {unreadCount > 0 && (
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={markAllRead}>Marcar todas</button>
-                    )}
-                    <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setPanelOpen(false)} aria-label="Cerrar notificaciones">
-                        <i className="bi bi-x-lg" aria-hidden="true"></i>
+                <div className="notifications-header-actions">
+                    {unreadCount > 0 ? (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={markAllRead}>
+                            Marcar todas
+                        </button>
+                    ) : null}
+                    <button
+                        type="button"
+                        className="btn btn-ghost btn-sm btn-icon"
+                        onClick={() => setPanelOpen(false)}
+                        aria-label="Cerrar notificaciones"
+                    >
+                        <i className="bi bi-x-lg" aria-hidden="true" />
                     </button>
                 </div>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+
+            <div className="notifications-body">
                 {notifications.length === 0 ? (
-                    <div className="empty-state" style={{ padding: '3rem 1.5rem' }}>
-                        <i className="bi bi-bell-slash empty-state-icon" style={{ fontSize: '2rem' }}></i>
-                        <p className="empty-state-text">Sin notificaciones</p>
-                    </div>
+                    <p className="notifications-empty">Sin notificaciones</p>
                 ) : (
-                    notifications.map(n => (
-                        <div key={n.id} className={`notification-item ${!n.leida ? 'unread' : ''}`} onClick={() => handleClick(n)}>
-                            {!n.leida && <div className="notification-dot" />}
-                            <div className="notification-content">
-                                <div className="notification-title-text">{n.titulo}</div>
-                                {n.mensaje && <div className="notification-message">{n.mensaje}</div>}
-                                <div className="notification-time">{timeAgo(n.created_at)}</div>
-                            </div>
-                        </div>
-                    ))
+                    <ul className="notifications-list">
+                        {notifications.map((n) => (
+                            <li key={n.id}>
+                                <button
+                                    type="button"
+                                    className={`notification-item${!n.leida ? ' is-unread' : ''}`}
+                                    onClick={() => handleClick(n)}
+                                >
+                                    <span
+                                        className="notification-item-bar"
+                                        aria-hidden="true"
+                                    />
+                                    <span className="notification-item-copy">
+                                        <strong>{n.titulo}</strong>
+                                        {n.mensaje ? <em>{n.mensaje}</em> : null}
+                                        <span>{timeAgo(n.created_at)}</span>
+                                    </span>
+                                    <i className="bi bi-chevron-right" aria-hidden="true" />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
                 )}
+            </div>
+
+            <div className="notifications-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setPanelOpen(false)}>
+                    Cerrar
+                </button>
             </div>
         </div>
     );

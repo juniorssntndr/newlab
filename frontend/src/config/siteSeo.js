@@ -34,6 +34,9 @@ export const WHATSAPP_OPENING_PREFILL_MESSAGE =
 export const WHATSAPP_LOGIN_ACCESS_MESSAGE =
     'Hola AFINIX Dental Lab, necesito acceso al portal clínico. Clínica/consultorio: [nombre]. Profesional a cargo: [nombre].';
 
+export const WHATSAPP_STL_CASE_PREFILL_MESSAGE =
+    'Hola AFINIX Dental Lab, voy a enviar el/los archivo(s) STL de un caso digital por este canal. Paciente: [nombre del paciente]. Producto: [trabajo]. Adjunto el STL a continuación.';
+
 export const whatsappHref = () => {
     const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
     const text = encodeURIComponent(WHATSAPP_PREFILL_MESSAGE);
@@ -50,6 +53,16 @@ export const whatsappLoginAccessHref = () => {
     const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
     const text = encodeURIComponent(WHATSAPP_LOGIN_ACCESS_MESSAGE);
     return `https://wa.me/${phone}?text=${text}`;
+};
+
+export const whatsappStlCaseHref = ({ patientName = '', productName = '' } = {}) => {
+    const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
+    const patient = String(patientName || '').trim() || '[nombre del paciente]';
+    const product = String(productName || '').trim() || '[trabajo]';
+    const message = WHATSAPP_STL_CASE_PREFILL_MESSAGE
+        .replace('[nombre del paciente]', patient)
+        .replace('[trabajo]', product);
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
 export const phoneCallHref = () => {

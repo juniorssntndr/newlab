@@ -94,7 +94,7 @@ export const services = [
         image: `${IMG}/service-guide.jpg`,
     },
     {
-        name: 'Coronas de Resina con Carga Cerámica Impresa en 3D',
+        name: 'Coronas impresas en 3D',
         code: 'RESIN-CROWN-3D',
         detail: 'Coronas con resina de alta performance y carga cerámica, impresas en 3D para un flujo digital ágil con estética y ajuste predecible.',
         leadTime: '48 horas',
@@ -105,7 +105,7 @@ export const services = [
         image: `${IMG}/service-crown-resin-3d.jpg`,
     },
     {
-        name: 'Carillas de Resina con Carga Cerámica Impresa en 3D',
+        name: 'Carillas impresas en 3D',
         code: 'RESIN-VENEER-3D',
         detail: 'Carillas ultrafinas impresas en 3D con resina cerámica para mejorar forma, color y proporción en el sector anterior con mínima intervención.',
         leadTime: '48 horas',
@@ -116,7 +116,7 @@ export const services = [
         image: `${IMG}/service-veneer-resin-3d.jpg`,
     },
     {
-        name: 'Inlay - Onlay de Resina con Carga Cerámica Impresa en 3D',
+        name: 'Inlay-Onlay impresos en 3D',
         code: 'INLAY-ONLAY-3D',
         detail: 'Restauraciones parciales impresas en 3D que conservan tejido dental y recuperan anatomía oclusal con precisión digital.',
         leadTime: '48 horas',

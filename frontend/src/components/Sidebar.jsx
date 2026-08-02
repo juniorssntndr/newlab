@@ -1,14 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
 import { canAccessFinancialModules, isAdminRole, isClientRole } from '../utils/accessControl.js';
 import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
 import AfinixLogo from './AfinixLogo.jsx';
 
+const getAppLogoTheme = () => (
+    document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+);
+
 const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const { user, logout } = useAuth();
     const isClient = isClientRole(user);
     const canAccessFinance = canAccessFinancialModules(user);
+    const [logoTheme, setLogoTheme] = useState(getAppLogoTheme);
+
+    useEffect(() => {
+        const syncLogoTheme = () => setLogoTheme(getAppLogoTheme());
+        syncLogoTheme();
+        const observer = new MutationObserver(syncLogoTheme);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-theme'],
+        });
+        return () => observer.disconnect();
+    }, []);
 
     const pendingApprovalQuery = useOrdersListQuery({
         filters: { estado: 'esperando_aprobacion' },
@@ -30,7 +46,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
             ? [{ to: '/caja-gastos', icon: 'bi-wallet2', label: isAdminRole(user) ? 'Caja y Gastos' : 'Caja' }]
             : []),
         { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
-        { to: '/clinicas', icon: 'bi-building', label: 'Clientes' },
+        { to: '/clinicas', icon: 'bi-building', label: 'Clínicas' },
         { to: '/doctores', icon: 'bi-person-badge', label: 'Doctores' },
         { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo' },
         { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
@@ -60,7 +76,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
             {mobileOpen && <div className="sidebar-overlay" onClick={onMobileClose} />}
             <aside id="app-sidebar" className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-brand">
-                    <AfinixLogo showText={!collapsed} size={collapsed ? 32 : 36} theme="dark" />
+                    <AfinixLogo showText={!collapsed} size={collapsed ? 32 : 36} theme={logoTheme} />
                 </div>
 
                 <nav className="sidebar-nav" aria-label="Navegación principal">

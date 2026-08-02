@@ -7,6 +7,8 @@ const LANDING = '/images/afinix-landing';
 /** Exact / strong name matches first (order matters). */
 const PRODUCT_IMAGE_RULES = [
     { match: /gu[ií]a\s*quir[uú]rgica/i, image: `${LANDING}/service-guide.jpg` },
+    { match: /coronas?\s+impresas?\s+en\s+3d/i, image: `${LANDING}/service-crown-resin-3d.jpg` },
+    { match: /carillas?\s+impresas?\s+en\s+3d/i, image: `${LANDING}/service-veneer-resin-3d.jpg` },
     { match: /corona.*resina|resina.*corona/i, image: `${LANDING}/service-crown-resin-3d.jpg` },
     { match: /carilla.*resina|resina.*carilla/i, image: `${LANDING}/service-veneer-resin-3d.jpg` },
     { match: /inlay|onlay/i, image: `${LANDING}/service-inlay-onlay-3d.jpg` },
@@ -39,6 +41,9 @@ export const PRODUCT_LANDING_IMAGES_BY_NAME = {
     'Guías Quirúrgicas Impresas en 3D (apilables y con irrigación)': `${LANDING}/service-guide.jpg`,
     'Coronas de Resina con Carga Cerámica Impresa en 3D': `${LANDING}/service-crown-resin-3d.jpg`,
     'Carillas de Resina con Carga Cerámica Impresa en 3D': `${LANDING}/service-veneer-resin-3d.jpg`,
+    'Coronas impresas en 3D': `${LANDING}/service-crown-resin-3d.jpg`,
+    'Carillas impresas en 3D': `${LANDING}/service-veneer-resin-3d.jpg`,
+    'Inlay-Onlay impresos en 3D': `${LANDING}/service-inlay-onlay-3d.jpg`,
 };
 
 export const matchLandingProductImage = (productOrName) => {

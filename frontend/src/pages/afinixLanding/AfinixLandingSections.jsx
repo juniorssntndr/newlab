@@ -139,6 +139,15 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark'
         };
     }, []);
 
+    useEffect(() => {
+        if (!isMobileMenuOpen) return undefined;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [isMobileMenuOpen]);
+
     const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
     return (
@@ -413,20 +422,21 @@ export function HeroCarousel({ reduceMotion }) {
                     {heroSlides.map((slide, index) => (
                         <SwiperSlide key={slide.kicker}>
                             <article className="afinix-hero-slide">
-                                <motion.div
-                                    className="afinix-hero-bg"
-                                    aria-hidden="true"
-                                    {...heroBackgroundMotion(reduceMotion, activeSlide === index)}
-                                >
-                                    <img
-                                        src={slide.image}
-                                        alt=""
-                                        loading={index === 0 ? 'eager' : 'lazy'}
-                                        decoding="async"
-                                        fetchpriority={index === 0 ? 'high' : 'low'}
-                                    />
-                                </motion.div>
-                                <div className="afinix-hero-overlay"></div>
+                                <div className="afinix-hero-media" aria-hidden="true">
+                                    <motion.div
+                                        className="afinix-hero-bg"
+                                        {...heroBackgroundMotion(reduceMotion, activeSlide === index)}
+                                    >
+                                        <img
+                                            src={slide.image}
+                                            alt=""
+                                            loading={index === 0 ? 'eager' : 'lazy'}
+                                            decoding="async"
+                                            fetchpriority={index === 0 ? 'high' : 'low'}
+                                        />
+                                    </motion.div>
+                                    <div className="afinix-hero-overlay"></div>
+                                </div>
                                 <div className="afinix-hero-layout">
                                     <motion.div
                                         className="afinix-hero-copy"
@@ -476,7 +486,6 @@ export function HeroCarousel({ reduceMotion }) {
                                     </motion.div>
                                     <motion.div
                                         className="afinix-hero-visual"
-                                        aria-hidden="true"
                                         {...heroVisualMotion(reduceMotion, activeSlide === index)}
                                     >
                                         <svg className="afinix-hero-lines" viewBox="0 0 320 420" preserveAspectRatio="none" aria-hidden="true">

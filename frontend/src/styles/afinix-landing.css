@@ -718,6 +718,15 @@
   min-height: min(420px, 52%);
 }
 
+/* Media shell: en desktop es el fondo full-bleed; en mobile es el panel foto+cards */
+.afinix-hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 .afinix-hero-bg,
 .afinix-hero-overlay {
   position: absolute;
@@ -791,10 +800,14 @@
 
 .afinix-hero-visual {
   position: relative;
+  z-index: 2;
   align-self: stretch;
   min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   pointer-events: none;
-  padding-right: clamp(1.35rem, 3vw, 2.75rem);
+  padding-right: clamp(0.25rem, 1vw, 0.75rem);
 }
 
 .afinix-hero-lines {
@@ -3324,7 +3337,19 @@
   }
 
   .afinix-about-gallery {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
     grid-template-rows: 220px 220px;
+  }
+
+  .afinix-about-gallery__item img {
+    max-width: 100%;
+  }
+
+  .afinix-hero-bg {
+    overflow: hidden;
   }
 
   .afinix-metrics-grid {
@@ -3540,6 +3565,7 @@
     background: linear-gradient(180deg, rgba(4, 12, 23, 0.9) 0%, rgba(4, 12, 23, 0.7) 62%, rgba(4, 12, 23, 0.32) 100%);
   }
 
+  /* Blended: foto full-bleed + degradado blanco hacia el copy */
   .afinix-page[data-theme='light'] .afinix-hero-overlay {
     background:
       linear-gradient(
@@ -3562,19 +3588,52 @@
   }
 
   .afinix-page[data-theme='light'] .afinix-hero-bg img {
-    object-position: 90% 38%;
-    transform: scale(1.06);
+    object-position: 88% 38%;
+    transform: scale(1.08);
+  }
+
+  /* Media vuelve a fondo full-bleed (no panel separado) */
+  .afinix-hero-slide {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .afinix-hero-media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    overflow: hidden;
+    pointer-events: none;
+    box-shadow: none;
+  }
+
+  .afinix-hero-bg,
+  .afinix-hero-overlay {
+    border-radius: 0;
   }
 
   .afinix-hero-layout {
+    position: relative;
+    z-index: 2;
     grid-template-columns: 1fr;
     align-items: start;
-    gap: 1.25rem;
+    gap: 0.75rem;
+    min-height: 0;
+    flex: 0 0 auto;
   }
 
   .afinix-hero-copy {
+    display: flex;
+    flex-direction: column;
     width: 100%;
+    max-width: none;
     min-width: 0;
+    flex: none;
+    margin-bottom: 0;
   }
 
   .afinix-hero-copy-text {
@@ -3585,31 +3644,47 @@
     max-width: 100%;
   }
 
+  /* Cards debajo del copy, fila 3 cols — sin solapar título */
   .afinix-hero-visual {
+    position: relative;
+    inset: auto;
     order: 2;
     min-height: 0;
-    margin-top: 0.75rem;
+    margin-top: 0.15rem;
+    padding: 0;
+    display: block;
+    justify-content: stretch;
+    align-items: stretch;
+  }
+
+  .afinix-hero-lines {
+    display: none;
   }
 
   .afinix-hero-cards {
+    margin: 0;
     margin-inline: 0;
     max-width: none;
     width: 100%;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    padding-top: 0;
   }
 
   .afinix-hero-actions {
     width: 100%;
     max-width: none;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.15rem;
   }
 
+  /* Tracking en primer plano sobre el fondo */
   .afinix-hero-tracking {
     position: relative;
     right: auto;
     bottom: auto;
+    z-index: 5;
     width: 100%;
-    margin-top: 0.25rem;
+    margin-top: 0.35rem;
   }
 
   .afinix-services--showcase {
@@ -3634,13 +3709,6 @@
     max-width: 100%;
     min-width: 0;
     overflow-wrap: anywhere;
-  }
-
-  .afinix-hero-copy {
-    display: block;
-    flex: none;
-    max-width: none;
-    margin-bottom: 0;
   }
 
   .afinix-proof-grid {
@@ -3710,51 +3778,80 @@
     padding: clamp(0.85rem, 3.2vw, 1.1rem);
     padding-top: clamp(0.95rem, 3.6vw, 1.2rem);
     padding-bottom: clamp(1.1rem, 4.5vw, 1.6rem);
+    gap: 0.55rem;
   }
 
-  /* Referencia móvil: copy compacto a la izquierda, aire a la derecha para la foto */
+  /* Degradado mezclado: copy legible a la izq., foto más visible a la der. */
+  .afinix-page[data-theme='light'] .afinix-hero-overlay {
+    background:
+      linear-gradient(
+        102deg,
+        rgba(255, 255, 255, 0.97) 0%,
+        rgba(255, 255, 255, 0.9) 32%,
+        rgba(255, 255, 255, 0.58) 48%,
+        rgba(255, 255, 255, 0.22) 64%,
+        rgba(255, 255, 255, 0.05) 78%,
+        transparent 90%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.42) 0%,
+        transparent 30%,
+        transparent 58%,
+        rgba(255, 255, 255, 0.45) 78%,
+        rgba(255, 255, 255, 0.88) 100%
+      );
+  }
+
+  .afinix-page[data-theme='light'] .afinix-hero-bg img {
+    object-position: 85% 40%;
+    transform: scale(1.14);
+    filter: saturate(0.92) contrast(1.04);
+  }
+
   .afinix-hero-layout {
-    align-items: flex-start;
-    gap: 0.65rem;
+    gap: 0.55rem;
+    min-height: 0;
   }
 
   .afinix-hero-copy {
     display: flex;
     flex-direction: column;
     flex: none;
-    align-self: flex-start;
-    max-width: 100%;
+    align-self: stretch;
+    position: relative;
+    z-index: 3;
+    max-width: none;
     width: 100%;
     min-width: 0;
     margin-bottom: 0;
   }
 
   .afinix-hero-copy-text {
-    max-width: min(18.5rem, 88%);
+    max-width: 100%;
     width: 100%;
     min-width: 0;
   }
 
   .afinix-hero .afinix-kicker {
     min-height: 0;
-    padding: 0.32rem 0.62rem;
-    font-size: clamp(0.6rem, 2.6vw, 0.7rem);
-    letter-spacing: 0.05em;
+    padding: 0.38rem 0.7rem;
+    font-size: clamp(0.72rem, 3vw, 0.8rem);
+    letter-spacing: 0.04em;
     white-space: normal;
     max-width: 100%;
   }
 
   .afinix-hero-title {
-    max-width: min(17.5rem, 86%);
+    max-width: 100%;
     margin-top: 0.72rem;
-    font-size: clamp(1.58rem, 6.8vw, 2.1rem);
+    font-size: clamp(1.45rem, 6.4vw, 1.95rem);
     line-height: 1.18;
     word-break: normal;
     overflow-wrap: anywhere;
     hyphens: manual;
   }
 
-  /* Franja decorativa bajo el título (antes ::after; con line-clamp el pseudo quedaba fuera o recortado) */
   .afinix-page[data-theme='light'] .afinix-hero .afinix-hero-title {
     background-image: linear-gradient(90deg, var(--afinix-cyan), rgba(0, 125, 204, 0.15));
     background-size: 2.35rem 3px;
@@ -3769,7 +3866,7 @@
     -webkit-line-clamp: 3;
     line-clamp: 3;
     overflow: hidden;
-    max-width: min(18.25rem, 88%);
+    max-width: 100%;
     margin-top: 0.62rem;
     font-size: clamp(0.78rem, 3.15vw, 0.9rem);
     line-height: 1.48;
@@ -3782,15 +3879,14 @@
     display: grid;
   }
 
-  /* CTAs más compactos y alineados al ancho del texto */
   .afinix-hero-actions {
-    gap: 0.48rem;
+    gap: 0.55rem;
     margin-top: 0.72rem;
-    margin-bottom: 0.72rem;
+    margin-bottom: 0.2rem;
     padding-top: 0;
     width: 100%;
-    max-width: min(18.5rem, 88%);
-    align-self: flex-start;
+    max-width: 100%;
+    align-self: stretch;
   }
 
   .afinix-primary-action,
@@ -3800,49 +3896,58 @@
 
   .afinix-hero-btn {
     width: 100%;
-    min-height: 38px;
-    padding: 0.48rem 0.78rem;
-    font-size: 0.74rem;
-    border-radius: 12px;
+    min-height: 44px;
+    padding: 0.62rem 0.95rem;
+    font-size: 0.875rem;
+    border-radius: 999px;
   }
 
   .afinix-hero-actions > div {
     width: 100%;
   }
 
-  /* Tres pills en fila (referencia), texto mini para caber sin solaparse */
+  /* Mini-cards en fila: legibles, animación intacta, sin tapar copy */
+  .afinix-hero-visual {
+    z-index: 3;
+    margin-top: 0.1rem;
+  }
+
   .afinix-hero-cards {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.35rem;
-    width: 100%;
-    max-width: 100%;
-    margin-top: 0.35rem;
+    gap: 0.38rem;
   }
 
   .afinix-hero-float-card {
     min-width: 0;
     width: 100%;
-    gap: 0.38rem;
-    min-height: 0;
-    padding: 0.42rem 0.38rem;
-    border-radius: 12px;
+    flex-direction: column;
     align-items: flex-start;
+    gap: 0.28rem;
+    min-height: 0;
+    padding: 0.48rem 0.42rem;
+    border-radius: 14px;
+    pointer-events: auto;
   }
 
   .afinix-hero-float-body {
     min-width: 0;
+    width: 100%;
   }
 
   .afinix-hero-float-label {
-    font-size: clamp(0.48rem, 1.85vw, 0.56rem);
-    letter-spacing: 0.035em;
-    line-height: 1.08;
+    display: block;
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    word-break: normal;
   }
 
   .afinix-hero-float-body strong {
-    font-size: clamp(0.58rem, 2.35vw, 0.68rem);
-    line-height: 1.15;
+    display: block;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    word-break: normal;
   }
 
   .afinix-hero-float-card:last-child {
@@ -3850,33 +3955,36 @@
   }
 
   .afinix-hero-float-icon {
-    width: 26px;
-    height: 26px;
-    border-radius: 9px;
-    font-size: 0.76rem;
+    width: 22px;
+    height: 22px;
+    border-radius: 8px;
+    font-size: 0.7rem;
     flex-shrink: 0;
   }
 
-  .afinix-hero-visual {
-    order: 2;
-    margin-top: 0;
-    padding-right: 0;
-    width: 100%;
-  }
-
-  /* Seguimiento en vivo: siempre visible en flujo + margen inferior cómodo */
+  /* Seguimiento en vivo: primer plano + elevación sobre el degradado */
   .afinix-hero-tracking {
     position: relative;
     right: auto;
     bottom: auto;
-    z-index: 3;
+    z-index: 6;
     width: 100%;
     max-width: 100%;
-    margin-top: 0.75rem;
+    margin-top: 0.55rem;
     margin-bottom: 0.15rem;
-    padding: 0.72rem 0.75rem;
+    padding: 0.78rem 0.8rem;
     border-radius: 16px;
     flex-shrink: 0;
+    isolation: isolate;
+    box-shadow:
+      0 14px 36px rgba(8, 28, 58, 0.14),
+      0 2px 0 rgba(0, 125, 204, 0.08);
+  }
+
+  .afinix-page[data-theme='light'] .afinix-hero-tracking {
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px) saturate(1.15);
+    border: 1px solid rgba(0, 110, 180, 0.12);
   }
 
   .afinix-hero-swiper--stack {
@@ -3889,12 +3997,15 @@
   }
 
   .afinix-hero-scroll-cue {
-    bottom: 0.15rem;
+    bottom: -0.35rem;
+    z-index: 2;
+    min-height: 48px;
+    pointer-events: auto;
   }
 
   .afinix-hero-scroll-cue__arrows {
-    height: 64px;
-    font-size: clamp(2.65rem, 12vw, 3.35rem);
+    height: 42px;
+    font-size: clamp(1.55rem, 7vw, 1.9rem);
   }
 
   .afinix-hero-tracking--desktop {
@@ -3907,31 +4018,31 @@
 
   .afinix-hero-tracking-head {
     gap: 0.42rem;
-    margin-bottom: 0.52rem;
-    font-size: 0.62rem;
-    letter-spacing: 0.055em;
+    margin-bottom: 0.55rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
   }
 
   .afinix-hero-tracking-dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
   }
 
   .afinix-hero-tracking-steps {
-    gap: 0.22rem;
+    gap: 0.3rem;
   }
 
   .afinix-hero-tracking-step {
-    grid-template-columns: 22px 1fr;
-    gap: 0.45rem;
-    min-height: 23px;
-    font-size: 0.68rem;
+    grid-template-columns: 24px 1fr;
+    gap: 0.5rem;
+    min-height: 28px;
+    font-size: 0.8125rem;
   }
 
   .afinix-hero-tracking-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 0.68rem;
+    width: 22px;
+    height: 22px;
+    font-size: 0.75rem;
   }
 
   .afinix-hero-tracking-pulse {
@@ -3940,15 +4051,16 @@
   }
 
   .afinix-hero-tracking-actions {
-    gap: 0.45rem;
-    margin-top: 0.62rem;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
   }
 
   .afinix-hero-tracking-alert,
   .afinix-hero-tracking-portal {
-    min-height: 36px;
-    padding: 0.48rem 0.72rem;
-    font-size: 0.68rem;
+    min-height: 44px;
+    padding: 0.6rem 0.95rem;
+    font-size: 0.8125rem;
+    border-radius: 999px;
   }
 
   .afinix-hero-swiper .swiper-pagination {
@@ -4773,8 +4885,8 @@
   .afinix-footer-chan {
     justify-content: flex-start;
     min-width: 0;
-    min-height: 40px;
-    padding: 0.35rem 0.5rem;
+    min-height: 44px;
+    padding: 0.45rem 0.6rem;
     border-radius: 10px;
     background: rgba(51, 142, 255, 0.06);
   }
@@ -5397,9 +5509,9 @@
     grid-area: action;
     justify-self: start;
     width: auto;
-    min-height: 40px;
+    min-height: 44px;
     margin-top: 0.45rem;
-    padding: 0.45rem 0.8rem;
+    padding: 0.55rem 0.9rem;
     font-size: 0.74rem;
     box-shadow: none !important;
   }

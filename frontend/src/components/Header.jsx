@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNotifications } from '../state/NotificationContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import NotificationsPanel from './NotificationsPanel.jsx';
 
 const Header = ({ onMenuClick }) => {
     const { user, logout } = useAuth();
@@ -54,20 +55,24 @@ const Header = ({ onMenuClick }) => {
                     <i className={`bi ${dark ? 'bi-sun' : 'bi-moon'}`} aria-hidden="true"></i>
                 </button>
 
-                <button
-                    type="button"
-                    className="header-btn"
-                    onClick={() => setPanelOpen(!panelOpen)}
-                    title="Notificaciones"
-                    aria-label={unreadCount > 0 ? `Ver notificaciones, ${unreadCount} sin leer` : 'Ver notificaciones'}
-                    aria-expanded={panelOpen}
-                    aria-controls="notifications-panel"
-                >
-                    <i className="bi bi-bell" aria-hidden="true"></i>
-                    {unreadCount > 0 && (
-                        <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
-                    )}
-                </button>
+                <div className="header-notifications">
+                    <button
+                        type="button"
+                        className="header-btn"
+                        data-notifications-trigger
+                        onClick={() => setPanelOpen(!panelOpen)}
+                        title="Notificaciones"
+                        aria-label={unreadCount > 0 ? `Ver notificaciones, ${unreadCount} sin leer` : 'Ver notificaciones'}
+                        aria-expanded={panelOpen}
+                        aria-controls="notifications-panel"
+                    >
+                        <i className="bi bi-bell" aria-hidden="true"></i>
+                        {unreadCount > 0 && (
+                            <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                        )}
+                    </button>
+                    {panelOpen ? <NotificationsPanel /> : null}
+                </div>
 
                 <div className="user-menu" ref={menuRef}>
                     <button

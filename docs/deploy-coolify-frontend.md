@@ -69,7 +69,7 @@ Servicio separado en Coolify. Checklist:
 |----------|--------|
 | `DATABASE_URL` | Postgres URL **interna** de Coolify |
 | `JWT_SECRET` | secreto largo |
-| `FRONTEND_ORIGIN` | `https://affinixlab.com` |
+| `FRONTEND_ORIGIN` | `https://affinixlab.com,https://www.affinixlab.com` |
 | `PORT` | respetar `$PORT` de Coolify |
 
 Dominio público: `https://bak.affinixlab.com`  
@@ -107,7 +107,7 @@ Ver [`deploy/Dockerfile.frontend`](../deploy/Dockerfile.frontend).
 | "Welcome to nginx!" | Publish Directory = `/` | Cambiar a `frontend/dist` y redeploy |
 | 404 en `/login` | SPA desactivado | Activar **Is it a SPA?** |
 | Login sin respuesta API | Falta `VITE_API_URL` | Añadir `https://bak.affinixlab.com/api` y redeploy |
-| CORS en login | `FRONTEND_ORIGIN` incorrecto en backend | `https://affinixlab.com` |
+| CORS en login / `Failed to fetch` | `FRONTEND_ORIGIN` sin `www` | `https://affinixlab.com,https://www.affinixlab.com` (o redeploy backend con expansión www) |
 | Build falla en `@newlab/contracts` | Install solo en `frontend/` | `npm ci` en raíz del monorepo |
 | exit code 255 al inicio Docker | Infra VPS (disco/memoria) | Revisar host Coolify; Rollback si existe |
 

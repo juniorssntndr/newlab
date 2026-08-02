@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useOrderDetailQuery } from '../modules/orders/queries/useOrderDetailQuery.js';
 import { useCreateInvoiceMutation } from '../modules/billing/mutations/useCreateInvoiceMutation.js';
-import { consultarDNI, consultarRUC } from '../modules/identity/api/identityApi.js';
+import { consultarDNI, consultarRUC, guardarIdentidadLocal } from '../modules/identity/api/identityApi.js';
 import BillingConfirmModal from '../components/billing/BillingConfirmModal.jsx';
 import BillingResultModal from '../components/billing/BillingResultModal.jsx';
 
@@ -19,6 +19,7 @@ export default function FacturarPedido() {
 
     const [consultando, setConsultando] = useState(false);
     const [consultaDocumento, setConsultaDocumento] = useState(null);
+    const [identityNotInReniec, setIdentityNotInReniec] = useState(false);
 
     // Modales de billing
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -156,6 +157,7 @@ export default function FacturarPedido() {
             setCliente(prev => ({ ...prev, tipoDoc: '1', numDoc: '', rznSocial: '' })); // Boleta prefiere DNI
         }
         setConsultaDocumento(null);
+        setIdentityNotInReniec(false);
     };
 
     const handleConsultaDocumento = async () => {
@@ -180,12 +182,15 @@ export default function FacturarPedido() {
                 : (data.razonSocial || data.razon_social || '');
 
             const ubigeoObtenido = Array.isArray(data.ubigeo) ? data.ubigeo[0] : (data.ubigeo || cliente.ubigeo);
+            const fromLocal = data.source === 'local' || data.notInReniec === true;
 
+            setIdentityNotInReniec(fromLocal);
             setConsultaDocumento({
                 numero: num,
                 tipo: isDni ? 'dni' : 'ruc',
                 estado: data.estado || null,
-                condicion: data.condicion || null
+                condicion: data.condicion || null,
+                source: data.source || null,
             });
 
             if (!nombreCompleto) {
@@ -207,11 +212,22 @@ export default function FacturarPedido() {
                 direccion: data.direccion || prev.direccion,
                 ubigeo: ubigeoObtenido || prev.ubigeo
             }));
-            toast.success('Datos obtenidos exitosamente.');
+            toast.success(
+                fromLocal
+                    ? 'Datos cargados del registro local (no constan en RENIEC/SUNAT).'
+                    : 'Datos obtenidos exitosamente.'
+            );
         } catch (err) {
             console.error(err);
             if (err.status === 401 || err.code === 'TOKEN_MISSING') {
                 toast.error('Token de consultas APISPERU inválido o ausente. Revisa EXTERNAL_API_TOKEN.', { duration: 6000 });
+            } else if (err.code === 'DOCUMENT_NOT_FOUND' || err.status === 404) {
+                setIdentityNotInReniec(true);
+                setConsultaDocumento(null);
+                toast.error(
+                    err.message || 'Datos no encontrados en RENIEC. Completa el nombre manualmente y se guardará al emitir.',
+                    { duration: 7000 }
+                );
             } else {
                 toast.error(err.message || 'Error de conexión.');
             }
@@ -220,7 +236,30 @@ export default function FacturarPedido() {
         }
     };
 
-    const handleSubmit = (e) => {
+    const persistIdentidadLocalSiAplica = async () => {
+        if (!identityNotInReniec) return;
+        const numDoc = cliente.numDoc.replace(/\D/g, '');
+        const rznSocial = cliente.rznSocial.trim();
+        if (!numDoc || !rznSocial) return;
+        try {
+            await guardarIdentidadLocal({
+                headers: getHeaders(),
+                payload: {
+                    tipoDoc: cliente.tipoDoc || (numDoc.length === 11 ? '6' : '1'),
+                    numDoc,
+                    rznSocial,
+                    direccion: cliente.direccion || null,
+                    ubigeo: cliente.ubigeo || null,
+                    notInReniec: true,
+                    source: 'manual',
+                },
+            });
+        } catch (err) {
+            console.warn('No se pudo guardar identidad local:', err.message);
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e?.preventDefault();
         const documento = cliente.numDoc.replace(/\D/g, '');
 
@@ -233,8 +272,9 @@ export default function FacturarPedido() {
             toast.error('Ingresa o consulta el nombre o razón social del receptor.');
             return;
         }
-        if (!cliente.direccion.trim() || !/^\d{6}$/.test(cliente.ubigeo.trim())) {
-            toast.error('La dirección y un ubigeo válido de 6 dígitos son obligatorios.');
+        const esReceptorRuc = cliente.tipoDoc === '6' || documento.length === 11;
+        if (esReceptorRuc && (!cliente.direccion.trim() || !/^\d{6}$/.test(cliente.ubigeo.trim()))) {
+            toast.error('Para RUC, la dirección y un ubigeo válido de 6 dígitos son obligatorios.');
             return;
         }
         if (productosFacturacion.length === 0) {
@@ -255,12 +295,14 @@ export default function FacturarPedido() {
             return;
         }
 
+        await persistIdentidadLocalSiAplica();
         // Abrir modal de confirmación (reemplaza window.confirm)
         setConfirmModalOpen(true);
     };
 
     const handleConfirmEmit = async () => {
         const documento = cliente.numDoc.replace(/\D/g, '');
+        const esReceptorRuc = cliente.tipoDoc === '6' || documento.length === 11;
         try {
             idempotencyKeyRef.current ||= crypto.randomUUID();
             const payload = {
@@ -271,11 +313,16 @@ export default function FacturarPedido() {
                         tipoDoc: cliente.tipoDoc,
                         numDoc: documento,
                         rznSocial: cliente.rznSocial,
-                        address: {
+                        notInReniec: identityNotInReniec,
+                        ...(esReceptorRuc ? {
                             direccion: cliente.direccion,
                             ubigeo: cliente.ubigeo,
-                            provincia: 'LIMA', departamento: 'LIMA', distrito: 'LIMA'
-                        }
+                            address: {
+                                direccion: cliente.direccion,
+                                ubigeo: cliente.ubigeo,
+                                provincia: 'LIMA', departamento: 'LIMA', distrito: 'LIMA'
+                            }
+                        } : {})
                     },
                     details: productosFacturacion,
                     mtoOperGravadas: totales.gravada,
@@ -467,36 +514,46 @@ export default function FacturarPedido() {
                             placeholder="Nombre del cliente o Razón Social..."
                             value={cliente.rznSocial}
                             onChange={e => setCliente({ ...cliente, rznSocial: e.target.value })}
+                            onBlur={() => { void persistIdentidadLocalSiAplica(); }}
                             required
                         />
+                        {identityNotInReniec && (
+                            <small style={{ color: 'var(--color-text-tertiary)', display: 'block', marginTop: 4 }}>
+                                No consta en RENIEC/SUNAT. Al guardar se usará el registro local del laboratorio.
+                            </small>
+                        )}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label>Dirección del Receptor</label>
-                            <div style={{ position: 'relative' }}>
-                                <i className="bi bi-geo-alt" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }}></i>
+                    {(cliente.tipoDoc === '6' || String(cliente.numDoc || '').replace(/\D/g, '').length === 11) && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label>Dirección del Receptor <span style={{ color: 'red' }}>*</span></label>
+                                <div style={{ position: 'relative' }}>
+                                    <i className="bi bi-geo-alt" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }}></i>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        style={{ paddingLeft: '2.5rem' }}
+                                        placeholder="Dirección fiscal..."
+                                        value={cliente.direccion}
+                                        onChange={e => setCliente({ ...cliente, direccion: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label>Ubigeo <span style={{ color: 'red' }}>*</span></label>
                                 <input
                                     type="text"
                                     className="form-input"
-                                    style={{ paddingLeft: '2.5rem' }}
-                                    placeholder="Dirección fiscal..."
-                                    value={cliente.direccion}
-                                    onChange={e => setCliente({ ...cliente, direccion: e.target.value })}
+                                    placeholder="Ej: 150101"
+                                    value={cliente.ubigeo}
+                                    onChange={e => setCliente({ ...cliente, ubigeo: e.target.value })}
+                                    required
                                 />
                             </div>
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label>Ubigeo</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Ej: 150101"
-                                value={cliente.ubigeo}
-                                onChange={e => setCliente({ ...cliente, ubigeo: e.target.value })}
-                            />
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Panel: Productos */}

@@ -82,7 +82,17 @@ router.get('/me', authenticateToken, async (req, res, next) => {
         const pool = req.app.locals.pool;
         const result = await pool.query(
             `SELECT u.id, u.nombre, u.email, u.telefono, u.tipo, u.avatar_url, u.clinica_id,
-              r.nombre as rol, c.nombre as clinica_nombre
+              r.nombre as rol, c.nombre as clinica_nombre, c.direccion as clinica_direccion,
+              COALESCE(
+                (
+                  SELECT NULLIF(TRIM(e.direccion_fiscal), '')
+                  FROM nl_empresas e
+                  WHERE e.activo = true
+                  ORDER BY e.id ASC
+                  LIMIT 1
+                ),
+                'Calle Piura 316, Mariano Melgar'
+              ) as laboratorio_direccion
        FROM nl_usuarios u
        LEFT JOIN nl_roles r ON u.rol_id = r.id
        LEFT JOIN nl_clinicas c ON u.clinica_id = c.id
@@ -98,7 +108,7 @@ router.get('/me', authenticateToken, async (req, res, next) => {
 router.patch('/me', authenticateToken, async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { nombre, email, telefono, avatar_url } = req.body;
+        const { nombre, email, telefono, avatar_url, clinica_direccion } = req.body;
         const updates = [];
         const params = [];
 
@@ -107,16 +117,63 @@ router.patch('/me', authenticateToken, async (req, res, next) => {
         if (telefono !== undefined) { params.push(telefono || null); updates.push(`telefono = $${params.length}`); }
         if (avatar_url !== undefined) { params.push(avatar_url || null); updates.push(`avatar_url = $${params.length}`); }
 
-        if (updates.length === 0) return res.status(400).json({ error: 'Sin cambios' });
+        let clinicUpdated = false;
+        if (clinica_direccion !== undefined) {
+            const userRow = await pool.query(
+                'SELECT tipo, clinica_id FROM nl_usuarios WHERE id = $1',
+                [req.user.id]
+            );
+            const current = userRow.rows[0];
+            if (!current?.clinica_id || current.tipo !== 'cliente') {
+                return res.status(403).json({ error: 'No puedes editar la dirección de la clínica' });
+            }
+            const nextAddress = String(clinica_direccion || '').trim() || null;
+            const clinicResult = await pool.query(
+                `UPDATE nl_clinicas
+                 SET direccion = $1, updated_at = NOW()
+                 WHERE id = $2
+                 RETURNING id, direccion`,
+                [nextAddress, current.clinica_id]
+            );
+            if (clinicResult.rowCount === 0) {
+                return res.status(404).json({ error: 'Clínica no encontrada' });
+            }
+            clinicUpdated = true;
+        }
 
-        params.push(req.user.id);
-        const result = await pool.query(
-            `UPDATE nl_usuarios SET ${updates.join(', ')} WHERE id = $${params.length}
-       RETURNING id, nombre, email, telefono, tipo, avatar_url`,
-            params
+        if (updates.length === 0 && !clinicUpdated) {
+            return res.status(400).json({ error: 'Sin cambios' });
+        }
+
+        if (updates.length > 0) {
+            params.push(req.user.id);
+            await pool.query(
+                `UPDATE nl_usuarios SET ${updates.join(', ')} WHERE id = $${params.length}`,
+                params
+            );
+        }
+
+        const refreshed = await pool.query(
+            `SELECT u.id, u.nombre, u.email, u.telefono, u.tipo, u.avatar_url, u.clinica_id,
+              r.nombre as rol, c.nombre as clinica_nombre, c.direccion as clinica_direccion,
+              COALESCE(
+                (
+                  SELECT NULLIF(TRIM(e.direccion_fiscal), '')
+                  FROM nl_empresas e
+                  WHERE e.activo = true
+                  ORDER BY e.id ASC
+                  LIMIT 1
+                ),
+                'Calle Piura 316, Mariano Melgar'
+              ) as laboratorio_direccion
+       FROM nl_usuarios u
+       LEFT JOIN nl_roles r ON u.rol_id = r.id
+       LEFT JOIN nl_clinicas c ON u.clinica_id = c.id
+       WHERE u.id = $1`,
+            [req.user.id]
         );
 
-        res.json(result.rows[0]);
+        res.json(refreshed.rows[0]);
     } catch (err) { next(err); }
 });
 

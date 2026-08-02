@@ -10,8 +10,9 @@
   "scripts": {
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
     "server": "cd backend && npm run server",
+    "server:dev": "cd backend && npm run dev",
     "dev": "cd frontend && npm run dev",
-    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
+    "dev:all": "concurrently \"npm run server:dev\" \"npm run dev\"",
     "contracts:check": "node scripts/check-contract-compatibility.mjs",
     "ci:contracts": "npm run contracts:check"
   },

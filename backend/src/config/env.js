@@ -14,12 +14,32 @@ export const getJwtSecret = () => {
 
 export const getDatabaseUrl = () => requireEnv('DATABASE_URL');
 
+/** Expand apex ↔ www so both frontend hosts share the same CORS allowlist. */
+const expandOriginHostVariants = (origin) => {
+    try {
+        const url = new URL(origin);
+        const variants = new Set([url.origin]);
+        if (url.hostname.startsWith('www.')) {
+            url.hostname = url.hostname.slice(4);
+            variants.add(url.origin);
+        } else if (url.hostname.includes('.')) {
+            url.hostname = `www.${url.hostname}`;
+            variants.add(url.origin);
+        }
+        return [...variants];
+    } catch {
+        return [origin];
+    }
+};
+
 export const getAllowedOrigins = () => {
     const raw = process.env.FRONTEND_ORIGIN || process.env.CORS_ORIGIN || '';
-    return raw
+    const configured = raw
         .split(',')
         .map((origin) => origin.trim())
         .filter(Boolean);
+
+    return [...new Set(configured.flatMap(expandOriginHostVariants))];
 };
 
 export const getPort = () => parseInt(process.env.PORT || '3001', 10);

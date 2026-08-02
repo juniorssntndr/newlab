@@ -13,7 +13,7 @@ export const ORDER_STATUS_FLOW = [
 export const orderStatusLabelsLab = {
     pendiente: 'Pendiente',
     en_diseno: 'En diseño',
-    esperando_aprobacion: 'Esperando aprobación',
+    esperando_aprobacion: 'Aprobación',
     en_produccion: 'En producción',
     terminado: 'Terminado',
     enviado: 'Enviado',

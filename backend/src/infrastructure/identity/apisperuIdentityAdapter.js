@@ -83,7 +83,9 @@ async function fetchIdentity(type, numero) {
                 throw e;
             }
             if (status === 500 && body?.message === 'Ocurrió un Error') {
-                const e = new Error('Documento no encontrado en RENIEC/SUNAT');
+                const e = new Error(type === 'dni'
+                    ? 'Datos no encontrados en RENIEC'
+                    : 'Datos no encontrados en SUNAT');
                 e.code = ERROR_CODES.NOT_FOUND;
                 throw e;
             }
@@ -102,7 +104,11 @@ async function fetchIdentity(type, numero) {
     }
 
     if (data && data.success === false) {
-        const e = new Error(data.message || 'Documento no encontrado');
+        const msg = String(data.message || '').toLowerCase();
+        const notFound = msg.includes('no se encontraron') || msg.includes('no encontrado');
+        const e = new Error(notFound
+            ? (type === 'dni' ? 'Datos no encontrados en RENIEC' : 'Datos no encontrados en SUNAT')
+            : (data.message || 'Documento no encontrado'));
         e.code = ERROR_CODES.NOT_FOUND;
         throw e;
     }

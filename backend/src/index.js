@@ -44,7 +44,8 @@ app.use(cors({
         if (!origin) return callback(null, true);
         if (!isProd()) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('Origin no permitido por CORS'));
+        // Reject without throwing — a thrown Error becomes HTTP 500 and looks like "Failed to fetch".
+        return callback(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']

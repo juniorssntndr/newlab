@@ -9,6 +9,12 @@ const resolveTipoDoc = (customerDocument) => {
     return normalized.length === 11 ? '6' : '1';
 };
 
+/** APISPERU/Greenter espera fecha con offset Perú; solo YYYY-MM-DD provoca error genérico. */
+const toApisperuFechaEmision = (isoOrDate) => {
+    const day = String(isoOrDate || new Date().toISOString()).split('T')[0];
+    return `${day}T00:00:00-05:00`;
+};
+
 export const mapDraftToApisperuPayload = ({ draft, snapshot, issuer, tipoComprobante }) => {
     const customerAddress = snapshot?.customerAddress || {};
 
@@ -41,7 +47,7 @@ export const mapDraftToApisperuPayload = ({ draft, snapshot, issuer, tipoComprob
         tipoDoc: tipoComprobante,
         serie: draft.serie,
         correlativo: draft.correlativo ? String(draft.correlativo) : undefined,
-        fechaEmision: String(draft.issueDateIso || new Date().toISOString()).split('T')[0],
+        fechaEmision: toApisperuFechaEmision(draft.issueDateIso),
         formaPago: { moneda: 'PEN', tipo: 'Contado' },
         tipoMoneda: draft.total?.currency || 'PEN',
         client: {

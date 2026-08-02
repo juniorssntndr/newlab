@@ -1,5 +1,8 @@
 /* Auto-generated from Affinity odontograma.svg — do not hand-edit path data */
 export const AFFINITY_VIEWBOX = '90 366 1155 1862';
+/** Cropped viewBoxes for single-arch mobile render (tuned from Affinity Y bounds). */
+export const AFFINITY_UPPER_VIEWBOX = '70 390 1195 920';
+export const AFFINITY_LOWER_VIEWBOX = '70 1290 1195 920';
 export const AFFINITY_SOURCE_VIEWBOX = '0 0 1320 2868';
 
 export const AFFINITY_DECORATIONS = {

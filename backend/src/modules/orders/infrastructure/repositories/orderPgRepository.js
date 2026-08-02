@@ -3,7 +3,48 @@ export const makeOrderPgRepository = ({ pool }) => ({
     listOrders: async ({ user, filters = {} }) => {
         const params = [];
         let query = `SELECT p.*, c.nombre as clinica_nombre, u.nombre as responsable_nombre,
-                 (SELECT pr.nombre FROM nl_pedido_items pi JOIN nl_productos pr ON pi.producto_id = pr.id WHERE pi.pedido_id = p.id LIMIT 1) as producto_principal,
+                 (
+                   SELECT pr.nombre
+                   FROM nl_pedido_items pi
+                   JOIN nl_productos pr ON pi.producto_id = pr.id
+                   WHERE pi.pedido_id = p.id
+                   ORDER BY pi.id ASC
+                   LIMIT 1
+                 ) as producto_principal,
+                 (
+                   SELECT pr.image_url
+                   FROM nl_pedido_items pi
+                   JOIN nl_productos pr ON pi.producto_id = pr.id
+                   WHERE pi.pedido_id = p.id
+                   ORDER BY pi.id ASC
+                   LIMIT 1
+                 ) as producto_image_url,
+                 (
+                   SELECT pi.material
+                   FROM nl_pedido_items pi
+                   WHERE pi.pedido_id = p.id
+                   ORDER BY pi.id ASC
+                   LIMIT 1
+                 ) as producto_material,
+                 (
+                   SELECT NULLIF(TRIM(pi.color_vita), '')
+                   FROM nl_pedido_items pi
+                   WHERE pi.pedido_id = p.id
+                   ORDER BY pi.id ASC
+                   LIMIT 1
+                 ) as producto_color,
+                 (
+                   SELECT pi.piezas_dentales
+                   FROM nl_pedido_items pi
+                   WHERE pi.pedido_id = p.id
+                   ORDER BY pi.id ASC
+                   LIMIT 1
+                 ) as producto_piezas,
+                 (
+                   SELECT COUNT(*)::int
+                   FROM nl_pedido_items pi
+                   WHERE pi.pedido_id = p.id
+                 ) as items_count,
                  COUNT(*) OVER() as total_count
                  FROM nl_pedidos p
                  LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
@@ -98,7 +139,17 @@ export const makeOrderPgRepository = ({ pool }) => ({
     },
     getOrderBaseById: async ({ orderId }) => {
         const result = await pool.query(
-            `SELECT p.*, c.nombre as clinica_nombre, c.ruc as clinica_ruc, c.dni as clinica_dni, c.razon_social as clinica_razon_social, c.direccion as clinica_direccion, u.nombre as responsable_nombre, cr.nombre as creador_nombre
+            `SELECT p.*, c.nombre as clinica_nombre, c.ruc as clinica_ruc, c.dni as clinica_dni, c.razon_social as clinica_razon_social, c.direccion as clinica_direccion, u.nombre as responsable_nombre, cr.nombre as creador_nombre,
+              COALESCE(
+                (
+                  SELECT NULLIF(TRIM(e.direccion_fiscal), '')
+                  FROM nl_empresas e
+                  WHERE e.activo = true
+                  ORDER BY e.id ASC
+                  LIMIT 1
+                ),
+                'Calle Piura 316, Mariano Melgar'
+              ) as laboratorio_direccion
              FROM nl_pedidos p
              LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
              LEFT JOIN nl_usuarios u ON p.responsable_id = u.id

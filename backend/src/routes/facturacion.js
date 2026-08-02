@@ -6,6 +6,10 @@ import {
     emitirNotaCredito,
     consultarEstadoSunat,
 } from '../services/apisperu.js';
+import {
+    clientToOverridePayload,
+    upsertIdentityOverride,
+} from '../infrastructure/identity/identityLocalStore.js';
 
 const defaultFacturacionDeps = {
     emitirComprobanteSunat,
@@ -218,6 +222,20 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
 
             const persisted = await pool.query('SELECT * FROM nl_comprobantes WHERE id = $1 LIMIT 1', [result.data.invoiceId]);
             comprobante = persisted.rows[0] || result.data;
+        }
+
+        // Persistir receptor local solo si no constaba en RENIEC/SUNAT
+        try {
+            const client = billingData?.client;
+            if (client?.numDoc && client?.rznSocial && client?.notInReniec) {
+                await upsertIdentityOverride(pool, clientToOverridePayload(client, {
+                    notInReniec: true,
+                    source: 'billing',
+                    createdBy: req.user?.id || null,
+                }));
+            }
+        } catch (persistErr) {
+            console.warn('[facturacion] identity override persist skipped:', persistErr.message);
         }
 
         res.json(comprobante);

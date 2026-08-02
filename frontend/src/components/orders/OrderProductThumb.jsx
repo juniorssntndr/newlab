@@ -26,6 +26,7 @@ const OrderProductThumb = ({ product }) => {
             src={src}
             alt=""
             loading="lazy"
+            decoding="async"
             onError={() => {
                 if (landingSrc && src !== landingSrc) {
                     setSrc(landingSrc);

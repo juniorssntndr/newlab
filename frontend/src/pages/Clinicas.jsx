@@ -215,8 +215,8 @@ const Clinicas = () => {
         <div className="animate-fade-in">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1>Clientes / CRM</h1>
-                    <p>Gestión de clínicas y odontólogos</p>
+                    <h1>Clínicas</h1>
+                    <p>Gestión de clínicas y sus datos comerciales</p>
                 </div>
                 <button className="btn btn-primary" onClick={openNew}>
                     <i className="bi bi-plus-lg"></i> Nueva Clínica

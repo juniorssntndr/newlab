@@ -3,18 +3,12 @@ import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
 import { API_URL } from '../config.js';
+import { resolveImageUrl, resolveProductImageUrl } from '../utils/resolveImageUrl.js';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
 
 const tipoLabels = { fija: 'Prótesis Fija', implante: 'Sobre Implantes', removible: 'Removible (PPR)', especialidad: 'Especialidades' };
 const tipoColors = { fija: '#0891B2', implante: '#8B5CF6', removible: '#F59E0B', especialidad: '#10B981' };
-const BACKEND_BASE = API_URL.endsWith('/api')
-    ? API_URL.slice(0, -4)
-    : API_URL.startsWith('http') ? API_URL : '';
-
-const resolveImageUrl = (imageUrl) => {
-    if (!imageUrl) return '';
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
-    return `${BACKEND_BASE}${imageUrl}`;
-};
 
 const Productos = () => {
     const { getHeaders } = useAuth();
@@ -31,10 +25,12 @@ const Productos = () => {
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
     const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const fileInputRef = useRef(null);
 
     const fetchData = () => {
         const params = new URLSearchParams();
+        params.set('activo', 'true');
         if (search) params.set('search', search);
         Promise.all([
             fetch(`${API_URL}/productos?${params}`, { headers: getHeaders() }).then(r => r.json()),
@@ -72,7 +68,7 @@ const Productos = () => {
             image_url: p.image_url || ''
         });
         setFormError('');
-        setImagePreviewUrl(resolveImageUrl(p.image_url));
+        setImagePreviewUrl(resolveProductImageUrl(p));
         setModalOpen(true);
     };
 
@@ -171,13 +167,13 @@ const Productos = () => {
 
     const removeProducto = async () => {
         if (!editing || saving) return;
-        const accepted = window.confirm(`¿Eliminar el producto "${editing.nombre}"?`);
-        if (!accepted) return;
+
+        const deletedId = editing.id;
 
         try {
             setSaving(true);
             setFormError('');
-            const res = await fetch(`${API_URL}/productos/${editing.id}`, {
+            const res = await fetch(`${API_URL}/productos/${deletedId}`, {
                 method: 'DELETE',
                 headers: getHeaders()
             });
@@ -185,14 +181,19 @@ const Productos = () => {
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 setFormError(data.error || 'No se pudo eliminar el producto');
+                setDeleteConfirmOpen(false);
                 return;
             }
 
+            setProductos((prev) => prev.filter((p) => p.id !== deletedId));
+            setDeleteConfirmOpen(false);
             setModalOpen(false);
+            setEditing(null);
             fetchData();
         } catch (error) {
             console.error(error);
             setFormError('No se pudo eliminar. Verifica tu conexión.');
+            setDeleteConfirmOpen(false);
         } finally {
             setSaving(false);
         }
@@ -257,13 +258,21 @@ const Productos = () => {
                         <i className="bi bi-search"></i>
                         <input className="form-input" placeholder="Buscar producto..." value={search} onChange={e => setSearch(e.target.value)} />
                     </div>
-                    <div className="productos-filter-chips">
-                        <button className={`btn ${!filtroTipo ? 'btn-primary' : 'btn-secondary'} btn-sm productos-filter-chip`}
-                            onClick={() => setFiltroTipo('')}>Todos</button>
+                    <div className="productos-filter-chips" role="group" aria-label="Filtrar por tipo">
+                        <button
+                            type="button"
+                            className={`btn btn-sm pedidos-filter-chip${!filtroTipo ? ' is-active' : ''}`}
+                            onClick={() => setFiltroTipo('')}
+                        >
+                            Todos
+                        </button>
                         {Object.entries(tipoLabels).map(([key, label]) => (
-                            <button key={key} className={`btn ${filtroTipo === key ? 'btn-primary' : 'btn-secondary'} btn-sm productos-filter-chip`}
+                            <button
+                                key={key}
+                                type="button"
+                                className={`btn btn-sm pedidos-filter-chip${filtroTipo === key ? ' is-active' : ''}`}
                                 onClick={() => setFiltroTipo(filtroTipo === key ? '' : key)}
-                                style={{ '--tipo-accent': tipoColors[key] }}>
+                            >
                                 {label}
                             </button>
                         ))}
@@ -273,7 +282,7 @@ const Productos = () => {
 
             {/* Products grid by type */}
             {loading ? (
-                <div className="grid grid-cols-3">{[1, 2, 3].map(i => <div key={i} className="skeleton productos-skeleton-card" />)}</div>
+                <div className="catalog-products-grid">{[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton catalog-product-skeleton" />)}</div>
             ) : productos.length === 0 ? (
                 <div className="card">
                     <div className="empty-state">
@@ -284,97 +293,70 @@ const Productos = () => {
                 </div>
             ) : (
                 Object.entries(grouped).map(([tipo, prods]) => (
-                    <div key={tipo} className="productos-group">
-                        <div className="productos-group-header" style={{ '--tipo-accent': tipoColors[tipo] || 'var(--color-primary)' }}>
-                            <div className="productos-group-accent" />
-                            <h2 className="productos-group-title">{tipoLabels[tipo] || tipo}</h2>
-                            <span className="productos-group-count">
+                    <div key={tipo} className="catalog-group productos-group">
+                        <div
+                            className="catalog-group-header"
+                            style={{ '--tipo-accent': tipoColors[tipo] || 'var(--color-primary)' }}
+                        >
+                            <div
+                                className="catalog-group-accent"
+                                style={{ background: tipoColors[tipo] || undefined }}
+                            />
+                            <h2 className="catalog-group-title">{tipoLabels[tipo] || tipo}</h2>
+                            <span className="catalog-group-count">
                                 {prods.length} producto{prods.length !== 1 ? 's' : ''}
                             </span>
                         </div>
-                        <div className="productos-grid">
+                        <div className="catalog-products-grid">
                             {prods.map(p => (
-                                <div
+                                <ProductCatalogCard
                                     key={p.id}
-                                    onClick={() => openEdit(p)}
-                                    className={`productos-card ${p.visible ? '' : 'is-hidden'}`.trim()}
-                                >
-                                    {/* Image area */}
-                                    <div className="productos-card-media">
-                                        {p.image_url ? (
-                                            <img
-                                                src={resolveImageUrl(p.image_url)}
-                                                alt={p.nombre}
-                                                className="productos-card-image"
-                                                onError={e => { e.currentTarget.style.display = 'none'; }}
-                                            />
-                                        ) : (
-                                            <i className="bi bi-gem productos-card-media-icon" />
-                                        )}
-                                        {/* Category chip */}
-                                        {p.categoria_nombre && (
-                                            <span className="productos-card-category-chip">
-                                                {p.categoria_nombre}
-                                            </span>
-                                        )}
-                                        {/* Visibility toggle — stopPropagation so card click still opens edit */}
+                                    producto={p}
+                                    className={p.visible ? '' : 'is-hidden'}
+                                    ctaLabel="Editar producto"
+                                    ctaIcon="bi-pencil"
+                                    onOrder={() => openEdit(p)}
+                                    mediaOverlay={(
                                         <div
-                                            onClick={e => e.stopPropagation()}
                                             className="productos-card-visibility-chip"
+                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <label className="switch productos-card-switch">
-                                                <input type="checkbox" checked={!!p.visible} onChange={(e) => toggleVisibility(e, p)} />
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!p.visible}
+                                                    onChange={(e) => toggleVisibility(e, p)}
+                                                    aria-label={p.visible ? 'Ocultar producto' : 'Mostrar producto'}
+                                                />
                                                 <span className="slider round" />
                                             </label>
                                             <span className="productos-card-visibility-text">
                                                 {p.visible ? 'Visible' : 'Oculto'}
                                             </span>
                                         </div>
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="productos-card-content">
-                                        <h4 className="productos-card-title">
-                                            {p.nombre}
-                                        </h4>
-                                        {p.material_nombre && (
-                                            <p className="productos-card-material">
-                                                <i className="bi bi-layers" />
-                                                {p.material_nombre}
-                                            </p>
-                                        )}
-                                        {p.descripcion && (
-                                            <p className="productos-card-description">
-                                                {p.descripcion}
-                                            </p>
-                                        )}
-                                        <div className="productos-card-footer">
-                                            <div className="productos-card-price">
-                                                S/. {parseFloat(p.precio_base).toFixed(2)}
-                                            </div>
-                                            <div className="productos-card-time">
-                                                <i className="bi bi-clock" />
-                                                {p.tiempo_estimado_dias} días
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    )}
+                                />
                             ))}
                         </div>
                     </div>
                 ))
             )}
 
-            <Modal open={modalOpen} onClose={() => { if (!saving) setModalOpen(false); }}
+            <Modal open={modalOpen} onClose={() => { if (!saving && !deleteConfirmOpen) setModalOpen(false); }}
                 title={editing ? 'Editar Producto' : 'Nuevo Producto'}
                 footer={<>
                     {editing && (
-                        <button className="btn btn-secondary productos-modal-delete-btn" onClick={removeProducto} disabled={saving}>
+                        <button
+                            type="button"
+                            className="btn btn-secondary productos-modal-delete-btn"
+                            onClick={() => setDeleteConfirmOpen(true)}
+                            disabled={saving}
+                        >
                             <i className="bi bi-trash"></i> Eliminar
                         </button>
                     )}
-                    <button className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</button>
-                    <button className="btn btn-primary" onClick={save} disabled={saving}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={saving || deleteConfirmOpen}>Cancelar</button>
+                    <button type="button" className="btn btn-primary" onClick={save} disabled={saving || deleteConfirmOpen}>
                         <i className="bi bi-check-lg"></i> {saving ? 'Guardando...' : editing ? 'Guardar' : 'Crear'}
                     </button>
                 </>}>
@@ -458,6 +440,27 @@ const Productos = () => {
                     </div>
                 </div>
             </Modal>
+
+            <ConfirmDialog
+                open={deleteConfirmOpen}
+                onClose={() => { if (!saving) setDeleteConfirmOpen(false); }}
+                onConfirm={removeProducto}
+                confirming={saving}
+                variant="danger"
+                title="Eliminar producto"
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                message={(
+                    <>
+                        <p>
+                            ¿Eliminar <strong>{editing?.nombre}</strong>?
+                        </p>
+                        <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+                            Dejará de aparecer en el catálogo y en nuevos pedidos. Los pedidos históricos no se modifican.
+                        </p>
+                    </>
+                )}
+            />
         </div>
     );
 };

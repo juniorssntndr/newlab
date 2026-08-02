@@ -203,9 +203,48 @@ export const makeDashboardPgRepository = ({ pool }) => ({
     },
     listRecentOrders: async () => {
         const result = await pool.query(
-            `SELECT p.id, p.codigo, p.estado, p.paciente_nombre, p.fecha_entrega, p.total, p.subtotal, c.nombre as clinica_nombre
-             FROM nl_pedidos p LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
-             ORDER BY p.created_at DESC LIMIT 5`
+            `SELECT p.id, p.codigo, p.estado, p.paciente_nombre, p.fecha_entrega, p.total, p.subtotal,
+                    p.created_at, p.fecha,
+                    c.nombre as clinica_nombre,
+                    (
+                      SELECT pr.nombre
+                      FROM nl_pedido_items pi
+                      JOIN nl_productos pr ON pi.producto_id = pr.id
+                      WHERE pi.pedido_id = p.id
+                      ORDER BY pi.id ASC
+                      LIMIT 1
+                    ) as producto_principal,
+                    (
+                      SELECT pr.image_url
+                      FROM nl_pedido_items pi
+                      JOIN nl_productos pr ON pi.producto_id = pr.id
+                      WHERE pi.pedido_id = p.id
+                      ORDER BY pi.id ASC
+                      LIMIT 1
+                    ) as producto_image_url,
+                    (
+                      SELECT NULLIF(TRIM(pi.color_vita), '')
+                      FROM nl_pedido_items pi
+                      WHERE pi.pedido_id = p.id
+                      ORDER BY pi.id ASC
+                      LIMIT 1
+                    ) as producto_color,
+                    (
+                      SELECT pi.piezas_dentales
+                      FROM nl_pedido_items pi
+                      WHERE pi.pedido_id = p.id
+                      ORDER BY pi.id ASC
+                      LIMIT 1
+                    ) as producto_piezas,
+                    (
+                      SELECT COUNT(*)::int
+                      FROM nl_pedido_items pi
+                      WHERE pi.pedido_id = p.id
+                    ) as items_count
+             FROM nl_pedidos p
+             LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
+             ORDER BY p.created_at DESC
+             LIMIT 5`
         );
 
         return result.rows;

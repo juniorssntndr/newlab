@@ -6,6 +6,46 @@ import { logger } from '../lib/logger.js';
 const router = Router();
 router.use(authenticateToken);
 
+/** Normalize optional ISO date `YYYY-MM-DD` → DATE string or null. */
+function normalizeFechaNacimiento(value) {
+    if (value == null || value === '') return null;
+    const iso = String(value).trim().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+        const err = new Error('fecha_nacimiento debe ser una fecha válida (YYYY-MM-DD)');
+        err.status = 400;
+        err.code = 'INVALID_BIRTHDATE';
+        throw err;
+    }
+    const [y, m, d] = iso.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    if (
+        date.getFullYear() !== y
+        || date.getMonth() !== m - 1
+        || date.getDate() !== d
+    ) {
+        const err = new Error('fecha_nacimiento no es una fecha de calendario válida');
+        err.status = 400;
+        err.code = 'INVALID_BIRTHDATE';
+        throw err;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date > today) {
+        const err = new Error('fecha_nacimiento no puede ser una fecha futura');
+        err.status = 400;
+        err.code = 'INVALID_BIRTHDATE';
+        throw err;
+    }
+    if (y < 1900) {
+        const err = new Error('fecha_nacimiento fuera de rango');
+        err.status = 400;
+        err.code = 'INVALID_BIRTHDATE';
+        throw err;
+    }
+    return iso;
+}
+
+
 // GET /api/doctores?search=&nombre=&dni=
 router.get('/', async (req, res, next) => {
     try {
@@ -61,7 +101,16 @@ router.post('/preview-dni', requireRole('admin', 'tecnico'), async (req, res) =>
 router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { dni, cop, email, telefono, clinicaIds } = req.body;
+        const { dni, cop, email, telefono, clinicaIds, fecha_nacimiento } = req.body;
+        let fechaNacimiento;
+        try {
+            fechaNacimiento = normalizeFechaNacimiento(fecha_nacimiento);
+        } catch (validationErr) {
+            return res.status(validationErr.status || 400).json({
+                error: validationErr.message,
+                code: validationErr.code || 'INVALID_BIRTHDATE',
+            });
+        }
 
         if (!dni || !/^\d{8}$/.test(String(dni))) {
             return res.status(400).json({ error: 'El DNI debe tener exactamente 8 dígitos numéricos', code: 'INVALID_DOCUMENT' });
@@ -85,10 +134,11 @@ router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) 
                 `UPDATE nl_doctores SET
                     nombres=$1, apellido_paterno=$2, apellido_materno=$3, nombre_completo=$4,
                     cop=COALESCE($5, cop), email=COALESCE($6, email), telefono=COALESCE($7, telefono),
+                    fecha_nacimiento=COALESCE($8, fecha_nacimiento),
                     validado_externo_at=NOW()
-                 WHERE dni=$8 RETURNING *`,
+                 WHERE dni=$9 RETURNING *`,
                 [identity.nombres, identity.apellidoPaterno, identity.apellidoMaterno, identity.fullName,
-                 cop || null, email || null, telefono || null, dni]
+                 cop || null, email || null, telefono || null, fechaNacimiento, dni]
             );
             doctor = upd.rows[0];
             created = false;
@@ -96,10 +146,10 @@ router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) 
             let ins;
             try {
                 ins = await pool.query(
-                    `INSERT INTO nl_doctores (dni, nombres, apellido_paterno, apellido_materno, nombre_completo, cop, email, telefono, validado_externo_at)
-                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
+                    `INSERT INTO nl_doctores (dni, nombres, apellido_paterno, apellido_materno, nombre_completo, cop, email, telefono, fecha_nacimiento, validado_externo_at)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING *`,
                     [dni, identity.nombres, identity.apellidoPaterno, identity.apellidoMaterno, identity.fullName,
-                     cop || null, email || null, telefono || null]
+                     cop || null, email || null, telefono || null, fechaNacimiento]
                 );
             } catch (dbErr) {
                 if (dbErr.code === '23505') {
@@ -146,7 +196,21 @@ router.get('/:id', async (req, res, next) => {
 router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { nombres, apellido_paterno, apellido_materno, nombre_completo, cop, email, telefono } = req.body;
+        const { nombres, apellido_paterno, apellido_materno, nombre_completo, cop, email, telefono, fecha_nacimiento } = req.body;
+
+        let fechaNacimiento;
+        try {
+            // Allow explicit null to clear the birthday: only normalize when the key is present.
+            if (Object.prototype.hasOwnProperty.call(req.body, 'fecha_nacimiento')) {
+                fechaNacimiento = normalizeFechaNacimiento(fecha_nacimiento);
+            }
+        } catch (validationErr) {
+            return res.status(validationErr.status || 400).json({
+                error: validationErr.message,
+                code: validationErr.code || 'INVALID_BIRTHDATE',
+            });
+        }
+
         const result = await pool.query(
             `UPDATE nl_doctores SET
                 nombres=COALESCE($1, nombres),
@@ -155,9 +219,24 @@ router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
                 nombre_completo=COALESCE($4, nombre_completo),
                 cop=COALESCE($5, cop),
                 email=COALESCE($6, email),
-                telefono=COALESCE($7, telefono)
-             WHERE id=$8 RETURNING *`,
-            [nombres, apellido_paterno, apellido_materno, nombre_completo, cop, email, telefono, req.params.id]
+                telefono=COALESCE($7, telefono),
+                fecha_nacimiento=CASE
+                    WHEN $9::boolean THEN $8::date
+                    ELSE fecha_nacimiento
+                END
+             WHERE id=$10 RETURNING *`,
+            [
+                nombres,
+                apellido_paterno,
+                apellido_materno,
+                nombre_completo,
+                cop,
+                email,
+                telefono,
+                fechaNacimiento ?? null,
+                Object.prototype.hasOwnProperty.call(req.body, 'fecha_nacimiento'),
+                req.params.id,
+            ]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Doctor no encontrado' });
         res.json(result.rows[0]);

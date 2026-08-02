@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { resolveImageUrl, resolveProductImageUrl } from '../../../utils/resolveImageUrl.js';
 import { matchLandingProductImage } from '../../../utils/productCatalogImages.js';
+import { getProductDisplayName } from '../../../utils/productDisplayName.js';
 
 /**
  * Catalog-style product summary for the order wizard.
@@ -11,6 +12,7 @@ const OrderSelectedProductCard = ({
     onChange,
     changeLabel = 'Cambiar producto',
     empty = false,
+    loading = false,
     emptyLabel = 'Sin producto',
     emptyHint = 'Elige uno desde el catálogo para continuar',
     emptyActionLabel = 'Ir al catálogo',
@@ -20,8 +22,8 @@ const OrderSelectedProductCard = ({
     etaLabel = null,
     priceNote = null,
 }) => {
-    const primarySrc = !empty ? resolveProductImageUrl(product) : '';
-    const landingSrc = !empty ? resolveImageUrl(matchLandingProductImage(product)) : '';
+    const primarySrc = !empty && !loading ? resolveProductImageUrl(product) : '';
+    const landingSrc = !empty && !loading ? resolveImageUrl(matchLandingProductImage(product)) : '';
     const preferredSrc = primarySrc || landingSrc;
     const [src, setSrc] = useState(preferredSrc);
     const [imgError, setImgError] = useState(false);
@@ -43,7 +45,21 @@ const OrderSelectedProductCard = ({
         'order-wizard-product-summary',
         variant === 'featured' ? 'is-featured' : '',
         empty ? 'is-empty' : '',
+        loading ? 'is-loading' : '',
     ].filter(Boolean).join(' ');
+
+    if (loading) {
+        return (
+            <div className={summaryClass} aria-busy="true" aria-label="Cargando producto">
+                <div className="order-wizard-product-summary-media order-wizard-skeleton" aria-hidden="true" />
+                <div className="order-wizard-product-summary-copy">
+                    <span className="order-wizard-skeleton order-wizard-skeleton-line is-short" aria-hidden="true" />
+                    <span className="order-wizard-skeleton order-wizard-skeleton-line" aria-hidden="true" />
+                    <span className="order-wizard-skeleton order-wizard-skeleton-line is-meta" aria-hidden="true" />
+                </div>
+            </div>
+        );
+    }
 
     if (empty) {
         return (
@@ -64,7 +80,7 @@ const OrderSelectedProductCard = ({
         );
     }
 
-    const name = product?.nombre || 'Producto';
+    const name = getProductDisplayName(product?.nombre);
     const category = product?.categoria_nombre || '';
     const material = product?.material_nombre || product?.material || '';
     const fallbackPrice = Number(product?.precio_base ?? product?.precio_unitario ?? 0);
@@ -111,9 +127,10 @@ const OrderSelectedProductCard = ({
                         type="button"
                         className="btn btn-secondary btn-sm order-wizard-product-change-btn"
                         onClick={onChange}
+                        aria-label={changeLabel}
                     >
                         <i className="bi bi-arrow-left-right" aria-hidden="true"></i>
-                        {changeLabel}
+                        <span className="order-wizard-product-change-label">{changeLabel}</span>
                     </button>
                 ) : null}
             </div>

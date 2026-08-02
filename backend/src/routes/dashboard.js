@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, forbidRole } from '../middleware/auth.js';
+import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -16,6 +16,7 @@ const delegateToDashboard = (controllerMethod) => async (req, res, next) => {
 };
 
 router.get('/stats', delegateToDashboard('getStats'));
-router.get('/finance', forbidRole('tecnico'), delegateToDashboard('getFinance'));
+// KPIs financieros globales: solo admin/socios (antes forbidRole('tecnico') dejaba pasar a clientes).
+router.get('/finance', requireRole('admin'), delegateToDashboard('getFinance'));
 
 export default router;

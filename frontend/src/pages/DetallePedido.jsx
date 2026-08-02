@@ -23,6 +23,7 @@ import {
     parseIntakeFromObservaciones,
 } from '../modules/orders/wizard/orderWizardConstants.js';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
+import { AFINIX_LAB_ADDRESS } from '../constants/labInfo.js';
 
 const approvalStatusLabels = {
     pendiente: 'Pendiente',
@@ -76,6 +77,7 @@ const DetallePedido = () => {
     const [responsables, setResponsables] = useState([]);
     const [responsableId, setResponsableId] = useState('');
     const [deliveryDate, setDeliveryDate] = useState('');
+    const [editingDelivery, setEditingDelivery] = useState(false);
     const adjustPopoverRef = useRef(null);
     const adjustButtonRef = useRef(null);
     const adjustTextareaRef = useRef(null);
@@ -329,6 +331,7 @@ const DetallePedido = () => {
                 orderId: id,
                 payload: { fecha_entrega: deliveryDate }
             });
+            setEditingDelivery(false);
         } catch (err) {
             alert(err.message);
         }
@@ -357,9 +360,11 @@ const DetallePedido = () => {
     const statusLabel = (estado) => getOrderStatusLabel(estado, { forClient: isClient });
     const isApproval = pedido.estado === 'esperando_aprobacion';
     const deliveryMeta = getDeliveryMeta();
-    const itemsCount = (pedido.items || []).reduce((sum, item) => sum + (parseFloat(item.cantidad) || 0), 0);
-    const itemsPiecesLabel = itemsCount === 1 ? 'pieza' : 'piezas';
     const finalTotal = pedido.total ?? 0;
+    const orderItems = pedido.items || [];
+    // Total del pie solo aporta cuando hay varios ítems; con uno solo el precio de línea ya basta.
+    // El desglose express (base + recargo) aún no está disponible: el +25% se hornea en precio_unitario.
+    const showItemsTotal = orderItems.length > 1;
     const currentApproval = (pedido.aprobaciones || [])[0];
     const approvalLink = currentApproval?.link_exocad;
     const approvalEstado = currentApproval?.estado || 'pendiente';
@@ -449,19 +454,64 @@ const DetallePedido = () => {
             </div>
 
             <div className="card pedido-detail-flow">
-                <div className="status-timeline">
+                <div
+                    className="pedido-detail-progress"
+                    role="status"
+                    aria-label={
+                        currentIdx >= 0
+                            ? `Estado ${statusLabel(pedido.estado)}, paso ${currentIdx + 1} de ${ORDER_STATUS_FLOW.length}`
+                            : `Estado ${statusLabel(pedido.estado)}`
+                    }
+                >
+                    <div className="pedido-detail-progress-head">
+                        <div className="pedido-detail-progress-copy">
+                            <span className="pedido-detail-progress-kicker">Estado actual</span>
+                            <strong>{statusLabel(pedido.estado)}</strong>
+                        </div>
+                        {currentIdx >= 0 ? (
+                            <span className="pedido-detail-progress-count">
+                                {currentIdx + 1} de {ORDER_STATUS_FLOW.length}
+                            </span>
+                        ) : null}
+                    </div>
+                    <ol className="pedido-detail-progress-track" aria-hidden="true">
+                        {ORDER_STATUS_FLOW.map((s, i) => (
+                            <li
+                                key={s}
+                                className={[
+                                    'pedido-detail-progress-seg',
+                                    i === currentIdx ? 'is-current' : '',
+                                    i < currentIdx ? 'is-done' : '',
+                                ].filter(Boolean).join(' ')}
+                                title={statusLabel(s)}
+                            />
+                        ))}
+                    </ol>
+                </div>
+
+                <div
+                    className="status-timeline pedido-detail-status-timeline"
+                    role="list"
+                    aria-label={
+                        currentIdx >= 0
+                            ? `Progreso del pedido: ${statusLabel(pedido.estado)}, paso ${currentIdx + 1} de ${ORDER_STATUS_FLOW.length}`
+                            : `Progreso del pedido: ${statusLabel(pedido.estado)}`
+                    }
+                >
                     {ORDER_STATUS_FLOW.map((s, i) => (
                         <div
                             key={s}
-                            className={`status-step${i === currentIdx ? ' is-current' : ''}${i < currentIdx ? ' is-done' : ''}`}
-                            aria-current={i === currentIdx ? 'step' : undefined}
+                            role="listitem"
+                            className={[
+                                'status-step',
+                                i === currentIdx ? 'is-current' : '',
+                                i < currentIdx ? 'is-done' : '',
+                            ].filter(Boolean).join(' ')}
                         >
                             <div className="status-step-dot" aria-hidden="true">
-                                {i < currentIdx ? <i className="bi bi-check-lg"></i> : i + 1}
+                                {i < currentIdx ? <i className="bi bi-check"></i> : i + 1}
                             </div>
-                            <div className="status-step-label">
-                                {statusLabel(s)}
-                            </div>
+                            <div className="status-step-label">{statusLabel(s)}</div>
                         </div>
                     ))}
                 </div>
@@ -475,8 +525,28 @@ const DetallePedido = () => {
                             Paciente
                         </span>
                         <strong>{pedido.paciente_nombre}</strong>
-                        {pedido.clinica_nombre ? (
+                        {!isClient && pedido.clinica_nombre ? (
                             <em className="order-wizard-confirm-meta">{pedido.clinica_nombre}</em>
+                        ) : null}
+                    </div>
+                </div>
+                <div className="order-wizard-confirm-stat">
+                    <div className="order-wizard-confirm-stat-copy">
+                        <span className="order-wizard-confirm-label">
+                            <i className={`bi ${intakeIcon}`} aria-hidden="true"></i>
+                            Ingreso del caso
+                        </span>
+                        <strong>{intakeLabel || '—'}</strong>
+                        {intakeMode === 'envio' ? (
+                            <em className="order-wizard-confirm-meta">
+                                {pedido.laboratorio_direccion || AFINIX_LAB_ADDRESS}
+                            </em>
+                        ) : intakeMode === 'recoleccion' ? (
+                            pedido.clinica_direccion ? (
+                                <em className="order-wizard-confirm-meta">{pedido.clinica_direccion}</em>
+                            ) : (
+                                <em className="order-wizard-confirm-meta">Sin dirección de consultorio</em>
+                            )
                         ) : null}
                     </div>
                 </div>
@@ -486,7 +556,44 @@ const DetallePedido = () => {
                             <i className="bi bi-calendar3" aria-hidden="true"></i>
                             Entrega
                         </span>
-                        <strong className="order-wizard-confirm-date-value">{formatDate(pedido.fecha_entrega)}</strong>
+                        {isLab && editingDelivery ? (
+                            <div className="pedido-detail-field-actions">
+                                <input
+                                    className="form-input form-input-sm"
+                                    type="date"
+                                    value={deliveryDate}
+                                    onChange={e => setDeliveryDate(e.target.value)}
+                                    aria-label="Fecha de entrega"
+                                />
+                                <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveDeliveryDate} disabled={savingDelivery || !deliveryDate}>
+                                    <i className="bi bi-check2"></i>
+                                    {savingDelivery ? 'Guardando...' : 'Guardar'}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setEditingDelivery(false)}
+                                    disabled={savingDelivery}
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="order-wizard-confirm-date-row">
+                                <strong className="order-wizard-confirm-date-value">{formatDate(pedido.fecha_entrega)}</strong>
+                                {isLab ? (
+                                    <button
+                                        type="button"
+                                        className="order-wizard-confirm-coord-icon"
+                                        onClick={() => setEditingDelivery(true)}
+                                        title="Editar fecha de entrega"
+                                        aria-label="Editar fecha de entrega"
+                                    >
+                                        <i className="bi bi-pencil-square" aria-hidden="true"></i>
+                                    </button>
+                                ) : null}
+                            </div>
+                        )}
                         {deliveryMeta ? (
                             <em className="order-wizard-confirm-meta">{deliveryMeta.label}</em>
                         ) : (
@@ -494,97 +601,12 @@ const DetallePedido = () => {
                         )}
                     </div>
                 </div>
-                <div className="order-wizard-confirm-stat is-total">
-                    <div className="order-wizard-confirm-stat-copy">
-                        <span className="order-wizard-confirm-label">
-                            <i className="bi bi-cash-stack" aria-hidden="true"></i>
-                            Total
-                        </span>
-                        <strong>S/. {parseFloat(finalTotal).toFixed(2)}</strong>
-                        <em className="order-wizard-confirm-meta">{itemsCount} {itemsPiecesLabel}</em>
-                    </div>
-                </div>
             </div>
 
-            <div className={`pedido-detail-layout${caseFiles.length > 0 ? ' has-case-files' : ''}`}>
-                    <div className="card pedido-detail-info">
-                        <div className="card-header">
-                            <h3 className="card-title">
-                                <i className="bi bi-info-circle" aria-hidden="true"></i>
-                                Información
-                            </h3>
-                        </div>
-                        <div className="pedido-detail-info-grid">
-                            <div className="pedido-detail-field">
-                                <span className="order-wizard-confirm-label">
-                                    <i className="bi bi-person-gear" aria-hidden="true"></i>
-                                    Responsable
-                                </span>
-                                {user?.tipo === 'admin' ? (
-                                    <div className="pedido-detail-field-actions">
-                                        <select
-                                            className="form-select form-select-sm"
-                                            value={responsableId}
-                                            onChange={e => setResponsableId(e.target.value)}
-                                        >
-                                            <option value="">Sin asignar</option>
-                                            {responsables.map(r => (
-                                                <option key={r.id} value={r.id}>{r.nombre}</option>
-                                            ))}
-                                        </select>
-                                        <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
-                                            <i className="bi bi-check2"></i>
-                                            {savingResponsable ? 'Guardando...' : 'Guardar'}
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <strong>{pedido.responsable_nombre || 'Sin asignar'}</strong>
-                                )}
-                            </div>
-                            <div className="pedido-detail-field">
-                                <span className="order-wizard-confirm-label">
-                                    <i className="bi bi-calendar3" aria-hidden="true"></i>
-                                    Fecha de entrega
-                                </span>
-                                {isLab ? (
-                                    <div className="pedido-detail-field-actions">
-                                        <input
-                                            className="form-input form-input-sm"
-                                            type="date"
-                                            value={deliveryDate}
-                                            onChange={e => setDeliveryDate(e.target.value)}
-                                        />
-                                        <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveDeliveryDate} disabled={savingDelivery}>
-                                            <i className="bi bi-check2"></i>
-                                            {savingDelivery ? 'Guardando...' : 'Guardar'}
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <strong>{formatDate(pedido.fecha_entrega)}</strong>
-                                )}
-                            </div>
-                            {intakeLabel ? (
-                                <div className="pedido-detail-field">
-                                    <span className="order-wizard-confirm-label">
-                                        <i className={`bi ${intakeIcon}`} aria-hidden="true"></i>
-                                        Ingreso del caso
-                                    </span>
-                                    <strong>{intakeLabel}</strong>
-                                </div>
-                            ) : null}
-                        </div>
-                        {observationNotes ? (
-                            <div className="pedido-detail-notes">
-                                <i className="bi bi-chat-left-text" aria-hidden="true"></i>
-                                <span>{observationNotes}</span>
-                            </div>
-                        ) : null}
-                    </div>
-
+            <div className={`pedido-detail-layout${caseFiles.length > 0 ? ' has-case-files' : ''}${isClient ? ' is-client' : ''}`}>
                     <div className="card pedido-detail-items">
                         <div className="card-header">
                             <h3 className="card-title">Datos del caso</h3>
-                            <span className="badge badge-enviado">{itemsCount} {itemsPiecesLabel}</span>
                         </div>
                         <ul className="order-wizard-confirm-items pedido-detail-confirm-items">
                             {(pedido.items || []).map((item, i) => {
@@ -611,48 +633,102 @@ const DetallePedido = () => {
                                         </div>
                                         <div className="order-wizard-confirm-item-main">
                                             <div className="pedido-detail-confirm-item-top">
-                                                <strong>{product.nombre}</strong>
+                                                <div className="pedido-detail-confirm-item-heading">
+                                                    <strong>{product.nombre}</strong>
+                                                </div>
+                                                <div className="order-wizard-confirm-clinical">
+                                                    {isBridge ? (
+                                                        <span className="order-wizard-confirm-qty">{formatDentalSelection(item)}</span>
+                                                    ) : teeth.length > 0 ? (
+                                                        <div
+                                                            className={[
+                                                                'order-wizard-confirm-teeth',
+                                                                teethDenseClass,
+                                                            ].filter(Boolean).join(' ')}
+                                                            data-count={teeth.length}
+                                                            aria-label="Piezas seleccionadas"
+                                                        >
+                                                            {teeth.map((tooth) => (
+                                                                <span key={`${i}-${tooth}`} className="order-wizard-confirm-tooth">
+                                                                    {tooth}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="order-wizard-confirm-qty">
+                                                            {item.cantidad} {parseFloat(item.cantidad) === 1 ? 'pieza' : 'piezas'}
+                                                        </span>
+                                                    )}
+                                                    {tone ? (
+                                                        <span className="order-wizard-confirm-tone">Tono {tone}</span>
+                                                    ) : null}
+                                                </div>
                                                 <span className="pedido-detail-item-subtotal">S/. {Number(subtotal || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div className="order-wizard-confirm-clinical">
-                                                {isBridge ? (
-                                                    <span className="order-wizard-confirm-qty">{formatDentalSelection(item)}</span>
-                                                ) : teeth.length > 0 ? (
-                                                    <div
-                                                        className={[
-                                                            'order-wizard-confirm-teeth',
-                                                            teethDenseClass,
-                                                        ].filter(Boolean).join(' ')}
-                                                        data-count={teeth.length}
-                                                        aria-label="Piezas seleccionadas"
-                                                    >
-                                                        {teeth.map((tooth) => (
-                                                            <span key={`${i}-${tooth}`} className="order-wizard-confirm-tooth">
-                                                                {tooth}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <span className="order-wizard-confirm-qty">
-                                                        {item.cantidad} {parseFloat(item.cantidad) === 1 ? 'pieza' : 'piezas'}
-                                                    </span>
-                                                )}
-                                                {tone ? (
-                                                    <span className="order-wizard-confirm-tone">Tono {tone}</span>
-                                                ) : null}
-                                                {item.material ? (
-                                                    <span className="order-wizard-confirm-tone">{item.material}</span>
-                                                ) : null}
                                             </div>
                                         </div>
                                     </li>
                                 );
                             })}
                         </ul>
-                        <div className="pedido-detail-items-total">
-                            Total: S/. {parseFloat(finalTotal).toFixed(2)}
+                        {showItemsTotal ? (
+                            <div className="pedido-detail-items-total">
+                                Total: S/. {parseFloat(finalTotal).toFixed(2)}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="pedido-detail-side">
+                    {isLab ? (
+                    <div className="card pedido-detail-info" aria-label="Responsable del caso">
+                        <div className="card-header">
+                            <h3 className="card-title">
+                                <i className="bi bi-person-gear" aria-hidden="true"></i>
+                                Responsable
+                            </h3>
+                        </div>
+                        {user?.tipo === 'admin' ? (
+                            <div className="pedido-detail-field-actions">
+                                <select
+                                    className="form-select form-select-sm"
+                                    value={responsableId}
+                                    onChange={e => setResponsableId(e.target.value)}
+                                    aria-label="Asignar responsable"
+                                >
+                                    <option value="">Sin asignar</option>
+                                    {responsables.map(r => (
+                                        <option key={r.id} value={r.id}>{r.nombre}</option>
+                                    ))}
+                                </select>
+                                <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
+                                    <i className="bi bi-check2"></i>
+                                    {savingResponsable ? 'Guardando...' : 'Guardar'}
+                                </button>
+                            </div>
+                        ) : (
+                            <strong className="pedido-detail-responsable-name">
+                                {pedido.responsable_nombre || 'Sin asignar'}
+                            </strong>
+                        )}
+                        {observationNotes ? (
+                            <div className="pedido-detail-notes">
+                                <i className="bi bi-chat-left-text" aria-hidden="true"></i>
+                                <span>{observationNotes}</span>
+                            </div>
+                        ) : null}
+                    </div>
+                    ) : observationNotes ? (
+                    <div className="card pedido-detail-info">
+                        <div className="card-header">
+                            <h3 className="card-title">
+                                <i className="bi bi-chat-left-text" aria-hidden="true"></i>
+                                Nota de coordinación
+                            </h3>
+                        </div>
+                        <div className="pedido-detail-notes" style={{ margin: 0 }}>
+                            <span>{observationNotes}</span>
                         </div>
                     </div>
+                    ) : null}
 
                     <div className="card pedido-detail-design">
                         <div className="card-header">
@@ -785,6 +861,7 @@ const DetallePedido = () => {
                                 </div>
                             )}
                         </div>
+                    </div>
                     </div>
 
                     <div className="card pedido-detail-files">

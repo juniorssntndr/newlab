@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { resolveProductImageUrl } from '../../utils/resolveImageUrl.js';
+import { getProductDisplayName } from '../../utils/productDisplayName.js';
 
 /**
- * Shared product card used in client catalog and lab wizard product step.
+ * Shared product card used in client catalog, lab wizard, and lab product admin.
  */
 const ProductCatalogCard = ({
     producto,
     onOrder,
     ctaLabel = 'Solicitar Pedido',
     ctaIcon = 'bi-bag-plus',
+    className = '',
+    mediaOverlay = null,
 }) => {
     const [imgError, setImgError] = useState(false);
     const [descExpanded, setDescExpanded] = useState(false);
@@ -16,6 +19,7 @@ const ProductCatalogCard = ({
     const description = String(producto?.descripcion || '').trim();
     const canExpand = description.length > 72;
     const productKey = `${producto?.id || ''}:${imageSrc}`;
+    const displayName = getProductDisplayName(producto?.nombre);
 
     useEffect(() => {
         setImgError(false);
@@ -23,12 +27,14 @@ const ProductCatalogCard = ({
     }, [productKey]);
 
     return (
-        <div className="card catalog-product-card">
+        <div className={`card catalog-product-card${className ? ` ${className}` : ''}`}>
             <div className="catalog-product-card-media">
                 {imageSrc && !imgError ? (
                     <img
                         src={imageSrc}
-                        alt={producto?.nombre || 'Producto'}
+                        alt={displayName}
+                        loading="lazy"
+                        decoding="async"
                         onError={() => setImgError(true)}
                         className="catalog-product-card-image"
                     />
@@ -42,10 +48,13 @@ const ProductCatalogCard = ({
                         {producto.categoria_nombre}
                     </span>
                 ) : null}
+                {mediaOverlay}
             </div>
 
             <div className="catalog-product-card-content">
-                <h3 className="catalog-product-card-title">{producto?.nombre || 'Producto'}</h3>
+                <h3 className="catalog-product-card-title" title={String(producto?.nombre || displayName)}>
+                    {displayName}
+                </h3>
 
                 {producto?.material_nombre ? (
                     <p className="catalog-product-card-material">
@@ -61,6 +70,7 @@ const ProductCatalogCard = ({
                             className={`catalog-product-card-description${descExpanded ? ' is-expanded' : ''}`}
                             onClick={() => setDescExpanded((v) => !v)}
                             aria-expanded={descExpanded}
+                            aria-label={descExpanded ? 'Contraer descripción' : 'Expandir descripción'}
                         >
                             {description}
                             {!descExpanded ? (
