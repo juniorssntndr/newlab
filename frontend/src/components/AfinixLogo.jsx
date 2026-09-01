@@ -6,7 +6,7 @@ import isoDark from '../assets/branding/iso-dark.png';
 
 const AfinixLogo = ({ 
   size = 40, 
-  theme = 'dark', // 'light' o 'dark'
+  theme = 'light', // 'light' o 'dark'
   isLogin = false,
   showText = true
 }) => {

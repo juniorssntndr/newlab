@@ -104,74 +104,115 @@ const Finanzas = () => {
                         </div>
                     </div>
 
-                    <div className="card">
-                        {loading ? (
-                            <div>{[1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 60, marginBottom: 8, borderRadius: 8 }} />)}</div>
-                        ) : finanzas.length === 0 ? (
+                    {loading ? (
+                        <div className="card">
+                            {[1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 60, marginBottom: 8, borderRadius: 8 }} />)}
+                        </div>
+                    ) : finanzas.length === 0 ? (
+                        <div className="card">
                             <div className="empty-state">
                                 <i className="bi bi-cash-stack empty-state-icon"></i>
                                 <h3 className="empty-state-title">Sin registros financieros</h3>
                                 <p className="empty-state-text">Los pagos aparecerán aquí cuando se registren</p>
                             </div>
-                        ) : (
-                            <>
-                                <div className="data-table-wrapper desktop-only" style={{ border: 'none' }}>
-                                    <table className="data-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Código</th>
-                                                <th>Paciente</th>
-                                                <th>Clínica</th>
-                                                <th>Estado</th>
-                                                <th>Fecha</th>
-                                                <th>Total</th>
-                                                <th>Pagado</th>
-                                                <th>Saldo</th>
-                                                <th></th>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="card data-table-wrapper desktop-only" style={{ border: 'none' }}>
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Código</th>
+                                            <th>Paciente</th>
+                                            <th>Clínica</th>
+                                            <th>Estado</th>
+                                            <th>Fecha</th>
+                                            <th>Total</th>
+                                            <th>Pagado</th>
+                                            <th>Saldo</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {finanzas.map((f) => (
+                                            <tr key={f.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/finanzas/${f.id}`)}>
+                                                <td><strong style={{ fontFamily: 'var(--font-mono)' }}>{f.codigo}</strong></td>
+                                                <td>{f.paciente_nombre}</td>
+                                                <td>{f.clinica_nombre}</td>
+                                                <td><span className={`badge badge-dot badge-${f.estado_pago}`}>{statusLabels[f.estado_pago]}</span></td>
+                                                <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{formatDateShort(f.fecha || f.created_at)}</td>
+                                                <td><strong>{formatCurrency(f.total)}</strong></td>
+                                                <td>{formatCurrency(f.monto_pagado)}</td>
+                                                <td>{formatCurrency(f.saldo)}</td>
+                                                <td>
+                                                    <button className="btn btn-ghost btn-sm btn-icon" title="Ver detalle">
+                                                        <i className="bi bi-chevron-right"></i>
+                                                    </button>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {finanzas.map((f) => (
-                                                <tr key={f.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/finanzas/${f.id}`)}>
-                                                    <td><strong style={{ fontFamily: 'var(--font-mono)' }}>{f.codigo}</strong></td>
-                                                    <td>{f.paciente_nombre}</td>
-                                                    <td>{f.clinica_nombre}</td>
-                                                    <td><span className={`badge badge-dot badge-${f.estado_pago}`}>{statusLabels[f.estado_pago]}</span></td>
-                                                    <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{formatDateShort(f.fecha || f.created_at)}</td>
-                                                    <td><strong>{formatCurrency(f.total)}</strong></td>
-                                                    <td>{formatCurrency(f.monto_pagado)}</td>
-                                                    <td>{formatCurrency(f.saldo)}</td>
-                                                    <td>
-                                                        <button className="btn btn-ghost btn-sm btn-icon" title="Ver detalle">
-                                                            <i className="bi bi-chevron-right"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="mobile-cards mobile-only">
-                                    {finanzas.map((f) => (
-                                        <div key={f.id} className="mobile-card" onClick={() => navigate(`/finanzas/${f.id}`)} style={{ cursor: 'pointer' }}>
-                                            <div className="mobile-card-head">
-                                                <div className="mobile-card-title">{f.codigo}</div>
-                                                <span className={`badge badge-dot badge-${f.estado_pago}`}>{statusLabels[f.estado_pago]}</span>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="mobile-cards mobile-only finanzas-mobile-cards">
+                                {finanzas.map((f) => {
+                                    const saldoNum = Number(f.saldo || 0);
+                                    const pagadoNum = Number(f.monto_pagado || 0);
+                                    const totalNum = Number(f.total || 0);
+                                    const progressPct = totalNum > 0 ? Math.min(100, Math.round((pagadoNum / totalNum) * 100)) : 0;
+
+                                    return (
+                                        <div
+                                            key={f.id}
+                                            className="finanzas-card-bento"
+                                            onClick={() => navigate(`/finanzas/${f.id}`)}
+                                            role="button"
+                                            tabIndex={0}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/finanzas/${f.id}`); }}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <div className="finanzas-card-head">
+                                                <div className="finanzas-card-main-info">
+                                                    <strong className="finanzas-card-patient">{f.paciente_nombre || 'Sin paciente'}</strong>
+                                                    <div className="finanzas-card-meta">
+                                                        <span className="finanzas-card-code">{f.codigo}</span>
+                                                        {f.clinica_nombre && <span className="finanzas-card-clinic">· {f.clinica_nombre}</span>}
+                                                        <span className="finanzas-card-date">· {formatDateShort(f.fecha || f.created_at)}</span>
+                                                    </div>
+                                                </div>
+                                                <span className={`badge badge-dot badge-${f.estado_pago}`}>
+                                                    {statusLabels[f.estado_pago]}
+                                                </span>
                                             </div>
-                                            <div className="mobile-card-grid">
-                                                <div className="mobile-field"><span className="mobile-field-label">Paciente</span><span className="mobile-field-value">{f.paciente_nombre}</span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Clinica</span><span className="mobile-field-value">{f.clinica_nombre}</span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Fecha</span><span className="mobile-field-value">{formatDateShort(f.fecha || f.created_at)}</span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Total</span><span className="mobile-field-value"><strong>{formatCurrency(f.total)}</strong></span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Pagado</span><span className="mobile-field-value">{formatCurrency(f.monto_pagado)}</span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Saldo</span><span className="mobile-field-value">{formatCurrency(f.saldo)}</span></div>
+
+                                            <div className="finanzas-card-foot">
+                                                <div className="finanzas-card-breakdown">
+                                                    <span className="finanzas-card-breakdown-item">
+                                                        <em>Total:</em> {formatCurrency(f.total)}
+                                                    </span>
+                                                    <span className="finanzas-card-breakdown-item">
+                                                        <em>Pagado:</em> {formatCurrency(f.monto_pagado)}
+                                                    </span>
+                                                </div>
+                                                <div className="finanzas-card-saldo">
+                                                    <span className="finanzas-card-saldo-label">Saldo</span>
+                                                    <strong className={`finanzas-card-saldo-amount ${saldoNum > 0 ? 'is-pending' : 'is-paid'}`}>
+                                                        {formatCurrency(f.saldo)}
+                                                    </strong>
+                                                </div>
                                             </div>
+
+                                            {progressPct > 0 && progressPct < 100 && (
+                                                <div className="finanzas-card-progress-bar" aria-hidden="true">
+                                                    <div className="finanzas-card-progress-fill" style={{ width: `${progressPct}%` }} />
+                                                </div>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
                 </>
             )}
 

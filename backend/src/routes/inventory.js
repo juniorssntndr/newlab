@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { authenticateToken, forbidRole, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticateToken);
+router.use(forbidRole('visitador'));
 
 const toNullableString = (value) => {
     if (value === undefined || value === null) return null;

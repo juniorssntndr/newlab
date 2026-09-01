@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { authenticateToken, forbidRole, requireRole } from '../middleware/auth.js';
 import multer from 'multer';
 import { uploadProductImage } from '../services/storage.js';
 
@@ -16,6 +16,7 @@ const upload = multer({
 
 const router = Router();
 router.use(authenticateToken);
+router.use(forbidRole('visitador'));
 
 const toNullableInt = (value) => {
     if (value === undefined || value === null || value === '') return null;

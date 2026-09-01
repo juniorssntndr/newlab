@@ -29,6 +29,10 @@ export const registerRoutes = (app, compositionRoot) => {
     app.use('/api/facturacion', facturacionRoutes);
     app.use('/api/consultas', consultasRoutes);
 
+    if (compositionRoot?.modules?.crm?.crmRoutes) {
+        app.use('/api/crm', compositionRoot.modules.crm.crmRoutes);
+    }
+
     if (compositionRoot?.modules?.orders?.orderRoutes) {
         app.use('/api/pedidos-v2', compositionRoot.modules.orders.orderRoutes);
     }

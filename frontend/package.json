@@ -20,6 +20,8 @@
         "@fullcalendar/list": "^5.11.3",
         "@fullcalendar/react": "^5.11.3",
         "@fullcalendar/timegrid": "^5.11.3",
+        "@googlemaps/js-api-loader": "^2.1.1",
+        "@googlemaps/markerclusterer": "^2.6.2",
         "@newlab/contracts": "file:../packages/contracts",
         "@sentry/react": "^10.20.0",
         "@tanstack/react-query": "^5.90.3",

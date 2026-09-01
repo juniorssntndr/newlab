@@ -16,6 +16,8 @@ import {
 } from './afinixLandingContent.js';
 import { whatsappHref } from '../../config/siteSeo.js';
 import AfinixLogo from '../../components/AfinixLogo';
+import AnimatedCheck from '../../components/icons/animated/AnimatedCheck.jsx';
+import AnimatedRadar from '../../components/icons/animated/AnimatedRadar.jsx';
 
 const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 const WHATSAPP_CHANNEL = contactChannels.find((channel) => channel.label === 'WhatsApp') ?? contactChannels[0];
@@ -114,7 +116,7 @@ function useMatchMedia(query) {
     return matches;
 }
 
-export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark' }) {
+export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'light' }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
@@ -292,7 +294,7 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'dark'
                                 </a>
                             ))}
                         </div>
-                        {themeToggle ? <div className="afinix-mobile-menu-theme">{React.cloneElement(themeToggle)}</div> : null}
+                        {themeToggle ? <div className="afinix-mobile-menu-theme">{React.cloneElement(themeToggle, { showSuggestion: false })}</div> : null}
                     </div>
                     <Link className="afinix-mobile-menu-login" to={CLINIC_LOGIN_PATH} onClick={closeMobileMenu}>
                         <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
@@ -348,7 +350,7 @@ function HeroTrackingWidget({ reduceMotion, className = '' }) {
                 })}
         >
             <div className="afinix-hero-tracking-head">
-                <span className="afinix-hero-tracking-dot" aria-hidden="true"></span>
+                <AnimatedRadar size={14} className="afinix-hero-tracking-dot-icon" />
                 <strong>Seguimiento en vivo</strong>
             </div>
             <ol className="afinix-hero-tracking-steps" aria-live="polite">
@@ -362,7 +364,7 @@ function HeroTrackingWidget({ reduceMotion, className = '' }) {
                         >
                             <span className="afinix-hero-tracking-icon" aria-hidden="true">
                                 {stepState === 'is-done' ? (
-                                    <i className="bi bi-check-lg"></i>
+                                    <AnimatedCheck size={14} strokeWidth={3} />
                                 ) : stepState === 'is-active' ? (
                                     <span className="afinix-hero-tracking-pulse"></span>
                                 ) : null}

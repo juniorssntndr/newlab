@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { authenticateToken, forbidRole, requireRole } from '../middleware/auth.js';
 import { apisperuIdentityAdapter } from '../infrastructure/identity/apisperuIdentityAdapter.js';
 import { logger } from '../lib/logger.js';
 
 const router = Router();
 router.use(authenticateToken);
+router.use(forbidRole('visitador'));
 
 /** Normalize optional ISO date `YYYY-MM-DD` → DATE string or null. */
 function normalizeFechaNacimiento(value) {
@@ -51,19 +52,25 @@ router.get('/', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { nombre, dni, search } = req.query;
-        let query = 'SELECT * FROM nl_doctores WHERE 1=1';
+        let query = `SELECT d.*,
+          COALESCE((
+            SELECT json_agg(json_build_object('id', c.id, 'nombre', c.nombre, 'es_principal', cd.es_principal) ORDER BY cd.es_principal DESC, c.nombre)
+            FROM nl_clinica_doctores cd JOIN nl_clinicas c ON c.id=cd.clinica_id
+            WHERE cd.doctor_id=d.id
+          ), '[]'::json) AS clinicas
+          FROM nl_doctores d WHERE 1=1`;
         const params = [];
 
         const term = search || nombre;
         if (term) {
             params.push(`%${term}%`);
-            query += ` AND (nombre_completo ILIKE $${params.length} OR dni ILIKE $${params.length})`;
+            query += ` AND (d.nombre_completo ILIKE $${params.length} OR d.dni ILIKE $${params.length} OR d.especialidad ILIKE $${params.length})`;
         }
         if (dni) {
             params.push(dni);
-            query += ` AND dni = $${params.length}`;
+            query += ` AND d.dni = $${params.length}`;
         }
-        query += ' ORDER BY nombre_completo ASC';
+        query += ' ORDER BY d.nombre_completo ASC';
 
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -101,7 +108,7 @@ router.post('/preview-dni', requireRole('admin', 'tecnico'), async (req, res) =>
 router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { dni, cop, email, telefono, clinicaIds, fecha_nacimiento } = req.body;
+        const { dni, cop, email, telefono, clinicaIds, fecha_nacimiento, especialidad, direccion } = req.body;
         let fechaNacimiento;
         try {
             fechaNacimiento = normalizeFechaNacimiento(fecha_nacimiento);
@@ -114,6 +121,9 @@ router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) 
 
         if (!dni || !/^\d{8}$/.test(String(dni))) {
             return res.status(400).json({ error: 'El DNI debe tener exactamente 8 dígitos numéricos', code: 'INVALID_DOCUMENT' });
+        }
+        if (!String(especialidad || '').trim()) {
+            return res.status(400).json({ error: 'Especialidad es requerida', code: 'SPECIALTY_REQUIRED' });
         }
 
         let identity;
@@ -134,11 +144,11 @@ router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) 
                 `UPDATE nl_doctores SET
                     nombres=$1, apellido_paterno=$2, apellido_materno=$3, nombre_completo=$4,
                     cop=COALESCE($5, cop), email=COALESCE($6, email), telefono=COALESCE($7, telefono),
-                    fecha_nacimiento=COALESCE($8, fecha_nacimiento),
+                    fecha_nacimiento=COALESCE($8, fecha_nacimiento), especialidad=$9, direccion=COALESCE($10,direccion),
                     validado_externo_at=NOW()
-                 WHERE dni=$9 RETURNING *`,
+                 WHERE dni=$11 RETURNING *`,
                 [identity.nombres, identity.apellidoPaterno, identity.apellidoMaterno, identity.fullName,
-                 cop || null, email || null, telefono || null, fechaNacimiento, dni]
+                 cop || null, email || null, telefono || null, fechaNacimiento, String(especialidad).trim(), direccion || null, dni]
             );
             doctor = upd.rows[0];
             created = false;
@@ -146,10 +156,10 @@ router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) 
             let ins;
             try {
                 ins = await pool.query(
-                    `INSERT INTO nl_doctores (dni, nombres, apellido_paterno, apellido_materno, nombre_completo, cop, email, telefono, fecha_nacimiento, validado_externo_at)
-                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING *`,
+                    `INSERT INTO nl_doctores (dni, nombres, apellido_paterno, apellido_materno, nombre_completo, cop, email, telefono, fecha_nacimiento, especialidad, direccion, validado_externo_at)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW()) RETURNING *`,
                     [dni, identity.nombres, identity.apellidoPaterno, identity.apellidoMaterno, identity.fullName,
-                     cop || null, email || null, telefono || null, fechaNacimiento]
+                     cop || null, email || null, telefono || null, fechaNacimiento, String(especialidad).trim(), direccion || null]
                 );
             } catch (dbErr) {
                 if (dbErr.code === '23505') {
@@ -171,6 +181,43 @@ router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) 
 
         const status = created ? 201 : 200;
         res.status(status).json({ doctor, created });
+    } catch (err) { next(err); }
+});
+
+// POST /api/doctores — direct creation; DNI/Reniec enrichment is optional.
+router.post('/', requireRole('admin', 'tecnico'), async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const { dni, nombre, nombre_completo, nombres, apellido_paterno, apellido_materno, especialidad,
+            cop, email, telefono, direccion, fecha_nacimiento, clinicaIds = [] } = req.body;
+        const fullName = String(nombre_completo || nombre || '').trim();
+        const specialty = String(especialidad || '').trim();
+        if (!fullName || !specialty) return res.status(400).json({ error: 'Nombre y especialidad son requeridos' });
+        const normalizedDni = String(dni || '').trim() || null;
+        if (normalizedDni && !/^\d{8}$/.test(normalizedDni)) return res.status(400).json({ error: 'El DNI debe tener exactamente 8 dígitos numéricos', code: 'INVALID_DOCUMENT' });
+        let birthday;
+        try { birthday = normalizeFechaNacimiento(fecha_nacimiento); }
+        catch (error) { return res.status(400).json({ error: error.message, code: error.code }); }
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const inserted = await client.query(
+                `INSERT INTO nl_doctores
+                 (dni,nombres,apellido_paterno,apellido_materno,nombre_completo,especialidad,cop,email,telefono,direccion,fecha_nacimiento)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+                [normalizedDni, String(nombres || fullName).trim(), apellido_paterno || null, apellido_materno || null,
+                 fullName, specialty, cop || null, email || null, telefono || null, direccion || null, birthday]
+            );
+            if (!Array.isArray(clinicaIds)) throw Object.assign(new Error('clinicaIds debe ser un arreglo'), { status: 400 });
+            await associateClinics(client, inserted.rows[0].id, clinicaIds);
+            await client.query('COMMIT');
+            return res.status(201).json(inserted.rows[0]);
+        } catch (error) {
+            await client.query('ROLLBACK');
+            if (error.code === '23505') return res.status(409).json({ error: 'Ya existe un doctor con ese DNI', code: 'DUPLICATE_DNI' });
+            throw error;
+        } finally { client.release(); }
     } catch (err) { next(err); }
 });
 
@@ -196,13 +243,13 @@ router.get('/:id', async (req, res, next) => {
 router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { nombres, apellido_paterno, apellido_materno, nombre_completo, cop, email, telefono, fecha_nacimiento } = req.body;
+        const editable = ['dni','nombres','apellido_paterno','apellido_materno','nombre_completo','especialidad','cop','email','telefono','direccion'];
 
         let fechaNacimiento;
         try {
             // Allow explicit null to clear the birthday: only normalize when the key is present.
             if (Object.prototype.hasOwnProperty.call(req.body, 'fecha_nacimiento')) {
-                fechaNacimiento = normalizeFechaNacimiento(fecha_nacimiento);
+                fechaNacimiento = normalizeFechaNacimiento(req.body.fecha_nacimiento);
             }
         } catch (validationErr) {
             return res.status(validationErr.status || 400).json({
@@ -211,33 +258,30 @@ router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
             });
         }
 
-        const result = await pool.query(
-            `UPDATE nl_doctores SET
-                nombres=COALESCE($1, nombres),
-                apellido_paterno=COALESCE($2, apellido_paterno),
-                apellido_materno=COALESCE($3, apellido_materno),
-                nombre_completo=COALESCE($4, nombre_completo),
-                cop=COALESCE($5, cop),
-                email=COALESCE($6, email),
-                telefono=COALESCE($7, telefono),
-                fecha_nacimiento=CASE
-                    WHEN $9::boolean THEN $8::date
-                    ELSE fecha_nacimiento
-                END
-             WHERE id=$10 RETURNING *`,
-            [
-                nombres,
-                apellido_paterno,
-                apellido_materno,
-                nombre_completo,
-                cop,
-                email,
-                telefono,
-                fechaNacimiento ?? null,
-                Object.prototype.hasOwnProperty.call(req.body, 'fecha_nacimiento'),
-                req.params.id,
-            ]
-        );
+        if (Object.prototype.hasOwnProperty.call(req.body, 'dni')) {
+            const normalized = String(req.body.dni || '').trim();
+            if (normalized && !/^\d{8}$/.test(normalized)) return res.status(400).json({ error: 'El DNI debe tener exactamente 8 dígitos numéricos', code: 'INVALID_DOCUMENT' });
+            req.body.dni = normalized || null;
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'nombre_completo') && !String(req.body.nombre_completo || '').trim()) return res.status(400).json({ error: 'Nombre es requerido' });
+        if (Object.prototype.hasOwnProperty.call(req.body, 'especialidad') && !String(req.body.especialidad || '').trim()) return res.status(400).json({ error: 'Especialidad es requerida' });
+        const updates = []; const params = [];
+        for (const field of editable) {
+            if (!Object.prototype.hasOwnProperty.call(req.body, field)) continue;
+            params.push(req.body[field] === '' ? null : req.body[field]);
+            updates.push(`${field}=$${params.length}`);
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'fecha_nacimiento')) {
+            params.push(fechaNacimiento ?? null); updates.push(`fecha_nacimiento=$${params.length}::date`);
+        }
+        if (!updates.length) return res.status(400).json({ error: 'Sin cambios' });
+        params.push(req.params.id);
+        let result;
+        try { result = await pool.query(`UPDATE nl_doctores SET ${updates.join(', ')} WHERE id=$${params.length} RETURNING *`, params); }
+        catch (error) {
+            if (error.code === '23505') return res.status(409).json({ error: 'Ya existe un doctor con ese DNI', code: 'DUPLICATE_DNI' });
+            throw error;
+        }
         if (result.rows.length === 0) return res.status(404).json({ error: 'Doctor no encontrado' });
         res.json(result.rows[0]);
     } catch (err) { next(err); }
@@ -255,8 +299,34 @@ router.post('/:id/clinicas', requireRole('admin', 'tecnico'), async (req, res, n
         const check = await pool.query('SELECT id FROM nl_doctores WHERE id = $1', [doctorId]);
         if (check.rows.length === 0) return res.status(404).json({ error: 'Doctor no encontrado' });
 
-        await associateClinics(pool, doctorId, clinicaIds, { replace: true });
-        res.json({ message: 'Asociaciones actualizadas', clinicaIds });
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const previous = await client.query('SELECT clinica_id FROM nl_clinica_doctores WHERE doctor_id=$1', [doctorId]);
+            const affectedClinicIds = [...new Set([...previous.rows.map((row) => Number(row.clinica_id)), ...clinicaIds.map(Number)])];
+            await associateClinics(client, doctorId, clinicaIds, { replace: true });
+            await client.query(
+                `UPDATE nl_clinicas c SET doctor_contacto_principal_id=NULL
+                 WHERE c.doctor_contacto_principal_id=$1
+                   AND NOT EXISTS (SELECT 1 FROM nl_clinica_doctores cd WHERE cd.clinica_id=c.id AND cd.doctor_id=$1)`,
+                [doctorId]
+            );
+            const invalid = await client.query(
+                `SELECT c.id FROM nl_clinicas c
+                 WHERE c.id=ANY($1::int[]) AND NULLIF(BTRIM(c.telefono),'') IS NULL
+                   AND NOT EXISTS (
+                     SELECT 1 FROM nl_clinica_doctores cd JOIN nl_doctores d ON d.id=cd.doctor_id
+                     WHERE cd.clinica_id=c.id AND d.estado='activo' AND NULLIF(BTRIM(d.telefono),'') IS NOT NULL
+                   ) AND c.estado='activo' LIMIT 1`,
+                [affectedClinicIds]
+            );
+            if (invalid.rows[0]) throw Object.assign(new Error('La actualización dejaría una clínica sin contacto telefónico'), { status: 400, code: 'CONTACT_REQUIRED' });
+            await client.query('COMMIT');
+            res.json({ message: 'Asociaciones actualizadas', clinicaIds });
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally { client.release(); }
     } catch (err) { next(err); }
 });
 

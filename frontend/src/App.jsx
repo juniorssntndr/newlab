@@ -3,13 +3,12 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './state/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
-import { canAccessFinancialModules, isAdminRole, isClientRole } from './utils/accessControl.js';
+import { canAccessFinancialModules, isAdminRole, isClientRole, isVisitorRole, canAccessCrm } from './utils/accessControl.js';
 import Login from './pages/Login.jsx';
 import AfinixLanding from './pages/AfinixLanding.jsx';
 import AfinixSeoArticlePage from './pages/AfinixSeoArticlePage.jsx';
 import { SEO_ARTICLE_PATHS } from './pages/afinixLanding/seoArticlesData.js';
 import Dashboard from './pages/Dashboard.jsx';
-import Clinicas from './pages/Clinicas.jsx';
 import Productos from './pages/Productos.jsx';
 import Pedidos from './pages/Pedidos.jsx';
 import NuevoPedido from './pages/NuevoPedido.jsx';
@@ -21,11 +20,18 @@ import CajaGastos from './pages/CajaGastos.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Equipo from './pages/Equipo.jsx';
-import Doctores from './pages/Doctores.jsx';
 
 import Almacen from './pages/Almacen.jsx';
 import CalendarioCliente from './pages/CalendarioCliente.jsx';
 import CatalogoCliente from './pages/CatalogoCliente.jsx';
+
+import CrmResumenPage from './modules/crm/pages/CrmResumenPage.jsx';
+import CrmClinicasPage from './modules/crm/pages/CrmClinicasPage.jsx';
+import CrmDoctoresPage from './modules/crm/pages/CrmDoctoresPage.jsx';
+import CrmProspectosPage from './modules/crm/pages/CrmProspectosPage.jsx';
+import CrmVisitasPage from './modules/crm/pages/CrmVisitasPage.jsx';
+import CrmMapaPage from './modules/crm/pages/CrmMapaPage.jsx';
+import AgentInspector from './components/dev/AgentInspector.jsx';
 
 const LoadingScreen = () => (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
@@ -46,13 +52,22 @@ const ProtectedRoute = ({ children }) => {
 const LabOnlyRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
+    if (isVisitorRole(user)) return <Navigate to="/crm/resumen" replace />;
     if (isClientRole(user)) return <Navigate to="/pedidos" replace />;
+    return children;
+};
+
+const OrdersRoute = ({ children }) => {
+    const { user, loading } = useAuth();
+    if (loading) return <LoadingScreen />;
+    if (isVisitorRole(user)) return <Navigate to="/crm/resumen" replace />;
     return children;
 };
 
 const AdminOnlyRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
+    if (isVisitorRole(user)) return <Navigate to="/crm/resumen" replace />;
     if (!isAdminRole(user)) return <Navigate to="/dashboard" replace />;
     return children;
 };
@@ -60,7 +75,17 @@ const AdminOnlyRoute = ({ children }) => {
 const FinancialAccessRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
+    if (isVisitorRole(user)) return <Navigate to="/crm/resumen" replace />;
     if (!canAccessFinancialModules(user)) {
+        return <Navigate to={isClientRole(user) ? '/pedidos' : '/dashboard'} replace />;
+    }
+    return children;
+};
+
+const CrmRoute = ({ children }) => {
+    const { user, loading } = useAuth();
+    if (loading) return <LoadingScreen />;
+    if (!canAccessCrm(user)) {
         return <Navigate to={isClientRole(user) ? '/pedidos' : '/dashboard'} replace />;
     }
     return children;
@@ -78,13 +103,11 @@ const App = () => {
                 <Route path="/login" element={<Login />} />
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />
-                    <Route path="clinicas" element={<LabOnlyRoute><Clinicas /></LabOnlyRoute>} />
-                    <Route path="doctores" element={<LabOnlyRoute><Doctores /></LabOnlyRoute>} />
                     <Route path="productos" element={<LabOnlyRoute><Productos /></LabOnlyRoute>} />
                     <Route path="almacen" element={<LabOnlyRoute><Almacen /></LabOnlyRoute>} />
-                    <Route path="pedidos" element={<Pedidos />} />
-                    <Route path="pedidos/nuevo" element={<NuevoPedido />} />
-                    <Route path="pedidos/:id" element={<DetallePedido />} />
+                    <Route path="pedidos" element={<OrdersRoute><Pedidos /></OrdersRoute>} />
+                    <Route path="pedidos/nuevo" element={<OrdersRoute><NuevoPedido /></OrdersRoute>} />
+                    <Route path="pedidos/:id" element={<OrdersRoute><DetallePedido /></OrdersRoute>} />
                     <Route path="finanzas" element={<FinancialAccessRoute><Finanzas /></FinancialAccessRoute>} />
                     <Route path="caja-gastos" element={<FinancialAccessRoute><CajaGastos /></FinancialAccessRoute>} />
                     <Route path="finanzas/:id" element={<FinancialAccessRoute><DetalleFinanza /></FinancialAccessRoute>} />
@@ -94,9 +117,23 @@ const App = () => {
                     <Route path="catalogo" element={<CatalogoCliente />} />
                     <Route path="cuenta" element={<Cuenta />} />
                     <Route path="equipo" element={<AdminOnlyRoute><Equipo /></AdminOnlyRoute>} />
+
+                    {/* CRM Territorial Module */}
+                    <Route path="crm" element={<Navigate to="/crm/resumen" replace />} />
+                    <Route path="crm/resumen" element={<CrmRoute><CrmResumenPage /></CrmRoute>} />
+                    <Route path="crm/clinicas" element={<CrmRoute><CrmClinicasPage /></CrmRoute>} />
+                    <Route path="crm/doctores" element={<CrmRoute><CrmDoctoresPage /></CrmRoute>} />
+                    <Route path="crm/prospectos" element={<CrmRoute><CrmProspectosPage /></CrmRoute>} />
+                    <Route path="crm/visitas" element={<CrmRoute><CrmVisitasPage /></CrmRoute>} />
+                    <Route path="crm/mapa" element={<CrmRoute><CrmMapaPage /></CrmRoute>} />
+
+                    {/* Backward-compatibility Redirects */}
+                    <Route path="clinicas" element={<Navigate to="/crm/clinicas" replace />} />
+                    <Route path="doctores" element={<Navigate to="/crm/doctores" replace />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            {import.meta.env.DEV && <AgentInspector />}
         </>
     );
 };

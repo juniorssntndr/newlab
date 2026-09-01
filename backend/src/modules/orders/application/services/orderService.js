@@ -41,6 +41,7 @@ export const makeOrderService = ({ orderRepository }) => {
 
     return {
     listOrders: async ({ user, filters }) => {
+        if (user?.tipo === 'visitador') return { ok: false, type: 'FORBIDDEN', error: 'No autorizado' };
         const { rows, total } = await orderRepository.listOrders({ user, filters });
         return {
             ok: true,
@@ -52,6 +53,7 @@ export const makeOrderService = ({ orderRepository }) => {
         };
     },
     getOrderDetail: async ({ user, orderId }) => {
+        if (user?.tipo === 'visitador') return { ok: false, type: 'FORBIDDEN', error: 'No autorizado' };
         const order = await orderRepository.getOrderBaseById({ orderId });
 
         if (!order) {

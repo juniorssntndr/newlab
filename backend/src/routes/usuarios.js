@@ -21,6 +21,10 @@ const getRoleIdByTipo = async (pool, tipo) => {
         const result = await pool.query("SELECT id FROM nl_roles WHERE es_admin = false AND nombre ILIKE 'T%' LIMIT 1");
         return result.rows[0]?.id || null;
     }
+    if (tipo === 'visitador') {
+        const result = await pool.query("SELECT id FROM nl_roles WHERE nombre ILIKE 'Visitador' LIMIT 1");
+        return result.rows[0]?.id || null;
+    }
     return null;
 };
 
@@ -39,7 +43,7 @@ router.get('/', ensureAdmin, async (req, res, next) => {
 
         if (tipo) {
             if (tipo === 'equipo') {
-                query += " AND u.tipo IN ('admin','tecnico')";
+                query += " AND u.tipo IN ('admin','tecnico','visitador')";
             } else {
                 params.push(tipo);
                 query += ` AND u.tipo = $${params.length}`;
@@ -61,7 +65,7 @@ router.post('/', ensureAdmin, async (req, res, next) => {
         if (!nombre || !email || !tipo || !password) {
             return res.status(400).json({ error: 'Nombre, email, tipo y password son requeridos' });
         }
-        if (!['admin', 'tecnico'].includes(tipo)) {
+        if (!['admin', 'tecnico', 'visitador'].includes(tipo)) {
             return res.status(400).json({ error: 'Tipo no valido' });
         }
 
@@ -85,7 +89,7 @@ router.patch('/:id', ensureAdmin, async (req, res, next) => {
         const pool = req.app.locals.pool;
         const { nombre, email, telefono, tipo, estado, password } = req.body;
 
-        if (tipo && !['admin', 'tecnico'].includes(tipo)) {
+        if (tipo && !['admin', 'tecnico', 'visitador'].includes(tipo)) {
             return res.status(400).json({ error: 'Tipo no valido' });
         }
 

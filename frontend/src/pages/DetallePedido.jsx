@@ -397,61 +397,51 @@ const DetallePedido = () => {
 
     return (
         <div className="animate-fade-in pedido-detail">
-            <div className="page-header pedido-detail-header">
-                <div className="page-header-left">
-                    <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/pedidos')} aria-label="Volver a pedidos">
-                        <i className="bi bi-arrow-left"></i>
-                    </button>
-                    <div>
-                        <h1 className="pedido-detail-title">
-                            {pedido.codigo}
-                            <span className={`badge badge-dot badge-${pedido.estado}`}>{statusLabel(pedido.estado)}</span>
-                        </h1>
-                        <p>Pedido para {pedido.paciente_nombre}</p>
+            {isLab && (nextStatus || ['en_diseno', 'esperando_aprobacion'].includes(pedido.estado) || rollbackOptions.length > 0) ? (
+                <div className="page-header pedido-detail-header">
+                    <div className="pedido-actions">
+                        {nextStatus && (
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={() => (nextStatus === 'esperando_aprobacion' ? setApprovalModalOpen(true) : changeStatus(nextStatus))}
+                                disabled={updating}
+                            >
+                                {updating
+                                    ? 'Actualizando...'
+                                    : nextStatus === 'esperando_aprobacion'
+                                        ? 'Enviar a aprobación'
+                                        : `Avanzar a: ${statusLabel(nextStatus)}`}
+                                <i className="bi bi-arrow-right"></i>
+                            </button>
+                        )}
+                        {['en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => { setForceReason(''); setForceModalOpen(true); }}
+                                disabled={updating}
+                            >
+                                <i className="bi bi-skip-forward"></i> Forzar a Producción
+                            </button>
+                        )}
+                        {rollbackOptions.length > 0 && (
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setRollbackState(rollbackOptions[rollbackOptions.length - 1]);
+                                    setRollbackReason('');
+                                    setRollbackModalOpen(true);
+                                }}
+                                disabled={updating}
+                            >
+                                <i className="bi bi-arrow-counterclockwise"></i> Retroceder
+                            </button>
+                        )}
                     </div>
                 </div>
-                <div className="pedido-actions">
-                    {isLab && nextStatus && (
-                        <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={() => (nextStatus === 'esperando_aprobacion' ? setApprovalModalOpen(true) : changeStatus(nextStatus))}
-                            disabled={updating}
-                        >
-                            {updating
-                                ? 'Actualizando...'
-                                : nextStatus === 'esperando_aprobacion'
-                                    ? 'Enviar a aprobación'
-                                    : `Avanzar a: ${statusLabel(nextStatus)}`}
-                            <i className="bi bi-arrow-right"></i>
-                        </button>
-                    )}
-                    {isLab && ['en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
-                        <button
-                            type="button"
-                            className="btn btn-secondary"
-                            onClick={() => { setForceReason(''); setForceModalOpen(true); }}
-                            disabled={updating}
-                        >
-                            <i className="bi bi-skip-forward"></i> Forzar a Producción
-                        </button>
-                    )}
-                    {isLab && rollbackOptions.length > 0 && (
-                        <button
-                            type="button"
-                            className="btn btn-secondary"
-                            onClick={() => {
-                                setRollbackState(rollbackOptions[rollbackOptions.length - 1]);
-                                setRollbackReason('');
-                                setRollbackModalOpen(true);
-                            }}
-                            disabled={updating}
-                        >
-                            <i className="bi bi-arrow-counterclockwise"></i> Retroceder
-                        </button>
-                    )}
-                </div>
-            </div>
+            ) : null}
 
             <div className="card pedido-detail-flow">
                 <div

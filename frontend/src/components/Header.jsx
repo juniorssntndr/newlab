@@ -3,19 +3,23 @@ import { useAuth } from '../state/AuthContext.jsx';
 import { useNotifications } from '../state/NotificationContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import NotificationsPanel from './NotificationsPanel.jsx';
+import { useAppTheme } from '../hooks/useAppTheme.js';
+import ThemeSuggestionPopup from './afinix/ThemeSuggestionPopup.jsx';
 
 const Header = ({ onMenuClick }) => {
     const { user, logout } = useAuth();
     const { unreadCount, setPanelOpen, panelOpen } = useNotifications();
-    const [dark, setDark] = useState(() => localStorage.getItem('nl_theme') === 'dark');
+    const {
+        theme,
+        toggle: toggleTheme,
+        showSuggestion,
+        acceptDarkSuggestion,
+        dismissSuggestion
+    } = useAppTheme();
+    const isDark = theme === 'dark';
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-        localStorage.setItem('nl_theme', dark ? 'dark' : 'light');
-    }, [dark]);
 
     useEffect(() => {
         const handleClick = (event) => {
@@ -44,16 +48,25 @@ const Header = ({ onMenuClick }) => {
                 </button>
             </div>
             <div className="header-right">
-                <button
-                    type="button"
-                    className="header-btn"
-                    onClick={() => setDark(!dark)}
-                    title="Cambiar tema"
-                    aria-label={`Cambiar a tema ${dark ? 'claro' : 'oscuro'}`}
-                    aria-pressed={dark}
-                >
-                    <i className={`bi ${dark ? 'bi-sun' : 'bi-moon'}`} aria-hidden="true"></i>
-                </button>
+                <div className="afinix-theme-toggle-wrapper">
+                    <button
+                        type="button"
+                        className="header-btn"
+                        onClick={toggleTheme}
+                        title="Cambiar tema"
+                        aria-label={`Cambiar a tema ${isDark ? 'claro' : 'oscuro'}`}
+                        aria-pressed={isDark}
+                    >
+                        <i className={`bi ${isDark ? 'bi-sun' : 'bi-moon'}`} aria-hidden="true"></i>
+                    </button>
+
+                    {showSuggestion && (
+                        <ThemeSuggestionPopup
+                            onAccept={acceptDarkSuggestion}
+                            onDismiss={dismissSuggestion}
+                        />
+                    )}
+                </div>
 
                 <div className="header-notifications">
                     <button

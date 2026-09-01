@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, forbidRole } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { createPedidoSchema } from '../validation/schemas.js';
 
 const router = Router();
 router.use(authenticateToken);
+router.use(forbidRole('visitador'));
 
 const upload = multer({
     storage: multer.memoryStorage(),

@@ -12,7 +12,13 @@ const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 
 export function AfinixMarketingLayout({ children }) {
     const reduceMotion = useReducedMotion();
-    const { theme, toggle } = useLandingTheme();
+    const {
+        theme,
+        toggle,
+        showSuggestion,
+        acceptDarkSuggestion,
+        dismissSuggestion
+    } = useLandingTheme();
 
     return (
         <>
@@ -23,7 +29,15 @@ export function AfinixMarketingLayout({ children }) {
             <LandingNavbar
                 reduceMotion={Boolean(reduceMotion)}
                 theme={theme}
-                themeToggle={<LandingThemeToggle theme={theme} onToggle={toggle} />}
+                themeToggle={
+                    <LandingThemeToggle
+                        theme={theme}
+                        onToggle={toggle}
+                        showSuggestion={showSuggestion}
+                        onAcceptSuggestion={acceptDarkSuggestion}
+                        onDismissSuggestion={dismissSuggestion}
+                    />
+                }
             />
             <div id="contenido-principal">{children}</div>
             <footer className="afinix-footer afinix-final-cta" aria-label="Pie de página">

@@ -167,6 +167,8 @@ export const confirmDoctor = async ({ dni, overrides = {}, headers }) => {
         email: overrides.email || null,
         telefono: overrides.telefono || null,
         fecha_nacimiento: overrides.fecha_nacimiento || null,
+        especialidad: overrides.especialidad ? String(overrides.especialidad).trim() : null,
+        direccion: overrides.direccion || null,
         clinicaIds,
     };
 

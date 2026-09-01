@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, forbidRole } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticateToken);
+router.use(forbidRole('visitador'));
 
 // GET /api/categorias
 router.get('/', async (req, res, next) => {

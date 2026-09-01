@@ -229,15 +229,16 @@ const Calendario = () => {
                         </div>
 
                         <div className="calendar-legend" aria-label="Leyenda de estados">
-                            {Object.entries(statusLabels).map(([key, label]) => (
-                                <div className="calendar-legend-item" key={key}>
-                                    <span className="calendar-legend-pill" style={{ background: statusColors[key] }} />
-                                    <span>
-                                        {label}
-                                        {counts[key] > 0 ? ` · ${counts[key]}` : ''}
-                                    </span>
-                                </div>
-                            ))}
+                            {Object.entries(statusLabels).map(([key, label]) => {
+                                const count = counts[key] || 0;
+                                return (
+                                    <div className={`calendar-legend-item${count > 0 ? ' has-count' : ''}`} key={key}>
+                                        <span className="calendar-legend-dot" style={{ background: statusColors[key] }} />
+                                        <span className="calendar-legend-label">{label}</span>
+                                        {count > 0 && <span className="calendar-legend-badge">{count}</span>}
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         <FullCalendar

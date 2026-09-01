@@ -14,7 +14,13 @@ const AfinixLandingBelowFold = lazy(() => import('./afinixLanding/AfinixLandingB
 
 const AfinixLanding = () => {
     const reduceMotion = useReducedMotion();
-    const { theme, toggle } = useLandingTheme();
+    const {
+        theme,
+        toggle,
+        showSuggestion,
+        acceptDarkSuggestion,
+        dismissSuggestion
+    } = useLandingTheme();
 
     const homeGraph = buildJsonLdGraph([buildOrganizationJsonLd(), buildWebSiteJsonLd()]);
 
@@ -34,7 +40,15 @@ const AfinixLanding = () => {
                 <LandingNavbar
                     reduceMotion={Boolean(reduceMotion)}
                     theme={theme}
-                    themeToggle={<LandingThemeToggle theme={theme} onToggle={toggle} />}
+                    themeToggle={
+                        <LandingThemeToggle
+                            theme={theme}
+                            onToggle={toggle}
+                            showSuggestion={showSuggestion}
+                            onAcceptSuggestion={acceptDarkSuggestion}
+                            onDismissSuggestion={dismissSuggestion}
+                        />
+                    }
                 />
                 <HeroCarousel reduceMotion={Boolean(reduceMotion)} />
                 <Suspense fallback={null}>

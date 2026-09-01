@@ -15,7 +15,7 @@ const delegateToDashboard = (controllerMethod) => async (req, res, next) => {
     return dashboardController[controllerMethod](req, res, next);
 };
 
-router.get('/stats', delegateToDashboard('getStats'));
+router.get('/stats', requireRole('admin', 'tecnico', 'cliente'), delegateToDashboard('getStats'));
 // KPIs financieros globales: solo admin/socios (antes forbidRole('tecnico') dejaba pasar a clientes).
 router.get('/finance', requireRole('admin'), delegateToDashboard('getFinance'));
 

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '../../../../middleware/auth.js';
+import { authenticateToken, forbidRole } from '../../../../middleware/auth.js';
 import { validateBody } from '../../../../middleware/validate.js';
 import { createPedidoSchema } from '../../../../validation/schemas.js';
 
@@ -7,6 +7,7 @@ export const makeOrderRoutes = ({ orderController }) => {
     const router = Router();
 
     router.use(authenticateToken);
+    router.use(forbidRole('visitador'));
     router.get('/', orderController.listOrders);
     router.get('/:id', orderController.getOrderDetail);
     router.post('/', validateBody(createPedidoSchema), orderController.createOrder);

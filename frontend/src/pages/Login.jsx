@@ -23,7 +23,13 @@ const LOGIN_STORY_PROOFS = [
 
 const Login = () => {
     const { login } = useAuth();
-    const { theme, toggle } = useLandingTheme();
+    const {
+        theme,
+        toggle,
+        showSuggestion,
+        acceptDarkSuggestion,
+        dismissSuggestion
+    } = useLandingTheme();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [email, setEmail] = useState('');
@@ -73,7 +79,13 @@ const Login = () => {
             />
             <div className="login-page" data-theme={theme}>
             <div className="login-page-topbar">
-                <LandingThemeToggle theme={theme} onToggle={toggle} />
+                <LandingThemeToggle
+                    theme={theme}
+                    onToggle={toggle}
+                    showSuggestion={showSuggestion}
+                    onAcceptSuggestion={acceptDarkSuggestion}
+                    onDismissSuggestion={dismissSuggestion}
+                />
             </div>
             <div className="login-shell">
                 <aside className="login-story" aria-label="Beneficios del portal clínico AFINIX">

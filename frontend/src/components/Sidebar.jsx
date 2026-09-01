@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
-import { canAccessFinancialModules, isAdminRole, isClientRole } from '../utils/accessControl.js';
+import { canAccessFinancialModules, isAdminRole, isClientRole, isVisitorRole } from '../utils/accessControl.js';
 import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
 import AfinixLogo from './AfinixLogo.jsx';
 
@@ -12,6 +12,7 @@ const getAppLogoTheme = () => (
 const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const { user, logout } = useAuth();
     const isClient = isClientRole(user);
+    const isVisitor = isVisitorRole(user);
     const canAccessFinance = canAccessFinancialModules(user);
     const [logoTheme, setLogoTheme] = useState(getAppLogoTheme);
 
@@ -34,6 +35,16 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
         ? pendingApprovalQuery.data.length
         : 0;
 
+    const visitorLinks = [
+        { to: '/crm/resumen', icon: 'bi-speedometer2', label: 'CRM Resumen' },
+        { to: '/crm/clinicas', icon: 'bi-building', label: 'Clínicas' },
+        { to: '/crm/doctores', icon: 'bi-person-badge', label: 'Doctores' },
+        { to: '/crm/prospectos', icon: 'bi-funnel', label: 'Prospectos' },
+        { to: '/crm/visitas', icon: 'bi-calendar-check', label: 'Visitas' },
+        { to: '/crm/mapa', icon: 'bi-geo-alt', label: 'Mapa' },
+        { to: '/cuenta', icon: 'bi-person-circle', label: 'Cuenta' },
+    ];
+
     const labLinks = [
         ...(isAdminRole(user)
             ? [{ to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' }]
@@ -46,8 +57,9 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
             ? [{ to: '/caja-gastos', icon: 'bi-wallet2', label: isAdminRole(user) ? 'Caja y Gastos' : 'Caja' }]
             : []),
         { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
-        { to: '/clinicas', icon: 'bi-building', label: 'Clínicas' },
-        { to: '/doctores', icon: 'bi-person-badge', label: 'Doctores' },
+        { to: '/crm/resumen', icon: 'bi-geo-fill', label: 'CRM Territorial' },
+        { to: '/crm/clinicas', icon: 'bi-building', label: 'Clínicas' },
+        { to: '/crm/doctores', icon: 'bi-person-badge', label: 'Doctores' },
         { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo' },
         { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
         ...(isAdminRole(user) ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : []),
@@ -69,7 +81,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
         { to: '/cuenta', icon: 'bi-person-circle', label: 'Cuenta' },
     ];
 
-    const navItems = isClient ? clientLinks : labLinks;
+    const navItems = isClient ? clientLinks : isVisitor ? visitorLinks : labLinks;
 
     return (
         <>

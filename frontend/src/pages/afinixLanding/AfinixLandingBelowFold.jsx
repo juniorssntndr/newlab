@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useInView } from 'framer-motion';
-import { A11y, Keyboard, Navigation, Pagination } from 'swiper/modules';
+import { A11y, Autoplay, Keyboard, Navigation, Pagination } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/a11y';
+import 'swiper/css/autoplay';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import {
@@ -183,9 +184,18 @@ function ServicesCarousel({ reduceMotion }) {
                 <div className="afinix-services-carousel" tabIndex={0}>
                     <Swiper
                         className="afinix-services-swiper"
-                        modules={[A11y, Keyboard, Navigation, Pagination]}
+                        modules={[A11y, Autoplay, Keyboard, Navigation, Pagination]}
                         loop={false}
-                        rewind={false}
+                        rewind={true}
+                        autoplay={
+                            reduceMotion
+                                ? false
+                                : {
+                                      delay: 3500,
+                                      disableOnInteraction: false,
+                                      pauseOnMouseEnter: true,
+                                  }
+                        }
                         slidesPerView="auto"
                         spaceBetween={24}
                         centeredSlides={false}
@@ -592,7 +602,7 @@ function ContactSection({ reduceMotion }) {
     );
 }
 
-function FinalCTA({ reduceMotion, theme = 'dark' }) {
+function FinalCTA({ reduceMotion, theme = 'light' }) {
     return (
         <footer className="afinix-footer afinix-final-cta">
             <motion.div className="afinix-final-cta__inner" {...sectionMotion(reduceMotion)}>
@@ -662,7 +672,7 @@ function FinalCTA({ reduceMotion, theme = 'dark' }) {
 }
 
 /** Bloque inferior diferido: reduce JS inicial y coste de hidratación del carrusel de servicios y del scroll-linked workflow. */
-export default function AfinixLandingBelowFold({ reduceMotion, theme = 'dark' }) {
+export default function AfinixLandingBelowFold({ reduceMotion, theme = 'light' }) {
     return (
         <>
             <ServicesCarousel reduceMotion={reduceMotion} />

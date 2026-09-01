@@ -1,0 +1,331 @@
+/* ==========================================================================
+   Agent Visual Inspector & Hierarchy Picker (DEV Mode)
+   ========================================================================== */
+
+/* Floating Toggle Trigger */
+.agent-inspector-trigger {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 100050;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 114, 227, 0.2);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.agent-inspector-trigger:hover {
+  background: #1e293b;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -4px rgba(0, 114, 227, 0.3);
+  border-color: #0072e3;
+}
+
+.agent-inspector-trigger.is-active {
+  background: #0072e3;
+  color: #ffffff;
+  border-color: #60a5fa;
+  box-shadow: 0 0 20px rgba(0, 114, 227, 0.6);
+  animation: agentPulse 2s infinite ease-in-out;
+}
+
+.agent-inspector-trigger i {
+  font-size: 0.9rem;
+}
+
+.agent-inspector-trigger kbd {
+  font-size: 0.65rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+  font-family: inherit;
+}
+
+/* Highlight Box Overlay */
+.agent-inspector-overlay-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 100040;
+}
+
+.agent-inspector-highlight {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid #0072e3;
+  background: rgba(0, 114, 227, 0.12);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+  transition: all 0.08s ease-out;
+}
+
+.agent-inspector-highlight.is-parent {
+  border: 2px dashed #06b6d4;
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.agent-inspector-badge {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  transform-origin: bottom left;
+}
+
+.agent-inspector-badge-dim {
+  color: #94a3b8;
+  font-size: 0.65rem;
+  font-weight: 400;
+}
+
+/* Docked Selection Hierarchy Panel */
+.agent-inspector-dock {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 48px);
+  max-width: 760px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.96);
+  color: #f8fafc;
+  border: 1px solid rgba(0, 114, 227, 0.4);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 100060;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  pointer-events: auto;
+  animation: agentDockSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.agent-inspector-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.agent-inspector-dock-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.agent-inspector-dock-title i {
+  font-size: 1rem;
+}
+
+.agent-inspector-dock-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.agent-inspector-dock-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Hierarchy Breadcrumbs Trail */
+.agent-inspector-breadcrumbs-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.agent-inspector-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.agent-inspector-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-family: ui-monospace, monospace;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.agent-inspector-crumb:hover {
+  background: rgba(0, 114, 227, 0.25);
+  border-color: #0072e3;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.agent-inspector-crumb.is-selected {
+  background: #0072e3;
+  border-color: #60a5fa;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 114, 227, 0.4);
+}
+
+.agent-inspector-crumb-sep {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+/* Selected Element Details */
+.agent-inspector-details {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.agent-inspector-detail-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.agent-inspector-detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.agent-inspector-detail-key {
+  color: #94a3b8;
+  font-weight: 600;
+  min-width: 90px;
+}
+
+.agent-inspector-detail-val {
+  color: #e2e8f0;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+
+/* Action Buttons */
+.agent-inspector-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-agent-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #0072e3;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 114, 227, 0.35);
+  transition: all 0.15s ease;
+}
+
+.btn-agent-copy:hover {
+  background: #005bb5;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 114, 227, 0.5);
+}
+
+.btn-agent-reinspect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-agent-reinspect:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+@keyframes agentPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(0, 114, 227, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(0, 114, 227, 0.9), 0 0 0 3px rgba(96, 165, 250, 0.3);
+  }
+}
+
+@keyframes agentDockSlideUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 16px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}

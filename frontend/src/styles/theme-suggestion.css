@@ -1,0 +1,155 @@
+/* ==========================================================================
+   Afinix Theme Suggestion Assistant Pop-up
+   ========================================================================== */
+
+.afinix-theme-toggle-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.afinix-theme-popup {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 280px;
+  max-width: calc(100vw - 32px);
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1e293b;
+  border: 1px solid rgba(0, 114, 227, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.18), 0 4px 12px -2px rgba(0, 114, 227, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10000;
+  transform-origin: top right;
+  animation: afinixPopupFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Floating arrow pointing up to the toggle button */
+.afinix-theme-popup::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 14px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-left: 1px solid rgba(0, 114, 227, 0.25);
+  border-top: 1px solid rgba(0, 114, 227, 0.25);
+  transform: rotate(45deg);
+}
+
+.afinix-theme-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.afinix-theme-popup-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0072e3;
+  letter-spacing: -0.01em;
+}
+
+.afinix-theme-popup-title i {
+  font-size: 0.9rem;
+}
+
+.afinix-theme-popup-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.afinix-theme-popup-close:hover {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.afinix-theme-popup-text {
+  margin: 0 0 12px 0;
+  font-size: 0.775rem;
+  line-height: 1.4;
+  color: #475569;
+}
+
+.afinix-theme-popup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-theme-suggest-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: #0072e3;
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 114, 227, 0.25);
+}
+
+.btn-theme-suggest-primary:hover {
+  background: #005bb5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 114, 227, 0.35);
+}
+
+.btn-theme-suggest-secondary {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-theme-suggest-secondary:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+
+@keyframes afinixPopupFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Placement adjustments inside Portal Header */
+.app-header .afinix-theme-toggle-wrapper {
+  position: relative;
+}
+
+.app-header .afinix-theme-popup {
+  top: calc(100% + 8px);
+}

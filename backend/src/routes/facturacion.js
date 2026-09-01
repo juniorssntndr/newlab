@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, forbidRole } from '../middleware/auth.js';
 import {
     emitirComprobanteSunat,
     anularComprobante,
@@ -33,6 +33,7 @@ export const __resetFacturacionDepsForTesting = () => {
 
 const router = Router();
 router.use(authenticateToken);
+router.use(forbidRole('visitador'));
 
 const IGV_DEFAULT_RATE = 0.18;
 

@@ -2856,6 +2856,56 @@ h4 {
   font-size: 1.05rem;
 }
 
+.pedidos-tracking .page-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: nowrap;
+}
+
+.pedidos-tracking .page-header-left {
+  min-width: 0;
+  flex: 1;
+}
+
+.pedidos-tracking .page-header-left h1 {
+  margin-bottom: 0;
+  line-height: 1.25;
+}
+
+.pedidos-tracking .page-header-left p {
+  margin-top: var(--space-1);
+  margin-bottom: 0;
+}
+
+.pedidos-tracking .page-header .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .pedidos-tracking .page-header {
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .pedidos-tracking .page-header-left h1 {
+    font-size: 1.35rem;
+  }
+
+  .pedidos-tracking .page-header-left p {
+    font-size: 0.8125rem;
+  }
+
+  .pedidos-tracking .page-header .btn {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+  }
+}
+
 .pedidos-tracking .pedidos-toolbar,
 .pedidos-tracking .pedidos-list-panel {
   border-radius: 16px;
@@ -3187,20 +3237,47 @@ h4 {
 }
 
 .pedido-detail-header {
-  flex-wrap: wrap;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.pedido-detail-header .page-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .pedido-detail-title {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   flex-wrap: wrap;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.02em;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.pedido-detail-header .btn-icon {
+  width: 1.85rem;
+  height: 1.85rem;
+  min-width: 1.85rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
 }
 
 .pedido-detail-flow {
-  margin-bottom: var(--space-5);
-  padding: 0.85rem 1rem;
-  border-radius: 16px;
+  margin-bottom: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 14px;
 }
 
 /* Compacto en móvil; timeline con labels en desktop */
@@ -3295,7 +3372,8 @@ h4 {
 
 .pedido-detail-hero .order-wizard-confirm-stat {
   gap: 0.45rem;
-  padding: 1rem 1.2rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 14px;
 }
 
 .pedido-detail-hero .order-wizard-confirm-label {
@@ -3800,6 +3878,188 @@ h4 {
   word-break: break-word;
 }
 
+/* ============================================ */
+/* Finanzas Mobile Bento Cards                 */
+/* ============================================ */
+.finanzas-mobile-cards {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--space-3) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.finanzas-card-bento {
+  border: 1px solid var(--color-border-light);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden;
+}
+
+.finanzas-card-bento:active {
+  transform: scale(0.99);
+}
+
+.finanzas-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.finanzas-card-main-info {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.finanzas-card-patient {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.finanzas-card-meta {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  word-break: break-word;
+}
+
+.finanzas-card-code {
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.finanzas-card-clinic {
+  color: var(--color-text-secondary);
+}
+
+.finanzas-card-date {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.finanzas-card-head .badge {
+  flex-shrink: 0;
+}
+
+.finanzas-card-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--color-border-light);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.finanzas-card-breakdown {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.finanzas-card-breakdown-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finanzas-card-breakdown-item em {
+  font-style: normal;
+  color: var(--color-text-tertiary);
+  margin-right: 4px;
+}
+
+.finanzas-card-saldo {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.finanzas-card-saldo-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+}
+
+.finanzas-card-saldo-amount {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.finanzas-card-saldo-amount.is-pending {
+  color: #D97706;
+}
+
+.finanzas-card-saldo-amount.is-paid {
+  color: var(--color-success, #10B981);
+}
+
+[data-theme="dark"] .finanzas-card-bento {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .finanzas-card-saldo-amount.is-pending {
+  color: #FBBF24;
+}
+
+.finanzas-card-progress-bar {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-bg-alt);
+  overflow: hidden;
+  margin-top: 1px;
+}
+
+.finanzas-card-progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
 .mobile-card-actions {
   margin-top: var(--space-3);
   display: flex;
@@ -4140,12 +4400,24 @@ h4 {
 /* FullCalendar                                 */
 /* ============================================ */
 .fc {
-  --fc-border-color: var(--color-border);
+  --fc-border-color: var(--color-border-light);
   --fc-page-bg-color: transparent;
   --fc-small-font-size: 0.75rem;
-  --fc-today-bg-color: rgba(var(--color-primary-rgb), 0.08);
+  --fc-today-bg-color: rgba(var(--color-primary-rgb), 0.04);
   --fc-neutral-bg-color: var(--color-bg-alt);
   --fc-list-event-hover-bg-color: var(--color-surface-hover);
+}
+
+.fc-theme-standard th,
+.fc-theme-standard td,
+.fc-theme-standard .fc-scrollgrid {
+  border-color: var(--color-border-light) !important;
+}
+
+.fc .fc-scrollgrid {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border-light);
 }
 
 .fc .fc-toolbar-title {
@@ -4177,40 +4449,124 @@ h4 {
   color: var(--color-text);
 }
 
+/* Col Headers (lun, mar, mié...) */
+.fc .fc-col-header-cell {
+  background: var(--color-bg-alt);
+  border-color: var(--color-border-light);
+  padding: 0.4rem 0;
+}
+
+.fc .fc-col-header-cell-cushion {
+  color: var(--color-text-secondary) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none !important;
+}
+
+/* Day grid numbers & today */
+.fc .fc-daygrid-day-top {
+  flex-direction: row;
+  justify-content: flex-end;
+  padding: 0.15rem 0.25rem 0 0;
+}
+
 .fc .fc-daygrid-day-number {
   font-size: 0.75rem;
+  font-weight: 500;
   color: var(--color-text-secondary);
+  text-decoration: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.fc .fc-day-today {
+  background: rgba(var(--color-primary-rgb), 0.04) !important;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+  background: var(--color-primary) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.fc .fc-day-other .fc-daygrid-day-number {
+  opacity: 0.35;
 }
 
 .fc .fc-event {
   border-radius: 6px;
-  padding: 2px 6px;
+  padding: 1px 4px;
   font-weight: 600;
 }
 
 .calendar-legend {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  padding: 0.65rem 0 0.85rem;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.25rem 0.25rem 0.65rem 0.25rem;
   border-bottom: 1px solid var(--color-border-light);
   margin-bottom: var(--space-3);
+}
+
+.calendar-legend::-webkit-scrollbar {
+  display: none;
 }
 
 .calendar-legend-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--color-bg-alt);
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-light);
+  transition: all 0.15s ease;
+}
+
+.calendar-legend-item.has-count {
+  border-color: rgba(var(--color-primary-rgb), 0.25);
+  background: rgba(var(--color-primary-rgb), 0.05);
+  color: var(--color-text);
 }
 
 .calendar-legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
   display: inline-block;
+  flex-shrink: 0;
+}
+
+.calendar-legend-label {
+  font-weight: 500;
+}
+
+.calendar-legend-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  color: var(--color-text);
+  line-height: 1.1;
+  margin-left: 2px;
 }
 
 .calendar-legend-pill {
@@ -4572,7 +4928,21 @@ h4 {
 }
 
 [data-theme="dark"] .calendar-legend-item {
+  background: var(--color-bg-alt);
+  border-color: var(--color-border);
   color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .calendar-legend-item.has-count {
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: rgba(var(--color-primary-rgb), 0.12);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .calendar-legend-badge {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .calendar-day-item {
@@ -4789,10 +5159,17 @@ h4 {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
+    margin-bottom: var(--space-3);
+  }
+
+  .page-header p,
+  .page-header-left p {
+    display: none !important;
   }
 
   .page-header-left h1 {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
+    margin-bottom: 0;
   }
 
   .pedido-actions {
@@ -4890,6 +5267,15 @@ h4 {
     row-gap: var(--space-4);
   }
 
+  .finanzas-mobile-cards.mobile-cards.mobile-only {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--space-3) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
   .mobile-card-grid {
     grid-template-columns: 1fr;
   }
@@ -4907,8 +5293,24 @@ h4 {
   }
 
   /* DetallePedido: en móvil solo la barra compacta, sin lista de pasos */
+  .pedido-detail-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+  }
+
   .pedido-detail-flow .pedido-detail-status-timeline {
     display: none;
+  }
+
+  .pedido-detail-flow {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 0.95rem;
+  }
+
+  .pedido-detail-hero .order-wizard-confirm-stat {
+    padding: 0.75rem 0.95rem;
   }
 
   .table-scroll-dense .data-table {
@@ -4943,13 +5345,14 @@ h4 {
   }
 
   .calendar-legend {
-    padding: var(--space-2);
-    margin-bottom: var(--space-3);
-    row-gap: var(--space-2);
+    padding: 0.2rem 0.15rem 0.5rem;
+    margin-bottom: var(--space-2);
+    gap: var(--space-2);
   }
 
   .calendar-legend-item {
     font-size: 0.6875rem;
+    padding: 0.2rem 0.55rem;
   }
 
   .fc-event-code {

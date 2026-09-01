@@ -24,7 +24,8 @@ const seed = async () => {
       INSERT INTO nl_roles (nombre, permisos, activo, es_admin) VALUES
         ('Administrador', '{"all": true}', true, true),
         ('Técnico', '{"pedidos": true, "produccion": true}', true, false),
-        ('Cliente', '{"pedidos_propios": true}', true, false)
+        ('Cliente', '{"pedidos_propios": true}', true, false),
+        ('Visitador', '{"crm": true, "visitas_propias": true}', true, false)
       RETURNING id, nombre
     `);
     const roleMap = {};
