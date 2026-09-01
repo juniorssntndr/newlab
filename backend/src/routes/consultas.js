@@ -49,7 +49,7 @@ async function lookupWithLocalFallback(pool, kind, numero) {
     }
 }
 
-router.get('/dni/:numero', authenticateToken, requireRole('admin', 'tecnico'), async (req, res) => {
+router.get('/dni/:numero', authenticateToken, requireRole('admin', 'operador', 'tecnico'), async (req, res) => {
     try {
         const data = await lookupWithLocalFallback(req.app.locals.pool, 'dni', req.params.numero);
         res.json(data);
@@ -59,7 +59,7 @@ router.get('/dni/:numero', authenticateToken, requireRole('admin', 'tecnico'), a
     }
 });
 
-router.get('/ruc/:numero', authenticateToken, requireRole('admin', 'tecnico'), async (req, res) => {
+router.get('/ruc/:numero', authenticateToken, requireRole('admin', 'operador', 'tecnico'), async (req, res) => {
     try {
         const data = await lookupWithLocalFallback(req.app.locals.pool, 'ruc', req.params.numero);
         res.json(data);
@@ -74,7 +74,7 @@ router.get('/ruc/:numero', authenticateToken, requireRole('admin', 'tecnico'), a
  * Guarda/actualiza un DNI o RUC en el registro local del laboratorio.
  * Body: { tipoDoc: '1'|'6', numDoc, rznSocial, direccion?, ubigeo?, notInReniec? }
  */
-router.post('/identidad', authenticateToken, requireRole('admin', 'tecnico'), async (req, res) => {
+router.post('/identidad', authenticateToken, requireRole('admin', 'operador', 'tecnico'), async (req, res) => {
     try {
         const payload = clientToOverridePayload(req.body || {}, {
             notInReniec: req.body?.notInReniec !== false,

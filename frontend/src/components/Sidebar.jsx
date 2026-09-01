@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
-import { canAccessFinancialModules, isAdminRole, isClientRole, isVisitorRole } from '../utils/accessControl.js';
+import {
+    canAccessCrm,
+    canAccessFinancialModules,
+    canAccessLabProduction,
+    isAdminRole,
+    isClientRole,
+    isOperatorRole,
+    isTechnicianRole,
+    isVisitorRole
+} from '../utils/accessControl.js';
 import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
 import AfinixLogo from './AfinixLogo.jsx';
 
@@ -14,6 +23,8 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const isClient = isClientRole(user);
     const isVisitor = isVisitorRole(user);
     const canAccessFinance = canAccessFinancialModules(user);
+    const canAccessProduction = canAccessLabProduction(user);
+    const canAccessCrmModule = canAccessCrm(user);
     const [logoTheme, setLogoTheme] = useState(getAppLogoTheme);
 
     useEffect(() => {
@@ -46,22 +57,30 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     ];
 
     const labLinks = [
-        ...(isAdminRole(user)
+        ...(isAdminRole(user) || isOperatorRole(user)
             ? [{ to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' }]
             : []),
         { to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Cola de pedidos' },
-        ...(canAccessFinance
+        ...(isAdminRole(user)
             ? [{ to: '/finanzas', icon: 'bi-cash-stack', label: 'Finanzas' }]
             : []),
         ...(canAccessFinance
             ? [{ to: '/caja-gastos', icon: 'bi-wallet2', label: isAdminRole(user) ? 'Caja y Gastos' : 'Caja' }]
             : []),
         { to: '/calendario', icon: 'bi-calendar3', label: 'Calendario' },
-        { to: '/crm/resumen', icon: 'bi-geo-fill', label: 'CRM Territorial' },
-        { to: '/crm/clinicas', icon: 'bi-building', label: 'Clínicas' },
-        { to: '/crm/doctores', icon: 'bi-person-badge', label: 'Doctores' },
-        { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo' },
-        { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
+        ...(canAccessCrmModule
+            ? [
+                { to: '/crm/resumen', icon: 'bi-geo-fill', label: 'CRM Territorial' },
+                { to: '/crm/clinicas', icon: 'bi-building', label: 'Clínicas' },
+                { to: '/crm/doctores', icon: 'bi-person-badge', label: 'Doctores' },
+            ]
+            : []),
+        ...(canAccessProduction
+            ? [
+                { to: '/productos', icon: 'bi-box-seam', label: 'Catálogo' },
+                { to: '/almacen', icon: 'bi-boxes', label: 'Almacén' },
+            ]
+            : []),
         ...(isAdminRole(user) ? [{ to: '/equipo', icon: 'bi-people', label: 'Equipo' }] : []),
         { to: '/cuenta', icon: 'bi-person-circle', label: 'Cuenta' },
     ];

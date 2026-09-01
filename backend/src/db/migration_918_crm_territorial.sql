@@ -29,7 +29,7 @@ ALTER TABLE nl_doctores ALTER COLUMN especialidad SET NOT NULL;
 ALTER TABLE nl_usuarios DROP CONSTRAINT IF EXISTS nl_usuarios_tipo_check;
 ALTER TABLE nl_usuarios
   ADD CONSTRAINT nl_usuarios_tipo_check
-  CHECK (tipo IN ('admin', 'tecnico', 'cliente', 'visitador'));
+  CHECK (tipo IN ('admin', 'operador', 'tecnico', 'cliente', 'visitador'));
 
 INSERT INTO nl_roles (nombre, permisos, activo, es_admin)
 VALUES ('Visitador', '{"crm": true, "visitas_propias": true}'::jsonb, TRUE, FALSE)

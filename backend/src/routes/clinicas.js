@@ -33,7 +33,7 @@ router.get('/', async (req, res, next) => {
 
 // POST /api/clinicas/preview-ruc — lookup RUC and return proposal without saving
 // Must be registered BEFORE /:id
-router.post('/preview-ruc', requireRole('admin', 'tecnico'), async (req, res) => {
+router.post('/preview-ruc', requireRole('admin', 'operador', 'tecnico'), async (req, res) => {
     const { ruc } = req.body;
     if (!ruc || !/^\d{11}$/.test(String(ruc))) {
         return res.status(400).json({ error: 'El RUC debe tener exactamente 11 dígitos numéricos', code: 'INVALID_DOCUMENT' });
@@ -67,7 +67,7 @@ router.post('/preview-ruc', requireRole('admin', 'tecnico'), async (req, res) =>
 
 // POST /api/clinicas/confirm — create or update clinic from validated RUC data
 // Must be registered BEFORE /:id
-router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) => {
+router.post('/confirm', requireRole('admin', 'operador', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { ruc, overrides = {} } = req.body;
@@ -150,7 +150,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // POST /api/clinicas
-router.post('/', requireRole('admin', 'tecnico'), async (req, res, next) => {
+router.post('/', requireRole('admin', 'operador', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const {
@@ -193,7 +193,7 @@ router.post('/', requireRole('admin', 'tecnico'), async (req, res, next) => {
 });
 
 // PUT /api/clinicas/:id
-router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
+router.put('/:id', requireRole('admin', 'operador', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const {

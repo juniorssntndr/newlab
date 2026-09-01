@@ -3,7 +3,16 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './state/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
-import { canAccessFinancialModules, isAdminRole, isClientRole, isVisitorRole, canAccessCrm } from './utils/accessControl.js';
+import {
+    canAccessCrm,
+    canAccessFinancialModules,
+    canAccessLabProduction,
+    isAdminRole,
+    isClientRole,
+    isOperatorRole,
+    isTechnicianRole,
+    isVisitorRole
+} from './utils/accessControl.js';
 import Login from './pages/Login.jsx';
 import AfinixLanding from './pages/AfinixLanding.jsx';
 import AfinixSeoArticlePage from './pages/AfinixSeoArticlePage.jsx';
@@ -57,6 +66,24 @@ const LabOnlyRoute = ({ children }) => {
     return children;
 };
 
+const DashboardRoute = ({ children }) => {
+    const { user, loading } = useAuth();
+    if (loading) return <LoadingScreen />;
+    if (isVisitorRole(user)) return <Navigate to="/crm/resumen" replace />;
+    if (isClientRole(user)) return <Navigate to="/pedidos" replace />;
+    if (isTechnicianRole(user)) return <Navigate to="/pedidos" replace />;
+    return children;
+};
+
+const ProductionRoute = ({ children }) => {
+    const { user, loading } = useAuth();
+    if (loading) return <LoadingScreen />;
+    if (isVisitorRole(user)) return <Navigate to="/crm/resumen" replace />;
+    if (isClientRole(user)) return <Navigate to="/pedidos" replace />;
+    if (!canAccessLabProduction(user)) return <Navigate to="/pedidos" replace />;
+    return children;
+};
+
 const OrdersRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
@@ -77,7 +104,7 @@ const FinancialAccessRoute = ({ children }) => {
     if (loading) return <LoadingScreen />;
     if (isVisitorRole(user)) return <Navigate to="/crm/resumen" replace />;
     if (!canAccessFinancialModules(user)) {
-        return <Navigate to={isClientRole(user) ? '/pedidos' : '/dashboard'} replace />;
+        return <Navigate to={isClientRole(user) ? '/pedidos' : '/pedidos'} replace />;
     }
     return children;
 };
@@ -86,7 +113,7 @@ const CrmRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
     if (!canAccessCrm(user)) {
-        return <Navigate to={isClientRole(user) ? '/pedidos' : '/dashboard'} replace />;
+        return <Navigate to={isClientRole(user) ? '/pedidos' : '/pedidos'} replace />;
     }
     return children;
 };
@@ -102,9 +129,9 @@ const App = () => {
                 ))}
                 <Route path="/login" element={<Login />} />
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                    <Route path="dashboard" element={<LabOnlyRoute><Dashboard /></LabOnlyRoute>} />
-                    <Route path="productos" element={<LabOnlyRoute><Productos /></LabOnlyRoute>} />
-                    <Route path="almacen" element={<LabOnlyRoute><Almacen /></LabOnlyRoute>} />
+                    <Route path="dashboard" element={<DashboardRoute><Dashboard /></DashboardRoute>} />
+                    <Route path="productos" element={<ProductionRoute><Productos /></ProductionRoute>} />
+                    <Route path="almacen" element={<ProductionRoute><Almacen /></ProductionRoute>} />
                     <Route path="pedidos" element={<OrdersRoute><Pedidos /></OrdersRoute>} />
                     <Route path="pedidos/nuevo" element={<OrdersRoute><NuevoPedido /></OrdersRoute>} />
                     <Route path="pedidos/:id" element={<OrdersRoute><DetallePedido /></OrdersRoute>} />

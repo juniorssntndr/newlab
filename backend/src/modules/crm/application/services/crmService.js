@@ -2,9 +2,9 @@ import { calculateCommercialHealth, limaDate, suggestNextVisitDate } from '../..
 import { crmRepositoryHelpers } from '../../infrastructure/repositories/crmPgRepository.js';
 
 const { normalizeName, normalizePhone } = crmRepositoryHelpers;
-const STAFF_ROLES = new Set(['admin', 'tecnico', 'visitador']);
+const STAFF_ROLES = new Set(['admin', 'operador', 'tecnico', 'visitador']);
 const ADMIN_ROLES = new Set(['admin']);
-const MANAGER_ROLES = new Set(['admin', 'tecnico']);
+const MANAGER_ROLES = new Set(['admin']);
 const TYPES = new Set(['clinica', 'consultorio', 'odontologo', 'otro']);
 const STAGES = new Set(['nuevo', 'contactado', 'visita_programada', 'visitado', 'convertido', 'descartado']);
 const VISIT_STATES = new Set(['programada', 'en_curso', 'completada', 'sin_contacto', 'reprogramada', 'cancelada']);

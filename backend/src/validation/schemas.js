@@ -51,24 +51,46 @@ export const createMovimientoFinancieroSchema = z.object({
     monto: montoSchema,
     grupo_gasto: z.enum(['operativo', 'costo_directo', 'otro']).optional().nullable(),
     categoria_gasto: z.string().trim().max(80).optional().nullable(),
+    beneficiario: z.string().trim().max(200).optional().nullable(),
     producto_id: z.coerce.number().int().positive().optional().nullable(),
     clinica_id: z.coerce.number().int().positive().optional().nullable(),
     descripcion: z.string().trim().max(1000).optional().nullable(),
-    referencia: z.string().trim().max(120).optional().nullable()
+    referencia: z.string().trim().max(120).optional().nullable(),
+
+    // Campos de sustento (Fiscal, Simple, Ninguno)
+    sustento_tipo: z.enum(['fiscal', 'simple', 'ninguno']).default('ninguno'),
+    sustento_comprobante_tipo: z.string().trim().max(50).optional().nullable(),
+    sustento_emisor_doc: z.string().trim().max(20).optional().nullable(),
+    sustento_emisor_razon_social: z.string().trim().max(200).optional().nullable(),
+    sustento_serie: z.string().trim().max(20).optional().nullable(),
+    sustento_numero: z.string().trim().max(30).optional().nullable(),
+    sustento_fecha_emision: z.string().max(30).optional().nullable(),
+    sustento_archivo_url: z.string().trim().max(2000).optional().nullable(),
+    sustento_nota: z.string().trim().max(1000).optional().nullable(),
+    sustento_observacion: z.string().trim().max(1000).optional().nullable()
 }).superRefine((value, ctx) => {
-    if (value.tipo === 'egreso' && !value.categoria_gasto) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'La categoria de gasto es obligatoria para egresos.',
-            path: ['categoria_gasto']
-        });
-    }
-    if (value.tipo === 'egreso' && !value.grupo_gasto) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'El grupo de gasto es obligatorio para egresos.',
-            path: ['grupo_gasto']
-        });
+    if (value.tipo === 'egreso') {
+        if (!value.categoria_gasto) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'La categoría de gasto es obligatoria para egresos.',
+                path: ['categoria_gasto']
+            });
+        }
+        if (!value.grupo_gasto) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'El grupo de gasto es obligatorio para egresos.',
+                path: ['grupo_gasto']
+            });
+        }
+        if (value.sustento_tipo === 'ninguno' && (!value.sustento_observacion || !value.sustento_observacion.trim())) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Para gastos sin sustento fiscal o simple, la observación explicativa es obligatoria.',
+                path: ['sustento_observacion']
+            });
+        }
     }
 });
 

@@ -79,7 +79,7 @@ router.get('/', async (req, res, next) => {
 
 // POST /api/doctores/preview-dni — lookup DNI, return proposal without saving
 // Must be registered BEFORE /:id
-router.post('/preview-dni', requireRole('admin', 'tecnico'), async (req, res) => {
+router.post('/preview-dni', requireRole('admin', 'operador', 'tecnico'), async (req, res) => {
     const { dni } = req.body;
     if (!dni || !/^\d{8}$/.test(String(dni))) {
         return res.status(400).json({ error: 'El DNI debe tener exactamente 8 dígitos numéricos', code: 'INVALID_DOCUMENT' });
@@ -105,7 +105,7 @@ router.post('/preview-dni', requireRole('admin', 'tecnico'), async (req, res) =>
 
 // POST /api/doctores/confirm — create doctor from validated DNI data
 // Must be registered BEFORE /:id
-router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) => {
+router.post('/confirm', requireRole('admin', 'operador', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { dni, cop, email, telefono, clinicaIds, fecha_nacimiento, especialidad, direccion } = req.body;
@@ -185,7 +185,7 @@ router.post('/confirm', requireRole('admin', 'tecnico'), async (req, res, next) 
 });
 
 // POST /api/doctores — direct creation; DNI/Reniec enrichment is optional.
-router.post('/', requireRole('admin', 'tecnico'), async (req, res, next) => {
+router.post('/', requireRole('admin', 'operador', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { dni, nombre, nombre_completo, nombres, apellido_paterno, apellido_materno, especialidad,
@@ -240,7 +240,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // PUT /api/doctores/:id
-router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
+router.put('/:id', requireRole('admin', 'operador', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const editable = ['dni','nombres','apellido_paterno','apellido_materno','nombre_completo','especialidad','cop','email','telefono','direccion'];
@@ -288,7 +288,7 @@ router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
 });
 
 // POST /api/doctores/:id/clinicas — replace clinic associations
-router.post('/:id/clinicas', requireRole('admin', 'tecnico'), async (req, res, next) => {
+router.post('/:id/clinicas', requireRole('admin', 'operador', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { clinicaIds } = req.body;

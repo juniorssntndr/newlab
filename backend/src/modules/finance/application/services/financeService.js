@@ -1,4 +1,4 @@
-const GASTOS_OPERATIVOS = ['alquiler', 'servicios', 'sueldos', 'logistica', 'marketing'];
+const GASTOS_OPERATIVOS = ['servicios', 'sueldos', 'alquiler', 'logistica', 'combustible', 'movilidad', 'marketing', 'otros'];
 const COSTOS_DIRECTOS = ['materiales'];
 
 const normalizePago = (pago) => ({
@@ -371,6 +371,254 @@ export const makeFinanceService = ({ financeRepository }) => ({
                 pedido_id: pago.pedido_id,
                 pedido_codigo: pago.pedido_codigo || '',
                 monto: parseFloat(pago.monto || 0)
+            }
+        };
+    },
+    registerSaldoFavor: async ({ user, clinicaId, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const montoNumber = parseFloat(body?.monto);
+        if (Number.isNaN(montoNumber) || montoNumber <= 0) {
+            return { ok: false, status: 400, error: 'El monto debe ser un valor numérico mayor a 0' };
+        }
+
+        const result = await financeRepository.registerSaldoFavor({
+            clinicaId: Number(clinicaId),
+            actorUserId: user.id,
+            paymentInput: {
+                ...body,
+                monto: montoNumber
+            }
+        });
+
+        if (result.accountError) {
+            return { ok: false, status: 400, error: result.accountError };
+        }
+
+        return {
+            ok: true,
+            status: 201,
+            data: normalizePago(result.data),
+            meta: {
+                clinica_id: Number(clinicaId),
+                monto: montoNumber
+            }
+        };
+    },
+    listSaldosFavorByClinica: async ({ user, clinicaId }) => {
+        const clinicaIdNumber = Number(clinicaId);
+        if (user?.tipo === 'cliente' && Number(user.clinica_id) !== clinicaIdNumber) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const rows = await financeRepository.listSaldosFavorByClinica({ clinicaId: clinicaIdNumber });
+        return {
+            ok: true,
+            status: 200,
+            data: rows.map((r) => ({
+                ...normalizePago(r),
+                saldo_disponible: parseFloat(r.saldo_disponible || 0)
+            }))
+        };
+    },
+    aplicarSaldoFavor: async ({ user, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const { pago_origen_id, pedido_destino_id, monto_aplicado, notas } = body;
+        const montoNumber = parseFloat(monto_aplicado);
+        if (!pago_origen_id || !pedido_destino_id || Number.isNaN(montoNumber) || montoNumber <= 0) {
+            return { ok: false, status: 400, error: 'Datos de aplicación incompletos o monto inválido' };
+        }
+
+        return financeRepository.aplicarSaldoFavor({
+            pagoOrigenId: Number(pago_origen_id),
+            pedidoDestinoId: Number(pedido_destino_id),
+            montoAplicado: montoNumber,
+            notas,
+            actorUserId: user.id
+        });
+    },
+    listAplicacionesSaldoFavor: async ({ user, clinicaId }) => {
+        const clinicaIdNumber = Number(clinicaId);
+        if (user?.tipo === 'cliente' && Number(user.clinica_id) !== clinicaIdNumber) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const rows = await financeRepository.listAplicacionesSaldoFavor({ clinicaId: clinicaIdNumber });
+        return {
+            ok: true,
+            status: 200,
+            data: rows.map((r) => ({
+                ...r,
+                monto_aplicado: parseFloat(r.monto_aplicado || 0)
+            }))
+        };
+    },
+    getActiveCashSession: async ({ user }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const data = await financeRepository.getActiveCashSession();
+        return {
+            ok: true,
+            status: 200,
+            data
+        };
+    },
+    openCashSession: async ({ user, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const montoApertura = parseFloat(body?.monto_apertura || 0);
+        return financeRepository.openCashSession({
+            montoApertura: Number.isNaN(montoApertura) ? 0 : montoApertura,
+            turno: body?.turno || 'general',
+            fecha: body?.fecha || null,
+            actorUserId: user.id
+        });
+    },
+    closeCashSession: async ({ user, sesionId, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const montoRealEfectivo = parseFloat(body?.monto_real_efectivo);
+        if (Number.isNaN(montoRealEfectivo) || montoRealEfectivo < 0) {
+            return { ok: false, status: 400, error: 'El monto real en efectivo es obligatorio para el arqueo' };
+        }
+
+        return financeRepository.closeCashSession({
+            sesionId: Number(sesionId),
+            montoRealEfectivo,
+            observacionesCierre: body?.observaciones_cierre || null,
+            actorUserId: user.id
+        });
+    },
+    reopenCashSession: async ({ user, sesionId, body }) => {
+        if (user?.tipo !== 'admin') {
+            return { ok: false, status: 403, error: 'Solo los administradores pueden reabrir una caja cerrada' };
+        }
+
+        return financeRepository.reopenCashSession({
+            sesionId: Number(sesionId),
+            motivo: body?.motivo || null,
+            actorUserId: user.id
+        });
+    },
+    listCashSessions: async ({ user, query }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const limit = parseInt(query?.limit || '30', 10);
+        const offset = parseInt(query?.offset || '0', 10);
+        const rows = await financeRepository.listCashSessions({ limit, offset });
+
+        return {
+            ok: true,
+            status: 200,
+            data: rows.map((r) => ({
+                ...r,
+                monto_apertura: parseFloat(r.monto_apertura || 0),
+                monto_esperado_efectivo: parseFloat(r.monto_esperado_efectivo || 0),
+                monto_real_efectivo: r.monto_real_efectivo !== null ? parseFloat(r.monto_real_efectivo) : null,
+                diferencia_efectivo: r.diferencia_efectivo !== null ? parseFloat(r.diferencia_efectivo) : null,
+                total_ingresos_efectivo: parseFloat(r.total_ingresos_efectivo || 0),
+                total_egresos_efectivo: parseFloat(r.total_egresos_efectivo || 0),
+                total_ingresos_banco: parseFloat(r.total_ingresos_banco || 0),
+                total_egresos_banco: parseFloat(r.total_egresos_banco || 0)
+            }))
+        };
+    },
+    getCobranzasOverview: async ({ user }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const rows = await financeRepository.getCobranzasOverview();
+
+        // Calculate summary KPIs across all clinics
+        let totalDeudaCalle = 0;
+        let totalDeuda015 = 0;
+        let totalDeuda1530 = 0;
+        let totalDeuda30Mas = 0;
+        let totalSaldoFavorCustodia = 0;
+        let totalDeudaNeta = 0;
+
+        const clinicas = rows.map((r) => {
+            const totalDeuda = parseFloat(r.total_deuda || 0);
+            const d015 = parseFloat(r.deuda_0_15 || 0);
+            const d1530 = parseFloat(r.deuda_15_30 || 0);
+            const d30mas = parseFloat(r.deuda_30_mas || 0);
+            const sf = parseFloat(r.saldo_favor_disponible || 0);
+            const dn = parseFloat(r.deuda_neta || 0);
+
+            totalDeudaCalle += totalDeuda;
+            totalDeuda015 += d015;
+            totalDeuda1530 += d1530;
+            totalDeuda30Mas += d30mas;
+            totalSaldoFavorCustodia += sf;
+            totalDeudaNeta += dn;
+
+            return {
+                ...r,
+                pedidos_pendientes_count: parseInt(r.pedidos_pendientes_count || '0', 10),
+                total_deuda: totalDeuda,
+                deuda_0_15: d015,
+                deuda_15_30: d1530,
+                deuda_30_mas: d30mas,
+                saldo_favor_disponible: sf,
+                deuda_neta: dn
+            };
+        });
+
+        return {
+            ok: true,
+            status: 200,
+            data: {
+                kpis: {
+                    total_deuda_calle: totalDeudaCalle,
+                    total_deuda_0_15: totalDeuda015,
+                    total_deuda_15_30: totalDeuda1530,
+                    total_deuda_30_mas: totalDeuda30Mas,
+                    total_saldo_favor_custodia: totalSaldoFavorCustodia,
+                    total_deuda_neta: totalDeudaNeta,
+                    clinicas_con_deuda_count: clinicas.filter((c) => c.deuda_neta > 0).length
+                },
+                clinicas
+            }
+        };
+    },
+    getClinicDebtDetail: async ({ user, clinicaId }) => {
+        const clinicaIdNumber = Number(clinicaId);
+        if (user?.tipo === 'cliente' && Number(user.clinica_id) !== clinicaIdNumber) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const data = await financeRepository.getClinicDebtDetail({ clinicaId: clinicaIdNumber });
+
+        return {
+            ok: true,
+            status: 200,
+            data: {
+                pedidos_pendientes: data.pedidos_pendientes.map((p) => ({
+                    ...p,
+                    total: parseFloat(p.total || 0),
+                    pagado: parseFloat(p.pagado || 0),
+                    saldo: parseFloat(p.saldo || 0),
+                    dias_antiguedad: parseInt(p.dias_antiguedad || '0', 10)
+                })),
+                saldos_favor: data.saldos_favor.map((s) => ({
+                    ...s,
+                    monto: parseFloat(s.monto || 0),
+                    saldo_disponible: parseFloat(s.saldo_disponible || 0)
+                }))
             }
         };
     }

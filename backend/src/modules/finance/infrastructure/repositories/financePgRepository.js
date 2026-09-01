@@ -150,18 +150,38 @@ export const makeFinancePgRepository = ({ pool }) => ({
             monto,
             grupo_gasto,
             categoria_gasto,
+            beneficiario,
             producto_id,
             clinica_id,
             descripcion,
-            referencia
+            referencia,
+            sustento_tipo = 'ninguno',
+            sustento_comprobante_tipo,
+            sustento_emisor_doc,
+            sustento_emisor_razon_social,
+            sustento_serie,
+            sustento_numero,
+            sustento_fecha_emision,
+            sustento_archivo_url,
+            sustento_nota,
+            sustento_observacion
         } = movementInput;
 
         const result = await pool.query(
             `INSERT INTO nl_fin_movimientos (
                 tipo, tipo_fondo, cuenta_id, fecha_movimiento, monto, grupo_gasto, categoria_gasto,
-                producto_id, clinica_id, descripcion, referencia, creado_por
+                beneficiario, producto_id, clinica_id, descripcion, referencia,
+                sustento_tipo, sustento_comprobante_tipo, sustento_emisor_doc, sustento_emisor_razon_social,
+                sustento_serie, sustento_numero, sustento_fecha_emision, sustento_archivo_url,
+                sustento_nota, sustento_observacion, creado_por
             )
-            VALUES ($1, $2, $3, COALESCE($4::date, CURRENT_DATE), $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES (
+                $1, $2, $3, COALESCE($4::date, CURRENT_DATE), $5, $6, $7,
+                $8, $9, $10, $11, $12,
+                $13, $14, $15, $16,
+                $17, $18, $19::date, $20,
+                $21, $22, $23
+            )
             RETURNING *`,
             [
                 tipo,
@@ -171,10 +191,21 @@ export const makeFinancePgRepository = ({ pool }) => ({
                 monto,
                 grupo_gasto || null,
                 categoria_gasto || null,
+                beneficiario || null,
                 producto_id || null,
                 clinica_id || null,
                 descripcion || null,
                 referencia || null,
+                sustento_tipo || 'ninguno',
+                sustento_comprobante_tipo || null,
+                sustento_emisor_doc || null,
+                sustento_emisor_razon_social || null,
+                sustento_serie || null,
+                sustento_numero || null,
+                sustento_fecha_emision || null,
+                sustento_archivo_url || null,
+                sustento_nota || null,
+                sustento_observacion || null,
                 actorUserId
             ]
         );
@@ -190,10 +221,21 @@ export const makeFinancePgRepository = ({ pool }) => ({
             monto,
             grupo_gasto,
             categoria_gasto,
+            beneficiario,
             producto_id,
             clinica_id,
             descripcion,
-            referencia
+            referencia,
+            sustento_tipo = 'ninguno',
+            sustento_comprobante_tipo,
+            sustento_emisor_doc,
+            sustento_emisor_razon_social,
+            sustento_serie,
+            sustento_numero,
+            sustento_fecha_emision,
+            sustento_archivo_url,
+            sustento_nota,
+            sustento_observacion
         } = movementInput;
 
         const result = await pool.query(
@@ -205,10 +247,21 @@ export const makeFinancePgRepository = ({ pool }) => ({
                  monto = $6,
                  grupo_gasto = $7,
                  categoria_gasto = $8,
-                 producto_id = $9,
-                 clinica_id = $10,
-                 descripcion = $11,
-                 referencia = $12
+                 beneficiario = $9,
+                 producto_id = $10,
+                 clinica_id = $11,
+                 descripcion = $12,
+                 referencia = $13,
+                 sustento_tipo = $14,
+                 sustento_comprobante_tipo = $15,
+                 sustento_emisor_doc = $16,
+                 sustento_emisor_razon_social = $17,
+                 sustento_serie = $18,
+                 sustento_numero = $19,
+                 sustento_fecha_emision = $20::date,
+                 sustento_archivo_url = $21,
+                 sustento_nota = $22,
+                 sustento_observacion = $23
              WHERE id = $1
              RETURNING *`,
             [
@@ -220,10 +273,21 @@ export const makeFinancePgRepository = ({ pool }) => ({
                 monto,
                 grupo_gasto || null,
                 categoria_gasto || null,
+                beneficiario || null,
                 producto_id || null,
                 clinica_id || null,
                 descripcion || null,
-                referencia || null
+                referencia || null,
+                sustento_tipo || 'ninguno',
+                sustento_comprobante_tipo || null,
+                sustento_emisor_doc || null,
+                sustento_emisor_razon_social || null,
+                sustento_serie || null,
+                sustento_numero || null,
+                sustento_fecha_emision || null,
+                sustento_archivo_url || null,
+                sustento_nota || null,
+                sustento_observacion || null
             ]
         );
 
@@ -482,5 +546,545 @@ export const makeFinancePgRepository = ({ pool }) => ({
         );
 
         return result.rows[0] || null;
+    },
+    registerSaldoFavor: async ({ clinicaId, actorUserId, paymentInput }) => {
+        const { monto, metodo, tipo_fondo, cuenta_id, referencia, fecha_pago, notas } = paymentInput;
+        const tipoFondo = tipo_fondo || (String(metodo || '').toLowerCase() === 'efectivo' ? 'caja' : 'banco');
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            const cuentaResolution = await resolveCuentaFinancieraWithDb(client, {
+                cuentaId: cuenta_id || null,
+                tipoFondo
+            });
+            if (cuentaResolution.error) {
+                await client.query('ROLLBACK');
+                return { accountError: cuentaResolution.error };
+            }
+
+            const result = await client.query(
+                `INSERT INTO nl_pagos (
+                    pedido_id, clinica_id, monto, metodo, tipo_fondo, cuenta_id,
+                    referencia, fecha_pago, notas, creado_por, es_saldo_favor, saldo_disponible
+                )
+                VALUES (
+                    NULL, $1, $2, $3, $4, $5,
+                    $6, COALESCE($7::date, CURRENT_DATE), $8, $9, TRUE, $2
+                )
+                RETURNING *`,
+                [
+                    clinicaId,
+                    monto,
+                    metodo || (tipoFondo === 'caja' ? 'efectivo' : 'transferencia'),
+                    tipoFondo,
+                    cuentaResolution.cuentaId,
+                    referencia || null,
+                    fecha_pago || null,
+                    notas || 'Cobro a cuenta de clínica (Saldo a Favor)',
+                    actorUserId
+                ]
+            );
+
+            await client.query('COMMIT');
+            return { ok: true, data: result.rows[0] };
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    },
+    listSaldosFavorByClinica: async ({ clinicaId }) => {
+        const result = await pool.query(
+            `SELECT p.*, c.nombre as clinica_nombre, u.nombre as creado_por_nombre, cu.nombre as cuenta_nombre
+             FROM nl_pagos p
+             LEFT JOIN nl_clinicas c ON p.clinica_id = c.id
+             LEFT JOIN nl_usuarios u ON p.creado_por = u.id
+             LEFT JOIN nl_fin_cuentas cu ON p.cuenta_id = cu.id
+             WHERE p.clinica_id = $1 AND p.es_saldo_favor = TRUE AND p.saldo_disponible > 0
+             ORDER BY p.fecha_pago DESC, p.id DESC`,
+            [clinicaId]
+        );
+        return result.rows;
+    },
+    aplicarSaldoFavor: async ({ pagoOrigenId, pedidoDestinoId, montoAplicado, notas, actorUserId }) => {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            // 1. Lock and verify origin payment
+            const pagoOrigenRes = await client.query(
+                `SELECT * FROM nl_pagos WHERE id = $1 AND es_saldo_favor = TRUE FOR UPDATE`,
+                [pagoOrigenId]
+            );
+            if (pagoOrigenRes.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return { ok: false, status: 404, error: 'El saldo a favor de origen no existe.' };
+            }
+
+            const pagoOrigen = pagoOrigenRes.rows[0];
+            const saldoDisponible = parseFloat(pagoOrigen.saldo_disponible || 0);
+            if (montoAplicado > saldoDisponible + 0.001) {
+                await client.query('ROLLBACK');
+                return {
+                    ok: false,
+                    status: 400,
+                    error: `El monto a aplicar (S/. ${montoAplicado.toFixed(2)}) supera el saldo disponible (S/. ${saldoDisponible.toFixed(2)}).`
+                };
+            }
+
+            // 2. Lock and verify destination order
+            const pedidoRes = await client.query(
+                `SELECT id, codigo, clinica_id, total FROM nl_pedidos WHERE id = $1 FOR UPDATE`,
+                [pedidoDestinoId]
+            );
+            if (pedidoRes.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return { ok: false, status: 404, error: 'El pedido de destino no existe.' };
+            }
+
+            const pedido = pedidoRes.rows[0];
+            if (pedido.clinica_id !== pagoOrigen.clinica_id) {
+                await client.query('ROLLBACK');
+                return { ok: false, status: 400, error: 'El saldo a favor y el pedido deben pertenecer a la misma clínica.' };
+            }
+
+            // 3. Check order outstanding balance
+            const pagosPrevios = await client.query(
+                `SELECT COALESCE(SUM(monto), 0) as pagado FROM nl_pagos WHERE pedido_id = $1`,
+                [pedidoDestinoId]
+            );
+            const totalPedido = parseFloat(pedido.total || 0);
+            const montoPagado = parseFloat(pagosPrevios.rows[0].pagado || 0);
+            const saldoPedido = Math.max(0, totalPedido - montoPagado);
+
+            if (montoAplicado > saldoPedido + 0.01) {
+                await client.query('ROLLBACK');
+                return {
+                    ok: false,
+                    status: 400,
+                    error: `El monto a aplicar (S/. ${montoAplicado.toFixed(2)}) supera el saldo pendiente del pedido #${pedido.codigo} (S/. ${saldoPedido.toFixed(2)}).`
+                };
+            }
+
+            // 4. Update origin payment balance
+            await client.query(
+                `UPDATE nl_pagos
+                 SET saldo_disponible = saldo_disponible - $1
+                 WHERE id = $2`,
+                [montoAplicado, pagoOrigenId]
+            );
+
+            // 5. Record application log
+            const aplicacionRes = await client.query(
+                `INSERT INTO nl_saldo_favor_aplicaciones (
+                    pago_origen_id, pedido_destino_id, clinica_id, monto_aplicado, fecha_aplicacion, notas, creado_por
+                )
+                VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, $6)
+                RETURNING *`,
+                [
+                    pagoOrigenId,
+                    pedidoDestinoId,
+                    pedido.clinica_id,
+                    montoAplicado,
+                    notas || `Aplicación de saldo a favor #${pagoOrigenId}`,
+                    actorUserId
+                ]
+            );
+
+            // 6. Insert order payment record referencing the saldo
+            const pagoPedidoRes = await client.query(
+                `INSERT INTO nl_pagos (
+                    pedido_id, clinica_id, monto, metodo, tipo_fondo, cuenta_id,
+                    referencia, fecha_pago, notas, creado_por, es_saldo_favor, saldo_disponible
+                )
+                VALUES (
+                    $1, $2, $3, 'saldo_favor', $4, $5,
+                    $6, CURRENT_DATE, $7, $8, FALSE, 0
+                )
+                RETURNING *`,
+                [
+                    pedidoDestinoId,
+                    pedido.clinica_id,
+                    montoAplicado,
+                    pagoOrigen.tipo_fondo,
+                    pagoOrigen.cuenta_id,
+                    `Saldo a favor #${pagoOrigenId}`,
+                    notas || `Abono por aplicación de saldo a favor #${pagoOrigenId}`,
+                    actorUserId
+                ]
+            );
+
+            await client.query('COMMIT');
+            return {
+                ok: true,
+                status: 201,
+                data: {
+                    aplicacion: aplicacionRes.rows[0],
+                    pago_pedido: pagoPedidoRes.rows[0],
+                    saldo_restante_origen: saldoDisponible - montoAplicado,
+                    saldo_restante_pedido: Math.max(0, saldoPedido - montoAplicado)
+                }
+            };
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    },
+    listAplicacionesSaldoFavor: async ({ clinicaId }) => {
+        const result = await pool.query(
+            `SELECT a.*, p.codigo as pedido_codigo, u.nombre as creado_por_nombre
+             FROM nl_saldo_favor_aplicaciones a
+             LEFT JOIN nl_pedidos p ON a.pedido_destino_id = p.id
+             LEFT JOIN nl_usuarios u ON a.creado_por = u.id
+             WHERE a.clinica_id = $1
+             ORDER BY a.fecha_aplicacion DESC, a.id DESC`,
+            [clinicaId]
+        );
+        return result.rows;
+    },
+    getActiveCashSession: async () => {
+        // Look for open session
+        const sessionRes = await pool.query(
+            `SELECT s.*, u.nombre as abierto_por_nombre
+             FROM nl_fin_sesiones_caja s
+             LEFT JOIN nl_usuarios u ON s.abierto_por = u.id
+             WHERE s.estado = 'abierta'
+             ORDER BY s.fecha DESC, s.id DESC
+             LIMIT 1`
+        );
+
+        let session = sessionRes.rows[0] || null;
+        const targetDate = session ? session.fecha : new Date().toISOString().split('T')[0];
+
+        // Compute live metrics for the target date
+        // 1. Ingresos en efectivo (Pagos de pedidos y anticipos que no sean método saldo_favor interno)
+        const ingresosEfectivoRes = await pool.query(
+            `SELECT COALESCE(SUM(monto), 0) as total
+             FROM nl_pagos
+             WHERE tipo_fondo = 'caja'
+               AND (metodo IS NULL OR metodo != 'saldo_favor')
+               AND fecha_pago = $1::date`,
+            [targetDate]
+        );
+
+        // 2. Movimientos extra de ingreso en efectivo
+        const movIngresosEfectivoRes = await pool.query(
+            `SELECT COALESCE(SUM(monto), 0) as total
+             FROM nl_fin_movimientos
+             WHERE tipo = 'ingreso' AND tipo_fondo = 'caja' AND fecha_movimiento = $1::date`,
+            [targetDate]
+        );
+
+        // 3. Egresos en efectivo
+        const egresosEfectivoRes = await pool.query(
+            `SELECT COALESCE(SUM(monto), 0) as total
+             FROM nl_fin_movimientos
+             WHERE tipo = 'egreso' AND tipo_fondo = 'caja' AND fecha_movimiento = $1::date`,
+            [targetDate]
+        );
+
+        // 4. Ingresos en banco
+        const ingresosBancoRes = await pool.query(
+            `SELECT COALESCE(SUM(monto), 0) as total
+             FROM nl_pagos
+             WHERE tipo_fondo = 'banco'
+               AND (metodo IS NULL OR metodo != 'saldo_favor')
+               AND fecha_pago = $1::date`,
+            [targetDate]
+        );
+
+        const movIngresosBancoRes = await pool.query(
+            `SELECT COALESCE(SUM(monto), 0) as total
+             FROM nl_fin_movimientos
+             WHERE tipo = 'ingreso' AND tipo_fondo = 'banco' AND fecha_movimiento = $1::date`,
+            [targetDate]
+        );
+
+        // 5. Egresos en banco
+        const egresosBancoRes = await pool.query(
+            `SELECT COALESCE(SUM(monto), 0) as total
+             FROM nl_fin_movimientos
+             WHERE tipo = 'egreso' AND tipo_fondo = 'banco' AND fecha_movimiento = $1::date`,
+            [targetDate]
+        );
+
+        const totalIngresosEfectivo = parseFloat(ingresosEfectivoRes.rows[0].total || 0) + parseFloat(movIngresosEfectivoRes.rows[0].total || 0);
+        const totalEgresosEfectivo = parseFloat(egresosEfectivoRes.rows[0].total || 0);
+        const totalIngresosBanco = parseFloat(ingresosBancoRes.rows[0].total || 0) + parseFloat(movIngresosBancoRes.rows[0].total || 0);
+        const totalEgresosBanco = parseFloat(egresosBancoRes.rows[0].total || 0);
+
+        const montoApertura = session ? parseFloat(session.monto_apertura || 0) : 0;
+        const montoEsperadoEfectivo = montoApertura + totalIngresosEfectivo - totalEgresosEfectivo;
+
+        return {
+            hasActiveSession: Boolean(session),
+            session,
+            targetDate,
+            resumenEnVivo: {
+                monto_apertura: montoApertura,
+                total_ingresos_efectivo: totalIngresosEfectivo,
+                total_egresos_efectivo: totalEgresosEfectivo,
+                saldo_teorico_efectivo: montoEsperadoEfectivo,
+                total_ingresos_banco: totalIngresosBanco,
+                total_egresos_banco: totalEgresosBanco,
+                balance_neto_banco: totalIngresosBanco - totalEgresosBanco,
+                balance_neto_dia: (totalIngresosEfectivo - totalEgresosEfectivo) + (totalIngresosBanco - totalEgresosBanco)
+            }
+        };
+    },
+    openCashSession: async ({ montoApertura = 0, turno = 'general', fecha, actorUserId }) => {
+        const targetFecha = fecha || new Date().toISOString().split('T')[0];
+
+        // Check if there is already an open session for the date/shift
+        const existingRes = await pool.query(
+            `SELECT id FROM nl_fin_sesiones_caja WHERE estado = 'abierta' LIMIT 1`
+        );
+        if (existingRes.rows.length > 0) {
+            return { ok: false, status: 400, error: 'Ya existe una sesión de caja abierta actualmente. Ciérrala antes de abrir una nueva.' };
+        }
+
+        const result = await pool.query(
+            `INSERT INTO nl_fin_sesiones_caja (
+                fecha, turno, monto_apertura, estado, abierto_por, abierto_at
+            )
+            VALUES (
+                $1::date, $2, $3, 'abierta', $4, NOW()
+            )
+            RETURNING *`,
+            [targetFecha, turno, montoApertura, actorUserId]
+        );
+
+        return { ok: true, status: 201, data: result.rows[0] };
+    },
+    closeCashSession: async ({ sesionId, montoRealEfectivo, observacionesCierre, actorUserId }) => {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            const sessionRes = await client.query(
+                `SELECT * FROM nl_fin_sesiones_caja WHERE id = $1 FOR UPDATE`,
+                [sesionId]
+            );
+            if (sessionRes.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return { ok: false, status: 404, error: 'Sesión de caja no encontrada' };
+            }
+
+            const session = sessionRes.rows[0];
+            if (session.estado === 'cerrada') {
+                await client.query('ROLLBACK');
+                return { ok: false, status: 400, error: 'La sesión de caja ya se encuentra cerrada' };
+            }
+
+            // Calculate exact figures for that session date
+            const ingresosEfRes = await client.query(
+                `SELECT COALESCE(SUM(monto), 0) as total FROM nl_pagos WHERE tipo_fondo = 'caja' AND (metodo IS NULL OR metodo != 'saldo_favor') AND fecha_pago = $1::date`,
+                [session.fecha]
+            );
+            const movIngresosEfRes = await client.query(
+                `SELECT COALESCE(SUM(monto), 0) as total FROM nl_fin_movimientos WHERE tipo = 'ingreso' AND tipo_fondo = 'caja' AND fecha_movimiento = $1::date`,
+                [session.fecha]
+            );
+            const egresosEfRes = await client.query(
+                `SELECT COALESCE(SUM(monto), 0) as total FROM nl_fin_movimientos WHERE tipo = 'egreso' AND tipo_fondo = 'caja' AND fecha_movimiento = $1::date`,
+                [session.fecha]
+            );
+
+            const ingresosBcoRes = await client.query(
+                `SELECT COALESCE(SUM(monto), 0) as total FROM nl_pagos WHERE tipo_fondo = 'banco' AND (metodo IS NULL OR metodo != 'saldo_favor') AND fecha_pago = $1::date`,
+                [session.fecha]
+            );
+            const movIngresosBcoRes = await client.query(
+                `SELECT COALESCE(SUM(monto), 0) as total FROM nl_fin_movimientos WHERE tipo = 'ingreso' AND tipo_fondo = 'banco' AND fecha_movimiento = $1::date`,
+                [session.fecha]
+            );
+            const egresosBcoRes = await client.query(
+                `SELECT COALESCE(SUM(monto), 0) as total FROM nl_fin_movimientos WHERE tipo = 'egreso' AND tipo_fondo = 'banco' AND fecha_movimiento = $1::date`,
+                [session.fecha]
+            );
+
+            const totalIngresosEf = parseFloat(ingresosEfRes.rows[0].total || 0) + parseFloat(movIngresosEfRes.rows[0].total || 0);
+            const totalEgresosEf = parseFloat(egresosEfRes.rows[0].total || 0);
+            const totalIngresosBco = parseFloat(ingresosBcoRes.rows[0].total || 0) + parseFloat(movIngresosBcoRes.rows[0].total || 0);
+            const totalEgresosBco = parseFloat(egresosBcoRes.rows[0].total || 0);
+
+            const montoApertura = parseFloat(session.monto_apertura || 0);
+            const montoEsperadoEf = montoApertura + totalIngresosEf - totalEgresosEf;
+            const montoRealEfNumber = parseFloat(montoRealEfectivo || 0);
+            const diferencia = montoRealEfNumber - montoEsperadoEf;
+
+            const updateRes = await client.query(
+                `UPDATE nl_fin_sesiones_caja
+                 SET estado = 'cerrada',
+                     monto_esperado_efectivo = $1,
+                     monto_real_efectivo = $2,
+                     diferencia_efectivo = $3,
+                     total_ingresos_efectivo = $4,
+                     total_egresos_efectivo = $5,
+                     total_ingresos_banco = $6,
+                     total_egresos_banco = $7,
+                     observaciones_cierre = $8,
+                     cerrado_por = $9,
+                     cerrado_at = NOW()
+                 WHERE id = $10
+                 RETURNING *`,
+                [
+                    montoEsperadoEf,
+                    montoRealEfNumber,
+                    diferencia,
+                    totalIngresosEf,
+                    totalEgresosEf,
+                    totalIngresosBco,
+                    totalEgresosBco,
+                    observacionesCierre || null,
+                    actorUserId,
+                    sesionId
+                ]
+            );
+
+            await client.query('COMMIT');
+            return { ok: true, status: 200, data: updateRes.rows[0] };
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    },
+    reopenCashSession: async ({ sesionId, motivo, actorUserId }) => {
+        const result = await pool.query(
+            `UPDATE nl_fin_sesiones_caja
+             SET estado = 'abierta',
+                 reabierto_por = $1,
+                 reabierto_at = NOW(),
+                 reabierto_motivo = $2
+             WHERE id = $3
+             RETURNING *`,
+            [actorUserId, motivo || 'Reapertura autorizada por administración', sesionId]
+        );
+
+        if (result.rows.length === 0) {
+            return { ok: false, status: 404, error: 'Sesión no encontrada' };
+        }
+
+        return { ok: true, status: 200, data: result.rows[0] };
+    },
+    listCashSessions: async ({ limit = 30, offset = 0 } = {}) => {
+        const result = await pool.query(
+            `SELECT s.*,
+                    u1.nombre as abierto_por_nombre,
+                    u2.nombre as cerrado_por_nombre,
+                    u3.nombre as reabierto_por_nombre
+             FROM nl_fin_sesiones_caja s
+             LEFT JOIN nl_usuarios u1 ON s.abierto_por = u1.id
+             LEFT JOIN nl_usuarios u2 ON s.cerrado_por = u2.id
+             LEFT JOIN nl_usuarios u3 ON s.reabierto_por = u3.id
+             ORDER BY s.fecha DESC, s.id DESC
+             LIMIT $1 OFFSET $2`,
+            [limit, offset]
+        );
+        return result.rows;
+    },
+    getCobranzasOverview: async () => {
+        const result = await pool.query(
+            `WITH pedidos_saldos AS (
+                SELECT
+                    p.id,
+                    p.codigo,
+                    p.clinica_id,
+                    p.total,
+                    COALESCE(SUM(pg.monto), 0) as pagado,
+                    p.total - COALESCE(SUM(pg.monto), 0) as saldo,
+                    p.fecha_entrega,
+                    p.created_at,
+                    CURRENT_DATE - COALESCE(p.fecha_entrega, p.created_at::date) as dias_antiguedad
+                FROM nl_pedidos p
+                LEFT JOIN nl_pagos pg ON pg.pedido_id = p.id
+                WHERE p.estado != 'anulado'
+                GROUP BY p.id, p.codigo, p.clinica_id, p.total, p.fecha_entrega, p.created_at
+                HAVING (p.total - COALESCE(SUM(pg.monto), 0)) > 0.01
+            ),
+            saldos_favor AS (
+                SELECT
+                    clinica_id,
+                    COALESCE(SUM(saldo_disponible), 0) as total_saldo_favor
+                FROM nl_pagos
+                WHERE es_saldo_favor = TRUE AND saldo_disponible > 0
+                GROUP BY clinica_id
+            ),
+            ultimos_pagos AS (
+                SELECT
+                    clinica_id,
+                    MAX(fecha_pago) as ultima_fecha_pago
+                FROM nl_pagos
+                WHERE clinica_id IS NOT NULL
+                GROUP BY clinica_id
+            )
+            SELECT
+                c.id as clinica_id,
+                c.nombre as clinica_nombre,
+                c.ruc as clinica_ruc,
+                c.telefono as clinica_telefono,
+                c.email as clinica_email,
+                c.contacto_nombre as clinica_contacto,
+                COALESCE(COUNT(ps.id), 0) as pedidos_pendientes_count,
+                COALESCE(SUM(ps.saldo), 0) as total_deuda,
+                COALESCE(SUM(CASE WHEN ps.dias_antiguedad <= 15 THEN ps.saldo ELSE 0 END), 0) as deuda_0_15,
+                COALESCE(SUM(CASE WHEN ps.dias_antiguedad > 15 AND ps.dias_antiguedad <= 30 THEN ps.saldo ELSE 0 END), 0) as deuda_15_30,
+                COALESCE(SUM(CASE WHEN ps.dias_antiguedad > 30 THEN ps.saldo ELSE 0 END), 0) as deuda_30_mas,
+                COALESCE(sf.total_saldo_favor, 0) as saldo_favor_disponible,
+                GREATEST(0, COALESCE(SUM(ps.saldo), 0) - COALESCE(sf.total_saldo_favor, 0)) as deuda_neta,
+                up.ultima_fecha_pago
+            FROM nl_clinicas c
+            LEFT JOIN pedidos_saldos ps ON ps.clinica_id = c.id
+            LEFT JOIN saldos_favor sf ON sf.clinica_id = c.id
+            LEFT JOIN ultimos_pagos up ON up.clinica_id = c.id
+            WHERE ps.id IS NOT NULL OR sf.total_saldo_favor > 0
+            GROUP BY c.id, c.nombre, c.ruc, c.telefono, c.email, c.contacto_nombre, sf.total_saldo_favor, up.ultima_fecha_pago
+            ORDER BY deuda_neta DESC, total_deuda DESC`
+        );
+        return result.rows;
+    },
+    getClinicDebtDetail: async ({ clinicaId }) => {
+        const [ordersRes, saldosFavorRes] = await Promise.all([
+            pool.query(
+                `SELECT
+                    p.id,
+                    p.codigo,
+                    p.paciente_nombre,
+                    p.doctor_nombre,
+                    p.fecha_entrega,
+                    p.created_at,
+                    p.total,
+                    COALESCE(SUM(pg.monto), 0) as pagado,
+                    p.total - COALESCE(SUM(pg.monto), 0) as saldo,
+                    CURRENT_DATE - COALESCE(p.fecha_entrega, p.created_at::date) as dias_antiguedad
+                FROM nl_pedidos p
+                LEFT JOIN nl_pagos pg ON pg.pedido_id = p.id
+                WHERE p.clinica_id = $1 AND p.estado != 'anulado'
+                GROUP BY p.id, p.codigo, p.paciente_nombre, p.doctor_nombre, p.fecha_entrega, p.created_at, p.total
+                HAVING (p.total - COALESCE(SUM(pg.monto), 0)) > 0.01
+                ORDER BY p.fecha_entrega ASC, p.created_at ASC`,
+                [clinicaId]
+            ),
+            pool.query(
+                `SELECT p.*, cu.nombre as cuenta_nombre
+                 FROM nl_pagos p
+                 LEFT JOIN nl_fin_cuentas cu ON p.cuenta_id = cu.id
+                 WHERE p.clinica_id = $1 AND p.es_saldo_favor = TRUE AND p.saldo_disponible > 0
+                 ORDER BY p.fecha_pago DESC`,
+                [clinicaId]
+            )
+        ]);
+
+        return {
+            pedidos_pendientes: ordersRes.rows,
+            saldos_favor: saldosFavorRes.rows
+        };
     }
 });

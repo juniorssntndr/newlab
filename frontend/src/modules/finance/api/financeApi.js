@@ -172,3 +172,57 @@ export const deleteFinanceMovement = ({ movementId, headers }) => apiClient(`/fi
     method: 'DELETE',
     headers
 });
+
+export const registerSaldoFavor = ({ clinicaId, payload, headers }) => apiClient(`/finanzas/saldos-favor/${clinicaId}`, {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const fetchSaldosFavorByClinica = ({ clinicaId, headers }) => apiClient(`/finanzas/saldos-favor/${clinicaId}`, {
+    headers
+});
+
+export const aplicarSaldoFavor = ({ payload, headers }) => apiClient('/finanzas/saldos-favor/aplicar', {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const fetchAplicacionesSaldoFavor = ({ clinicaId, headers }) => apiClient(`/finanzas/saldos-favor/aplicaciones/${clinicaId}`, {
+    headers
+});
+
+export const fetchActiveCashSession = ({ headers } = {}) => apiClient('/finanzas/sesiones-caja/actual', {
+    headers
+});
+
+export const fetchCashSessions = ({ headers } = {}) => apiClient('/finanzas/sesiones-caja', {
+    headers
+});
+
+export const openCashSession = ({ payload, headers }) => apiClient('/finanzas/sesiones-caja/abrir', {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const closeCashSession = ({ sesionId, payload, headers }) => apiClient(`/finanzas/sesiones-caja/${sesionId}/cerrar`, {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const reopenCashSession = ({ sesionId, payload, headers }) => apiClient(`/finanzas/sesiones-caja/${sesionId}/reabrir`, {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const fetchCobranzasOverview = ({ headers } = {}) => apiClient('/finanzas/cobranzas/overview', {
+    headers
+});
+
+export const fetchClinicDebtDetail = ({ clinicaId, headers }) => apiClient(`/finanzas/cobranzas/clinica/${clinicaId}`, {
+    headers
+});
