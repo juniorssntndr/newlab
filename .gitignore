@@ -12,7 +12,7 @@ backend/src/db/migration_950_rescued_data.sql
 .playwright-cli/
 .tmp/
 scratch/
-*.png
+/*.png
 .codegraph/
 .agents/**/.tmp/
 .agents/**/tmp/

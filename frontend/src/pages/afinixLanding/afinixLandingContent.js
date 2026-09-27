@@ -198,7 +198,7 @@ export const services = [
         price: 'Cotización por caso',
         material: 'Zirconia sobre Ti',
         indication: 'Rehabilitación sobre implantes',
-        image: '/uploads/product-1789489678570-885130900-corona-sobre-implantes.png',
+        image: `${IMG}/service-implant-crown.png`,
     },
     {
         name: 'Prótesis Removibles PEEK',
@@ -208,7 +208,7 @@ export const services = [
         price: 'Cotización por caso',
         material: 'PEEK Biopolímero',
         indication: 'Rehabilitación removible estética',
-        image: '/uploads/product-1789489788525-209938532-ppr-en-peek.png',
+        image: `${IMG}/service-ppr-peek.png`,
     },
     {
         name: 'Férulas Miorrelajantes',
@@ -218,7 +218,7 @@ export const services = [
         price: 'Cotización por caso',
         material: 'PMMA Cristalino',
         indication: 'Bruxismo y desórdenes ATM',
-        image: '/uploads/product-1789490646919-889793837-ferula-miorelajante.png',
+        image: `${IMG}/service-splint-michigan.png`,
     },
 ];
 
