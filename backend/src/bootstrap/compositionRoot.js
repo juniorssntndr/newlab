@@ -18,13 +18,20 @@ import { makeLegacyApisperuBillingAcl } from '../modules/billing/infrastructure/
 import { makeBillingService } from '../modules/billing/application/services/billingService.js';
 import { makeBillingController } from '../modules/billing/application/controllers/billingController.js';
 import { makeBillingPhase2Service } from '../modules/billing/application/services/billingPhase2Service.js';
+import { makeCrmPgRepository } from '../modules/crm/infrastructure/repositories/crmPgRepository.js';
+import { makeCrmService } from '../modules/crm/application/services/crmService.js';
+import { makeCrmController } from '../modules/crm/application/controllers/crmController.js';
+import { makeCrmRoutes } from '../modules/crm/transport/http/crmRoutes.js';
 
 const { Pool } = pg;
 
 export const createCompositionRoot = () => {
     const pool = new Pool({ connectionString: getDatabaseUrl() });
+    pool.on('error', (err) => {
+        console.error('Unexpected error on idle pg client', err);
+    });
     const orderRepository = makeOrderPgRepository({ pool });
-    const orderService = makeOrderService({ orderRepository });
+    const orderService = makeOrderService({ orderRepository, pool });
     const orderController = makeOrderController({ orderService });
     const orderRoutes = makeOrderRoutes({ orderController });
     const financeRepository = makeFinancePgRepository({ pool });
@@ -43,6 +50,10 @@ export const createCompositionRoot = () => {
     const billingService = makeBillingService({ billingRepository, billingProviderAcl });
     const billingController = makeBillingController({ billingService });
     const billingPhase2Service = makeBillingPhase2Service({ billingRepository, billingProviderAcl });
+    const crmRepository = makeCrmPgRepository({ pool });
+    const crmService = makeCrmService({ crmRepository });
+    const crmController = makeCrmController({ crmService });
+    const crmRoutes = makeCrmRoutes({ crmController });
 
     return {
         pool,
@@ -72,6 +83,12 @@ export const createCompositionRoot = () => {
                 billingController,
                 billingPhase2Service,
                 billingAclMode: useNewBillingAcl ? 'new-acl' : 'legacy-service'
+            },
+            crm: {
+                crmRepository,
+                crmService,
+                crmController,
+                crmRoutes
             }
         }
     };

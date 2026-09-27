@@ -203,6 +203,28 @@ export const makeFinanceController = ({ financeService }) => ({
             next(error);
         }
     },
+    registerConsolidatedPayment: async (req, res, next) => {
+        try {
+            const result = await financeService.registerConsolidatedPayment({
+                user: req.user,
+                body: req.body
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'movimiento_financiero',
+                    entidadId: result.meta.movimiento_id,
+                    accion: 'cobro_consolidado_created',
+                    descripcion: `Cobro consolidado en mostrador por S/. ${result.meta.total_cobrado.toFixed(2)} (${result.meta.pedidos_afectados} pedidos)`,
+                    metadata: result.meta
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
     conciliarPago: async (req, res, next) => {
         try {
             const result = await financeService.conciliarPago({
@@ -223,6 +245,269 @@ export const makeFinanceController = ({ financeService }) => ({
                 });
             }
 
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    registerSaldoFavor: async (req, res, next) => {
+        try {
+            const result = await financeService.registerSaldoFavor({
+                user: req.user,
+                clinicaId: req.params.clinicaId || req.body.clinica_id,
+                body: req.body
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'clinica',
+                    entidadId: result.meta.clinica_id,
+                    accion: 'saldo_favor_created',
+                    descripcion: `Saldo a favor de S/. ${result.meta.monto.toFixed(2)} registrado para la clínica.`,
+                    metadata: result.meta
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listSaldosFavorByClinica: async (req, res, next) => {
+        try {
+            const result = await financeService.listSaldosFavorByClinica({
+                user: req.user,
+                clinicaId: req.params.clinicaId
+            });
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    aplicarSaldoFavor: async (req, res, next) => {
+        try {
+            const result = await financeService.aplicarSaldoFavor({
+                user: req.user,
+                body: req.body
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'pago',
+                    entidadId: result.data.pago_pedido.id,
+                    accion: 'saldo_favor_aplicado',
+                    descripcion: `Aplicación de saldo a favor de S/. ${result.data.aplicacion.monto_aplicado} al pedido #${result.data.aplicacion.pedido_destino_id}.`,
+                    metadata: result.data
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listAplicacionesSaldoFavor: async (req, res, next) => {
+        try {
+            const result = await financeService.listAplicacionesSaldoFavor({
+                user: req.user,
+                clinicaId: req.params.clinicaId
+            });
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    getActiveCashSession: async (req, res, next) => {
+        try {
+            const result = await financeService.getActiveCashSession({ user: req.user });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    openCashSession: async (req, res, next) => {
+        try {
+            const result = await financeService.openCashSession({
+                user: req.user,
+                body: req.body
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'sesion_caja',
+                    entidadId: result.data.id,
+                    accion: 'caja_opened',
+                    descripcion: `Apertura de caja diaria (Turno ${result.data.turno}) con monto S/. ${result.data.monto_apertura}.`,
+                    metadata: result.data
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    closeCashSession: async (req, res, next) => {
+        try {
+            const result = await financeService.closeCashSession({
+                user: req.user,
+                sesionId: req.params.sesionId,
+                body: req.body
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'sesion_caja',
+                    entidadId: result.data.id,
+                    accion: 'caja_closed',
+                    descripcion: `Cierre de caja. Real contado: S/. ${result.data.monto_real_efectivo}, Diferencia: S/. ${result.data.diferencia_efectivo}.`,
+                    metadata: result.data
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    reopenCashSession: async (req, res, next) => {
+        try {
+            const result = await financeService.reopenCashSession({
+                user: req.user,
+                sesionId: req.params.sesionId,
+                body: req.body
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'sesion_caja',
+                    entidadId: result.data.id,
+                    accion: 'caja_reopened',
+                    descripcion: `Reapertura de caja por administración: ${result.data.reabierto_motivo || 'Sin motivo'}.`,
+                    metadata: result.data
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listCashSessions: async (req, res, next) => {
+        try {
+            const result = await financeService.listCashSessions({
+                user: req.user,
+                query: req.query
+            });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    getCobranzasOverview: async (req, res, next) => {
+        try {
+            const result = await financeService.getCobranzasOverview({ user: req.user });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    getClinicDebtDetail: async (req, res, next) => {
+        try {
+            const result = await financeService.getClinicDebtDetail({
+                user: req.user,
+                clinicaId: req.params.clinicaId
+            });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listAccountsWithBalance: async (req, res, next) => {
+        try {
+            const result = await financeService.listAccountsWithBalance({ user: req.user });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    createAccount: async (req, res, next) => {
+        try {
+            const result = await financeService.createAccount({ user: req.user, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    updateAccount: async (req, res, next) => {
+        try {
+            const result = await financeService.updateAccount({ user: req.user, accountId: req.params.id, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    registerTransfer: async (req, res, next) => {
+        try {
+            const result = await financeService.registerTransfer({ user: req.user, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listTransfers: async (req, res, next) => {
+        try {
+            const result = await financeService.listTransfers({ user: req.user, query: req.query });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listSocios: async (req, res, next) => {
+        try {
+            const result = await financeService.listSocios({ user: req.user });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    createSocio: async (req, res, next) => {
+        try {
+            const result = await financeService.createSocio({ user: req.user, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    updateSocio: async (req, res, next) => {
+        try {
+            const result = await financeService.updateSocio({ user: req.user, socioId: req.params.id, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    deleteSocio: async (req, res, next) => {
+        try {
+            const result = await financeService.deleteSocio({ user: req.user, socioId: req.params.id });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    registerRetiroSocio: async (req, res, next) => {
+        try {
+            const result = await financeService.registerRetiroSocio({ user: req.user, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listRetirosSocios: async (req, res, next) => {
+        try {
+            const result = await financeService.listRetirosSocios({ user: req.user, query: req.query });
             return sendServiceResult(res, result);
         } catch (error) {
             next(error);

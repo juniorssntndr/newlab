@@ -2,9 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { API_URL } from '../config.js';
 import { isClientRole } from '../utils/accessControl.js';
+import { useNotifications } from '../state/NotificationContext.jsx';
 
 const Cuenta = () => {
     const { user, getHeaders, refreshUser, setUser } = useAuth();
+    const {
+        pushSupported,
+        pushPermission,
+        isPushSubscribed,
+        isPushLoading,
+        enablePushNotifications,
+        disablePushNotifications,
+        testPush,
+        playNotificationTone
+    } = useNotifications();
     const [form, setForm] = useState({ nombre: '', email: '', telefono: '', clinica_direccion: '' });
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
@@ -116,10 +127,12 @@ const Cuenta = () => {
     };
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in page-container">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1>Mi cuenta</h1>
+                    <h1>
+                        <i className="bi bi-person-circle text-primary" aria-hidden="true"></i> Mi Cuenta
+                    </h1>
                     <p>Gestiona tus datos personales y seguridad</p>
                 </div>
             </div>
@@ -131,7 +144,7 @@ const Cuenta = () => {
                 </div>
             )}
 
-            <div className="grid grid-cols-2" style={{ gap: 'var(--space-6)' }}>
+            <div className="cuenta-grid">
                 <div className="card">
                     <div className="card-header"><h3 className="card-title">Perfil</h3></div>
                     <div className="form-group">
@@ -198,6 +211,90 @@ const Cuenta = () => {
                     <button className="btn btn-accent" onClick={savePassword} disabled={savingPassword}>
                         {savingPassword ? 'Actualizando...' : 'Actualizar contrasena'}
                     </button>
+                </div>
+
+                <div className="card col-span-2">
+                    <div className="card-header">
+                        <h3 className="card-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <i className="bi bi-bell-fill text-primary" aria-hidden="true" />
+                            Notificaciones y Alertas en este Dispositivo
+                        </h3>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                            Recibe avisos inmediatos en este navegador cuando tu diseño 3D esté listo para aprobación, cuando un trabajo ingrese a producción o cuando tu pedido esté en camino.
+                        </p>
+
+                        <div className="cuenta-push-row">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '50%',
+                                    background: isPushSubscribed ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                                    color: isPushSubscribed ? '#10B981' : '#EF4444',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '1.1rem'
+                                }}>
+                                    <i className={`bi ${isPushSubscribed ? 'bi-check-circle-fill' : 'bi-bell-slash'}`} aria-hidden="true" />
+                                </div>
+                                <div>
+                                    <strong style={{ display: 'block', fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                                        {isPushSubscribed
+                                            ? 'Alertas web activas'
+                                            : pushPermission === 'denied'
+                                                ? 'Permiso bloqueado en el navegador'
+                                                : 'Notificaciones no activadas'}
+                                    </strong>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                        {isPushSubscribed
+                                            ? 'Este equipo recibirá avisos instantáneos de tus órdenes de trabajo.'
+                                            : pushPermission === 'denied'
+                                                ? 'Debes permitir notificaciones desde el icono de candado en la barra de direcciones.'
+                                                : 'Haz clic en activar para recibir seguimiento en tiempo real.'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="cuenta-push-actions">
+                                {isPushSubscribed ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary btn-sm"
+                                            onClick={testPush}
+                                            title="Enviar notificación push de prueba con sonido"
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                        >
+                                            <i className="bi bi-volume-up" aria-hidden="true" />
+                                            Probar sonido
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost btn-sm text-danger"
+                                            onClick={disablePushNotifications}
+                                            disabled={isPushLoading}
+                                        >
+                                            Desactivar
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={enablePushNotifications}
+                                        disabled={isPushLoading || pushPermission === 'denied' || !pushSupported}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                                    >
+                                        <i className="bi bi-bell-fill" aria-hidden="true" />
+                                        {isPushLoading ? 'Activando...' : 'Activar en este equipo'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

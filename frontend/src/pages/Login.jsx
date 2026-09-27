@@ -23,7 +23,13 @@ const LOGIN_STORY_PROOFS = [
 
 const Login = () => {
     const { login } = useAuth();
-    const { theme, toggle } = useLandingTheme();
+    const {
+        theme,
+        toggle,
+        showSuggestion,
+        acceptDarkSuggestion,
+        dismissSuggestion
+    } = useLandingTheme();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [email, setEmail] = useState('');
@@ -73,7 +79,13 @@ const Login = () => {
             />
             <div className="login-page" data-theme={theme}>
             <div className="login-page-topbar">
-                <LandingThemeToggle theme={theme} onToggle={toggle} />
+                <LandingThemeToggle
+                    theme={theme}
+                    onToggle={toggle}
+                    showSuggestion={showSuggestion}
+                    onAcceptSuggestion={acceptDarkSuggestion}
+                    onDismissSuggestion={dismissSuggestion}
+                />
             </div>
             <div className="login-shell">
                 <aside className="login-story" aria-label="Beneficios del portal clínico AFINIX">
@@ -148,6 +160,13 @@ const Login = () => {
                         <button type="submit" className="login-btn" disabled={loading}>
                             {loading ? 'Ingresando...' : 'Iniciar sesion'}
                         </button>
+
+                        <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
+                            <span style={{ color: 'var(--color-text-secondary, #64748b)' }}>¿Eres un consultorio u odontólogo nuevo? </span>
+                            <Link to="/registro" style={{ color: 'var(--color-primary, #0284c7)', fontWeight: 700, textDecoration: 'none' }}>
+                                Regístrate aquí
+                            </Link>
+                        </div>
                     </form>
 
                     <div className="login-card-footer">

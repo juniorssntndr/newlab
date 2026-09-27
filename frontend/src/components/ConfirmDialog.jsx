@@ -23,6 +23,9 @@ const ConfirmDialog = ({
             open={open}
             onClose={confirming ? undefined : onClose}
             title={title}
+            kicker="Seguridad • Confirmación requerida"
+            icon={icon}
+            size="sm"
             className="confirm-dialog-modal"
             footer={(
                 <>

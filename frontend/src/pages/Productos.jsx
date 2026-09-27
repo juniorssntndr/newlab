@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
@@ -6,9 +6,7 @@ import { API_URL } from '../config.js';
 import { resolveImageUrl, resolveProductImageUrl } from '../utils/resolveImageUrl.js';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
-
-const tipoLabels = { fija: 'Prótesis Fija', implante: 'Sobre Implantes', removible: 'Removible (PPR)', especialidad: 'Especialidades' };
-const tipoColors = { fija: '#0891B2', implante: '#8B5CF6', removible: '#F59E0B', especialidad: '#10B981' };
+import CustomSelect from '../components/CustomSelect.jsx';
 
 const Productos = () => {
     const { getHeaders } = useAuth();
@@ -16,17 +14,58 @@ const Productos = () => {
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [materiales, setMateriales] = useState([]);
-    const [filtroTipo, setFiltroTipo] = useState('');
+    const [filtroCategoria, setFiltroCategoria] = useState('all');
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+
+    // Product Modal & Form
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ nombre: '', descripcion: '', categoria_id: '', precio_base: '', material_id: '', tiempo_estimado_dias: 5, visible: true, image: null, image_url: '' });
+    const [form, setForm] = useState({
+        nombre: '',
+        descripcion: '',
+        categoria_id: '',
+        precio_base: '',
+        material_id: '',
+        tiempo_estimado_dias: 5,
+        visible: true,
+        admite_puente: false,
+        image: null,
+        image_url: ''
+    });
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
     const [imagePreviewUrl, setImagePreviewUrl] = useState('');
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const fileInputRef = useRef(null);
+
+    // On-the-fly category creation inside Product modal
+    const [showInlineCat, setShowInlineCat] = useState(false);
+    const [inlineCatName, setInlineCatName] = useState('');
+    const [inlineCatError, setInlineCatError] = useState('');
+    const [savingInlineCat, setSavingInlineCat] = useState(false);
+
+    // Manage Categories Modal
+    const [catModalOpen, setCatModalOpen] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingCatId, setEditingCatId] = useState(null);
+    const [editingCatName, setEditingCatName] = useState('');
+    const [catModalError, setCatModalError] = useState('');
+    const [catActionLoading, setCatActionLoading] = useState(false);
+    const [catToDelete, setCatToDelete] = useState(null);
+
+    const refreshCategorias = async () => {
+        try {
+            const res = await fetch(`${API_URL}/categorias`, { headers: getHeaders() });
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : [];
+            setCategorias(list);
+            return list;
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
+    };
 
     const fetchData = () => {
         const params = new URLSearchParams();
@@ -48,9 +87,23 @@ const Productos = () => {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ nombre: '', descripcion: '', categoria_id: '', precio_base: '', material_id: '', tiempo_estimado_dias: 5, visible: true, image: null, image_url: '' });
+        setForm({
+            nombre: '',
+            descripcion: '',
+            categoria_id: '',
+            precio_base: '',
+            material_id: '',
+            tiempo_estimado_dias: 5,
+            visible: true,
+            admite_puente: false,
+            image: null,
+            image_url: ''
+        });
         setFormError('');
         setImagePreviewUrl('');
+        setShowInlineCat(false);
+        setInlineCatName('');
+        setInlineCatError('');
         setModalOpen(true);
     };
 
@@ -64,11 +117,15 @@ const Productos = () => {
             material_id: p.material_id ? String(p.material_id) : '',
             tiempo_estimado_dias: p.tiempo_estimado_dias || 5,
             visible: p.visible,
+            admite_puente: Boolean(p.admite_puente),
             image: null,
             image_url: p.image_url || ''
         });
         setFormError('');
         setImagePreviewUrl(resolveProductImageUrl(p));
+        setShowInlineCat(false);
+        setInlineCatName('');
+        setInlineCatError('');
         setModalOpen(true);
     };
 
@@ -120,6 +177,115 @@ const Productos = () => {
         });
     }, []);
 
+    // Create category on the fly in product form
+    const handleCreateInlineCat = async () => {
+        const name = inlineCatName.trim();
+        if (!name) return;
+
+        try {
+            setSavingInlineCat(true);
+            setInlineCatError('');
+            const res = await fetch(`${API_URL}/categorias`, {
+                method: 'POST',
+                headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre: name })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setInlineCatError(data.error || 'Error al crear la categoría');
+                return;
+            }
+            await refreshCategorias();
+            setForm(prev => ({ ...prev, categoria_id: String(data.id) }));
+            setShowInlineCat(false);
+            setInlineCatName('');
+        } catch (err) {
+            setInlineCatError('No se pudo conectar con el servidor');
+        } finally {
+            setSavingInlineCat(false);
+        }
+    };
+
+    // Category modal handlers
+    const handleAddCategory = async () => {
+        const name = newCategoryName.trim();
+        if (!name) return;
+
+        try {
+            setCatActionLoading(true);
+            setCatModalError('');
+            const res = await fetch(`${API_URL}/categorias`, {
+                method: 'POST',
+                headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre: name })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setCatModalError(data.error || 'Error al crear categoría');
+                return;
+            }
+            setNewCategoryName('');
+            await refreshCategorias();
+        } catch (err) {
+            setCatModalError('Error al comunicarse con el servidor');
+        } finally {
+            setCatActionLoading(false);
+        }
+    };
+
+    const handleSaveEditCategory = async (id) => {
+        const name = editingCatName.trim();
+        if (!name) return;
+
+        try {
+            setCatActionLoading(true);
+            setCatModalError('');
+            const res = await fetch(`${API_URL}/categorias/${id}`, {
+                method: 'PUT',
+                headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre: name })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setCatModalError(data.error || 'Error al actualizar categoría');
+                return;
+            }
+            setEditingCatId(null);
+            setEditingCatName('');
+            await refreshCategorias();
+            fetchData();
+        } catch (err) {
+            setCatModalError('Error al comunicarse con el servidor');
+        } finally {
+            setCatActionLoading(false);
+        }
+    };
+
+    const handleDeleteCategory = async (cat) => {
+        try {
+            setCatActionLoading(true);
+            setCatModalError('');
+            const res = await fetch(`${API_URL}/categorias/${cat.id}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setCatModalError(data.error || 'No se pudo eliminar la categoría');
+                return;
+            }
+            setCatToDelete(null);
+            if (filtroCategoria === String(cat.id)) {
+                setFiltroCategoria('all');
+            }
+            await refreshCategorias();
+        } catch (err) {
+            setCatModalError('Error al comunicarse con el servidor');
+        } finally {
+            setCatActionLoading(false);
+        }
+    };
+
     const save = async () => {
         if (saving) return;
         if (!form.nombre?.trim()) {
@@ -138,6 +304,7 @@ const Productos = () => {
         formData.append('material_id', form.material_id);
         formData.append('tiempo_estimado_dias', form.tiempo_estimado_dias);
         formData.append('visible', form.visible);
+        formData.append('admite_puente', form.admite_puente);
         if (form.image) {
             formData.append('image', form.image);
         }
@@ -147,7 +314,7 @@ const Productos = () => {
             setFormError('');
             const res = await fetch(url, {
                 method,
-                headers: { 'Authorization': getHeaders().Authorization }, // Content-Type must be undefined for FormData
+                headers: { 'Authorization': getHeaders().Authorization },
                 body: formData
             });
             if (res.ok) {
@@ -199,32 +366,49 @@ const Productos = () => {
         }
     };
 
-    // Group by category type
-    const grouped = {};
-    productos.forEach(p => {
-        const tipo = p.categoria_tipo || 'otros';
-        if (filtroTipo && tipo !== filtroTipo) return; // Client-side filter
-        if (!grouped[tipo]) grouped[tipo] = [];
-        grouped[tipo].push(p);
-    });
+    const productCountByCat = useMemo(() => {
+        const counts = {};
+        productos.forEach(p => {
+            if (p.categoria_id) {
+                counts[p.categoria_id] = (counts[p.categoria_id] || 0) + 1;
+            }
+        });
+        return counts;
+    }, [productos]);
+
+    // Group products dynamically by Category
+    const grouped = useMemo(() => {
+        const map = new Map();
+        categorias.forEach(c => {
+            if (filtroCategoria !== 'all' && String(filtroCategoria) !== String(c.id)) return;
+            map.set(String(c.id), { id: String(c.id), nombre: c.nombre, productos: [] });
+        });
+
+        const uncategorized = { id: 'uncategorized', nombre: 'Sin categoría', productos: [] };
+
+        productos.forEach(p => {
+            if (filtroCategoria !== 'all' && String(filtroCategoria) !== String(p.categoria_id)) return;
+            const catId = p.categoria_id ? String(p.categoria_id) : null;
+            if (catId && map.has(catId)) {
+                map.get(catId).productos.push(p);
+            } else if (catId) {
+                const name = p.categoria_nombre || 'Categoría';
+                map.set(catId, { id: catId, nombre: name, productos: [p] });
+            } else {
+                uncategorized.productos.push(p);
+            }
+        });
+
+        const list = Array.from(map.values()).filter(g => g.productos.length > 0);
+        if (uncategorized.productos.length > 0 && (filtroCategoria === 'all' || filtroCategoria === 'uncategorized')) {
+            list.push(uncategorized);
+        }
+        return list;
+    }, [productos, categorias, filtroCategoria]);
 
     const toggleVisibility = async (e, p) => {
         e.stopPropagation();
         try {
-            const formData = new FormData();
-            formData.append('activo', !p.activo); // Using 'activo' for global soft delete, or 'visible' if that was the table column
-            // Wait, implementation plan said 'visible'. Backend code I wrote uses 'visible' and 'activo'. 
-            // Query param supports both. 
-            // Let's use 'visible' for "Interruptor de visibilidad" as requested.
-            // But wait, the previous code had 'activo'. 
-            // Let's toggle 'visible'.
-            // Actually, backend PUT accepts 'visible'.
-
-            // NOTE: FormData not needed for simple JSON update if I didn't change backend to REQUIRE multipart. 
-            // My backend change: `upload.single('image')` determines if it expects multipart.
-            // Multer middleware usually handles multipart/form-data. If I send JSON, multer might skip or error depending on config.
-            // Safest to use FormData since I added upload middleware to PUT.
-
             const fd = new FormData();
             fd.append('visible', !p.visible);
 
@@ -240,15 +424,35 @@ const Productos = () => {
     };
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in page-container">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1>Catálogo de Productos</h1>
+                    <h1>
+                        <i className="bi bi-box-seam text-primary" aria-hidden="true"></i> Catálogo de Productos
+                    </h1>
                     <p>Servicios y trabajos del laboratorio</p>
                 </div>
-                <button className="btn btn-primary" onClick={openNew}>
-                    <i className="bi bi-plus-lg"></i> Nuevo Producto
-                </button>
+                <div className="productos-header-actions">
+                    <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => {
+                            setCatModalOpen(true);
+                            setCatModalError('');
+                            setEditingCatId(null);
+                            setEditingCatName('');
+                            setNewCategoryName('');
+                        }}
+                    >
+                        <i className="bi bi-tags"></i>
+                        <span className="productos-btn-label-desktop">Gestionar Categorías</span>
+                        <span className="productos-btn-label-mobile">Categorías</span>
+                    </button>
+                    <button className="btn btn-primary" onClick={openNew}>
+                        <i className="bi bi-plus-lg"></i>
+                        <span>Nuevo Producto</span>
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -256,33 +460,48 @@ const Productos = () => {
                 <div className="productos-filters-row">
                     <div className="search-box productos-search-box">
                         <i className="bi bi-search"></i>
-                        <input className="form-input" placeholder="Buscar producto..." value={search} onChange={e => setSearch(e.target.value)} />
+                        <input
+                            className="form-input"
+                            placeholder="Buscar producto..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
                     </div>
-                    <div className="productos-filter-chips" role="group" aria-label="Filtrar por tipo">
-                        <button
-                            type="button"
-                            className={`btn btn-sm pedidos-filter-chip${!filtroTipo ? ' is-active' : ''}`}
-                            onClick={() => setFiltroTipo('')}
-                        >
-                            Todos
-                        </button>
-                        {Object.entries(tipoLabels).map(([key, label]) => (
+                    <div className="productos-filter-chips-scroller">
+                        <div className="productos-filter-chips" role="group" aria-label="Filtrar por categoría">
                             <button
-                                key={key}
                                 type="button"
-                                className={`btn btn-sm pedidos-filter-chip${filtroTipo === key ? ' is-active' : ''}`}
-                                onClick={() => setFiltroTipo(filtroTipo === key ? '' : key)}
+                                className={`btn btn-sm pedidos-filter-chip${filtroCategoria === 'all' ? ' is-active' : ''}`}
+                                onClick={(e) => {
+                                    setFiltroCategoria('all');
+                                    e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                }}
                             >
-                                {label}
+                                Todos
                             </button>
-                        ))}
+                            {categorias.map(c => (
+                                <button
+                                    key={c.id}
+                                    type="button"
+                                    className={`btn btn-sm pedidos-filter-chip${String(filtroCategoria) === String(c.id) ? ' is-active' : ''}`}
+                                    onClick={(e) => {
+                                        setFiltroCategoria(String(filtroCategoria) === String(c.id) ? 'all' : String(c.id));
+                                        e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                    }}
+                                >
+                                    {c.nombre}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Products grid by type */}
+            {/* Products grid by Category */}
             {loading ? (
-                <div className="catalog-products-grid">{[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton catalog-product-skeleton" />)}</div>
+                <div className="catalog-products-grid">
+                    {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton catalog-product-skeleton" />)}
+                </div>
             ) : productos.length === 0 ? (
                 <div className="card">
                     <div className="empty-state">
@@ -291,24 +510,26 @@ const Productos = () => {
                         <p className="empty-state-text">Agrega productos para poder crear pedidos</p>
                     </div>
                 </div>
+            ) : grouped.length === 0 ? (
+                <div className="card">
+                    <div className="empty-state">
+                        <i className="bi bi-search empty-state-icon"></i>
+                        <h3 className="empty-state-title">No se encontraron productos</h3>
+                        <p className="empty-state-text">Intenta ajustar los filtros de búsqueda o categoría</p>
+                    </div>
+                </div>
             ) : (
-                Object.entries(grouped).map(([tipo, prods]) => (
-                    <div key={tipo} className="catalog-group productos-group">
-                        <div
-                            className="catalog-group-header"
-                            style={{ '--tipo-accent': tipoColors[tipo] || 'var(--color-primary)' }}
-                        >
-                            <div
-                                className="catalog-group-accent"
-                                style={{ background: tipoColors[tipo] || undefined }}
-                            />
-                            <h2 className="catalog-group-title">{tipoLabels[tipo] || tipo}</h2>
+                grouped.map(group => (
+                    <div key={group.id} className="catalog-group productos-group">
+                        <div className="catalog-group-header">
+                            <div className="catalog-group-accent" />
+                            <h2 className="catalog-group-title">{group.nombre}</h2>
                             <span className="catalog-group-count">
-                                {prods.length} producto{prods.length !== 1 ? 's' : ''}
+                                {group.productos.length} producto{group.productos.length !== 1 ? 's' : ''}
                             </span>
                         </div>
                         <div className="catalog-products-grid">
-                            {prods.map(p => (
+                            {group.productos.map(p => (
                                 <ProductCatalogCard
                                     key={p.id}
                                     producto={p}
@@ -342,8 +563,14 @@ const Productos = () => {
                 ))
             )}
 
-            <Modal open={modalOpen} onClose={() => { if (!saving && !deleteConfirmOpen) setModalOpen(false); }}
+            {/* Product Modal */}
+            <Modal
+                open={modalOpen}
+                onClose={() => { if (!saving && !deleteConfirmOpen) setModalOpen(false); }}
+                icon="bi-box-seam-fill"
+                kicker="Catálogo Técnico Dental"
                 title={editing ? 'Editar Producto' : 'Nuevo Producto'}
+                subtitle="Configuración comercial, tiempo de fabricación y reglas técnicas"
                 footer={<>
                     {editing && (
                         <button
@@ -357,53 +584,189 @@ const Productos = () => {
                     )}
                     <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={saving || deleteConfirmOpen}>Cancelar</button>
                     <button type="button" className="btn btn-primary" onClick={save} disabled={saving || deleteConfirmOpen}>
-                        <i className="bi bi-check-lg"></i> {saving ? 'Guardando...' : editing ? 'Guardar' : 'Crear'}
+                        <i className="bi bi-check-lg"></i> {saving ? 'Guardando...' : editing ? 'Guardar Cambios' : 'Crear Producto'}
                     </button>
-                </>}>
+                </>}
+            >
                 {formError && (
                     <div className="alert alert-error productos-modal-alert">
                         <i className="bi bi-exclamation-circle"></i> {formError}
                     </div>
                 )}
-                <div className="form-group">
-                    <label className="form-label">Nombre *</label>
-                    <input className="form-input" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Descripción</label>
-                    <textarea className="form-textarea" value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2">
-                    <div className="form-group">
-                        <label className="form-label">Categoría</label>
-                        <select className="form-select" value={form.categoria_id} onChange={e => setForm({ ...form, categoria_id: e.target.value })}>
-                            <option value="">Seleccionar...</option>
-                            {categorias.map(c => <option key={c.id} value={String(c.id)}>{c.nombre} ({tipoLabels[c.tipo]})</option>)}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Precio Base (S/.)</label>
-                        <input className="form-input" type="number" step="0.01" value={form.precio_base} onChange={e => setForm({ ...form, precio_base: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <div className="productos-material-header">
-                            <label className="form-label productos-material-label">Material</label>
-                            <button className="btn btn-secondary btn-sm" type="button" onClick={createMaterial} disabled={saving}>
-                                <i className="bi bi-plus-lg"></i> Crear material
-                            </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Nombre del Producto *</label>
+                        <div className="form-input-box has-lead">
+                            <i className="bi bi-tag-fill input-icon-lead"></i>
+                            <input
+                                className="form-input"
+                                value={form.nombre}
+                                onChange={e => setForm({ ...form, nombre: e.target.value })}
+                                placeholder="Ej. Corona Zirconia Monolítica"
+                                required
+                            />
                         </div>
-                        <select className="form-select" value={form.material_id} onChange={e => setForm({ ...form, material_id: e.target.value })}>
-                            <option value="">Ninguno / Por defecto</option>
-                            {materiales.map(m => <option key={m.id} value={String(m.id)}>{m.nombre} (Stock: {m.stock_actual} {m.unidad})</option>)}
-                        </select>
-                        {materiales.length === 0 && (
-                            <small className="productos-material-empty">
-                                No hay materiales en inventario. Crea uno para asignarlo al producto.
-                            </small>
-                        )}
                     </div>
-                    <div className="form-group">
-                        <label className="form-label">Imagen</label>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Descripción Técnica</label>
+                        <textarea
+                            className="form-textarea"
+                            value={form.descripcion}
+                            onChange={e => setForm({ ...form, descripcion: e.target.value })}
+                            placeholder="Indicaciones, traslucidez, características del material..."
+                            rows={2}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                <label className="form-label" style={{ marginBottom: 0 }}>Categoría</label>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-xs"
+                                    style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', color: 'var(--color-primary)' }}
+                                    onClick={() => {
+                                        setShowInlineCat(!showInlineCat);
+                                        setInlineCatName('');
+                                        setInlineCatError('');
+                                    }}
+                                    disabled={saving}
+                                >
+                                    <i className="bi bi-plus-circle"></i> Nueva
+                                </button>
+                            </div>
+                            {showInlineCat && (
+                                <div style={{
+                                    marginBottom: '0.6rem',
+                                    padding: '0.5rem',
+                                    background: 'var(--color-surface-hover, rgba(0,0,0,0.03))',
+                                    borderRadius: 'var(--border-radius-sm)',
+                                    border: '1px dashed var(--color-border)'
+                                }}>
+                                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                        <input
+                                            type="text"
+                                            className="form-input form-input-sm"
+                                            placeholder="Nombre de la categoría..."
+                                            value={inlineCatName}
+                                            onChange={(e) => setInlineCatName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleCreateInlineCat();
+                                                }
+                                            }}
+                                            autoFocus
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary btn-sm"
+                                            onClick={handleCreateInlineCat}
+                                            disabled={savingInlineCat || !inlineCatName.trim()}
+                                        >
+                                            {savingInlineCat ? '...' : 'Crear'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary btn-sm"
+                                            onClick={() => {
+                                                setShowInlineCat(false);
+                                                setInlineCatName('');
+                                                setInlineCatError('');
+                                            }}
+                                        >
+                                            <i className="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                    {inlineCatError && (
+                                        <small style={{ color: 'var(--color-danger, #ef4444)', display: 'block', marginTop: '0.3rem' }}>
+                                            {inlineCatError}
+                                        </small>
+                                    )}
+                                </div>
+                            )}
+                            <CustomSelect
+                                value={form.categoria_id}
+                                onChange={e => setForm({ ...form, categoria_id: e.target.value })}
+                                placeholder="Seleccionar categoría..."
+                                searchable={categorias.length > 5}
+                                options={[
+                                    { value: '', label: 'Seleccionar categoría...' },
+                                    ...categorias.map(c => ({ value: String(c.id), label: c.nombre }))
+                                ]}
+                            />
+                        </div>
+
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Precio Base Oficial</label>
+                            <div className="form-input-box has-prefix">
+                                <span className="input-badge-prefix">S/.</span>
+                                <input
+                                    className="form-input"
+                                    type="number"
+                                    step="0.01"
+                                    value={form.precio_base}
+                                    onChange={e => setForm({ ...form, precio_base: e.target.value })}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <div className="productos-material-header" style={{ marginBottom: '0.35rem' }}>
+                                <label className="form-label productos-material-label" style={{ marginBottom: 0 }}>Material Asociado</label>
+                                <button
+                                    className="btn btn-ghost btn-xs"
+                                    type="button"
+                                    onClick={createMaterial}
+                                    disabled={saving}
+                                    style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', color: 'var(--color-primary)' }}
+                                >
+                                    <i className="bi bi-plus-circle"></i> Crear
+                                </button>
+                            </div>
+                            <CustomSelect
+                                value={form.material_id}
+                                onChange={e => setForm({ ...form, material_id: e.target.value })}
+                                placeholder="Ninguno / Por defecto"
+                                searchable={materiales.length > 5}
+                                options={[
+                                    { value: '', label: 'Ninguno / Por defecto' },
+                                    ...materiales.map(m => ({
+                                        value: String(m.id),
+                                        label: `${m.nombre} (Stock: ${m.stock_actual} ${m.unidad})`
+                                    }))
+                                ]}
+                            />
+                            {materiales.length === 0 && (
+                                <small className="productos-material-empty">
+                                    No hay materiales en inventario. Crea uno para asignarlo al producto.
+                                </small>
+                            )}
+                        </div>
+
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Tiempo Estimado</label>
+                            <div className="form-input-box has-lead has-suffix">
+                                <i className="bi bi-clock-history input-icon-lead"></i>
+                                <input
+                                    className="form-input"
+                                    type="number"
+                                    value={form.tiempo_estimado_dias}
+                                    onChange={e => setForm({ ...form, tiempo_estimado_dias: e.target.value })}
+                                    placeholder="2"
+                                />
+                                <span className="input-badge-suffix">días hab.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Imagen Referencial</label>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -411,36 +774,281 @@ const Productos = () => {
                             className="productos-hidden-file-input"
                             onChange={e => handleImageChange(e.target.files?.[0])}
                         />
-                        <div className="productos-image-picker">
-                            {imagePreviewUrl ? (
-                                <img src={imagePreviewUrl} alt="Preview producto" className="productos-image-preview" />
-                            ) : (
-                                <div className="productos-image-placeholder">
-                                    <i className="bi bi-image"></i>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '1rem',
+                            padding: '0.5rem 0.75rem',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-lg)',
+                            background: 'var(--color-bg-alt, #f8fafc)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                                {imagePreviewUrl ? (
+                                    <img
+                                        src={imagePreviewUrl}
+                                        alt="Preview producto"
+                                        style={{ width: '46px', height: '46px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--color-border)', background: '#fff' }}
+                                    />
+                                ) : (
+                                    <div style={{ width: '46px', height: '46px', borderRadius: '8px', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.25rem' }}>
+                                        <i className="bi bi-image"></i>
+                                    </div>
+                                )}
+                                <div>
+                                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                        {form.image ? form.image.name : imagePreviewUrl ? 'Imagen actual del catálogo' : 'Sin imagen asignada'}
+                                    </div>
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
+                                        Formatos recomendados: JPG o PNG
+                                    </div>
                                 </div>
-                            )}
-                            <div className="productos-image-picker-actions">
-                                <button className="btn btn-secondary btn-sm" type="button" onClick={() => fileInputRef.current?.click()}>
-                                    <i className="bi bi-pencil"></i> {imagePreviewUrl ? 'Cambiar imagen' : 'Subir imagen'}
-                                </button>
-                                {form.image && <small className="productos-image-name">{form.image.name}</small>}
                             </div>
+                            <button
+                                className="btn btn-secondary btn-sm"
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                style={{ flexShrink: 0 }}
+                            >
+                                <i className="bi bi-camera"></i> {imagePreviewUrl ? 'Cambiar' : 'Subir'}
+                            </button>
                         </div>
                     </div>
-                    <div className="form-group">
-                        <label className="form-label">Tiempo estimado (días)</label>
-                        <input className="form-input" type="number" value={form.tiempo_estimado_dias} onChange={e => setForm({ ...form, tiempo_estimado_dias: e.target.value })} />
-                    </div>
-                    <div className="form-group productos-visible-toggle-group">
-                        <label className="productos-visible-label">Visible</label>
-                        <label className="switch productos-visible-switch">
-                            <input type="checkbox" checked={!!form.visible} onChange={e => setForm({ ...form, visible: e.target.checked })} />
-                            <span className="slider round"></span>
-                        </label>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>
+                        <div className="form-option-row">
+                            <div className="form-option-content">
+                                <div className="form-option-icon">
+                                    <i className="bi bi-eye-fill"></i>
+                                </div>
+                                <div>
+                                    <h4 className="form-option-title">Visible en Catálogo</h4>
+                                    <p className="form-option-desc">Disponible para órdenes directas de clínicas</p>
+                                </div>
+                            </div>
+                            <label className="switch" style={{ margin: 0 }}>
+                                <input type="checkbox" checked={!!form.visible} onChange={e => setForm({ ...form, visible: e.target.checked })} />
+                                <span className="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div className="form-option-row">
+                            <div className="form-option-content">
+                                <div className="form-option-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
+                                    <i className="bi bi-diagram-3-fill"></i>
+                                </div>
+                                <div>
+                                    <h4 className="form-option-title">Admite Puentes y Pónticos</h4>
+                                    <p className="form-option-desc">Habilita tramos continuos y pilares en odontograma</p>
+                                </div>
+                            </div>
+                            <label className="switch" style={{ margin: 0 }}>
+                                <input
+                                    type="checkbox"
+                                    checked={!!form.admite_puente}
+                                    onChange={e => setForm({ ...form, admite_puente: e.target.checked })}
+                                />
+                                <span className="slider round"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </Modal>
 
+            {/* Manage Categories Modal */}
+            <Modal
+                open={catModalOpen}
+                onClose={() => { if (!catActionLoading) setCatModalOpen(false); }}
+                title="Gestionar Categorías"
+                kicker="Catálogo • Clasificación"
+                subtitle="Gestión de familias y categorías de trabajos protésicos"
+                icon="bi-grid"
+                footer={(
+                    <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setCatModalOpen(false)}
+                        disabled={catActionLoading}
+                    >
+                        Cerrar
+                    </button>
+                )}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', margin: 0 }}>
+                        Administra las categorías de trabajos del laboratorio. Los cambios se reflejarán de inmediato en el catálogo y los pedidos.
+                    </p>
+
+                    {/* New Category Input */}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div className="form-input-box has-lead" style={{ flex: 1 }}>
+                            <i className="bi bi-folder-plus form-input-lead" aria-hidden="true" />
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Nombre de la nueva categoría (ej. Férulas, Guías)..."
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddCategory();
+                                    }
+                                }}
+                                disabled={catActionLoading}
+                                autoFocus
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={handleAddCategory}
+                            disabled={catActionLoading || !newCategoryName.trim()}
+                            style={{ whiteSpace: 'nowrap' }}
+                        >
+                            <i className="bi bi-plus-lg"></i> Agregar
+                        </button>
+                    </div>
+
+                    {catModalError && (
+                        <div className="alert alert-error" style={{ margin: 0 }}>
+                            <i className="bi bi-exclamation-circle"></i> {catModalError}
+                        </div>
+                    )}
+
+                    {/* Category List */}
+                    <div style={{ maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {categorias.length === 0 ? (
+                            <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '1rem' }}>
+                                No hay categorías registradas.
+                            </p>
+                        ) : (
+                            categorias.map(c => {
+                                const isEditing = editingCatId === c.id;
+                                const count = productCountByCat[c.id] || 0;
+
+                                return (
+                                    <div
+                                        key={c.id}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '0.65rem 0.85rem',
+                                            borderRadius: 'var(--border-radius-sm)',
+                                            border: '1px solid var(--color-border)',
+                                            background: 'var(--color-surface)'
+                                        }}
+                                    >
+                                        {isEditing ? (
+                                            <div style={{ display: 'flex', gap: '0.5rem', width: '100%', alignItems: 'center' }}>
+                                                <input
+                                                    type="text"
+                                                    className="form-input form-input-sm"
+                                                    value={editingCatName}
+                                                    onChange={(e) => setEditingCatName(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleSaveEditCategory(c.id);
+                                                        }
+                                                    }}
+                                                    autoFocus
+                                                    disabled={catActionLoading}
+                                                    style={{ flex: 1 }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary btn-sm"
+                                                    onClick={() => handleSaveEditCategory(c.id)}
+                                                    disabled={catActionLoading || !editingCatName.trim()}
+                                                    title="Guardar nombre"
+                                                >
+                                                    <i className="bi bi-check-lg"></i>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => {
+                                                        setEditingCatId(null);
+                                                        setEditingCatName('');
+                                                    }}
+                                                    disabled={catActionLoading}
+                                                    title="Cancelar"
+                                                >
+                                                    <i className="bi bi-x-lg"></i>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div>
+                                                    <span style={{ fontWeight: 600 }}>{c.nombre}</span>
+                                                    <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                                        ({count} producto{count !== 1 ? 's' : ''})
+                                                    </span>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary btn-sm"
+                                                        onClick={() => {
+                                                            setEditingCatId(c.id);
+                                                            setEditingCatName(c.nombre);
+                                                            setCatModalError('');
+                                                        }}
+                                                        disabled={catActionLoading}
+                                                        title="Editar nombre"
+                                                    >
+                                                        <i className="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary btn-sm"
+                                                        style={{ color: 'var(--color-danger, #ef4444)' }}
+                                                        onClick={() => {
+                                                            setCatModalError('');
+                                                            setCatToDelete(c);
+                                                        }}
+                                                        disabled={catActionLoading}
+                                                        title="Eliminar categoría"
+                                                    >
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Confirm Category Delete */}
+            <ConfirmDialog
+                open={Boolean(catToDelete)}
+                onClose={() => { if (!catActionLoading) setCatToDelete(null); }}
+                onConfirm={() => catToDelete && handleDeleteCategory(catToDelete)}
+                confirming={catActionLoading}
+                variant="danger"
+                title="Eliminar categoría"
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                message={(
+                    <>
+                        <p>
+                            ¿Eliminar la categoría <strong>{catToDelete?.nombre}</strong>?
+                        </p>
+                        <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+                            Solo se puede eliminar si no tiene productos asignados actualmente.
+                        </p>
+                    </>
+                )}
+            />
+
+            {/* Confirm Product Delete */}
             <ConfirmDialog
                 open={deleteConfirmOpen}
                 onClose={() => { if (!saving) setDeleteConfirmOpen(false); }}

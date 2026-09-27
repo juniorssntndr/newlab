@@ -10,4 +10,14 @@ backend/uploads/
 .agents/skills/ui-ux-pro-max-skill/
 backend/src/db/migration_950_rescued_data.sql
 .playwright-cli/
+.tmp/
+scratch/
+*.png
+.codegraph/
+.agents/**/.tmp/
+.agents/**/tmp/
+.agents/skills/playwright-skill/*.png
+.agents/skills/playwright-skill/*.js
+!.agents/skills/playwright-skill/run.js
+.atl/
 

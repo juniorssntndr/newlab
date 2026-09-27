@@ -83,10 +83,12 @@ export default function CatalogoCliente() {
     }, [filtered, selectedCat, categorias]);
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in page-container">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1>Catálogo de Servicios</h1>
+                    <h1>
+                        <i className="bi bi-box-seam text-primary" aria-hidden="true"></i> Catálogo de Servicios
+                    </h1>
                     <p>Elige un tratamiento y continúa al pedido</p>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
@@ -10,19 +10,63 @@ import { fetchVisibleCatalog } from '../modules/orders/catalog/visibleCatalogCac
 
 const MAX_TEETH_PREVIEW = 4;
 
+const orderStatusColorMap = {
+    pendiente: '#f59e0b',
+    en_diseno: '#8b5cf6',
+    esperando_aprobacion: '#06b6d4',
+    en_produccion: '#3b82f6',
+    terminado: '#10b981',
+    enviado: '#64748b'
+};
+
 const Pedidos = () => {
     const { user, getHeaders } = useAuth();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const isClient = isClientRole(user);
-    const estadoFromUrl = searchParams.get('estado') || '';
+    const estadoParam = searchParams.get('estado') || '';
+    const filtroParam = searchParams.get('filtro') || '';
+    const isSpecialState = estadoParam === 'retrasados' || estadoParam === 'entregas_hoy';
+    const initialFiltroOperativo = filtroParam || (isSpecialState ? estadoParam : '');
+    const initialFiltroEstado = isSpecialState ? '' : estadoParam;
 
-    const [filtroEstado, setFiltroEstado] = useState(estadoFromUrl);
+    const [filtroEstado, setFiltroEstado] = useState(initialFiltroEstado);
+    const [filtroOperativo, setFiltroOperativo] = useState(initialFiltroOperativo);
     const [search, setSearch] = useState('');
+    const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+    const statusDropdownRef = useRef(null);
 
     useEffect(() => {
-        setFiltroEstado(estadoFromUrl);
-    }, [estadoFromUrl]);
+        if (!statusDropdownOpen) return;
+        const handleClickOutside = (e) => {
+            if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target)) {
+                setStatusDropdownOpen(false);
+            }
+        };
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') setStatusDropdownOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [statusDropdownOpen]);
+
+    useEffect(() => {
+        const currentEstado = searchParams.get('estado') || '';
+        const currentFiltro = searchParams.get('filtro') || '';
+        if (currentEstado === 'retrasados' || currentEstado === 'entregas_hoy') {
+            setFiltroOperativo(currentEstado);
+            setFiltroEstado('');
+        } else {
+            setFiltroEstado(currentEstado);
+            setFiltroOperativo(currentFiltro);
+        }
+    }, [searchParams]);
 
     // Prefetch catálogo para lab: Nuevo Pedido abre sin flash vacío.
     useEffect(() => {
@@ -52,8 +96,9 @@ const Pedidos = () => {
 
     const filters = useMemo(() => ({
         estado: filtroEstado,
+        filtro: filtroOperativo,
         search
-    }), [filtroEstado, search]);
+    }), [filtroEstado, filtroOperativo, search]);
 
     const {
         data: pedidos = [],
@@ -86,8 +131,19 @@ const Pedidos = () => {
 
     const setEstadoFilter = (estado) => {
         setFiltroEstado(estado);
+        setFiltroOperativo('');
         if (estado) {
             setSearchParams({ estado });
+        } else {
+            setSearchParams({});
+        }
+    };
+
+    const setOperativoFilter = (filtro) => {
+        setFiltroOperativo(filtro);
+        setFiltroEstado('');
+        if (filtro) {
+            setSearchParams({ filtro });
         } else {
             setSearchParams({});
         }
@@ -100,21 +156,27 @@ const Pedidos = () => {
         return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
     };
 
-    const pageTitle = isClient ? 'Mis pedidos' : 'Cola de pedidos';
+    const pageTitle = isClient ? 'Mis pedidos' : 'Gestión de pedidos';
     const pageSubtitle = isClient
         ? (filtroEstado === 'esperando_aprobacion'
             ? 'Diseños que esperan tu visto bueno'
             : 'Sigue el avance de tus trabajos')
-        : 'Gestión y seguimiento de trabajos dentales';
+        : (filtroOperativo === 'retrasados'
+            ? 'Pedidos fuera de fecha comprometida · Requieren acción inmediata'
+            : filtroOperativo === 'entregas_hoy'
+                ? 'Pedidos comprometidos para entrega el día de hoy'
+                : 'Gestión y seguimiento de trabajos dentales');
     const showApprovalCue = isClient
         && pendingApprovalCount > 0
         && filtroEstado !== 'esperando_aprobacion';
 
     return (
-        <div className="animate-fade-in pedidos-tracking">
+        <div className="animate-fade-in pedidos-tracking page-container">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1>{pageTitle}</h1>
+                    <h1>
+                        <i className="bi bi-clipboard2-pulse text-primary" aria-hidden="true"></i> {pageTitle}
+                    </h1>
                     <p>{pageSubtitle}</p>
                 </div>
                 <button
@@ -164,33 +226,178 @@ const Pedidos = () => {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <div className="pedidos-status-filters-scroller">
-                        <div className="pedidos-status-filters" role="group" aria-label="Filtrar por estado">
-                            {estados.map((e) => {
-                                const isApprovalChip = e === 'esperando_aprobacion';
-                                const showChipBadge = isClient && isApprovalChip && pendingApprovalCount > 0;
-                                return (
+
+                    {/* Desktop Toolbar: Operative Filters outside + Custom Status Dropdown */}
+                    <div className="pedidos-desktop-filters desktop-only">
+                        {!isClient && (
+                            <>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm pedidos-filter-chip pedidos-chip-danger${filtroOperativo === 'retrasados' ? ' is-active' : ''}`}
+                                    onClick={() => setOperativoFilter(filtroOperativo === 'retrasados' ? '' : 'retrasados')}
+                                >
+                                    <i className="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+                                    <span>Retrasados</span>
+                                    {filtroOperativo === 'retrasados' && <span className="pedidos-chip-clear">✕</span>}
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm pedidos-filter-chip pedidos-chip-warning${filtroOperativo === 'entregas_hoy' ? ' is-active' : ''}`}
+                                    onClick={() => setOperativoFilter(filtroOperativo === 'entregas_hoy' ? '' : 'entregas_hoy')}
+                                >
+                                    <i className="bi bi-calendar-check-fill" aria-hidden="true"></i>
+                                    <span>Entregas hoy</span>
+                                    {filtroOperativo === 'entregas_hoy' && <span className="pedidos-chip-clear">✕</span>}
+                                </button>
+                            </>
+                        )}
+
+                        <div className="pedidos-custom-select-wrap" ref={statusDropdownRef}>
+                            <button
+                                type="button"
+                                className={`btn btn-sm pedidos-custom-select-trigger${filtroEstado ? ' is-active' : ''}${statusDropdownOpen ? ' is-open' : ''}`}
+                                onClick={() => setStatusDropdownOpen((prev) => !prev)}
+                                aria-expanded={statusDropdownOpen}
+                                aria-haspopup="listbox"
+                            >
+                                {filtroEstado ? (
+                                    <>
+                                        <span
+                                            className="pedidos-filter-dot"
+                                            style={{ backgroundColor: orderStatusColorMap[filtroEstado] || 'var(--color-primary)' }}
+                                            aria-hidden="true"
+                                        />
+                                        <span className="pedidos-custom-select-text">
+                                            {getOrderStatusLabel(filtroEstado, { forClient: isClient })}
+                                        </span>
+                                        <span
+                                            className="pedidos-chip-clear"
+                                            role="button"
+                                            tabIndex={0}
+                                            title="Limpiar filtro de estado"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEstadoFilter('');
+                                            }}
+                                        >
+                                            ✕
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="bi bi-funnel" aria-hidden="true"></i>
+                                        <span className="pedidos-custom-select-text">Fase del trabajo</span>
+                                        <i className={`bi bi-chevron-down pedidos-custom-select-chevron${statusDropdownOpen ? ' is-rotated' : ''}`} aria-hidden="true"></i>
+                                    </>
+                                )}
+                            </button>
+
+                            {statusDropdownOpen && (
+                                <div className="pedidos-custom-select-menu" role="listbox">
                                     <button
-                                        key={e || 'all'}
                                         type="button"
-                                        className={[
-                                            'btn',
-                                            'btn-sm',
-                                            'pedidos-filter-chip',
-                                            filtroEstado === e ? 'is-active' : '',
-                                            showChipBadge && filtroEstado !== e ? 'is-attention' : '',
-                                        ].filter(Boolean).join(' ')}
-                                        onClick={() => setEstadoFilter(e)}
+                                        className={`pedidos-custom-select-item${!filtroEstado ? ' is-selected' : ''}`}
+                                        onClick={() => {
+                                            setEstadoFilter('');
+                                            setStatusDropdownOpen(false);
+                                        }}
+                                        role="option"
+                                        aria-selected={!filtroEstado}
                                     >
-                                        {e ? getOrderStatusLabel(e, { forClient: isClient }) : 'Todos'}
-                                        {showChipBadge ? (
-                                            <span className="pedidos-filter-badge" aria-hidden="true">
-                                                {pendingApprovalCount > 99 ? '99+' : pendingApprovalCount}
-                                            </span>
-                                        ) : null}
+                                        <i className="bi bi-grid text-secondary" style={{ width: 14, textAlign: 'center' }}></i>
+                                        <span>Todas las fases</span>
+                                        {!filtroEstado && <i className="bi bi-check2 text-primary" style={{ marginLeft: 'auto', fontWeight: 800 }}></i>}
                                     </button>
-                                );
-                            })}
+                                    <div className="pedidos-custom-select-divider" />
+                                    {estados.filter(Boolean).map((est) => (
+                                        <button
+                                            key={est}
+                                            type="button"
+                                            className={`pedidos-custom-select-item${filtroEstado === est ? ' is-selected' : ''}`}
+                                            onClick={() => {
+                                                setEstadoFilter(est);
+                                                setStatusDropdownOpen(false);
+                                            }}
+                                            role="option"
+                                            aria-selected={filtroEstado === est}
+                                        >
+                                            <span
+                                                className="pedidos-filter-dot"
+                                                style={{ backgroundColor: orderStatusColorMap[est] || 'var(--color-primary)' }}
+                                                aria-hidden="true"
+                                            />
+                                            <span>{getOrderStatusLabel(est, { forClient: isClient })}</span>
+                                            {filtroEstado === est && <i className="bi bi-check2 text-primary" style={{ marginLeft: 'auto', fontWeight: 800 }}></i>}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Mobile: touch-sliding row */}
+                    <div className="pedidos-status-filters-scroller mobile-only">
+                        <div className="pedidos-status-filters" role="group" aria-label="Filtrar pedidos">
+                            <button
+                                type="button"
+                                className={`btn btn-sm pedidos-filter-chip${!filtroEstado && !filtroOperativo ? ' is-active' : ''}`}
+                                onClick={(e) => {
+                                    setEstadoFilter('');
+                                    setOperativoFilter('');
+                                    e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                }}
+                            >
+                                Todos
+                            </button>
+
+                            {!isClient && (
+                                <>
+                                    <button
+                                        type="button"
+                                        className={`btn btn-sm pedidos-filter-chip pedidos-chip-danger${filtroOperativo === 'retrasados' ? ' is-active' : ''}`}
+                                        onClick={(e) => {
+                                            setOperativoFilter(filtroOperativo === 'retrasados' ? '' : 'retrasados');
+                                            e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                        }}
+                                    >
+                                        <i className="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+                                        <span>Retrasados</span>
+                                        {filtroOperativo === 'retrasados' && <span className="pedidos-chip-clear">✕</span>}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`btn btn-sm pedidos-filter-chip pedidos-chip-warning${filtroOperativo === 'entregas_hoy' ? ' is-active' : ''}`}
+                                        onClick={(e) => {
+                                            setOperativoFilter(filtroOperativo === 'entregas_hoy' ? '' : 'entregas_hoy');
+                                            e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                        }}
+                                    >
+                                        <i className="bi bi-calendar-check-fill" aria-hidden="true"></i>
+                                        <span>Entregas hoy</span>
+                                        {filtroOperativo === 'entregas_hoy' && <span className="pedidos-chip-clear">✕</span>}
+                                    </button>
+                                </>
+                            )}
+
+                            {estados.filter(Boolean).map((est) => (
+                                <button
+                                    key={est}
+                                    type="button"
+                                    className={`btn btn-sm pedidos-filter-chip${filtroEstado === est ? ' is-active' : ''}`}
+                                    onClick={(e) => {
+                                        setEstadoFilter(filtroEstado === est ? '' : est);
+                                        e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                    }}
+                                >
+                                    <span
+                                        className="pedidos-filter-dot"
+                                        style={{ backgroundColor: orderStatusColorMap[est] || 'var(--color-primary)' }}
+                                        aria-hidden="true"
+                                    />
+                                    <span>{getOrderStatusLabel(est, { forClient: isClient })}</span>
+                                    {filtroEstado === est && <span className="pedidos-chip-clear">✕</span>}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -207,14 +414,18 @@ const Pedidos = () => {
                     <div className="empty-state">
                         <i className="bi bi-clipboard2 empty-state-icon" aria-hidden="true"></i>
                         <h3 className="empty-state-title">
-                            {filtroEstado === 'esperando_aprobacion' ? 'Nada por aprobar' : 'Sin pedidos'}
+                            {filtroOperativo === 'retrasados' ? 'No hay pedidos retrasados'
+                                : filtroOperativo === 'entregas_hoy' ? 'No hay entregas para hoy'
+                                : filtroEstado === 'esperando_aprobacion' ? 'Nada por aprobar' : 'Sin pedidos'}
                         </h3>
                         <p className="empty-state-text">
-                            {filtroEstado === 'esperando_aprobacion'
+                            {filtroOperativo === 'retrasados' ? '¡Excelente! Todo el taller está al día con los compromisos de entrega.'
+                                : filtroOperativo === 'entregas_hoy' ? 'No hay trabajos programados con fecha de entrega de hoy.'
+                                : filtroEstado === 'esperando_aprobacion'
                                 ? 'Cuando el laboratorio envíe un diseño, aparecerá aquí.'
                                 : (isClient ? 'Pide tu primer trabajo desde el catálogo' : 'Crea tu primer pedido para comenzar')}
                         </p>
-                        {filtroEstado !== 'esperando_aprobacion' && (
+                        {filtroEstado !== 'esperando_aprobacion' && !filtroOperativo && (
                             <button
                                 type="button"
                                 className="btn btn-primary"

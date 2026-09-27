@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Header from './Header.jsx';
 import NotificationToasts from './NotificationToasts.jsx';
+import NotificationPermissionModal from './notifications/NotificationPermissionModal.jsx';
 
 const Layout = () => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -23,6 +24,7 @@ const Layout = () => {
                 </div>
             </main>
             <NotificationToasts />
+            <NotificationPermissionModal />
         </div>
     );
 };

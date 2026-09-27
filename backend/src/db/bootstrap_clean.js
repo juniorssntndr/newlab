@@ -42,7 +42,8 @@ async function bootstrapClean() {
              VALUES
              ('Administrador', '{"all": true}'::jsonb, true, true),
              ('Técnico', '{"pedidos": true, "produccion": true}'::jsonb, true, false),
-             ('Cliente', '{"pedidos_propios": true}'::jsonb, true, false)
+             ('Cliente', '{"pedidos_propios": true}'::jsonb, true, false),
+             ('Visitador', '{"crm": true, "visitas_propias": true}'::jsonb, true, false)
              ON CONFLICT (nombre) DO UPDATE
              SET permisos = EXCLUDED.permisos,
                  activo = EXCLUDED.activo,

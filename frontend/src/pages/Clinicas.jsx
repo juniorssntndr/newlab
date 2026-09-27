@@ -367,6 +367,10 @@ const Clinicas = () => {
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 title={modalTitle}
+                kicker="Clínicas • Directorio Médico"
+                subtitle={editing ? "Actualización de datos comerciales y fiscales" : "Registro de nueva clínica dental"}
+                icon="bi-hospital"
+                size="lg"
                 footer={
                     <>
                         {/* Paso RUC: solo botón consultar */}
@@ -426,7 +430,7 @@ const Clinicas = () => {
                         <div style={{
                             background: 'rgba(59,130,246,0.06)',
                             border: '1px solid rgba(59,130,246,0.2)',
-                            borderRadius: '8px',
+                            borderRadius: '10px',
                             padding: '0.875rem 1rem',
                             fontSize: '0.875rem',
                             color: 'var(--color-text-secondary)',
@@ -441,19 +445,22 @@ const Clinicas = () => {
                             </span>
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">RUC de la clínica <span style={{ color: 'red' }}>*</span></label>
-                            <input
-                                className="form-input"
-                                style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '1.1rem', letterSpacing: '0.05em' }}
-                                placeholder="20xxxxxxxxx (11 dígitos)"
-                                value={rucInput}
-                                onChange={e => setRucInput(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter' && rucInput.replace(/\D/g, '').length === 11) handleConsultarRUC();
-                                }}
-                                maxLength={11}
-                                autoFocus
-                            />
+                            <label className="form-label">RUC de la clínica <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                            <div className="form-input-box has-lead">
+                                <i className="bi bi-card-text form-input-lead" aria-hidden="true" />
+                                <input
+                                    className="form-input"
+                                    style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '1.1rem', letterSpacing: '0.05em' }}
+                                    placeholder="20xxxxxxxxx (11 dígitos)"
+                                    value={rucInput}
+                                    onChange={e => setRucInput(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && rucInput.replace(/\D/g, '').length === 11) handleConsultarRUC();
+                                    }}
+                                    maxLength={11}
+                                    autoFocus
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -484,7 +491,7 @@ const Clinicas = () => {
                         <div style={{
                             background: 'var(--color-bg-alt)',
                             border: '1px solid var(--color-border)',
-                            borderRadius: '8px',
+                            borderRadius: '10px',
                             overflow: 'hidden',
                         }}>
                             <div style={{
@@ -547,24 +554,33 @@ const Clinicas = () => {
                         )}
                         <div className="grid grid-cols-2">
                             <div className="form-group">
-                                <label className="form-label">Nombre *</label>
-                                <input className="form-input" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
+                                <label className="form-label">Nombre <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-hospital form-input-lead" aria-hidden="true" />
+                                    <input className="form-input" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} autoFocus />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Razón Social</label>
-                                <input className="form-input" value={form.razon_social} onChange={e => setForm({ ...form, razon_social: e.target.value })} />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-building form-input-lead" aria-hidden="true" />
+                                    <input className="form-input" value={form.razon_social} onChange={e => setForm({ ...form, razon_social: e.target.value })} />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">RUC</label>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <input
-                                        className="form-input"
-                                        value={form.ruc}
-                                        onChange={e => { setForm({ ...form, ruc: e.target.value.replace(/\D/g, '').slice(0, 11) }); setRucWarning(''); }}
-                                        maxLength={11}
-                                        style={{ fontFamily: 'var(--font-mono, monospace)' }}
-                                        placeholder="20xxxxxxxxx"
-                                    />
+                                    <div className="form-input-box has-lead" style={{ flex: 1 }}>
+                                        <i className="bi bi-card-text form-input-lead" aria-hidden="true" />
+                                        <input
+                                            className="form-input"
+                                            value={form.ruc}
+                                            onChange={e => { setForm({ ...form, ruc: e.target.value.replace(/\D/g, '').slice(0, 11) }); setRucWarning(''); }}
+                                            maxLength={11}
+                                            style={{ fontFamily: 'var(--font-mono, monospace)' }}
+                                            placeholder="20xxxxxxxxx"
+                                        />
+                                    </div>
                                     {editing && (
                                         <button
                                             type="button"
@@ -586,20 +602,32 @@ const Clinicas = () => {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Email</label>
-                                <input className="form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-envelope form-input-lead" aria-hidden="true" />
+                                    <input className="form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Teléfono</label>
-                                <input className="form-input" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-telephone form-input-lead" aria-hidden="true" />
+                                    <input className="form-input" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
+                                </div>
                             </div>
                         </div>
                         <div className="form-group">
                             <label className="form-label">Dirección</label>
-                            <input className="form-input" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} />
+                            <div className="form-input-box has-lead">
+                                <i className="bi bi-geo-alt form-input-lead" aria-hidden="true" />
+                                <input className="form-input" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} />
+                            </div>
                         </div>
                         <div className="form-group">
                             <label className="form-label">Nombre de Contacto</label>
-                            <input className="form-input" value={form.contacto_nombre} onChange={e => setForm({ ...form, contacto_nombre: e.target.value })} />
+                            <div className="form-input-box has-lead">
+                                <i className="bi bi-person form-input-lead" aria-hidden="true" />
+                                <input className="form-input" value={form.contacto_nombre} onChange={e => setForm({ ...form, contacto_nombre: e.target.value })} />
+                            </div>
                         </div>
                     </div>
                 )}

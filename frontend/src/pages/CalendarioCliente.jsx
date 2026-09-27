@@ -166,10 +166,12 @@ const CalendarioCliente = () => {
     }, [pedidos]);
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in page-container">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1>Mi Calendario</h1>
+                    <h1>
+                        <i className="bi bi-calendar3 text-primary" aria-hidden="true"></i> Mi Calendario
+                    </h1>
                     <p>Fechas de entrega de tus pedidos activos</p>
                 </div>
             </div>
@@ -213,15 +215,16 @@ const CalendarioCliente = () => {
                         </div>
 
                         <div className="calendar-legend" aria-label="Leyenda de estados">
-                            {Object.entries(statusLabels).map(([key, label]) => (
-                                <div className="calendar-legend-item" key={key}>
-                                    <span className="calendar-legend-pill" style={{ background: statusColors[key] }} />
-                                    <span>
-                                        {label}
-                                        {counts[key] > 0 ? ` · ${counts[key]}` : ''}
-                                    </span>
-                                </div>
-                            ))}
+                            {Object.entries(statusLabels).map(([key, label]) => {
+                                const count = counts[key] || 0;
+                                return (
+                                    <div className={`calendar-legend-item${count > 0 ? ' has-count' : ''}`} key={key}>
+                                        <span className="calendar-legend-dot" style={{ background: statusColors[key] }} />
+                                        <span className="calendar-legend-label">{label}</span>
+                                        {count > 0 && <span className="calendar-legend-badge">{count}</span>}
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         <FullCalendar
@@ -309,6 +312,9 @@ const CalendarioCliente = () => {
                 open={Boolean(dayPanel)}
                 onClose={() => setDayPanel(null)}
                 title={dayPanel ? formatDayTitle(dayPanel.date) : 'Entregas del día'}
+                kicker="Mi Portal • Cronograma de Entregas"
+                subtitle="Trabajos programados para entrega en su clínica"
+                icon="bi-calendar-event"
                 className="calendar-day-modal"
                 footer={(
                     <button type="button" className="btn btn-secondary" onClick={() => setDayPanel(null)}>

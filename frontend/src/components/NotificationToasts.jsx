@@ -47,8 +47,12 @@ const NotificationToasts = () => {
                         className="notification-toast-close"
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (!toast.read && toast.notificationId) {
+                                markAsRead(toast.notificationId);
+                            }
                             dismissToast(toast.id);
                         }}
+                        aria-label="Cerrar notificación"
                     >
                         <i className="bi bi-x"></i>
                     </button>

@@ -18,8 +18,11 @@ const PRODUCT_IMAGE_RULES = [
     { match: /pmma|provisional/i, image: `${LANDING}/service-provisional-pmma.jpg` },
     { match: /implante/i, image: `${LANDING}/service-implant-real.jpg` },
     { match: /disilicato|e\.?\s*max/i, image: `${LANDING}/service-emax.jpg` },
+    { match: /f[eé]rula|michigan/i, image: `${LANDING}/service-guide.jpg` },
+    { match: /ppr|removible|cromo/i, image: `${LANDING}/service-cad-real.jpg` },
     { match: /corona.*zirconia|zirconia.*corona|^corona zirconia$/i, image: `${LANDING}/service-zirconia-crown.jpg` },
     { match: /corona/i, image: `${LANDING}/service-zirconia-crown.jpg` },
+    { match: /zirconia/i, image: `${LANDING}/service-zirconia-crown.jpg` },
     { match: /h[ií]brid/i, image: `${LANDING}/service-hybrid.jpg` },
 ];
 

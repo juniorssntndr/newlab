@@ -37,24 +37,42 @@ const buildMovimientosFilters = ({ clinica_id, producto_id }, alias = 'm') => {
 
 export const makeDashboardPgRepository = ({ pool }) => ({
     getStatsOverview: async () => {
-        const [pedidosTotal, pedidosHoy, enProduccion, pendientes, enDiseno, esperandoAprobacion, retrasados, clinicasActivas, terminadosMes, timelineMes, pedidosMes, topProductoMes, topClinicaMes, topProductosMes, topClinicasMes, nuevosClientesMes, historicoOperativo, historicoTopProducto, historicoTopClinica] = await Promise.all([
-            pool.query('SELECT COUNT(*) FROM nl_pedidos'),
-            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE fecha = CURRENT_DATE"),
-            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado = 'en_produccion'"),
-            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado = 'pendiente'"),
-            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado = 'en_diseno'"),
-            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado = 'esperando_aprobacion'"),
-            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE fecha_entrega < CURRENT_DATE AND estado NOT IN ('terminado', 'enviado')"),
+        const [
+            pedidosCountersResult,
+            clinicasActivasResult,
+            timelineMesResult,
+            topProductoMesResult,
+            topClinicaMesResult,
+            topProductosMesResult,
+            topClinicasMesResult,
+            nuevosClientesMesResult,
+            historicoOperativoResult,
+            historicoTopProductoResult,
+            historicoTopClinicaResult
+        ] = await Promise.all([
+            pool.query(`
+                SELECT
+                    COUNT(*) as pedidos_total,
+                    COUNT(*) FILTER (WHERE fecha = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date) as pedidos_hoy,
+                    COUNT(*) FILTER (WHERE estado = 'en_produccion') as en_produccion,
+                    COUNT(*) FILTER (WHERE estado = 'pendiente') as pendientes,
+                    COUNT(*) FILTER (WHERE estado = 'en_diseno') as en_diseno,
+                    COUNT(*) FILTER (WHERE estado = 'esperando_aprobacion') as esperando_aprobacion,
+                    COUNT(*) FILTER (WHERE fecha_entrega < (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date AND estado NOT IN ('terminado', 'enviado', 'anulado')) as retrasados,
+                    COUNT(*) FILTER (WHERE estado IN ('terminado', 'enviado') AND DATE_TRUNC('month', created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')) as terminados_mes,
+                    COUNT(*) FILTER (WHERE DATE_TRUNC('month', created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')) as pedidos_mes,
+                    COUNT(*) FILTER (WHERE fecha_entrega = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date AND estado NOT IN ('terminado', 'enviado', 'anulado')) as entregas_hoy,
+                    COUNT(*) FILTER (WHERE estado = 'terminado') as listos_despacho
+                FROM nl_pedidos
+            `),
             pool.query("SELECT COUNT(*) FROM nl_clinicas WHERE estado = 'activo'"),
-            pool.query("SELECT COUNT(*) FROM nl_pedidos WHERE estado IN ('terminado','enviado') AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)"),
-            pool.query("SELECT estado_anterior, estado_nuevo FROM nl_pedido_timeline WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) AND estado_anterior IS NOT NULL AND estado_nuevo IS NOT NULL"),
-            pool.query("SELECT COUNT(*) as count FROM nl_pedidos WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)"),
+            pool.query("SELECT estado_anterior, estado_nuevo FROM nl_pedido_timeline WHERE created_at >= DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima') AND estado_anterior IS NOT NULL AND estado_nuevo IS NOT NULL"),
             pool.query(
                 `SELECT pr.nombre as producto, SUM(COALESCE(pi.cantidad, 1)) as cantidad
                  FROM nl_pedido_items pi
                  INNER JOIN nl_pedidos p ON p.id = pi.pedido_id
                  LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
-                 WHERE DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', CURRENT_DATE)
+                 WHERE DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')
                  GROUP BY pr.nombre
                  ORDER BY cantidad DESC, pr.nombre ASC
                  LIMIT 1`
@@ -63,7 +81,7 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                 `SELECT c.nombre as clinica, COUNT(*) as pedidos
                  FROM nl_pedidos p
                  LEFT JOIN nl_clinicas c ON c.id = p.clinica_id
-                 WHERE DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', CURRENT_DATE)
+                 WHERE DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')
                  GROUP BY c.nombre
                  ORDER BY pedidos DESC, c.nombre ASC
                  LIMIT 1`
@@ -75,7 +93,7 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                  FROM nl_pedido_items pi
                  INNER JOIN nl_pedidos p ON p.id = pi.pedido_id
                  LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
-                 WHERE DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', CURRENT_DATE)
+                 WHERE DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')
                  GROUP BY COALESCE(pr.nombre, 'Servicio sin producto')
                  ORDER BY cantidad DESC, COALESCE(pr.nombre, 'Servicio sin producto') ASC
                  LIMIT 5`
@@ -86,7 +104,7 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                     COUNT(*) as pedidos
                  FROM nl_pedidos p
                  LEFT JOIN nl_clinicas c ON c.id = p.clinica_id
-                 WHERE DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', CURRENT_DATE)
+                 WHERE DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')
                  GROUP BY COALESCE(c.nombre, 'Sin clinica')
                  ORDER BY pedidos DESC, COALESCE(c.nombre, 'Sin clinica') ASC
                  LIMIT 5`
@@ -94,32 +112,32 @@ export const makeDashboardPgRepository = ({ pool }) => ({
             pool.query(
                 `SELECT COUNT(*) as count
                  FROM nl_clinicas c
-                 WHERE DATE_TRUNC('month', c.created_at) = DATE_TRUNC('month', CURRENT_DATE)
+                 WHERE DATE_TRUNC('month', c.created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')
                    AND EXISTS (
                      SELECT 1 FROM nl_pedidos p
                      WHERE p.clinica_id = c.id
-                       AND DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', c.created_at)
+                       AND DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', c.created_at AT TIME ZONE 'America/Lima')
                    )`
             ),
             pool.query(
                 `WITH meses AS (
-                    SELECT DATE_TRUNC('month', (CURRENT_DATE - INTERVAL '11 months') + (gs.n * INTERVAL '1 month'))::date as periodo
+                    SELECT DATE_TRUNC('month', ((CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima') - INTERVAL '11 months') + (gs.n * INTERVAL '1 month'))::date as periodo
                     FROM generate_series(0, 11) as gs(n)
                 ),
                 pedidos AS (
-                    SELECT DATE_TRUNC('month', created_at)::date as periodo, COUNT(*) as pedidos
+                    SELECT DATE_TRUNC('month', created_at AT TIME ZONE 'America/Lima')::date as periodo, COUNT(*) as pedidos
                     FROM nl_pedidos
-                    WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+                    WHERE created_at >= DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima') - INTERVAL '11 months'
                     GROUP BY 1
                 ),
                 nuevos_clientes AS (
-                    SELECT DATE_TRUNC('month', c.created_at)::date as periodo, COUNT(*) as nuevos_clientes
+                    SELECT DATE_TRUNC('month', c.created_at AT TIME ZONE 'America/Lima')::date as periodo, COUNT(*) as nuevos_clientes
                     FROM nl_clinicas c
-                    WHERE c.created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+                    WHERE c.created_at >= DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima') - INTERVAL '11 months'
                       AND EXISTS (
                         SELECT 1 FROM nl_pedidos p
                         WHERE p.clinica_id = c.id
-                          AND DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', c.created_at)
+                          AND DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima') = DATE_TRUNC('month', c.created_at AT TIME ZONE 'America/Lima')
                       )
                     GROUP BY 1
                 )
@@ -135,18 +153,18 @@ export const makeDashboardPgRepository = ({ pool }) => ({
             pool.query(
                 `WITH ranked AS (
                     SELECT
-                        DATE_TRUNC('month', p.created_at)::date as periodo,
+                        DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima')::date as periodo,
                         COALESCE(pr.nombre, 'Servicio sin producto') as producto,
                         SUM(COALESCE(pi.cantidad, 1)) as cantidad,
                         ROW_NUMBER() OVER (
-                            PARTITION BY DATE_TRUNC('month', p.created_at)::date
+                            PARTITION BY DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima')::date
                             ORDER BY SUM(COALESCE(pi.cantidad, 1)) DESC, COALESCE(pr.nombre, 'Servicio sin producto') ASC
                         ) as rn
                     FROM nl_pedido_items pi
                     INNER JOIN nl_pedidos p ON p.id = pi.pedido_id
                     LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
-                    WHERE p.created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
-                    GROUP BY DATE_TRUNC('month', p.created_at)::date, COALESCE(pr.nombre, 'Servicio sin producto')
+                    WHERE p.created_at >= DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima') - INTERVAL '11 months'
+                    GROUP BY DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima')::date, COALESCE(pr.nombre, 'Servicio sin producto')
                 )
                 SELECT periodo, producto, cantidad
                 FROM ranked
@@ -156,17 +174,17 @@ export const makeDashboardPgRepository = ({ pool }) => ({
             pool.query(
                 `WITH ranked AS (
                     SELECT
-                        DATE_TRUNC('month', p.created_at)::date as periodo,
+                        DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima')::date as periodo,
                         COALESCE(c.nombre, 'Sin clinica') as clinica,
                         COUNT(*) as pedidos,
                         ROW_NUMBER() OVER (
-                            PARTITION BY DATE_TRUNC('month', p.created_at)::date
+                            PARTITION BY DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima')::date
                             ORDER BY COUNT(*) DESC, COALESCE(c.nombre, 'Sin clinica') ASC
                         ) as rn
                     FROM nl_pedidos p
                     LEFT JOIN nl_clinicas c ON c.id = p.clinica_id
-                    WHERE p.created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
-                    GROUP BY DATE_TRUNC('month', p.created_at)::date, COALESCE(c.nombre, 'Sin clinica')
+                    WHERE p.created_at >= DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima') - INTERVAL '11 months'
+                    GROUP BY DATE_TRUNC('month', p.created_at AT TIME ZONE 'America/Lima')::date, COALESCE(c.nombre, 'Sin clinica')
                 )
                 SELECT periodo, clinica, pedidos
                 FROM ranked
@@ -175,26 +193,30 @@ export const makeDashboardPgRepository = ({ pool }) => ({
             )
         ]);
 
+        const pc = pedidosCountersResult.rows[0] || {};
+
         return {
-            pedidosTotal,
-            pedidosHoy,
-            enProduccion,
-            pendientes,
-            enDiseno,
-            esperandoAprobacion,
-            retrasados,
-            clinicasActivas,
-            terminadosMes,
-            timelineMes,
-            pedidosMes,
-            topProductoMes,
-            topClinicaMes,
-            topProductosMes,
-            topClinicasMes,
-            nuevosClientesMes,
-            historicoOperativo,
-            historicoTopProducto,
-            historicoTopClinica
+            pedidosTotal: { rows: [{ count: pc.pedidos_total || 0 }] },
+            pedidosHoy: { rows: [{ count: pc.pedidos_hoy || 0 }] },
+            enProduccion: { rows: [{ count: pc.en_produccion || 0 }] },
+            pendientes: { rows: [{ count: pc.pendientes || 0 }] },
+            enDiseno: { rows: [{ count: pc.en_diseno || 0 }] },
+            esperandoAprobacion: { rows: [{ count: pc.esperando_aprobacion || 0 }] },
+            retrasados: { rows: [{ count: pc.retrasados || 0 }] },
+            clinicasActivas: clinicasActivasResult,
+            terminadosMes: { rows: [{ count: pc.terminados_mes || 0 }] },
+            timelineMes: timelineMesResult,
+            pedidosMes: { rows: [{ count: pc.pedidos_mes || 0 }] },
+            topProductoMes: topProductoMesResult,
+            topClinicaMes: topClinicaMesResult,
+            topProductosMes: topProductosMesResult,
+            topClinicasMes: topClinicasMesResult,
+            nuevosClientesMes: nuevosClientesMesResult,
+            historicoOperativo: historicoOperativoResult,
+            historicoTopProducto: historicoTopProductoResult,
+            historicoTopClinica: historicoTopClinicaResult,
+            entregasHoy: { rows: [{ count: pc.entregas_hoy || 0 }] },
+            listosDespacho: { rows: [{ count: pc.listos_despacho || 0 }] }
         };
     },
     listOrdersByStatus: async () => {
@@ -253,13 +275,13 @@ export const makeDashboardPgRepository = ({ pool }) => ({
         const ingresosFilter = buildIngresosFilters(filters);
         const result = await pool.query(
             `SELECT
-                COALESCE(SUM(CASE WHEN pg.fecha_pago = CURRENT_DATE THEN pg.monto END), 0) as ingresos_dia,
-                COALESCE(SUM(CASE WHEN pg.fecha_pago = CURRENT_DATE AND COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'caja' THEN pg.monto END), 0) as ingresos_dia_caja,
-                COALESCE(SUM(CASE WHEN pg.fecha_pago = CURRENT_DATE AND COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'banco' THEN pg.monto END), 0) as ingresos_dia_banco,
-                COALESCE(SUM(CASE WHEN DATE_TRUNC('month', pg.fecha_pago) = DATE_TRUNC('month', CURRENT_DATE) THEN pg.monto END), 0) as ingresos_mes,
-                COALESCE(SUM(CASE WHEN DATE_TRUNC('month', pg.fecha_pago) = DATE_TRUNC('month', CURRENT_DATE) AND COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'caja' THEN pg.monto END), 0) as ingresos_mes_caja,
-                COALESCE(SUM(CASE WHEN DATE_TRUNC('month', pg.fecha_pago) = DATE_TRUNC('month', CURRENT_DATE) AND COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'banco' THEN pg.monto END), 0) as ingresos_mes_banco,
-                COALESCE(SUM(CASE WHEN DATE_TRUNC('year', pg.fecha_pago) = DATE_TRUNC('year', CURRENT_DATE) THEN pg.monto END), 0) as ingresos_anio
+                COALESCE(SUM(CASE WHEN pg.fecha_pago = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date THEN pg.monto END), 0) as ingresos_dia,
+                COALESCE(SUM(CASE WHEN pg.fecha_pago = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date AND COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'caja' THEN pg.monto END), 0) as ingresos_dia_caja,
+                COALESCE(SUM(CASE WHEN pg.fecha_pago = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date AND COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'banco' THEN pg.monto END), 0) as ingresos_dia_banco,
+                COALESCE(SUM(CASE WHEN DATE_TRUNC('month', pg.fecha_pago) = DATE_TRUNC('month', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date) THEN pg.monto END), 0) as ingresos_mes,
+                COALESCE(SUM(CASE WHEN DATE_TRUNC('month', pg.fecha_pago) = DATE_TRUNC('month', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date) AND COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'caja' THEN pg.monto END), 0) as ingresos_mes_caja,
+                COALESCE(SUM(CASE WHEN DATE_TRUNC('month', pg.fecha_pago) = DATE_TRUNC('month', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date) AND COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'banco' THEN pg.monto END), 0) as ingresos_mes_banco,
+                COALESCE(SUM(CASE WHEN DATE_TRUNC('year', pg.fecha_pago) = DATE_TRUNC('year', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date) THEN pg.monto END), 0) as ingresos_anio
              FROM nl_pagos pg
              INNER JOIN nl_pedidos p ON p.id = pg.pedido_id
              ${ingresosFilter.where}`,
@@ -276,9 +298,12 @@ export const makeDashboardPgRepository = ({ pool }) => ({
         const egresosPeriodoParams = [...movFilter.params, fromDate, toDate];
         const gastosBreakdownParams = [...movFilter.params, fromDate, toDate];
 
-        const [ingresosPeriodoResult, egresosPeriodoResult, gastosBreakdownResult] = await Promise.all([
+        const [ingresosPeriodoResult, egresosPeriodoResult, gastosBreakdownResult, cuentasPorCobrarResult] = await Promise.all([
             pool.query(
-                `SELECT COALESCE(SUM(pg.monto), 0) as total
+                `SELECT
+                    COALESCE(SUM(pg.monto), 0) as total,
+                    COALESCE(SUM(CASE WHEN COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'caja' THEN pg.monto END), 0) as total_caja,
+                    COALESCE(SUM(CASE WHEN COALESCE(pg.tipo_fondo, CASE WHEN LOWER(COALESCE(pg.metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) = 'banco' THEN pg.monto END), 0) as total_banco
                  FROM nl_pagos pg
                  INNER JOIN nl_pedidos p ON p.id = pg.pedido_id
                  ${ingresosFilter.where} AND pg.fecha_pago BETWEEN $${ingresosPeriodoParams.length - 1}::date AND $${ingresosPeriodoParams.length}::date`,
@@ -303,13 +328,33 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                  GROUP BY COALESCE(m.grupo_gasto, 'otro'), COALESCE(m.categoria_gasto, 'sin_categoria'), COALESCE(m.tipo_fondo, 'banco')
                  ORDER BY total DESC`,
                 gastosBreakdownParams
+            ),
+            pool.query(
+                `WITH pedidos_saldos AS (
+                    SELECT
+                        p.id,
+                        p.fecha,
+                        p.total - COALESCE(SUM(pg.monto), 0) as saldo
+                    FROM nl_pedidos p
+                    LEFT JOIN nl_pagos pg ON pg.pedido_id = p.id
+                    WHERE p.estado != 'anulado'
+                    GROUP BY p.id, p.fecha, p.total
+                    HAVING (p.total - COALESCE(SUM(pg.monto), 0)) > 0.01
+                )
+                SELECT
+                    COALESCE(SUM(saldo), 0) as total_deuda_calle,
+                    COALESCE(SUM(CASE WHEN fecha BETWEEN $1::date AND $2::date THEN saldo ELSE 0 END), 0) as deuda_periodo,
+                    COUNT(*)::int as pedidos_pendientes_count
+                FROM pedidos_saldos`,
+                [fromDate, toDate]
             )
         ]);
 
         return {
             ingresosPeriodo: ingresosPeriodoResult.rows[0] || {},
             egresosPeriodo: egresosPeriodoResult.rows[0] || {},
-            gastosBreakdown: gastosBreakdownResult.rows
+            gastosBreakdown: gastosBreakdownResult.rows,
+            cuentasPorCobrar: cuentasPorCobrarResult.rows[0] || {}
         };
     },
     getFinanceFlowTotals: async ({ filters }) => {
@@ -321,26 +366,26 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                 `SELECT COALESCE(SUM(pg.monto), 0) as total
                  FROM nl_pagos pg
                  INNER JOIN nl_pedidos p ON p.id = pg.pedido_id
-                 ${ingresosFilter.where} AND pg.fecha_pago = CURRENT_DATE`,
+                 ${ingresosFilter.where} AND pg.fecha_pago = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date`,
                 ingresosFilter.params
             ),
             pool.query(
                 `SELECT COALESCE(SUM(m.monto), 0) as total
                  FROM nl_fin_movimientos m
-                 ${movFilter.where} AND m.tipo = 'egreso' AND m.fecha_movimiento = CURRENT_DATE`,
+                 ${movFilter.where} AND m.tipo = 'egreso' AND m.fecha_movimiento = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date`,
                 movFilter.params
             ),
             pool.query(
                 `SELECT COALESCE(SUM(pg.monto), 0) as total
                  FROM nl_pagos pg
                  INNER JOIN nl_pedidos p ON p.id = pg.pedido_id
-                 ${ingresosFilter.where} AND DATE_TRUNC('month', pg.fecha_pago) = DATE_TRUNC('month', CURRENT_DATE)`,
+                 ${ingresosFilter.where} AND DATE_TRUNC('month', pg.fecha_pago) = DATE_TRUNC('month', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date)`,
                 ingresosFilter.params
             ),
             pool.query(
                 `SELECT COALESCE(SUM(m.monto), 0) as total
                  FROM nl_fin_movimientos m
-                 ${movFilter.where} AND m.tipo = 'egreso' AND DATE_TRUNC('month', m.fecha_movimiento) = DATE_TRUNC('month', CURRENT_DATE)`,
+                 ${movFilter.where} AND m.tipo = 'egreso' AND DATE_TRUNC('month', m.fecha_movimiento) = DATE_TRUNC('month', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date)`,
                 movFilter.params
             )
         ]);
@@ -365,6 +410,7 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                     COALESCE(tipo_fondo, CASE WHEN LOWER(COALESCE(metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) as tipo_fondo,
                     COALESCE(SUM(monto), 0) as ingresos
                 FROM nl_pagos
+                WHERE movimiento_id IS NULL
                 GROUP BY 1
             ),
             movimientos AS (
@@ -395,7 +441,7 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                  FROM nl_pagos pg
                  INNER JOIN nl_pedidos p ON p.id = pg.pedido_id
                  ${ingresosFilter.where}
-                   AND pg.fecha_pago >= CURRENT_DATE - INTERVAL '119 days'
+                   AND pg.fecha_pago >= (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date - INTERVAL '119 days'
                  GROUP BY pg.fecha_pago
                  ORDER BY pg.fecha_pago ASC`,
                 ingresosFilter.params
@@ -405,7 +451,7 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                  FROM nl_fin_movimientos m
                  ${movFilter.where}
                    AND m.tipo = 'egreso'
-                   AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '119 days'
+                   AND m.fecha_movimiento >= (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date - INTERVAL '119 days'
                  GROUP BY m.fecha_movimiento
                  ORDER BY m.fecha_movimiento ASC`,
                 movFilter.params
@@ -436,12 +482,19 @@ export const makeDashboardPgRepository = ({ pool }) => ({
                 ingresosClinicaParams
             ),
             pool.query(
-                `SELECT COALESCE(pr.nombre, 'Servicio sin producto') as producto, SUM(pi.subtotal) as total
-                 FROM nl_pedido_items pi
-                 INNER JOIN nl_pedidos p ON p.id = pi.pedido_id
-                 LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
+                `SELECT COALESCE(pr.nombre, 'Servicio sin producto') as producto, SUM(pg.monto) as total
+                 FROM nl_pagos pg
+                 INNER JOIN nl_pedidos p ON p.id = pg.pedido_id
+                 LEFT JOIN LATERAL (
+                     SELECT pi.producto_id
+                     FROM nl_pedido_items pi
+                     WHERE pi.pedido_id = p.id
+                     ORDER BY pi.id ASC
+                     LIMIT 1
+                 ) item ON true
+                 LEFT JOIN nl_productos pr ON pr.id = item.producto_id
                  ${ingresosFilter.where}
-                   AND p.fecha BETWEEN $${ingresosProductoParams.length - 1}::date AND $${ingresosProductoParams.length}::date
+                   AND pg.fecha_pago BETWEEN $${ingresosProductoParams.length - 1}::date AND $${ingresosProductoParams.length}::date
                  GROUP BY COALESCE(pr.nombre, 'Servicio sin producto')
                  ORDER BY total DESC
                  LIMIT 8`,
@@ -513,19 +566,26 @@ export const makeDashboardPgRepository = ({ pool }) => ({
             pool.query(
                 `WITH ranked AS (
                     SELECT
-                        DATE_TRUNC('month', p.fecha)::date as periodo,
+                        DATE_TRUNC('month', pg.fecha_pago)::date as periodo,
                         COALESCE(pr.nombre, 'Servicio sin producto') as producto,
-                        SUM(pi.subtotal) as total,
+                        SUM(pg.monto) as total,
                         ROW_NUMBER() OVER (
-                            PARTITION BY DATE_TRUNC('month', p.fecha)::date
-                            ORDER BY SUM(pi.subtotal) DESC, COALESCE(pr.nombre, 'Servicio sin producto') ASC
+                            PARTITION BY DATE_TRUNC('month', pg.fecha_pago)::date
+                            ORDER BY SUM(pg.monto) DESC, COALESCE(pr.nombre, 'Servicio sin producto') ASC
                         ) as rn
-                    FROM nl_pedido_items pi
-                    INNER JOIN nl_pedidos p ON p.id = pi.pedido_id
-                    LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
+                    FROM nl_pagos pg
+                    INNER JOIN nl_pedidos p ON p.id = pg.pedido_id
+                    LEFT JOIN LATERAL (
+                        SELECT pi.producto_id
+                        FROM nl_pedido_items pi
+                        WHERE pi.pedido_id = p.id
+                        ORDER BY pi.id ASC
+                        LIMIT 1
+                    ) item ON true
+                    LEFT JOIN nl_productos pr ON pr.id = item.producto_id
                     ${ingresosFilter.where}
-                      AND p.fecha BETWEEN $${historicoProductosParams.length - 1}::date AND $${historicoProductosParams.length}::date
-                    GROUP BY DATE_TRUNC('month', p.fecha)::date, COALESCE(pr.nombre, 'Servicio sin producto')
+                      AND pg.fecha_pago BETWEEN $${historicoProductosParams.length - 1}::date AND $${historicoProductosParams.length}::date
+                    GROUP BY DATE_TRUNC('month', pg.fecha_pago)::date, COALESCE(pr.nombre, 'Servicio sin producto')
                 )
                 SELECT periodo, producto, total
                 FROM ranked
@@ -540,30 +600,43 @@ export const makeDashboardPgRepository = ({ pool }) => ({
             historicoTopProductos: historicoTopProductosResult.rows
         };
     },
-    listFinanceMonthlySeries: async ({ filters }) => {
+    listFinanceMonthlySeries: async ({ filters, fromDate, toDate }) => {
         const ingresosFilter = buildIngresosFilters(filters);
         const movFilter = buildMovimientosFilters(filters);
 
+        let ingresosWhere = ingresosFilter.where;
+        let movWhere = movFilter.where;
+        const ingresosParams = [...ingresosFilter.params];
+        const movParams = [...movFilter.params];
+
+        if (fromDate && toDate) {
+            ingresosParams.push(fromDate, toDate);
+            ingresosWhere += ` AND pg.fecha_pago BETWEEN $${ingresosParams.length - 1}::date AND $${ingresosParams.length}::date`;
+            movParams.push(fromDate, toDate);
+            movWhere += ` AND m.fecha_movimiento BETWEEN $${movParams.length - 1}::date AND $${movParams.length}::date`;
+        } else {
+            ingresosWhere += ` AND pg.fecha_pago >= DATE_TRUNC('month', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date) - INTERVAL '5 months'`;
+            movWhere += ` AND m.fecha_movimiento >= DATE_TRUNC('month', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date) - INTERVAL '5 months'`;
+        }
+
         const [seriesIngresosResult, seriesEgresosResult] = await Promise.all([
             pool.query(
-                `SELECT DATE_TRUNC('month', pg.fecha_pago)::date as periodo, SUM(pg.monto) as ingresos
+                `SELECT TO_CHAR(DATE_TRUNC('month', pg.fecha_pago), 'YYYY-MM-01') as periodo, SUM(pg.monto) as ingresos
                  FROM nl_pagos pg
                  INNER JOIN nl_pedidos p ON p.id = pg.pedido_id
-                 ${ingresosFilter.where}
-                   AND pg.fecha_pago >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
-                 GROUP BY DATE_TRUNC('month', pg.fecha_pago)::date
-                 ORDER BY periodo ASC`,
-                ingresosFilter.params
+                 ${ingresosWhere}
+                 GROUP BY DATE_TRUNC('month', pg.fecha_pago)
+                 ORDER BY DATE_TRUNC('month', pg.fecha_pago) ASC`,
+                ingresosParams
             ),
             pool.query(
-                `SELECT DATE_TRUNC('month', m.fecha_movimiento)::date as periodo, SUM(m.monto) as egresos
+                `SELECT TO_CHAR(DATE_TRUNC('month', m.fecha_movimiento), 'YYYY-MM-01') as periodo, SUM(m.monto) as egresos
                  FROM nl_fin_movimientos m
-                 ${movFilter.where}
+                 ${movWhere}
                    AND m.tipo = 'egreso'
-                   AND m.fecha_movimiento >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
-                 GROUP BY DATE_TRUNC('month', m.fecha_movimiento)::date
-                 ORDER BY periodo ASC`,
-                movFilter.params
+                 GROUP BY DATE_TRUNC('month', m.fecha_movimiento)
+                 ORDER BY DATE_TRUNC('month', m.fecha_movimiento) ASC`,
+                movParams
             )
         ]);
 

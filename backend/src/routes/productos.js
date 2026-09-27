@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { authenticateToken, forbidRole, requireRole } from '../middleware/auth.js';
 import multer from 'multer';
 import { uploadProductImage } from '../services/storage.js';
 
@@ -16,6 +16,7 @@ const upload = multer({
 
 const router = Router();
 router.use(authenticateToken);
+router.use(forbidRole('visitador'));
 
 const toNullableInt = (value) => {
     if (value === undefined || value === null || value === '') return null;
@@ -43,7 +44,7 @@ const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 router.get('/', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { categoria_id, search, activo, visible } = req.query;
+        const { categoria_id, search, activo, visible, admite_puente } = req.query;
         let query = `SELECT p.*, c.nombre as categoria_nombre, c.tipo as categoria_tipo, m.nombre as material_nombre
                  FROM nl_productos p 
                  LEFT JOIN nl_categorias_trabajo c ON p.categoria_id = c.id 
@@ -59,6 +60,7 @@ router.get('/', async (req, res, next) => {
         // optimizing: 'visible' logic is handled by 'activo' toggle requested by user: "interruptor de visibilidad" -> usually maps to active/inactive.
         // But plan said: "visible (BOOLEAN, default true)". Let's support it.
         if (visible !== undefined) { params.push(visible === 'true'); query += ` AND p.visible = $${params.length}`; }
+        if (admite_puente !== undefined) { params.push(admite_puente === 'true'); query += ` AND p.admite_puente = $${params.length}`; }
 
         query += ' ORDER BY c.orden, p.nombre';
 
@@ -71,20 +73,21 @@ router.get('/', async (req, res, next) => {
 router.post('/', requireRole('admin'), upload.single('image'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible } = req.body;
+        const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible, admite_puente } = req.body;
         const image_url = req.file ? await uploadProductImage(req.file) : null;
         const categoriaId = toNullableInt(categoria_id);
         const materialId = toNullableInt(material_id);
         const precioBase = toNullableNumber(precio_base) ?? 0;
         const tiempoEstimadoDias = toNullableInt(tiempo_estimado_dias) ?? 5;
         const visibleValue = toNullableBoolean(visible);
+        const admitePuenteValue = toNullableBoolean(admite_puente);
 
         if (!nombre) return res.status(400).json({ error: 'Nombre es requerido' });
 
         const result = await pool.query(
-            `INSERT INTO nl_productos (nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, image_url, visible)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-            [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, image_url, visibleValue ?? true]
+            `INSERT INTO nl_productos (nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, image_url, visible, admite_puente)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+            [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, image_url, visibleValue ?? true, admitePuenteValue ?? false]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) { next(err); }
@@ -94,7 +97,7 @@ router.post('/', requireRole('admin'), upload.single('image'), async (req, res, 
 router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, activo, visible } = req.body;
+        const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, activo, visible, admite_puente } = req.body;
         const image_url = req.file ? await uploadProductImage(req.file) : undefined;
         const updates = [];
         const params = [];
@@ -146,9 +149,39 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
             updates.push(`visible=$${params.length}`);
         }
 
+        if (hasOwn(req.body, 'admite_puente')) {
+            params.push(toNullableBoolean(admite_puente) ?? false);
+            updates.push(`admite_puente=$${params.length}`);
+        }
+
         if (image_url !== undefined) {
             params.push(image_url);
             updates.push(`image_url=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'nombre_comercial')) {
+            params.push(req.body.nombre_comercial ? String(req.body.nombre_comercial).trim() : null);
+            updates.push(`nombre_comercial=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'descripcion_landing')) {
+            params.push(req.body.descripcion_landing ? String(req.body.descripcion_landing).trim() : null);
+            updates.push(`descripcion_landing=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'material_comercial')) {
+            params.push(req.body.material_comercial ? String(req.body.material_comercial).trim() : null);
+            updates.push(`material_comercial=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'destacado_landing')) {
+            params.push(toNullableBoolean(req.body.destacado_landing));
+            updates.push(`destacado_landing=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'orden_landing')) {
+            params.push(toNullableInt(req.body.orden_landing) ?? 0);
+            updates.push(`orden_landing=$${params.length}`);
         }
 
         if (updates.length === 0) {

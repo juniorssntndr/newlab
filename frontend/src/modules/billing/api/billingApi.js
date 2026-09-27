@@ -28,3 +28,14 @@ export const createCreditNote = ({ invoiceId, payload, headers }) => apiClient(`
     headers,
     body: payload
 });
+
+export const fetchEmpresaFiscal = async ({ headers }) => {
+    const res = await apiClient('/facturacion/empresa', { headers });
+    return res?.data || res || null;
+};
+
+export const syncInvoice = ({ invoiceId, headers }) => apiClient(`/facturacion/${invoiceId}/sincronizar`, {
+    method: 'POST',
+    headers
+});
+

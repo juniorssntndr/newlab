@@ -34,6 +34,15 @@ export const apiClient = async (path, options = {}) => {
     if (isFormData) {
         delete requestHeaders['Content-Type'];
         delete requestHeaders['content-type'];
+    } else if (body !== undefined && !requestHeaders['Content-Type'] && !requestHeaders['content-type']) {
+        requestHeaders['Content-Type'] = 'application/json';
+    }
+
+    if (!requestHeaders.Authorization && !requestHeaders.authorization && typeof localStorage !== 'undefined') {
+        const token = localStorage.getItem('nl_token');
+        if (token) {
+            requestHeaders.Authorization = `Bearer ${token}`;
+        }
     }
 
     const response = await fetch(buildUrl(path, query), {

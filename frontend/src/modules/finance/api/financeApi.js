@@ -127,7 +127,7 @@ export const fetchOrderComprobantes = async ({ orderId, headers }) => {
 };
 
 export const fetchFacturacionList = async ({ headers }) => {
-    const data = await withFinanceReadFallback({
+    const res = await withFinanceReadFallback({
         queryPath: '/facturacion',
         headers,
         runPrimary: () => apiClient('/facturacion', {
@@ -135,7 +135,11 @@ export const fetchFacturacionList = async ({ headers }) => {
         })
     });
 
-    return Array.isArray(data) ? data : [];
+    const comprobantes = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : (Array.isArray(res?.comprobantes) ? res.comprobantes : []));
+    return {
+        comprobantes,
+        total: res?.total || comprobantes.length
+    };
 };
 
 export const registerPayment = ({ orderId, payload, headers }) => apiClient(`/finanzas/${orderId}/pagos`, {
@@ -171,4 +175,121 @@ export const updateFinanceMovement = ({ movementId, payload, headers }) => apiCl
 export const deleteFinanceMovement = ({ movementId, headers }) => apiClient(`/finanzas/movimientos/${movementId}`, {
     method: 'DELETE',
     headers
+});
+
+export const registerSaldoFavor = ({ clinicaId, payload, headers }) => apiClient(`/finanzas/saldos-favor/${clinicaId}`, {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const fetchSaldosFavorByClinica = ({ clinicaId, headers }) => apiClient(`/finanzas/saldos-favor/${clinicaId}`, {
+    headers
+});
+
+export const aplicarSaldoFavor = ({ payload, headers }) => apiClient('/finanzas/saldos-favor/aplicar', {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const fetchAplicacionesSaldoFavor = ({ clinicaId, headers }) => apiClient(`/finanzas/saldos-favor/aplicaciones/${clinicaId}`, {
+    headers
+});
+
+export const fetchActiveCashSession = ({ headers } = {}) => apiClient('/finanzas/sesiones-caja/actual', {
+    headers
+});
+
+export const fetchCashSessions = ({ headers } = {}) => apiClient('/finanzas/sesiones-caja', {
+    headers
+});
+
+export const openCashSession = ({ payload, headers }) => apiClient('/finanzas/sesiones-caja/abrir', {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const closeCashSession = ({ sesionId, payload, headers }) => apiClient(`/finanzas/sesiones-caja/${sesionId}/cerrar`, {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const reopenCashSession = ({ sesionId, payload, headers }) => apiClient(`/finanzas/sesiones-caja/${sesionId}/reabrir`, {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const fetchCobranzasOverview = ({ headers } = {}) => apiClient('/finanzas/cobranzas/overview', {
+    headers
+});
+
+export const fetchClinicDebtDetail = ({ clinicaId, headers }) => apiClient(`/finanzas/cobranzas/clinica/${clinicaId}`, {
+    headers
+});
+
+export const registerConsolidatedPayment = ({ payload, headers }) => apiClient('/finanzas/cobro-consolidado', {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const fetchTreasuryAccounts = ({ headers } = {}) => apiClient('/finanzas/cuentas', {
+    headers
+});
+
+export const createTreasuryAccount = ({ payload, headers }) => apiClient('/finanzas/cuentas', {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const updateTreasuryAccount = ({ accountId, payload, headers }) => apiClient(`/finanzas/cuentas/${accountId}`, {
+    method: 'PUT',
+    headers,
+    body: payload
+});
+
+export const fetchTreasuryTransfers = ({ headers } = {}) => apiClient('/finanzas/transferencias', {
+    headers
+});
+
+export const registerTreasuryTransfer = ({ payload, headers }) => apiClient('/finanzas/transferencias', {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const fetchSocios = ({ headers } = {}) => apiClient('/finanzas/socios', {
+    headers
+});
+
+export const createSocio = ({ payload, headers }) => apiClient('/finanzas/socios', {
+    method: 'POST',
+    headers,
+    body: payload
+});
+
+export const updateSocio = ({ socioId, payload, headers }) => apiClient(`/finanzas/socios/${socioId}`, {
+    method: 'PUT',
+    headers,
+    body: payload
+});
+
+export const deleteSocio = ({ socioId, headers }) => apiClient(`/finanzas/socios/${socioId}`, {
+    method: 'DELETE',
+    headers
+});
+
+export const fetchRetirosSocios = ({ headers } = {}) => apiClient('/finanzas/retiros-socios', {
+    headers
+});
+
+export const registerRetiroSocio = ({ payload, headers }) => apiClient('/finanzas/retiros-socios', {
+    method: 'POST',
+    headers,
+    body: payload
 });

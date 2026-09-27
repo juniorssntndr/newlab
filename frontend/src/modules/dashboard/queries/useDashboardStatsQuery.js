@@ -3,7 +3,7 @@ import { useAuth } from '../../../state/AuthContext.jsx';
 import { fetchDashboardStats } from '../api/dashboardApi.js';
 import { dashboardKeys } from './dashboardKeys.js';
 
-const DASHBOARD_STATS_STALE_TIME = 5 * 60 * 1000;
+const DASHBOARD_STATS_STALE_TIME = 15 * 1000;
 
 export const useDashboardStatsQuery = () => {
     const { getHeaders } = useAuth();
@@ -12,7 +12,8 @@ export const useDashboardStatsQuery = () => {
         queryKey: dashboardKeys.stats(),
         queryFn: () => fetchDashboardStats({ headers: getHeaders() }),
         staleTime: DASHBOARD_STATS_STALE_TIME,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: false
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
+        refetchInterval: 30 * 1000
     });
 };

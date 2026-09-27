@@ -1,10 +1,26 @@
 import { ordersKeys } from '../queries/orderKeys.js';
+import { dashboardKeys } from '../../dashboard/queries/dashboardKeys.js';
+import { financeKeys } from '../../finance/queries/financeKeys.js';
 
 export const invalidateOrdersLists = async (queryClient) => {
-    await queryClient.invalidateQueries({
-        queryKey: ordersKeys.lists(),
-        refetchType: 'active'
-    });
+    await Promise.all([
+        queryClient.invalidateQueries({
+            queryKey: ordersKeys.lists(),
+            refetchType: 'active'
+        }),
+        queryClient.invalidateQueries({
+            queryKey: dashboardKeys.all,
+            refetchType: 'active'
+        }),
+        queryClient.invalidateQueries({
+            queryKey: financeKeys.all,
+            refetchType: 'active'
+        }),
+        queryClient.invalidateQueries({
+            queryKey: ['notifications'],
+            refetchType: 'active'
+        })
+    ]);
 };
 
 export const invalidateOrderDetailAndLists = async (queryClient, orderId) => {

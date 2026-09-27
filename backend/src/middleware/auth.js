@@ -35,3 +35,17 @@ export const forbidRole = (...roles) => {
         next();
     };
 };
+
+export const requireModule = (moduloName) => {
+    return (req, res, next) => {
+        if (!req.user) return res.status(401).json({ error: 'No autenticado' });
+        if (req.user.tipo === 'admin') return next();
+
+        const modulos = Array.isArray(req.user.modulos) ? req.user.modulos : [];
+        if (modulos.includes(moduloName)) {
+            return next();
+        }
+        return res.status(403).json({ error: `No tiene permisos para acceder al módulo '${moduloName}'` });
+    };
+};
+

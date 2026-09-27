@@ -5,7 +5,7 @@ import { createMovimientoFinancieroSchema, createPagoSchema, updateMovimientoFin
 
 export const makeFinanceRoutes = ({ financeController }) => {
     const router = Router();
-    const labCashier = requireRole('admin', 'tecnico');
+    const labCashier = requireRole('admin', 'operador');
 
     router.use(authenticateToken);
     router.get('/', labCashier, financeController.listFinanceOrders);
@@ -14,10 +14,32 @@ export const makeFinanceRoutes = ({ financeController }) => {
     router.post('/movimientos', labCashier, validateBody(createMovimientoFinancieroSchema), financeController.createMovimiento);
     router.put('/movimientos/:movimientoId', labCashier, validateBody(updateMovimientoFinancieroSchema), financeController.updateMovimiento);
     router.delete('/movimientos/:movimientoId', labCashier, financeController.deleteMovimiento);
-    // Rutas estáticas antes de /:id para que Express no capture "estado-cuenta" como id.
+    // Rutas estáticas antes de /:id para que Express no capture "estado-cuenta" o "saldos-favor" como id.
     router.get('/estado-cuenta/:clinica_id', labCashier, financeController.getEstadoCuentaByClinica);
     router.post('/pagos-masivos', labCashier, financeController.registerPagosMasivos);
     router.patch('/pagos/:pagoId/conciliar', labCashier, financeController.conciliarPago);
+    router.post('/saldos-favor', labCashier, financeController.registerSaldoFavor);
+    router.post('/saldos-favor/:clinicaId', labCashier, financeController.registerSaldoFavor);
+    router.get('/saldos-favor/:clinicaId', labCashier, financeController.listSaldosFavorByClinica);
+    router.get('/cobranzas/overview', labCashier, financeController.getCobranzasOverview);
+    router.get('/cobranzas/clinica/:clinicaId', labCashier, financeController.getClinicDebtDetail);
+    router.get('/sesiones-caja/actual', labCashier, financeController.getActiveCashSession);
+    router.get('/sesiones-caja', labCashier, financeController.listCashSessions);
+    router.post('/sesiones-caja/abrir', labCashier, financeController.openCashSession);
+    router.post('/sesiones-caja/:sesionId/cerrar', labCashier, financeController.closeCashSession);
+    // Rutas de Tesorería Multi-Banco, Transferencias y Socios
+    router.get('/cuentas', labCashier, financeController.listAccountsWithBalance);
+    router.post('/cuentas', requireRole('admin'), financeController.createAccount);
+    router.put('/cuentas/:id', requireRole('admin'), financeController.updateAccount);
+    router.get('/transferencias', labCashier, financeController.listTransfers);
+    router.post('/transferencias', labCashier, financeController.registerTransfer);
+    router.get('/socios', labCashier, financeController.listSocios);
+    router.post('/socios', requireRole('admin'), financeController.createSocio);
+    router.put('/socios/:id', requireRole('admin'), financeController.updateSocio);
+    router.delete('/socios/:id', requireRole('admin'), financeController.deleteSocio);
+    router.get('/retiros-socios', labCashier, financeController.listRetirosSocios);
+    router.post('/retiros-socios', requireRole('admin'), financeController.registerRetiroSocio);
+
     router.get('/:id', labCashier, financeController.getOrderFinanceDetail);
     router.post('/:id/pagos', labCashier, validateBody(createPagoSchema), financeController.registerPago);
 

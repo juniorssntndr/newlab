@@ -10,7 +10,11 @@ import {
     isBridgeProduct,
     isVeneerProduct,
     isMolarTooth,
-    getBridgeParts
+    getBridgeParts,
+    connectBridgeSpan,
+    toggleBridgeToothRole,
+    addUnitTooth,
+    removeTooth
 } from '../utils/odontograma.js';
 import { ODONTOGRAM_TOOTH_PATHS, ODONTOGRAM_QUADRANTS, buildToothCenters } from './odontogramaShapes.js';
 import {
@@ -103,30 +107,30 @@ const OdontogramaInteractive = ({
 
     const toggleBridgePillar = useCallback((tooth) => {
         if (!isBridge || disabled || disabledTeeth.has(tooth)) return;
-        if (!selection?.es_puente || currentTeeth.length < 2 || !selectedSet.has(tooth)) return;
-
-        const currentPillars = normalizeBridgePillars(currentTeeth, selection?.pilares_dentales || []);
-        const isActivePillar = currentPillars.includes(tooth);
-        let nextPillars;
-
-        if (isActivePillar) {
-            nextPillars = currentPillars.filter((value) => value !== tooth);
-            if (nextPillars.length < 2) {
-                setBridgeHint('El puente debe conservar al menos 2 pilares activos.');
-                return;
-            }
+        const { selection: nextSel, error } = toggleBridgeToothRole(selection, tooth);
+        if (error) {
+            setBridgeHint(error);
         } else {
-            nextPillars = sortTeethByArchOrder([...currentPillars, tooth]);
+            setBridgeHint('');
+            onChange(nextSel);
         }
-
-        setBridgeHint('');
-        onChange(buildItemSelection(currentTeeth, true, nextPillars));
-    }, [currentTeeth, disabled, disabledTeeth, isBridge, onChange, selectedSet, selection?.es_puente, selection?.pilares_dentales]);
+    }, [disabled, disabledTeeth, isBridge, onChange, selection]);
 
     React.useEffect(() => {
         const stopDragging = () => {
-            if (isBridge && bridgePointerMode === 'toggle' && !bridgeDidDrag && bridgePointerStart) {
-                toggleBridgePillar(bridgePointerStart);
+            if (isBridge && !bridgeDidDrag && bridgePointerStart) {
+                if (bridgePointerMode === 'toggle') {
+                    toggleBridgePillar(bridgePointerStart);
+                } else if (bridgePointerMode === 'unit') {
+                    const isSelected = selectedSet.has(bridgePointerStart);
+                    if (isSelected) {
+                        const nextSel = removeTooth(selection, bridgePointerStart);
+                        onChange(nextSel);
+                    } else {
+                        const nextSel = addUnitTooth(selection, bridgePointerStart);
+                        onChange(nextSel);
+                    }
+                }
             }
 
             setIsDragging(false);
@@ -144,7 +148,7 @@ const OdontogramaInteractive = ({
             window.removeEventListener('pointerup', stopDragging);
             window.removeEventListener('pointercancel', stopDragging);
         };
-    }, [bridgeDidDrag, bridgePointerMode, bridgePointerStart, isBridge, toggleBridgePillar]);
+    }, [bridgeDidDrag, bridgePointerMode, bridgePointerStart, isBridge, onChange, selectedSet, selection, toggleBridgePillar]);
 
     const commitSelection = (nextTeeth) => {
         const payload = buildItemSelection(nextTeeth, isBridge);
@@ -161,53 +165,26 @@ const OdontogramaInteractive = ({
         commitSelection([...next]);
     };
 
-    const applyBridgeRange = (startTooth, endTooth) => {
-        const range = buildBridgeRange(startTooth, endTooth).filter((tooth) => !disabledTeeth.has(tooth));
-        if (isBridge && startTooth !== endTooth && range.length <= 1) {
-            setBridgeHint('El puente debe marcarse dentro del mismo arco (superior o inferior).');
-        } else {
-            setBridgeHint('');
-        }
-
-        const preservedPillars = normalizeBridgePillars(currentTeeth, selection?.pilares_dentales || [])
-            .filter((tooth) => range.includes(tooth));
-
-        const nextPillars = range.length > 1
-            ? sortTeethByArchOrder([...preservedPillars, range[0], range[range.length - 1]])
-            : [];
-
-        onChange(buildItemSelection(range, true, nextPillars));
-    };
-
     const handlePointerDown = (event, tooth) => {
         event.preventDefault();
         if (disabled) return;
         if (disabledTeeth.has(tooth)) return;
 
         if (isBridge) {
-            const isSingleSelected = !selection?.es_puente && currentTeeth.length === 1 && currentTeeth[0] === tooth;
-            if (isSingleSelected) {
-                commitSelection([]);
-                setBridgeAnchor(null);
-                setBridgePointerMode(null);
-                setBridgePointerStart(null);
-                setBridgeDidDrag(false);
-                return;
-            }
-
             setBridgeAnchor(tooth);
             setBridgePointerStart(tooth);
             setBridgeDidDrag(false);
             setIsDragging(true);
 
-            const isInsideCurrentBridge = selection?.es_puente && currentTeeth.length > 1 && selectedSet.has(tooth);
-            if (isInsideCurrentBridge) {
+            const spans = selection?.tramos_detalle || [];
+            const isInsideBridge = spans.some((s) => s.tipo === 'puente' && s.piezas.includes(tooth));
+
+            if (isInsideBridge) {
                 setBridgePointerMode('toggle');
                 return;
             }
 
-            setBridgePointerMode('range');
-            applyBridgeRange(tooth, tooth);
+            setBridgePointerMode('unit');
             return;
         }
 
@@ -221,19 +198,18 @@ const OdontogramaInteractive = ({
         if (disabled || !isDragging || disabledTeeth.has(tooth)) return;
 
         if (isBridge && bridgeAnchor) {
-            if (bridgePointerMode === 'toggle') {
-                if (tooth !== bridgePointerStart) {
-                    setBridgePointerMode('range');
-                    setBridgeDidDrag(true);
-                    applyBridgeRange(bridgeAnchor, tooth);
-                }
-                return;
-            }
-
             if (tooth !== bridgePointerStart) {
                 setBridgeDidDrag(true);
+                const isUpper = UPPER_ARCH_SET.has(bridgeAnchor) && UPPER_ARCH_SET.has(tooth);
+                const isLower = LOWER_ARCH_SET.has(bridgeAnchor) && LOWER_ARCH_SET.has(tooth);
+                if (!isUpper && !isLower) {
+                    setBridgeHint('El puente debe marcarse dentro del mismo arco (superior o inferior).');
+                    return;
+                }
+                setBridgeHint('');
+                const nextSelection = connectBridgeSpan(selection, bridgeAnchor, tooth);
+                onChange(nextSelection);
             }
-            applyBridgeRange(bridgeAnchor, tooth);
             return;
         }
 
@@ -263,18 +239,33 @@ const OdontogramaInteractive = ({
 
     const visibleToothSet = useMemo(() => new Set(visibleToothCodes), [visibleToothCodes]);
 
-    const bridgePoints = useMemo(() => {
-        if (!selection?.es_puente || currentTeeth.length < 2) return null;
+    const bridgePolylines = useMemo(() => {
+        const spans = selection?.tramos_detalle;
+        if (Array.isArray(spans) && spans.length > 0) {
+            return spans
+                .filter((tramo) => tramo.tipo === 'puente' && tramo.piezas?.length > 1)
+                .map((tramo) => {
+                    const validPoints = tramo.piezas
+                        .filter((tooth) => visibleToothSet.has(tooth))
+                        .map((tooth) => toothCenters[tooth])
+                        .filter(Boolean);
+                    if (validPoints.length < 2) return null;
+                    return {
+                        id: tramo.id || `${tramo.piezas[0]}-${tramo.piezas[tramo.piezas.length - 1]}`,
+                        points: validPoints.map((p) => `${p.x},${p.y}`).join(' ')
+                    };
+                })
+                .filter(Boolean);
+        }
 
+        if (!selection?.es_puente || currentTeeth.length < 2) return [];
         const validPoints = currentTeeth
             .filter((tooth) => visibleToothSet.has(tooth))
             .map((tooth) => toothCenters[tooth])
             .filter(Boolean);
-
-        if (validPoints.length < 2) return null;
-
-        return validPoints.map((p) => `${p.x},${p.y}`).join(' ');
-    }, [selection?.es_puente, currentTeeth, toothCenters, visibleToothSet]);
+        if (validPoints.length < 2) return [];
+        return [{ id: 'legacy-bridge', points: validPoints.map((p) => `${p.x},${p.y}`).join(' ') }];
+    }, [currentTeeth, selection?.es_puente, selection?.tramos_detalle, toothCenters, visibleToothSet]);
 
     return (
         <div className={`odontograma-shell${disabled ? ' is-readonly' : ''}${isMinimal ? ' is-minimal' : ''} is-arch-${activeArch}`}>
@@ -335,16 +326,17 @@ const OdontogramaInteractive = ({
                                 </g>
                             )}
 
-                            {bridgePoints && (
+                            {bridgePolylines.map((bp) => (
                                 <polyline
-                                    points={bridgePoints}
+                                    key={`bridge-line-${bp.id}`}
+                                    points={bp.points}
                                     className="bridge-connector"
                                     fill="none"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     filter={isMinimal ? undefined : 'url(#softGlow)'}
                                 />
-                            )}
+                            ))}
 
                             {isMinimal
                                 ? visibleToothCodes.map((toothCode) => {
@@ -419,26 +411,6 @@ const OdontogramaInteractive = ({
                                 );
                             })}
 
-                            {selection?.es_puente && visibleToothCodes.map((toothCode) => {
-                                const center = toothCenters[toothCode];
-                                if (!center) return null;
-                                const roleY = isMinimal ? center.y - 28 : center.y - 17;
-                                if (bridgeParts.pilares.includes(toothCode)) {
-                                    return (
-                                        <text key={`role-p-${toothCode}`} x={center.x} y={roleY} textAnchor="middle" className="bridge-role-label pillar">
-                                            P
-                                        </text>
-                                    );
-                                }
-                                if (bridgeParts.ponticos.includes(toothCode)) {
-                                    return (
-                                        <text key={`role-pt-${toothCode}`} x={center.x} y={roleY} textAnchor="middle" className="bridge-role-label pontic">
-                                            Pt
-                                        </text>
-                                    );
-                                }
-                                return null;
-                            })}
                         </svg>
                     </div>
                     {bridgeHint && !showHeader && <p className="odontograma-inline-hint">{bridgeHint}</p>}
@@ -459,12 +431,32 @@ const OdontogramaInteractive = ({
 
                         {selection?.es_puente && (
                             <article className="odontograma-stat">
-                                <span>Puente detectado</span>
-                                <strong>{selection.pieza_inicio} - {selection.pieza_fin}</strong>
-                                <p>
-                                    Pilares: {bridgeParts.pilares.join(', ') || '—'}
-                                    {bridgeParts.ponticos.length > 0 ? ` | Ponticos: ${bridgeParts.ponticos.join(', ')}` : ''}
-                                </p>
+                                <span>Tramos configurados</span>
+                                {Array.isArray(selection.tramos_detalle) && selection.tramos_detalle.length > 0 ? (
+                                    selection.tramos_detalle.map((tramo, idx) => (
+                                        <div key={tramo.id || idx} style={{ marginBottom: '0.4rem' }}>
+                                            {tramo.tipo === 'puente' ? (
+                                                <>
+                                                    <strong>Puente {tramo.piezas[0]} - {tramo.piezas[tramo.piezas.length - 1]}</strong>
+                                                    <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem' }}>
+                                                        Pilares: {tramo.pilares.join(', ') || '—'}
+                                                        {tramo.ponticos.length > 0 ? ` | Pónticos: ${tramo.ponticos.join(', ')}` : ''}
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <strong>Unitaria: {tramo.piezas.join(', ')}</strong>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <>
+                                        <strong>{selection.pieza_inicio} - {selection.pieza_fin}</strong>
+                                        <p>
+                                            Pilares: {bridgeParts.pilares.join(', ') || '—'}
+                                            {bridgeParts.ponticos.length > 0 ? ` | Pónticos: ${bridgeParts.ponticos.join(', ')}` : ''}
+                                        </p>
+                                    </>
+                                )}
                                 <p className="odontograma-help-text">El puente debe conservar al menos 2 pilares activos.</p>
                             </article>
                         )}

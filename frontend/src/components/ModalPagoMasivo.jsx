@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState } from 'react';
 import Modal from './Modal';
 import FormDatePicker from './FormDatePicker.jsx';
+import CustomSelect from './CustomSelect.jsx';
 import { toast } from 'react-hot-toast';
 import { useFinanceAccountStateQuery } from '../modules/finance/queries/useFinanceAccountStateQuery.js';
 import { useRegisterBulkPaymentMutation } from '../modules/finance/mutations/useRegisterBulkPaymentMutation.js';
@@ -122,7 +123,10 @@ export const ModalPagoMasivo = ({ clinica, open, onClose, onPaymentSuccess }) =>
         <Modal
             open={open}
             onClose={onClose}
-            title={`Estado de Cuenta: ${clinica?.nombre}`}
+            title={clinica?.nombre ? `Estado de Cuenta: ${clinica.nombre}` : 'Estado de Cuenta'}
+            kicker="Cobranzas • Conciliación global"
+            subtitle="Liquidación automática en cascada para pedidos pendientes de pago"
+            icon="bi-wallet2"
             size="2xl"
             footer={
                 <>
@@ -206,8 +210,8 @@ export const ModalPagoMasivo = ({ clinica, open, onClose, onPaymentSuccess }) =>
                                 <label className="form-label" htmlFor={montoId}>
                                     Monto a abonar <span className="bulk-pay-required" aria-hidden="true">*</span>
                                 </label>
-                                <div className="bulk-pay-amount-wrap">
-                                    <span className="bulk-pay-amount-prefix">S/.</span>
+                                <div className="form-input-box has-prefix">
+                                    <span className="form-input-prefix">S/.</span>
                                     <input
                                         id={montoId}
                                         type="number"
@@ -226,7 +230,7 @@ export const ModalPagoMasivo = ({ clinica, open, onClose, onPaymentSuccess }) =>
                             {simulacion ? (
                                 <div className="bulk-pay-cascade" role="status">
                                     <p className="bulk-pay-cascade-title">
-                                        <i className="bi bi-info-circle" aria-hidden="true" />
+                                        <i className="bi bi-arrow-repeat" aria-hidden="true" />
                                         Asignación en cascada
                                     </p>
                                     <p className="bulk-pay-cascade-body">
@@ -247,17 +251,17 @@ export const ModalPagoMasivo = ({ clinica, open, onClose, onPaymentSuccess }) =>
                                 <label className="form-label" htmlFor={metodoId}>
                                     Método de pago <span className="bulk-pay-required" aria-hidden="true">*</span>
                                 </label>
-                                <select
+                                <CustomSelect
                                     id={metodoId}
-                                    className="form-select"
                                     value={metodo}
-                                    onChange={(e) => setMetodo(e.target.value)}
-                                >
-                                    <option value="transferencia">Transferencia Bancaria</option>
-                                    <option value="efectivo">Efectivo</option>
-                                    <option value="tarjeta">Tarjeta (POS)</option>
-                                    <option value="yape_plin">Yape / Plin</option>
-                                </select>
+                                    onChange={(e, val) => setMetodo(val)}
+                                    options={[
+                                        { value: 'transferencia', label: 'Transferencia Bancaria', icon: 'bi-bank', dotColor: '#3b82f6' },
+                                        { value: 'yape_plin', label: 'Yape / Plin', icon: 'bi-qr-code-scan', dotColor: '#7c3aed' },
+                                        { value: 'efectivo', label: 'Efectivo', icon: 'bi-cash-stack', dotColor: '#10b981' },
+                                        { value: 'tarjeta', label: 'Tarjeta (POS)', icon: 'bi-credit-card', dotColor: '#0ea5e9' }
+                                    ]}
+                                />
                             </div>
 
                             <div className="bulk-pay-fields-row">
@@ -265,13 +269,16 @@ export const ModalPagoMasivo = ({ clinica, open, onClose, onPaymentSuccess }) =>
                                     <label className="form-label" htmlFor={referenciaId}>
                                         Nº Ref. / Operación
                                     </label>
-                                    <input
-                                        id={referenciaId}
-                                        className="form-input"
-                                        value={referencia}
-                                        onChange={(e) => setReferencia(e.target.value)}
-                                        placeholder="Ej: OP-987654"
-                                    />
+                                    <div className="form-input-box has-lead">
+                                        <i className="bi bi-receipt form-input-lead" aria-hidden="true" />
+                                        <input
+                                            id={referenciaId}
+                                            className="form-input"
+                                            value={referencia}
+                                            onChange={(e) => setReferencia(e.target.value)}
+                                            placeholder="Ej: OP-987654"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="form-group">

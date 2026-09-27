@@ -182,10 +182,12 @@ const Calendario = () => {
     };
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in page-container">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1>Calendario de Entregas</h1>
+                    <h1>
+                        <i className="bi bi-calendar3 text-primary" aria-hidden="true"></i> Calendario de Entregas
+                    </h1>
                     <p>Vista diaria, semanal y mensual de fechas de entrega</p>
                 </div>
             </div>
@@ -229,15 +231,16 @@ const Calendario = () => {
                         </div>
 
                         <div className="calendar-legend" aria-label="Leyenda de estados">
-                            {Object.entries(statusLabels).map(([key, label]) => (
-                                <div className="calendar-legend-item" key={key}>
-                                    <span className="calendar-legend-pill" style={{ background: statusColors[key] }} />
-                                    <span>
-                                        {label}
-                                        {counts[key] > 0 ? ` · ${counts[key]}` : ''}
-                                    </span>
-                                </div>
-                            ))}
+                            {Object.entries(statusLabels).map(([key, label]) => {
+                                const count = counts[key] || 0;
+                                return (
+                                    <div className={`calendar-legend-item${count > 0 ? ' has-count' : ''}`} key={key}>
+                                        <span className="calendar-legend-dot" style={{ background: statusColors[key] }} />
+                                        <span className="calendar-legend-label">{label}</span>
+                                        {count > 0 && <span className="calendar-legend-badge">{count}</span>}
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         <FullCalendar
@@ -330,6 +333,9 @@ const Calendario = () => {
                 open={Boolean(dayPanel)}
                 onClose={() => setDayPanel(null)}
                 title={dayPanel ? formatDayTitle(dayPanel.date) : 'Entregas del día'}
+                kicker="Agenda • Cronograma de Entregas"
+                subtitle="Órdenes programadas con fecha de entrega para este día"
+                icon="bi-calendar-event"
                 className="calendar-day-modal"
                 footer={(
                     <button type="button" className="btn btn-secondary" onClick={() => setDayPanel(null)}>

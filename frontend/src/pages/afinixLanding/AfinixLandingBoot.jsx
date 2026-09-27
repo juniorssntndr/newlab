@@ -40,7 +40,7 @@ function waitForBelowFoldChunk() {
  * Pantalla de arranque: espera recursos críticos y el chunk inferior para que el primer scroll no compita
  * con hidratación pesada (Swiper, motion, workflow con scroll link).
  */
-export function AfinixLandingBoot({ reduceMotion, theme = 'dark', children }) {
+export function AfinixLandingBoot({ reduceMotion, theme = 'light', children }) {
     const [phase, setPhase] = useState(reduceMotion ? 'done' : 'boot');
 
     useEffect(() => {

@@ -13,7 +13,13 @@ const timeAgo = (dateStr) => {
 };
 
 const NotificationsPanel = () => {
-    const { notifications, unreadCount, setPanelOpen, markAsRead, markAllRead } = useNotifications();
+    const {
+        notifications,
+        unreadCount,
+        setPanelOpen,
+        markAsRead,
+        markAllRead
+    } = useNotifications();
     const navigate = useNavigate();
     const panelRef = useRef(null);
 

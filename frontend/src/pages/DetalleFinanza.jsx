@@ -13,9 +13,9 @@ import { useCreateInvoiceMutation } from '../modules/billing/mutations/useCreate
 import { useAnnulInvoiceMutation } from '../modules/billing/mutations/useAnnulInvoiceMutation.js';
 import { useCreateCreditNoteMutation } from '../modules/billing/mutations/useCreateCreditNoteMutation.js';
 import logoAfinixPrint from '../assets/branding/logo-light.png';
-import isoAfinixPrint from '../assets/branding/iso-light.png';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
-import { formatDentalSelection, sortTeethByArchOrder } from '../utils/odontograma.js';
+import CustomSelect from '../components/CustomSelect.jsx';
+import { formatDentalSelection, sortTeethByArchOrder, getToothRole } from '../utils/odontograma.js';
 import '../styles/detalle-finanza-ui-consistency.css';
 
 /** URL absoluta del asset (ventana de impresión = about:blank). */
@@ -72,6 +72,7 @@ const DetalleFinanza = () => {
     const createCreditNoteMutation = useCreateCreditNoteMutation();
 
     const finanza = financeDetailQuery.data || null;
+
     const comprobantes = comprobantesQuery.data || [];
     const catalogos = {
         cuentas: Array.isArray(financeCatalogsQuery.data?.cuentas) ? financeCatalogsQuery.data.cuentas : []
@@ -114,7 +115,6 @@ const DetalleFinanza = () => {
             setForm((prev) => ({ ...prev, cuenta_id: String(cuentasFiltradas[0].id) }));
         }
     }, [cuentasFiltradas, form.cuenta_id]);
-
     const openRegistrarPago = () => {
         const saldo = Number(finanza?.saldo);
         setForm((prev) => ({
@@ -128,10 +128,11 @@ const DetalleFinanza = () => {
     };
 
     const submitPago = async () => {
-        if (!form.monto || Number.isNaN(parseFloat(form.monto))) {
-            alert('Ingresa un monto válido');
+        if (!form.monto || Number.isNaN(parseFloat(form.monto)) || parseFloat(form.monto) <= 0) {
+            alert('Ingresa un monto válido mayor a 0');
             return;
         }
+
         try {
             await registerPaymentMutation.mutateAsync({
                 orderId: id,
@@ -600,26 +601,16 @@ const DetalleFinanza = () => {
 
     return (
         <div className="animate-fade-in detail-finanza-page pedido-detail">
-            <div className="page-header pedido-detail-header">
-                <div className="page-header-left">
-                    <button
-                        type="button"
-                        className="btn btn-ghost btn-sm btn-icon"
-                        onClick={() => navigate('/finanzas')}
-                        aria-label="Volver a finanzas"
-                    >
-                        <i className="bi bi-arrow-left"></i>
-                    </button>
-                    <div>
-                        <h1 className="pedido-detail-title">
-                            {finanza.codigo}
-                            <span className={`badge badge-dot badge-${finanza.estado_pago}`}>
-                                {statusLabels[finanza.estado_pago]}
-                            </span>
-                        </h1>
-                        <p>Finanzas · {finanza.paciente_nombre}</p>
-                    </div>
-                </div>
+            <div className="page-header detail-finanza-header">
+                <button
+                    type="button"
+                    className="page-back-btn"
+                    onClick={() => navigate('/finanzas')}
+                    title="Volver a Gestión de Cobros"
+                    aria-label="Volver a finanzas"
+                >
+                    <i className="bi bi-arrow-left"></i>
+                </button>
                 <div className="pedido-actions detail-finanza-header-actions">
                     <div className="detail-finanza-print-menu">
                         <button type="button" className="btn btn-secondary" onClick={() => setPrintMenuOpen(p => !p)}>
@@ -733,9 +724,7 @@ const DetalleFinanza = () => {
                                                         <strong>{product.nombre}</strong>
                                                     </div>
                                                     <div className="order-wizard-confirm-clinical">
-                                                        {isBridge ? (
-                                                            <span className="order-wizard-confirm-qty">{formatDentalSelection(item)}</span>
-                                                        ) : teeth.length > 0 ? (
+                                                        {teeth.length > 0 ? (
                                                             <div
                                                                 className={[
                                                                     'order-wizard-confirm-teeth',
@@ -744,11 +733,19 @@ const DetalleFinanza = () => {
                                                                 data-count={teeth.length}
                                                                 aria-label="Piezas seleccionadas"
                                                             >
-                                                                {teeth.map((tooth) => (
-                                                                    <span key={`${item.id || i}-${tooth}`} className="order-wizard-confirm-tooth">
-                                                                        {tooth}
-                                                                    </span>
-                                                                ))}
+                                                                {teeth.map((tooth) => {
+                                                                    const role = getToothRole(tooth, item);
+                                                                    const roleLabel = role === 'pilar' ? 'Pilar' : role === 'pontico' ? 'Póntico' : 'Unitaria';
+                                                                    return (
+                                                                        <span
+                                                                            key={`${item.id || i}-${tooth}`}
+                                                                            className={`order-wizard-confirm-tooth is-${role}`}
+                                                                            title={`Pieza ${tooth} (${roleLabel})`}
+                                                                        >
+                                                                            {tooth}
+                                                                        </span>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         ) : (
                                                             <span className="order-wizard-confirm-qty">
@@ -865,6 +862,13 @@ const DetalleFinanza = () => {
                         <div className="pedido-detail-info-grid detail-finanza-info-grid">
                             <div className="pedido-detail-field">
                                 <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-hash" aria-hidden="true"></i>
+                                    Código de pedido
+                                </span>
+                                <strong>{finanza.codigo}</strong>
+                            </div>
+                            <div className="pedido-detail-field">
+                                <span className="order-wizard-confirm-label">
                                     <i className="bi bi-building" aria-hidden="true"></i>
                                     Clínica
                                 </span>
@@ -917,7 +921,7 @@ const DetalleFinanza = () => {
                             {comprobantes.length === 0 && (
                                 <button
                                     className="btn btn-primary btn-sm detail-finanza-action-button detail-finanza-action-button--primary"
-                                    onClick={() => navigate(`/finanzas/${id}/facturar`)}
+                                    onClick={() => navigate(`/caja-gastos/facturar/${id}`)}
                                     disabled={finanza.estado_pago !== 'cancelado'}
                                     title={finanza.estado_pago !== 'cancelado' ? 'El pedido debe estar cancelado para emitir comprobantes' : ''}
                                 >
@@ -1078,10 +1082,18 @@ const DetalleFinanza = () => {
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 title="Registrar pago"
+                kicker="Finanzas • Cobranza"
+                subtitle={`Abono para orden #${finanza?.codigo_pedido || id}`}
+                icon="bi-cash-coin"
+                size="lg"
                 footer={(
                     <>
                         <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={submitPago} disabled={registerPaymentMutation.isPending}>
+                        <button
+                            className="btn btn-primary"
+                            onClick={submitPago}
+                            disabled={registerPaymentMutation.isPending}
+                        >
                             {registerPaymentMutation.isPending ? 'Guardando...' : 'Guardar pago'}
                         </button>
                     </>
@@ -1090,12 +1102,12 @@ const DetalleFinanza = () => {
                 <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
                     <div className="form-group detail-finanza-form-group">
                         <label className="form-label detail-finanza-form-label">
-                            <i className="bi bi-cash-coin detail-finanza-form-label-icon"></i> Monto <span className="detail-finanza-required">*</span>
+                            Monto <span className="detail-finanza-required">*</span>
                         </label>
-                        <div className="detail-finanza-currency-wrap">
-                            <span className="detail-finanza-currency-prefix" aria-hidden="true">S/.</span>
+                        <div className="form-input-box has-prefix">
+                            <span className="form-input-prefix" aria-hidden="true">S/.</span>
                             <input
-                                className="form-input detail-finanza-currency-input"
+                                className="form-input"
                                 type="number"
                                 min="0"
                                 step="0.01"
@@ -1113,80 +1125,108 @@ const DetalleFinanza = () => {
                     </div>
                     <div className="form-group detail-finanza-form-group">
                         <label className="form-label detail-finanza-form-label">
-                            <i className="bi bi-bank detail-finanza-form-label-icon"></i> Método <span className="detail-finanza-required">*</span>
+                            Método <span className="detail-finanza-required">*</span>
                         </label>
-                        <select
-                            className="form-select"
+                        <CustomSelect
                             value={form.metodo}
-                            onChange={(e) => {
-                                const nextMetodo = e.target.value;
+                            onChange={(e, nextMetodo) => {
                                 const nextFondo = metodoToFondo(nextMetodo);
                                 setForm((prev) => ({ ...prev, metodo: nextMetodo, tipo_fondo: nextFondo }));
                             }}
-                        >
-                            <option value="transferencia">Transferencia</option>
-                            <option value="efectivo">Efectivo</option>
-                            <option value="tarjeta">Tarjeta</option>
-                            <option value="yape">Yape / Plin</option>
-                        </select>
+                            options={[
+                                { value: 'transferencia', label: 'Transferencia', icon: 'bi-bank', dotColor: '#3b82f6' },
+                                { value: 'efectivo', label: 'Efectivo', icon: 'bi-cash-stack', dotColor: '#10b981' },
+                                { value: 'tarjeta', label: 'Tarjeta', icon: 'bi-credit-card', dotColor: '#0ea5e9' },
+                                { value: 'yape', label: 'Yape / Plin', icon: 'bi-qr-code-scan', dotColor: '#7c3aed' }
+                            ]}
+                        />
                     </div>
                 </div>
 
                 <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
                     <div className="form-group detail-finanza-form-group">
                         <label className="form-label detail-finanza-form-label">
-                            <i className="bi bi-diagram-3 detail-finanza-form-label-icon"></i> Destino de fondos
+                            Destino de fondos
                         </label>
-                        <input
-                            className="form-input"
-                            value={form.tipo_fondo === 'caja' ? 'Caja (efectivo)' : 'Banco (transferencia / yape / tarjeta)'}
-                            disabled
-                        />
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                height: '38px',
+                                padding: '0 12px',
+                                borderRadius: 'var(--radius-md, 8px)',
+                                background: 'var(--color-bg-alt, #f8fafc)',
+                                border: '1px solid var(--color-border, #cbd5e1)',
+                                color: 'var(--color-text, #0f172a)',
+                                fontSize: '0.8125rem',
+                                fontWeight: 600
+                            }}
+                        >
+                            <span
+                                style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    backgroundColor: form.tipo_fondo === 'caja' ? '#10b981' : '#0284c7'
+                                }}
+                            />
+                            <i className={`bi ${form.tipo_fondo === 'caja' ? 'bi-cash-stack text-success' : 'bi-bank text-primary'}`}></i>
+                            <span>{form.tipo_fondo === 'caja' ? 'Caja / Efectivo en mostrador' : 'Entidad bancaria'}</span>
+                        </div>
                     </div>
                     <div className="form-group detail-finanza-form-group">
                         <label className="form-label detail-finanza-form-label">
-                            <i className="bi bi-safe2 detail-finanza-form-label-icon"></i> Cuenta
+                            Cuenta destino
                         </label>
-                        <select
-                            className="form-select"
-                            value={form.cuenta_id}
-                            onChange={(e) => setForm((prev) => ({ ...prev, cuenta_id: e.target.value }))}
-                        >
-                            {cuentasFiltradas.map((cuenta) => (
-                                <option key={cuenta.id} value={cuenta.id}>{cuenta.nombre}</option>
-                            ))}
-                        </select>
+                        <CustomSelect
+                            value={String(form.cuenta_id || '')}
+                            onChange={(e, val) => setForm((prev) => ({ ...prev, cuenta_id: val }))}
+                            placeholder="Seleccionar cuenta..."
+                            options={cuentasFiltradas.map((cuenta) => ({
+                                value: String(cuenta.id),
+                                label: `${cuenta.nombre} ${cuenta.banco ? `(${cuenta.banco})` : ''}`,
+                                icon: cuenta.tipo_cuenta === 'caja' ? 'bi-cash-coin' : 'bi-bank',
+                                dotColor: cuenta.tipo_cuenta === 'caja' ? '#10b981' : '#0284c7'
+                            }))}
+                        />
                     </div>
                 </div>
 
                 <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
                     <div className="form-group detail-finanza-form-group">
                         <label className="form-label detail-finanza-form-label">
-                            <i className="bi bi-hash detail-finanza-form-label-icon detail-finanza-form-label-icon--muted"></i> Referencia
+                            Referencia de operación
                         </label>
-                        <input
-                            className="form-input"
-                            value={form.referencia}
-                            onChange={(e) => setForm((prev) => ({ ...prev, referencia: e.target.value }))}
-                            placeholder="Nro. operación (opcional)"
-                        />
+                        <div className="form-input-box has-lead">
+                            <i className="bi bi-receipt form-input-lead" aria-hidden="true" />
+                            <input
+                                className="form-input"
+                                value={form.referencia}
+                                onChange={(e) => setForm((prev) => ({ ...prev, referencia: e.target.value }))}
+                                placeholder="Nro. operación (opcional)"
+                            />
+                        </div>
                     </div>
                     <div className="form-group detail-finanza-form-group">
                         <label className="form-label detail-finanza-form-label">
-                            <i className="bi bi-calendar-check detail-finanza-form-label-icon"></i> Fecha de pago
+                            Fecha de pago
                         </label>
-                        <input
-                            className="form-input"
-                            type="date"
-                            value={form.fecha_pago || new Date().toISOString().split('T')[0]}
-                            onChange={(e) => setForm((prev) => ({ ...prev, fecha_pago: e.target.value }))}
-                        />
+                        <div className="form-input-box has-lead">
+                            <i className="bi bi-calendar-event form-input-lead" aria-hidden="true" />
+                            <input
+                                className="form-input"
+                                type="date"
+                                value={form.fecha_pago || new Date().toISOString().split('T')[0]}
+                                onChange={(e) => setForm((prev) => ({ ...prev, fecha_pago: e.target.value }))}
+                            />
+                        </div>
                     </div>
                 </div>
 
                 <div className="form-group detail-finanza-form-group">
                     <label className="form-label detail-finanza-form-label">
-                        <i className="bi bi-card-text detail-finanza-form-label-icon detail-finanza-form-label-icon--muted"></i> Notas
+                        Notas y observaciones
                     </label>
                     <textarea
                         value={form.notas}
@@ -1202,6 +1242,9 @@ const DetalleFinanza = () => {
                 open={!!anularModal}
                 onClose={() => setAnularModal(null)}
                 title="Anular Comprobante Electrónico"
+                kicker="SUNAT • Comunicación de baja"
+                subtitle={`Comprobante ${anularModal?.serie}-${anularModal?.correlativo}`}
+                icon="bi-x-octagon"
                 footer={
                     <div className="detail-finanza-modal-footer">
                         <button className="btn btn-ghost" onClick={() => setAnularModal(null)} disabled={annulInvoiceMutation.isPending}>Cancelar</button>
@@ -1226,7 +1269,7 @@ const DetalleFinanza = () => {
                 </div>
                 <div className="form-group">
                     <label className="form-label detail-finanza-form-label">
-                        <i className="bi bi-chat-left-text detail-finanza-form-label-icon"></i> Motivo de anulación <span className="detail-finanza-required">*</span>
+                        Motivo de anulación <span className="detail-finanza-required">*</span>
                     </label>
                     <textarea
                         value={anularMotivo}
@@ -1246,6 +1289,9 @@ const DetalleFinanza = () => {
                 open={!!notaCreditoModal}
                 onClose={() => setNotaCreditoModal(null)}
                 title="Emitir Nota de Crédito"
+                kicker="SUNAT • Rectificación tributaria"
+                subtitle={`Comprobante referencia: ${notaCreditoModal?.serie}-${notaCreditoModal?.correlativo}`}
+                icon="bi-arrow-counterclockwise"
                 footer={
                     <div className="detail-finanza-modal-footer">
                         <button className="btn btn-ghost" onClick={() => setNotaCreditoModal(null)} disabled={createCreditNoteMutation.isPending}>Cancelar</button>
@@ -1267,27 +1313,30 @@ const DetalleFinanza = () => {
                 </div>
                 <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
                     <div className="form-group detail-finanza-form-group">
-                        <label className="form-label detail-finanza-form-label">Monto a anular (S/.) <span className="detail-finanza-required">*</span></label>
-                        <input
-                            className="form-input"
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            value={ncForm.monto}
-                            onChange={e => setNcForm(p => ({ ...p, monto: e.target.value }))}
-                        />
+                        <label className="form-label detail-finanza-form-label">Monto a anular <span className="detail-finanza-required">*</span></label>
+                        <div className="form-input-box has-prefix">
+                            <span className="form-input-prefix" aria-hidden="true">S/.</span>
+                            <input
+                                className="form-input"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={ncForm.monto}
+                                onChange={e => setNcForm(p => ({ ...p, monto: e.target.value }))}
+                            />
+                        </div>
                     </div>
                     <div className="form-group detail-finanza-form-group">
                         <label htmlFor="credit-note-reason-code" className="form-label detail-finanza-form-label">Tipo de corrección <span className="detail-finanza-required">*</span></label>
-                        <select
+                        <CustomSelect
                             id="credit-note-reason-code"
-                            className="form-select"
                             value={ncForm.codMotivo}
-                            onChange={e => setNcForm(p => ({ ...p, codMotivo: e.target.value }))}
-                        >
-                            <option value="01">Anulación total de la operación</option>
-                            <option value="07">Devolución o corrección parcial por ítem</option>
-                        </select>
+                            onChange={(e, val) => setNcForm(p => ({ ...p, codMotivo: val }))}
+                            options={[
+                                { value: '01', label: 'Anulación total de la operación', icon: 'bi-x-circle', dotColor: '#ef4444' },
+                                { value: '07', label: 'Devolución o corrección parcial por ítem', icon: 'bi-pencil-square', dotColor: '#f59e0b' }
+                            ]}
+                        />
                     </div>
                     <div className="detail-finanza-igv-summary">
                         <span>IGV estimado (18%)</span>
