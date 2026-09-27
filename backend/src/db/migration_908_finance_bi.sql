@@ -38,9 +38,9 @@ CREATE INDEX IF NOT EXISTS idx_nl_fin_movimientos_producto ON nl_fin_movimientos
 CREATE INDEX IF NOT EXISTS idx_nl_fin_movimientos_unidad ON nl_fin_movimientos(unidad_negocio);
 
 INSERT INTO nl_fin_cuentas (nombre, tipo_cuenta, saldo_inicial)
-SELECT 'Caja Principal', 'caja', 0
-WHERE NOT EXISTS (SELECT 1 FROM nl_fin_cuentas WHERE nombre = 'Caja Principal');
+SELECT 'Caja Principal (Efectivo)', 'caja', 0
+WHERE NOT EXISTS (SELECT 1 FROM nl_fin_cuentas WHERE tipo_cuenta = 'caja' OR nombre IN ('Caja Principal', 'Caja Principal (Efectivo)'));
 
 INSERT INTO nl_fin_cuentas (nombre, tipo_cuenta, saldo_inicial)
-SELECT 'Banco Principal', 'banco', 0
-WHERE NOT EXISTS (SELECT 1 FROM nl_fin_cuentas WHERE nombre = 'Banco Principal');
+SELECT 'BCP Operativo (Principal)', 'banco', 0
+WHERE NOT EXISTS (SELECT 1 FROM nl_fin_cuentas WHERE tipo_cuenta = 'banco' OR nombre IN ('Banco Principal', 'BCP Operativo (Principal)'));
