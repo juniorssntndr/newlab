@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useCrmMutations } from '../queries/useCrmQueries.js';
 import toast from 'react-hot-toast';
 
@@ -105,111 +106,138 @@ export const VisitModal = ({ visit, establishment, onClose, onSaved }) => {
         }
     };
 
-    return (
+    return createPortal(
         <div className="crm-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
             <div className="crm-modal" onClick={(e) => e.stopPropagation()}>
                 <form onSubmit={handleSubmit}>
                     <div className="crm-modal-header">
-                        <div>
-                            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>
-                                {isEdit ? 'Actualizar Visita' : 'Programar Nueva Visita'}
-                            </h2>
-                            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: '0.125rem 0 0 0' }}>
-                                {establishment?.nombre}
-                            </p>
+                        <div className="crm-modal-header-main">
+                            <div className="crm-modal-avatar-badge" style={{ background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }}>
+                                <i className="bi bi-calendar2-check-fill"></i>
+                            </div>
+                            <div className="crm-modal-header-text">
+                                <div className="crm-modal-kicker">CRM • GESTIÓN DE VISITAS</div>
+                                <h2 className="crm-modal-title">
+                                    {isEdit ? 'Actualizar Visita' : 'Programar Nueva Visita'}
+                                </h2>
+                                <p className="crm-modal-subtitle">
+                                    {establishment?.nombre || 'Establecimiento'}
+                                </p>
+                            </div>
                         </div>
-                        <button type="button" className="crm-btn crm-btn-secondary crm-btn-icon" onClick={onClose}>
+                        <button type="button" className="crm-btn crm-btn-secondary crm-btn-icon" onClick={onClose} aria-label="Cerrar">
                             <i className="bi bi-x-lg"></i>
                         </button>
                     </div>
 
-                    <div className="crm-modal-body">
-                        <div className="crm-form-group">
-                            <label className="crm-form-label">Estado de la Visita</label>
-                            <select
-                                className="crm-form-control"
-                                value={form.estado}
-                                onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                            >
-                                <option value="programada">Programada</option>
-                                <option value="en_curso">En curso</option>
-                                <option value="completada">Completada</option>
-                                <option value="sin_contacto">Sin contacto</option>
-                                <option value="reprogramada">Reprogramada</option>
-                                <option value="cancelada">Cancelada</option>
-                            </select>
+                    <div className="crm-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                        <div className="crm-form-row-2col">
+                            <div className="crm-form-group" style={{ margin: 0 }}>
+                                <label className="crm-form-label">Estado de la Visita</label>
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-flag input-icon-lead"></i>
+                                    <select
+                                        className="crm-form-control"
+                                        value={form.estado}
+                                        onChange={(e) => setForm({ ...form, estado: e.target.value })}
+                                    >
+                                        <option value="programada">Programada</option>
+                                        <option value="en_curso">En curso</option>
+                                        <option value="completada">Completada</option>
+                                        <option value="sin_contacto">Sin contacto</option>
+                                        <option value="reprogramada">Reprogramada</option>
+                                        <option value="cancelada">Cancelada</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="crm-form-group" style={{ margin: 0 }}>
+                                <label className="crm-form-label">Fecha y Hora Programada</label>
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-calendar-event input-icon-lead"></i>
+                                    <input
+                                        type="datetime-local"
+                                        className="crm-form-control"
+                                        value={form.programada_para}
+                                        onChange={(e) => setForm({ ...form, programada_para: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="crm-form-group">
-                            <label className="crm-form-label">Fecha y Hora Programada</label>
-                            <input
-                                type="datetime-local"
-                                className="crm-form-control"
-                                value={form.programada_para}
-                                onChange={(e) => setForm({ ...form, programada_para: e.target.value })}
-                                required
-                            />
-                        </div>
-
-                        <div className="crm-form-group">
+                        <div className="crm-form-group" style={{ margin: 0 }}>
                             <label className="crm-form-label">Propósito de la Visita</label>
-                            <input
-                                type="text"
-                                className="crm-form-control"
-                                value={form.proposito}
-                                onChange={(e) => setForm({ ...form, proposito: e.target.value })}
-                                placeholder="Ej. Presentación de catálogo, seguimiento de reclamo..."
-                                required
-                            />
+                            <div className="form-input-box has-lead">
+                                <i className="bi bi-compass input-icon-lead"></i>
+                                <input
+                                    type="text"
+                                    className="crm-form-control"
+                                    value={form.proposito}
+                                    onChange={(e) => setForm({ ...form, proposito: e.target.value })}
+                                    placeholder="Ej. Presentación de catálogo, seguimiento de trabajo..."
+                                    required
+                                />
+                            </div>
                         </div>
 
                         {(form.estado === 'completada' || form.estado === 'sin_contacto' || isEdit) && (
                             <>
-                                <div className="crm-form-group">
+                                <div className="crm-form-group" style={{ margin: 0 }}>
                                     <label className="crm-form-label">Resultado Obtenido</label>
-                                    <input
-                                        type="text"
-                                        className="crm-form-control"
-                                        value={form.resultado}
-                                        onChange={(e) => setForm({ ...form, resultado: e.target.value })}
-                                        placeholder="Ej. Interesado en zirconio, pide lista de precios..."
-                                    />
+                                    <div className="form-input-box has-lead">
+                                        <i className="bi bi-check2-circle input-icon-lead"></i>
+                                        <input
+                                            type="text"
+                                            className="crm-form-control"
+                                            value={form.resultado}
+                                            onChange={(e) => setForm({ ...form, resultado: e.target.value })}
+                                            placeholder="Ej. Interesado en zirconio, pide lista de precios..."
+                                        />
+                                    </div>
                                 </div>
 
-                                <div className="crm-form-group">
+                                <div className="crm-form-group" style={{ margin: 0 }}>
                                     <label className="crm-form-label">Notas Adicionales</label>
                                     <textarea
                                         className="crm-form-control"
                                         value={form.notas}
                                         onChange={(e) => setForm({ ...form, notas: e.target.value })}
                                         placeholder="Detalles sobre doctores contactados, observaciones..."
+                                        rows={2}
                                     ></textarea>
                                 </div>
 
-                                <div className="crm-form-group">
+                                <div className="crm-form-group" style={{ margin: 0 }}>
                                     <label className="crm-form-label">Próxima Acción Acordada</label>
-                                    <input
-                                        type="text"
-                                        className="crm-form-control"
-                                        value={form.proxima_accion}
-                                        onChange={(e) => setForm({ ...form, proxima_accion: e.target.value })}
-                                        placeholder="Ej. Enviar cotización por WhatsApp..."
-                                    />
+                                    <div className="form-input-box has-lead">
+                                        <i className="bi bi-arrow-right-circle input-icon-lead"></i>
+                                        <input
+                                            type="text"
+                                            className="crm-form-control"
+                                            value={form.proxima_accion}
+                                            onChange={(e) => setForm({ ...form, proxima_accion: e.target.value })}
+                                            placeholder="Ej. Enviar cotización por WhatsApp..."
+                                        />
+                                    </div>
                                 </div>
                             </>
                         )}
 
-                        <div className="crm-form-group">
+                        <div className="crm-form-group" style={{ margin: 0 }}>
                             <label className="crm-form-label">
                                 Próxima Visita (Cadencia sugerida: {defaultCadenceDays} días)
                             </label>
-                            <input
-                                type="date"
-                                className="crm-form-control"
-                                value={form.proxima_visita_at}
-                                onChange={(e) => setForm({ ...form, proxima_visita_at: e.target.value })}
-                            />
-                            <div className="crm-form-hint">
+                            <div className="form-input-box has-lead">
+                                <i className="bi bi-calendar-plus input-icon-lead"></i>
+                                <input
+                                    type="date"
+                                    className="crm-form-control"
+                                    value={form.proxima_visita_at}
+                                    onChange={(e) => setForm({ ...form, proxima_visita_at: e.target.value })}
+                                />
+                            </div>
+                            <div className="crm-form-hint" style={{ marginTop: '0.25rem' }}>
                                 Rojo / Reclamo: 7 días · Amarillo: 15 días · Verde: 45 días
                             </div>
                         </div>
@@ -269,7 +297,8 @@ export const VisitModal = ({ visit, establishment, onClose, onSaved }) => {
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

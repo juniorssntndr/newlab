@@ -70,6 +70,9 @@ export const createEstablecimiento = ({ payload, headers }) =>
 export const updateEstablecimiento = ({ id, payload, headers }) =>
     crmFetch(`/crm/establecimientos/${id}`, { method: 'PATCH', body: payload, headers });
 
+export const deleteEstablecimiento = ({ id, headers }) =>
+    crmFetch(`/crm/establecimientos/${id}`, { method: 'DELETE', headers });
+
 export const assignEstablecimiento = ({ id, responsable_id, headers }) =>
     crmFetch(`/crm/establecimientos/${id}/asignacion`, {
         method: 'PATCH',
@@ -140,6 +143,21 @@ export const createDoctor = ({ payload, headers }) =>
 
 export const updateDoctor = ({ id, payload, headers }) =>
     crmFetch(`/doctores/${id}`, { method: 'PUT', body: payload, headers });
+
+export const deleteDoctor = ({ id, headers }) =>
+    crmFetch(`/doctores/${id}`, { method: 'DELETE', headers });
+
+export const updateDoctorClinicas = ({ id, clinicaIds, headers }) =>
+    crmFetch(`/doctores/${id}/clinicas`, { method: 'POST', body: { clinicaIds }, headers });
+
+export const fetchClinicas = ({ filters = {}, headers } = {}) =>
+    crmFetch('/clinicas', { query: filters, headers });
+
+export const updateClinica = ({ id, payload, headers }) =>
+    crmFetch(`/clinicas/${id}`, { method: 'PUT', body: payload, headers });
+
+export const deleteClinica = ({ id, headers }) =>
+    crmFetch(`/clinicas/${id}`, { method: 'DELETE', headers });
 
 export const fetchUsuarios = ({ headers }) =>
     crmFetch('/usuarios', { headers });

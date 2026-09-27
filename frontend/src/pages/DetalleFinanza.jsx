@@ -7,17 +7,15 @@ import BillingResultModal from '../components/billing/BillingResultModal.jsx';
 import ComprobantePrintModal from '../components/billing/ComprobantePrintModal.jsx';
 import { useFinanceDetailQuery } from '../modules/finance/queries/useFinanceDetailQuery.js';
 import { useFinanceCatalogsQuery } from '../modules/finance/queries/useFinanceCatalogsQuery.js';
-import { useSaldosFavorQuery } from '../modules/finance/queries/useSaldosFavorQuery.js';
 import { useBillingPreviewQuery } from '../modules/billing/queries/useBillingPreviewQuery.js';
 import { useRegisterPaymentMutation } from '../modules/finance/mutations/useRegisterPaymentMutation.js';
-import { useAplicarSaldoFavorMutation } from '../modules/finance/mutations/useAplicarSaldoFavorMutation.js';
 import { useCreateInvoiceMutation } from '../modules/billing/mutations/useCreateInvoiceMutation.js';
 import { useAnnulInvoiceMutation } from '../modules/billing/mutations/useAnnulInvoiceMutation.js';
 import { useCreateCreditNoteMutation } from '../modules/billing/mutations/useCreateCreditNoteMutation.js';
 import logoAfinixPrint from '../assets/branding/logo-light.png';
-import isoAfinixPrint from '../assets/branding/iso-light.png';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
-import { formatDentalSelection, sortTeethByArchOrder } from '../utils/odontograma.js';
+import CustomSelect from '../components/CustomSelect.jsx';
+import { formatDentalSelection, sortTeethByArchOrder, getToothRole } from '../utils/odontograma.js';
 import '../styles/detalle-finanza-ui-consistency.css';
 
 /** URL absoluta del asset (ventana de impresión = about:blank). */
@@ -69,20 +67,11 @@ const DetalleFinanza = () => {
     const financeCatalogsQuery = useFinanceCatalogsQuery();
     const comprobantesQuery = useBillingPreviewQuery(id);
     const registerPaymentMutation = useRegisterPaymentMutation();
-    const aplicarSaldoFavorMutation = useAplicarSaldoFavorMutation();
     const createInvoiceMutation = useCreateInvoiceMutation();
     const annulInvoiceMutation = useAnnulInvoiceMutation();
     const createCreditNoteMutation = useCreateCreditNoteMutation();
 
     const finanza = financeDetailQuery.data || null;
-    const saldosFavorQuery = useSaldosFavorQuery(finanza?.clinica_id, Boolean(finanza?.clinica_id));
-    const saldosFavorDisponibles = saldosFavorQuery.data || [];
-    const totalSaldoFavorDisponible = useMemo(() => {
-        return saldosFavorDisponibles.reduce((acc, curr) => acc + (parseFloat(curr.saldo_disponible || 0)), 0);
-    }, [saldosFavorDisponibles]);
-
-    const [paymentMode, setPaymentMode] = useState('nuevo_pago'); // 'nuevo_pago' | 'saldo_favor'
-    const [selectedSaldoFavorId, setSelectedSaldoFavorId] = useState('');
 
     const comprobantes = comprobantesQuery.data || [];
     const catalogos = {
@@ -126,16 +115,8 @@ const DetalleFinanza = () => {
             setForm((prev) => ({ ...prev, cuenta_id: String(cuentasFiltradas[0].id) }));
         }
     }, [cuentasFiltradas, form.cuenta_id]);
-
-    useEffect(() => {
-        if (saldosFavorDisponibles.length > 0 && !selectedSaldoFavorId) {
-            setSelectedSaldoFavorId(String(saldosFavorDisponibles[0].id));
-        }
-    }, [saldosFavorDisponibles, selectedSaldoFavorId]);
-
     const openRegistrarPago = () => {
         const saldo = Number(finanza?.saldo);
-        setPaymentMode('nuevo_pago');
         setForm((prev) => ({
             ...prev,
             monto: Number.isFinite(saldo) && saldo > 0 ? saldo.toFixed(2) : '',
@@ -153,32 +134,13 @@ const DetalleFinanza = () => {
         }
 
         try {
-            if (paymentMode === 'saldo_favor') {
-                if (!selectedSaldoFavorId) {
-                    alert('Selecciona el saldo a favor a aplicar');
-                    return;
+            await registerPaymentMutation.mutateAsync({
+                orderId: id,
+                payload: {
+                    ...form,
+                    cuenta_id: form.cuenta_id ? parseInt(form.cuenta_id, 10) : null
                 }
-                const res = await aplicarSaldoFavorMutation.mutateAsync({
-                    payload: {
-                        pago_origen_id: parseInt(selectedSaldoFavorId, 10),
-                        pedido_destino_id: parseInt(id, 10),
-                        monto_aplicado: parseFloat(form.monto),
-                        notas: form.notas || 'Aplicación de saldo a favor'
-                    }
-                });
-                if (!res.ok) {
-                    alert(res.error || 'Error al aplicar saldo a favor');
-                    return;
-                }
-            } else {
-                await registerPaymentMutation.mutateAsync({
-                    orderId: id,
-                    payload: {
-                        ...form,
-                        cuenta_id: form.cuenta_id ? parseInt(form.cuenta_id, 10) : null
-                    }
-                });
-            }
+            });
 
             setModalOpen(false);
             setForm({
@@ -639,26 +601,16 @@ const DetalleFinanza = () => {
 
     return (
         <div className="animate-fade-in detail-finanza-page pedido-detail">
-            <div className="page-header pedido-detail-header">
-                <div className="page-header-left">
-                    <button
-                        type="button"
-                        className="btn btn-ghost btn-sm btn-icon"
-                        onClick={() => navigate('/finanzas')}
-                        aria-label="Volver a finanzas"
-                    >
-                        <i className="bi bi-arrow-left"></i>
-                    </button>
-                    <div>
-                        <h1 className="pedido-detail-title">
-                            {finanza.codigo}
-                            <span className={`badge badge-dot badge-${finanza.estado_pago}`}>
-                                {statusLabels[finanza.estado_pago]}
-                            </span>
-                        </h1>
-                        <p>Finanzas · {finanza.paciente_nombre}</p>
-                    </div>
-                </div>
+            <div className="page-header detail-finanza-header">
+                <button
+                    type="button"
+                    className="page-back-btn"
+                    onClick={() => navigate('/finanzas')}
+                    title="Volver a Gestión de Cobros"
+                    aria-label="Volver a finanzas"
+                >
+                    <i className="bi bi-arrow-left"></i>
+                </button>
                 <div className="pedido-actions detail-finanza-header-actions">
                     <div className="detail-finanza-print-menu">
                         <button type="button" className="btn btn-secondary" onClick={() => setPrintMenuOpen(p => !p)}>
@@ -730,20 +682,6 @@ const DetalleFinanza = () => {
                         )}
                     </div>
                 </div>
-                {totalSaldoFavorDisponible > 0 && (
-                    <div className="order-wizard-confirm-stat" style={{ borderLeft: '3px solid #10b981', background: 'rgba(16, 185, 129, 0.05)' }}>
-                        <div className="order-wizard-confirm-stat-copy">
-                            <span className="order-wizard-confirm-label" style={{ color: '#10b981' }}>
-                                <i className="bi bi-stars" aria-hidden="true"></i>
-                                Saldo a Favor Clínica
-                            </span>
-                            <strong style={{ color: '#10b981' }}>{formatCurrency(totalSaldoFavorDisponible)}</strong>
-                            <em className="order-wizard-confirm-meta">
-                                {saldosFavorDisponibles.length} anticipo(s) disponible(s) para aplicar
-                            </em>
-                        </div>
-                    </div>
-                )}
             </div>
 
             <div className="detail-finanza-layout">
@@ -786,9 +724,7 @@ const DetalleFinanza = () => {
                                                         <strong>{product.nombre}</strong>
                                                     </div>
                                                     <div className="order-wizard-confirm-clinical">
-                                                        {isBridge ? (
-                                                            <span className="order-wizard-confirm-qty">{formatDentalSelection(item)}</span>
-                                                        ) : teeth.length > 0 ? (
+                                                        {teeth.length > 0 ? (
                                                             <div
                                                                 className={[
                                                                     'order-wizard-confirm-teeth',
@@ -797,11 +733,19 @@ const DetalleFinanza = () => {
                                                                 data-count={teeth.length}
                                                                 aria-label="Piezas seleccionadas"
                                                             >
-                                                                {teeth.map((tooth) => (
-                                                                    <span key={`${item.id || i}-${tooth}`} className="order-wizard-confirm-tooth">
-                                                                        {tooth}
-                                                                    </span>
-                                                                ))}
+                                                                {teeth.map((tooth) => {
+                                                                    const role = getToothRole(tooth, item);
+                                                                    const roleLabel = role === 'pilar' ? 'Pilar' : role === 'pontico' ? 'Póntico' : 'Unitaria';
+                                                                    return (
+                                                                        <span
+                                                                            key={`${item.id || i}-${tooth}`}
+                                                                            className={`order-wizard-confirm-tooth is-${role}`}
+                                                                            title={`Pieza ${tooth} (${roleLabel})`}
+                                                                        >
+                                                                            {tooth}
+                                                                        </span>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         ) : (
                                                             <span className="order-wizard-confirm-qty">
@@ -918,6 +862,13 @@ const DetalleFinanza = () => {
                         <div className="pedido-detail-info-grid detail-finanza-info-grid">
                             <div className="pedido-detail-field">
                                 <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-hash" aria-hidden="true"></i>
+                                    Código de pedido
+                                </span>
+                                <strong>{finanza.codigo}</strong>
+                            </div>
+                            <div className="pedido-detail-field">
+                                <span className="order-wizard-confirm-label">
                                     <i className="bi bi-building" aria-hidden="true"></i>
                                     Clínica
                                 </span>
@@ -970,7 +921,7 @@ const DetalleFinanza = () => {
                             {comprobantes.length === 0 && (
                                 <button
                                     className="btn btn-primary btn-sm detail-finanza-action-button detail-finanza-action-button--primary"
-                                    onClick={() => navigate(`/finanzas/${id}/facturar`)}
+                                    onClick={() => navigate(`/caja-gastos/facturar/${id}`)}
                                     disabled={finanza.estado_pago !== 'cancelado'}
                                     title={finanza.estado_pago !== 'cancelado' ? 'El pedido debe estar cancelado para emitir comprobantes' : ''}
                                 >
@@ -1131,214 +1082,159 @@ const DetalleFinanza = () => {
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 title="Registrar pago"
+                kicker="Finanzas • Cobranza"
+                subtitle={`Abono para orden #${finanza?.codigo_pedido || id}`}
+                icon="bi-cash-coin"
+                size="lg"
                 footer={(
                     <>
                         <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
                         <button
                             className="btn btn-primary"
                             onClick={submitPago}
-                            disabled={registerPaymentMutation.isPending || aplicarSaldoFavorMutation.isPending}
+                            disabled={registerPaymentMutation.isPending}
                         >
-                            {registerPaymentMutation.isPending || aplicarSaldoFavorMutation.isPending
-                                ? 'Guardando...'
-                                : paymentMode === 'saldo_favor'
-                                ? 'Aplicar Saldo a Favor'
-                                : 'Guardar pago'}
+                            {registerPaymentMutation.isPending ? 'Guardando...' : 'Guardar pago'}
                         </button>
                     </>
                 )}
             >
-                {totalSaldoFavorDisponible > 0 && (
-                    <div className="segmented-control" style={{ marginBottom: '16px' }}>
-                        <button
-                            type="button"
-                            className={`segmented-control__btn${paymentMode === 'nuevo_pago' ? ' is-active' : ''}`}
-                            onClick={() => setPaymentMode('nuevo_pago')}
-                        >
-                            <i className="bi bi-wallet2" style={{ marginRight: '6px' }}></i>
-                            Pago Directo
-                        </button>
-                        <button
-                            type="button"
-                            className={`segmented-control__btn${paymentMode === 'saldo_favor' ? ' is-active' : ''}`}
-                            onClick={() => {
-                                setPaymentMode('saldo_favor');
-                                const maxApplicable = Math.min(Number(finanza?.saldo) || 0, totalSaldoFavorDisponible);
-                                if (maxApplicable > 0) {
-                                    setForm((p) => ({ ...p, monto: maxApplicable.toFixed(2) }));
-                                }
-                            }}
-                        >
-                            <i className="bi bi-stars" style={{ marginRight: '6px', color: '#10b981' }}></i>
-                            Usar Saldo a Favor ({formatCurrency(totalSaldoFavorDisponible)})
-                        </button>
-                    </div>
-                )}
-
-                {paymentMode === 'saldo_favor' ? (
-                    <div className="detail-finanza-form-grid">
-                        <div className="form-group detail-finanza-form-group">
-                            <label className="form-label detail-finanza-form-label">
-                                <i className="bi bi-check2-circle detail-finanza-form-label-icon"></i> Seleccionar Anticipo / Saldo de Origen <span className="detail-finanza-required">*</span>
-                            </label>
-                            <select
-                                className="form-select"
-                                value={selectedSaldoFavorId}
-                                onChange={(e) => setSelectedSaldoFavorId(e.target.value)}
-                            >
-                                {saldosFavorDisponibles.map((sf) => (
-                                    <option key={sf.id} value={sf.id}>
-                                        Saldo #{sf.id} — Disp: {formatCurrency(sf.saldo_disponible)} ({formatDate(sf.fecha_pago)}) {sf.referencia ? `[${sf.referencia}]` : ''}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-group detail-finanza-form-group">
-                            <label className="form-label detail-finanza-form-label">
-                                <i className="bi bi-cash-coin detail-finanza-form-label-icon"></i> Monto a Aplicar (S/.) <span className="detail-finanza-required">*</span>
-                            </label>
-                            <div className="detail-finanza-currency-wrap">
-                                <span className="detail-finanza-currency-prefix" aria-hidden="true">S/.</span>
-                                <input
-                                    className="form-input detail-finanza-currency-input"
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={form.monto}
-                                    onChange={(e) => setForm((prev) => ({ ...prev, monto: e.target.value }))}
-                                />
-                            </div>
-                            <p className="detail-finanza-field-hint">
-                                Máximo disponible: {formatCurrency(totalSaldoFavorDisponible)} | Saldo adeudado: {formatCurrency(finanza?.saldo)}
-                            </p>
-                        </div>
-
-                        <div className="form-group detail-finanza-form-group">
-                            <label className="form-label detail-finanza-form-label">
-                                <i className="bi bi-card-text detail-finanza-form-label-icon detail-finanza-form-label-icon--muted"></i> Observación / Notas
-                            </label>
+                <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            Monto <span className="detail-finanza-required">*</span>
+                        </label>
+                        <div className="form-input-box has-prefix">
+                            <span className="form-input-prefix" aria-hidden="true">S/.</span>
                             <input
                                 className="form-input"
-                                value={form.notas}
-                                onChange={(e) => setForm((prev) => ({ ...prev, notas: e.target.value }))}
-                                placeholder="Ej. Aplicación de anticipo a cuenta del pedido"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={form.monto}
+                                onChange={(e) => setForm((prev) => ({ ...prev, monto: e.target.value }))}
+                                autoFocus
+                            />
+                        </div>
+                        {Number(finanza?.saldo) > 0 && (
+                            <p className="detail-finanza-field-hint">
+                                Precargado con el saldo pendiente ({formatCurrency(finanza.saldo)}). Puedes editarlo para un pago parcial.
+                            </p>
+                        )}
+                    </div>
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            Método <span className="detail-finanza-required">*</span>
+                        </label>
+                        <CustomSelect
+                            value={form.metodo}
+                            onChange={(e, nextMetodo) => {
+                                const nextFondo = metodoToFondo(nextMetodo);
+                                setForm((prev) => ({ ...prev, metodo: nextMetodo, tipo_fondo: nextFondo }));
+                            }}
+                            options={[
+                                { value: 'transferencia', label: 'Transferencia', icon: 'bi-bank', dotColor: '#3b82f6' },
+                                { value: 'efectivo', label: 'Efectivo', icon: 'bi-cash-stack', dotColor: '#10b981' },
+                                { value: 'tarjeta', label: 'Tarjeta', icon: 'bi-credit-card', dotColor: '#0ea5e9' },
+                                { value: 'yape', label: 'Yape / Plin', icon: 'bi-qr-code-scan', dotColor: '#7c3aed' }
+                            ]}
+                        />
+                    </div>
+                </div>
+
+                <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            Destino de fondos
+                        </label>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                height: '38px',
+                                padding: '0 12px',
+                                borderRadius: 'var(--radius-md, 8px)',
+                                background: 'var(--color-bg-alt, #f8fafc)',
+                                border: '1px solid var(--color-border, #cbd5e1)',
+                                color: 'var(--color-text, #0f172a)',
+                                fontSize: '0.8125rem',
+                                fontWeight: 600
+                            }}
+                        >
+                            <span
+                                style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    backgroundColor: form.tipo_fondo === 'caja' ? '#10b981' : '#0284c7'
+                                }}
+                            />
+                            <i className={`bi ${form.tipo_fondo === 'caja' ? 'bi-cash-stack text-success' : 'bi-bank text-primary'}`}></i>
+                            <span>{form.tipo_fondo === 'caja' ? 'Caja / Efectivo en mostrador' : 'Entidad bancaria'}</span>
+                        </div>
+                    </div>
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            Cuenta destino
+                        </label>
+                        <CustomSelect
+                            value={String(form.cuenta_id || '')}
+                            onChange={(e, val) => setForm((prev) => ({ ...prev, cuenta_id: val }))}
+                            placeholder="Seleccionar cuenta..."
+                            options={cuentasFiltradas.map((cuenta) => ({
+                                value: String(cuenta.id),
+                                label: `${cuenta.nombre} ${cuenta.banco ? `(${cuenta.banco})` : ''}`,
+                                icon: cuenta.tipo_cuenta === 'caja' ? 'bi-cash-coin' : 'bi-bank',
+                                dotColor: cuenta.tipo_cuenta === 'caja' ? '#10b981' : '#0284c7'
+                            }))}
+                        />
+                    </div>
+                </div>
+
+                <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            Referencia de operación
+                        </label>
+                        <div className="form-input-box has-lead">
+                            <i className="bi bi-receipt form-input-lead" aria-hidden="true" />
+                            <input
+                                className="form-input"
+                                value={form.referencia}
+                                onChange={(e) => setForm((prev) => ({ ...prev, referencia: e.target.value }))}
+                                placeholder="Nro. operación (opcional)"
                             />
                         </div>
                     </div>
-                ) : (
-                    <>
-                        <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
-                            <div className="form-group detail-finanza-form-group">
-                                <label className="form-label detail-finanza-form-label">
-                                    <i className="bi bi-cash-coin detail-finanza-form-label-icon"></i> Monto <span className="detail-finanza-required">*</span>
-                                </label>
-                                <div className="detail-finanza-currency-wrap">
-                                    <span className="detail-finanza-currency-prefix" aria-hidden="true">S/.</span>
-                                    <input
-                                        className="form-input detail-finanza-currency-input"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        value={form.monto}
-                                        onChange={(e) => setForm((prev) => ({ ...prev, monto: e.target.value }))}
-                                        autoFocus
-                                    />
-                                </div>
-                                {Number(finanza?.saldo) > 0 && (
-                                    <p className="detail-finanza-field-hint">
-                                        Precargado con el saldo pendiente ({formatCurrency(finanza.saldo)}). Puedes editarlo para un pago parcial.
-                                    </p>
-                                )}
-                            </div>
-                            <div className="form-group detail-finanza-form-group">
-                                <label className="form-label detail-finanza-form-label">
-                                    <i className="bi bi-bank detail-finanza-form-label-icon"></i> Método <span className="detail-finanza-required">*</span>
-                                </label>
-                                <select
-                                    className="form-select"
-                                    value={form.metodo}
-                                    onChange={(e) => {
-                                        const nextMetodo = e.target.value;
-                                        const nextFondo = metodoToFondo(nextMetodo);
-                                        setForm((prev) => ({ ...prev, metodo: nextMetodo, tipo_fondo: nextFondo }));
-                                    }}
-                                >
-                                    <option value="transferencia">Transferencia</option>
-                                    <option value="efectivo">Efectivo</option>
-                                    <option value="tarjeta">Tarjeta</option>
-                                    <option value="yape">Yape / Plin</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
-                            <div className="form-group detail-finanza-form-group">
-                                <label className="form-label detail-finanza-form-label">
-                                    <i className="bi bi-diagram-3 detail-finanza-form-label-icon"></i> Destino de fondos
-                                </label>
-                                <input
-                                    className="form-input"
-                                    value={form.tipo_fondo === 'caja' ? 'Caja (efectivo)' : 'Banco (transferencia / yape / tarjeta)'}
-                                    disabled
-                                />
-                            </div>
-                            <div className="form-group detail-finanza-form-group">
-                                <label className="form-label detail-finanza-form-label">
-                                    <i className="bi bi-safe2 detail-finanza-form-label-icon"></i> Cuenta
-                                </label>
-                                <select
-                                    className="form-select"
-                                    value={form.cuenta_id}
-                                    onChange={(e) => setForm((prev) => ({ ...prev, cuenta_id: e.target.value }))}
-                                >
-                                    {cuentasFiltradas.map((cuenta) => (
-                                        <option key={cuenta.id} value={cuenta.id}>{cuenta.nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
-                            <div className="form-group detail-finanza-form-group">
-                                <label className="form-label detail-finanza-form-label">
-                                    <i className="bi bi-hash detail-finanza-form-label-icon detail-finanza-form-label-icon--muted"></i> Referencia
-                                </label>
-                                <input
-                                    className="form-input"
-                                    value={form.referencia}
-                                    onChange={(e) => setForm((prev) => ({ ...prev, referencia: e.target.value }))}
-                                    placeholder="Nro. operación (opcional)"
-                                />
-                            </div>
-                            <div className="form-group detail-finanza-form-group">
-                                <label className="form-label detail-finanza-form-label">
-                                    <i className="bi bi-calendar-check detail-finanza-form-label-icon"></i> Fecha de pago
-                                </label>
-                                <input
-                                    className="form-input"
-                                    type="date"
-                                    value={form.fecha_pago || new Date().toISOString().split('T')[0]}
-                                    onChange={(e) => setForm((prev) => ({ ...prev, fecha_pago: e.target.value }))}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="form-group detail-finanza-form-group">
-                            <label className="form-label detail-finanza-form-label">
-                                <i className="bi bi-card-text detail-finanza-form-label-icon detail-finanza-form-label-icon--muted"></i> Notas
-                            </label>
-                            <textarea
-                                value={form.notas}
-                                onChange={(e) => setForm((prev) => ({ ...prev, notas: e.target.value }))}
-                                placeholder="Detalle adicional u observación sobre este pago (opcional)"
-                                className="form-textarea detail-finanza-textarea-md"
+                    <div className="form-group detail-finanza-form-group">
+                        <label className="form-label detail-finanza-form-label">
+                            Fecha de pago
+                        </label>
+                        <div className="form-input-box has-lead">
+                            <i className="bi bi-calendar-event form-input-lead" aria-hidden="true" />
+                            <input
+                                className="form-input"
+                                type="date"
+                                value={form.fecha_pago || new Date().toISOString().split('T')[0]}
+                                onChange={(e) => setForm((prev) => ({ ...prev, fecha_pago: e.target.value }))}
                             />
                         </div>
-                    </>
-                )}
+                    </div>
+                </div>
+
+                <div className="form-group detail-finanza-form-group">
+                    <label className="form-label detail-finanza-form-label">
+                        Notas y observaciones
+                    </label>
+                    <textarea
+                        value={form.notas}
+                        onChange={(e) => setForm((prev) => ({ ...prev, notas: e.target.value }))}
+                        placeholder="Detalle adicional u observación sobre este pago (opcional)"
+                        className="form-textarea detail-finanza-textarea-md"
+                    />
+                </div>
             </Modal>
 
             {/* ── Modal: Anulación con Motivo ──────────────────────── */}
@@ -1346,6 +1242,9 @@ const DetalleFinanza = () => {
                 open={!!anularModal}
                 onClose={() => setAnularModal(null)}
                 title="Anular Comprobante Electrónico"
+                kicker="SUNAT • Comunicación de baja"
+                subtitle={`Comprobante ${anularModal?.serie}-${anularModal?.correlativo}`}
+                icon="bi-x-octagon"
                 footer={
                     <div className="detail-finanza-modal-footer">
                         <button className="btn btn-ghost" onClick={() => setAnularModal(null)} disabled={annulInvoiceMutation.isPending}>Cancelar</button>
@@ -1370,7 +1269,7 @@ const DetalleFinanza = () => {
                 </div>
                 <div className="form-group">
                     <label className="form-label detail-finanza-form-label">
-                        <i className="bi bi-chat-left-text detail-finanza-form-label-icon"></i> Motivo de anulación <span className="detail-finanza-required">*</span>
+                        Motivo de anulación <span className="detail-finanza-required">*</span>
                     </label>
                     <textarea
                         value={anularMotivo}
@@ -1390,6 +1289,9 @@ const DetalleFinanza = () => {
                 open={!!notaCreditoModal}
                 onClose={() => setNotaCreditoModal(null)}
                 title="Emitir Nota de Crédito"
+                kicker="SUNAT • Rectificación tributaria"
+                subtitle={`Comprobante referencia: ${notaCreditoModal?.serie}-${notaCreditoModal?.correlativo}`}
+                icon="bi-arrow-counterclockwise"
                 footer={
                     <div className="detail-finanza-modal-footer">
                         <button className="btn btn-ghost" onClick={() => setNotaCreditoModal(null)} disabled={createCreditNoteMutation.isPending}>Cancelar</button>
@@ -1411,27 +1313,30 @@ const DetalleFinanza = () => {
                 </div>
                 <div className="detail-finanza-form-grid detail-finanza-form-grid--2">
                     <div className="form-group detail-finanza-form-group">
-                        <label className="form-label detail-finanza-form-label">Monto a anular (S/.) <span className="detail-finanza-required">*</span></label>
-                        <input
-                            className="form-input"
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            value={ncForm.monto}
-                            onChange={e => setNcForm(p => ({ ...p, monto: e.target.value }))}
-                        />
+                        <label className="form-label detail-finanza-form-label">Monto a anular <span className="detail-finanza-required">*</span></label>
+                        <div className="form-input-box has-prefix">
+                            <span className="form-input-prefix" aria-hidden="true">S/.</span>
+                            <input
+                                className="form-input"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={ncForm.monto}
+                                onChange={e => setNcForm(p => ({ ...p, monto: e.target.value }))}
+                            />
+                        </div>
                     </div>
                     <div className="form-group detail-finanza-form-group">
                         <label htmlFor="credit-note-reason-code" className="form-label detail-finanza-form-label">Tipo de corrección <span className="detail-finanza-required">*</span></label>
-                        <select
+                        <CustomSelect
                             id="credit-note-reason-code"
-                            className="form-select"
                             value={ncForm.codMotivo}
-                            onChange={e => setNcForm(p => ({ ...p, codMotivo: e.target.value }))}
-                        >
-                            <option value="01">Anulación total de la operación</option>
-                            <option value="07">Devolución o corrección parcial por ítem</option>
-                        </select>
+                            onChange={(e, val) => setNcForm(p => ({ ...p, codMotivo: val }))}
+                            options={[
+                                { value: '01', label: 'Anulación total de la operación', icon: 'bi-x-circle', dotColor: '#ef4444' },
+                                { value: '07', label: 'Devolución o corrección parcial por ítem', icon: 'bi-pencil-square', dotColor: '#f59e0b' }
+                            ]}
+                        />
                     </div>
                     <div className="detail-finanza-igv-summary">
                         <span>IGV estimado (18%)</span>

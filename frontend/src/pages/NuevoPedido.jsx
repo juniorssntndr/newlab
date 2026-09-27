@@ -9,6 +9,7 @@ import { AFINIX_LAB_ADDRESS } from '../constants/labInfo.js';
 import OrderSelectedProductCard from '../components/orders/wizard/OrderSelectedProductCard.jsx';
 import DeliveryDateCoordModal from '../components/orders/wizard/DeliveryDateCoordModal.jsx';
 import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
+import CustomSelect from '../components/CustomSelect.jsx';
 import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
 import { useOrderComposerState } from '../modules/orders/composer/useOrderComposerState.js';
 import { fetchVisibleCatalog, peekVisibleCatalog } from '../modules/orders/catalog/visibleCatalogCache.js';
@@ -26,7 +27,7 @@ import {
     readOrderWizardDraft,
     saveOrderWizardDraft,
 } from '../modules/orders/wizard/orderWizardDraft.js';
-import { buildItemSelection } from '../utils/odontograma.js';
+import { buildItemSelection, getToothRole } from '../utils/odontograma.js';
 
 const formatDateForInput = (date) => {
     const year = date.getFullYear();
@@ -70,7 +71,7 @@ const calculateEstimatedDeliveryDate = (product, isUrgent) => {
 };
 
 const NuevoPedido = () => {
-    const { getHeaders, user } = useAuth();
+    const { getHeaders, user, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const isClient = isClientRole(user);
@@ -81,7 +82,6 @@ const NuevoPedido = () => {
     const [clinicas, setClinicas] = useState([]);
     const [productos, setProductos] = useState(() => warmCatalog?.products || []);
     const [categorias, setCategorias] = useState(() => warmCatalog?.categories || []);
-    const [clinicSearch, setClinicSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [productSearch, setProductSearch] = useState('');
     const [form, setForm] = useState({
@@ -203,6 +203,13 @@ const NuevoPedido = () => {
         ));
     }, [user?.clinica_id]);
 
+    // Rescatar dirección del consultorio si la sesión local aún no la traía en memoria
+    useEffect(() => {
+        if (isClient && user && !user.clinica_direccion && typeof refreshUser === 'function') {
+            refreshUser().catch(() => {});
+        }
+    }, [isClient, user?.id, user?.clinica_direccion, refreshUser]);
+
     useEffect(() => {
         const draft = readOrderWizardDraft();
         if (!draft) return;
@@ -262,16 +269,19 @@ const NuevoPedido = () => {
     const awaitingPreselectedProduct = Boolean(preselectProductId) && !selectedItem;
     const productCardLoading = !catalogReady || awaitingPreselectedProduct;
 
-    const clinicSearchValue = clinicSearch.trim().toLowerCase();
-    const filteredClinicas = useMemo(() => {
-        if (!clinicSearchValue) return clinicas;
-        return clinicas.filter((clinic) => clinic.nombre?.toLowerCase().includes(clinicSearchValue));
-    }, [clinicas, clinicSearchValue]);
+    const clinicOptions = useMemo(() => {
+        return (clinicas || []).map((clinic) => ({
+            value: String(clinic.id),
+            label: clinic.nombre,
+            icon: 'bi-hospital',
+        }));
+    }, [clinicas]);
 
     const filteredProductos = useMemo(() => {
         const query = productSearch.trim().toLowerCase();
         return productos.filter((product) => {
-            const byCat = categoryFilter === 'all' || String(product.categoria_id) === String(categoryFilter);
+            const byCat = categoryFilter === 'all'
+                || String(product.categoria_id) === String(categoryFilter);
             const byQuery = !query
                 || product.nombre?.toLowerCase().includes(query)
                 || product.categoria_nombre?.toLowerCase().includes(query);
@@ -427,7 +437,7 @@ const NuevoPedido = () => {
             return;
         }
         if (!String(selectedItem?.color_vita || '').trim()) {
-            setError('Elige un tono VITA para continuar.');
+            setError('Elige un tono para continuar.');
             return;
         }
         setError('');
@@ -512,26 +522,38 @@ const NuevoPedido = () => {
                 <section className="order-wizard-main">
                     {pickingProduct && !isClient ? (
                         <div className="order-wizard-card">
-                            <div className="order-wizard-product-toolbar">
-                                <input
-                                    className="form-input"
-                                    placeholder="Buscar producto..."
-                                    value={productSearch}
-                                    onChange={(e) => setProductSearch(e.target.value)}
-                                    disabled={!catalogReady}
-                                />
-                                <select
-                                    className="form-select"
-                                    value={categoryFilter}
-                                    onChange={(e) => setCategoryFilter(e.target.value)}
-                                    aria-label="Filtrar por categoría"
-                                    disabled={!catalogReady}
-                                >
-                                    <option value="all">Todas las categorías</option>
+                            <div className="order-wizard-product-toolbar productos-filters-row">
+                                <div className="search-box productos-search-box">
+                                    <i className="bi bi-search"></i>
+                                    <input
+                                        className="form-input"
+                                        placeholder="Buscar producto..."
+                                        value={productSearch}
+                                        onChange={(e) => setProductSearch(e.target.value)}
+                                        disabled={!catalogReady}
+                                    />
+                                </div>
+                                <div className="productos-filter-chips" role="group" aria-label="Filtrar por categoría">
+                                    <button
+                                        type="button"
+                                        className={`btn btn-sm pedidos-filter-chip${categoryFilter === 'all' ? ' is-active' : ''}`}
+                                        onClick={() => setCategoryFilter('all')}
+                                        disabled={!catalogReady}
+                                    >
+                                        Todos
+                                    </button>
                                     {categorias.map((cat) => (
-                                        <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                                        <button
+                                            key={cat.id}
+                                            type="button"
+                                            className={`btn btn-sm pedidos-filter-chip${String(categoryFilter) === String(cat.id) ? ' is-active' : ''}`}
+                                            onClick={() => setCategoryFilter(String(categoryFilter) === String(cat.id) ? 'all' : String(cat.id))}
+                                            disabled={!catalogReady}
+                                        >
+                                            {cat.nombre}
+                                        </button>
                                     ))}
-                                </select>
+                                </div>
                             </div>
                             {!catalogReady ? (
                                 <div className="order-wizard-product-grid catalog-products-grid" aria-busy="true" aria-label="Cargando catálogo">
@@ -590,27 +612,19 @@ const NuevoPedido = () => {
                                 <div className="order-wizard-paciente-fields">
                                     {!isClient ? (
                                         <div className="form-group order-wizard-clinic-field">
-                                            <label className="form-label" htmlFor="wizard-clinica">Clínica *</label>
-                                            <input
-                                                className="form-input order-wizard-clinic-search"
-                                                placeholder="Buscar clínica..."
-                                                value={clinicSearch}
-                                                onChange={(e) => setClinicSearch(e.target.value)}
-                                                disabled={Boolean(user?.clinica_id)}
-                                                aria-label="Buscar clínica"
-                                            />
-                                            <select
+                                            <label className="form-label" htmlFor="wizard-clinica">
+                                                <i className="bi bi-hospital" aria-hidden="true" style={{ marginRight: '0.4rem', color: 'var(--color-primary)' }}></i>
+                                                <span>Clínica <span className="order-wizard-required" aria-hidden="true">*</span></span>
+                                            </label>
+                                            <CustomSelect
                                                 id="wizard-clinica"
-                                                className="form-select"
-                                                value={form.clinica_id}
-                                                onChange={(e) => setForm((prev) => ({ ...prev, clinica_id: e.target.value }))}
+                                                options={clinicOptions}
+                                                value={form.clinica_id ? String(form.clinica_id) : ''}
+                                                onChange={(_, val) => setForm((prev) => ({ ...prev, clinica_id: val }))}
+                                                placeholder="Seleccionar clínica..."
+                                                searchable
                                                 disabled={Boolean(user?.clinica_id)}
-                                            >
-                                                <option value="">Seleccionar clínica</option>
-                                                {filteredClinicas.map((clinic) => (
-                                                    <option key={clinic.id} value={clinic.id}>{clinic.nombre}</option>
-                                                ))}
-                                            </select>
+                                            />
                                         </div>
                                     ) : null}
 
@@ -693,8 +707,10 @@ const NuevoPedido = () => {
                             productLabel={selectedItem.nombre || 'Trabajo'}
                             showOdontogram={needsDental}
                             colorVita={selectedItem.color_vita || ''}
+                            guiaColor={selectedItem.guia_color || 'vita'}
                             notes={selectedItem.notas || ''}
                             onColorChange={(value) => updateItemField(selectedItem.id, 'color_vita', value)}
+                            onGuiaColorChange={(value) => updateItemField(selectedItem.id, 'guia_color', value)}
                             onNotesChange={(value) => updateItemField(selectedItem.id, 'notas', value)}
                             onChange={(dentalData) => updateDentalSelection(selectedItem.id, dentalData)}
                             onClear={() => updateDentalSelection(selectedItem.id, buildItemSelection([], false))}
@@ -727,61 +743,12 @@ const NuevoPedido = () => {
                             </section>
 
                             <section
-                                className="order-wizard-confirm-section order-wizard-confirm-clinical-edit"
-                                aria-label="Tono e instrucciones"
-                            >
-                                <h3 className="order-wizard-confirm-section-title">Tono e instrucciones</h3>
-                                {selectedItem ? (
-                                    <div className="order-wizard-confirm-clinical-fields">
-                                        <div className="form-group">
-                                            <label className="form-label" htmlFor="order-confirm-color">Tono VITA</label>
-                                            <select
-                                                id="order-confirm-color"
-                                                className={`form-select${selectedItem.color_vita ? ' has-value' : ''}`}
-                                                value={String(selectedItem.color_vita || '').trim()}
-                                                onChange={(event) => updateItemField(selectedItem.id, 'color_vita', event.target.value)}
-                                                aria-label="Seleccionar tono VITA"
-                                            >
-                                                <option value="">Elegir tono</option>
-                                                <optgroup label="Tonos A">
-                                                    {['A1', 'A2', 'A3', 'A3.5', 'A4'].map((value) => (
-                                                        <option key={value} value={value}>{value}</option>
-                                                    ))}
-                                                </optgroup>
-                                                <optgroup label="Tonos B">
-                                                    {['B1', 'B2', 'B3', 'B4'].map((value) => (
-                                                        <option key={value} value={value}>{value}</option>
-                                                    ))}
-                                                </optgroup>
-                                                <optgroup label="Tonos C / D / Bleach">
-                                                    {['C1', 'D2', 'BL1'].map((value) => (
-                                                        <option key={value} value={value}>{value}</option>
-                                                    ))}
-                                                </optgroup>
-                                            </select>
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label" htmlFor="order-confirm-notes">Instrucciones para el laboratorio</label>
-                                            <textarea
-                                                id="order-confirm-notes"
-                                                className="form-textarea"
-                                                rows={3}
-                                                placeholder="Indicaciones específicas para este trabajo..."
-                                                value={selectedItem.notas || ''}
-                                                onChange={(event) => updateItemField(selectedItem.id, 'notas', event.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                ) : null}
-                            </section>
-
-                            <section
                                 className="order-wizard-confirm-section order-wizard-confirm-datos"
                                 aria-label="Datos del caso"
                             >
                                 <h3 className="order-wizard-confirm-section-title">Resumen del caso</h3>
                                 <div className="order-wizard-confirm-stack">
-                                    <div className="order-wizard-confirm-stat">
+                                    <div className="order-wizard-confirm-stat order-wizard-confirm-stat-paciente">
                                         <div className="order-wizard-confirm-stat-copy">
                                             <span className="order-wizard-confirm-label">
                                                 <i className="bi bi-person" aria-hidden="true"></i>
@@ -814,11 +781,19 @@ const NuevoPedido = () => {
                                                                     data-count={teeth.length}
                                                                     aria-label="Piezas seleccionadas"
                                                                 >
-                                                                    {teeth.map((tooth) => (
-                                                                        <span key={`${item.id}-${tooth}`} className="order-wizard-confirm-tooth">
-                                                                            {tooth}
-                                                                        </span>
-                                                                    ))}
+                                                                    {teeth.map((tooth) => {
+                                                                        const role = getToothRole(tooth, item);
+                                                                        const roleLabel = role === 'pilar' ? 'Pilar' : role === 'pontico' ? 'Póntico' : 'Unitaria';
+                                                                        return (
+                                                                            <span
+                                                                                key={`${item.id}-${tooth}`}
+                                                                                className={`order-wizard-confirm-tooth is-${role}`}
+                                                                                title={`Pieza ${tooth} (${roleLabel})`}
+                                                                            >
+                                                                                {tooth}
+                                                                            </span>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             ) : (
                                                                 <span className="order-wizard-confirm-qty">{item.cantidad} u.</span>
@@ -828,11 +803,6 @@ const NuevoPedido = () => {
                                                                     Tono {tone}
                                                                 </span>
                                                             ) : null}
-                                                            {String(item.notas || '').trim() ? (
-                                                                <span className="order-wizard-confirm-note" title={String(item.notas).trim()}>
-                                                                    Con instrucciones
-                                                                </span>
-                                                            ) : null}
                                                         </div>
                                                     </div>
                                                 </li>
@@ -840,7 +810,7 @@ const NuevoPedido = () => {
                                         })}
                                     </ul>
 
-                                    <div className="order-wizard-confirm-stat">
+                                    <div className="order-wizard-confirm-stat order-wizard-confirm-stat-entrega">
                                         <div className="order-wizard-confirm-stat-copy order-wizard-confirm-entrega">
                                             <span className="order-wizard-confirm-label">
                                                 <i className="bi bi-calendar3" aria-hidden="true"></i>
@@ -873,7 +843,7 @@ const NuevoPedido = () => {
                                         </div>
                                     </div>
 
-                                    <div className="order-wizard-confirm-stat is-total">
+                                    <div className="order-wizard-confirm-stat is-total order-wizard-confirm-stat-total">
                                         <div className="order-wizard-confirm-stat-copy">
                                             <span className="order-wizard-confirm-label">
                                                 <i className="bi bi-cash-stack" aria-hidden="true"></i>
@@ -885,7 +855,33 @@ const NuevoPedido = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {selectedItem ? (
+                                    <div className="order-wizard-confirm-instructions-row">
+                                        <span className="order-wizard-confirm-instructions-label">
+                                            <i className="bi bi-chat-left-text" aria-hidden="true"></i>
+                                            Instrucciones:
+                                        </span>
+                                        <input
+                                            id="order-confirm-notes"
+                                            className="form-input order-wizard-confirm-instructions-input"
+                                            placeholder="Indicaciones para el laboratorio (opcional)..."
+                                            value={selectedItem.notas || ''}
+                                            onChange={(event) => updateItemField(selectedItem.id, 'notas', event.target.value)}
+                                            aria-label="Instrucciones para el laboratorio"
+                                        />
+                                    </div>
+                                ) : null}
                             </section>
+
+                            <button
+                                type="button"
+                                className="btn btn-primary order-wizard-confirm-cta"
+                                onClick={handleSubmit}
+                                disabled={saving || !intakeMode}
+                            >
+                                {saving ? 'Creando...' : 'Crear pedido'}
+                            </button>
 
                             <DeliveryDateCoordModal
                                 open={coordinatingDelivery}
@@ -901,15 +897,6 @@ const NuevoPedido = () => {
                                     setCoordinatingDelivery(false);
                                 }}
                             />
-
-                            <button
-                                type="button"
-                                className="btn btn-primary order-wizard-confirm-cta"
-                                onClick={handleSubmit}
-                                disabled={saving || !intakeMode}
-                            >
-                                {saving ? 'Creando...' : 'Crear pedido'}
-                            </button>
                         </div>
                     ) : null}
                 </section>

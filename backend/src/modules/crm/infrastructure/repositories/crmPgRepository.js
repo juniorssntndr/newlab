@@ -203,7 +203,7 @@ export const makeCrmPgRepository = ({ pool }) => ({
           WHEN ((CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date - order_stats.last_order_date) >= 30 THEN 'amarillo'
           ELSE 'verde' END = $${n}`);
 
-        const limit = Math.min(Math.max(Number(filters.limit) || 100, 1), 500);
+        const limit = Math.min(Math.max(Number(filters.limit) || 100, 1), 2500);
         const page = Math.max(Number(filters.page) || 1, 1);
         params.push(limit, (page - 1) * limit);
         const result = await pool.query(
@@ -306,6 +306,34 @@ export const makeCrmPgRepository = ({ pool }) => ({
         let where = `id=$${params.length}`;
         where += accessSql(user, params);
         const result = await pool.query(`UPDATE nl_crm_establecimientos e SET ${updates.join(', ')} WHERE ${where} RETURNING e.*`, params);
+        if (result.rows[0]) {
+            const clinicUpdates = [];
+            const clinicParams = [];
+            if (Object.prototype.hasOwnProperty.call(input, 'nombre')) {
+                clinicParams.push(input.nombre);
+                clinicUpdates.push(`nombre=$${clinicParams.length}`);
+            }
+            if (Object.prototype.hasOwnProperty.call(input, 'telefono')) {
+                clinicParams.push(input.telefono);
+                clinicUpdates.push(`telefono=$${clinicParams.length}`);
+            }
+            if (Object.prototype.hasOwnProperty.call(input, 'email')) {
+                clinicParams.push(input.email);
+                clinicUpdates.push(`email=$${clinicParams.length}`);
+            }
+            if (Object.prototype.hasOwnProperty.call(input, 'direccion')) {
+                clinicParams.push(input.direccion);
+                clinicUpdates.push(`direccion=$${clinicParams.length}`);
+            }
+            if (Object.prototype.hasOwnProperty.call(input, 'activo') && input.activo === false) {
+                clinicParams.push('inactivo');
+                clinicUpdates.push(`estado=$${clinicParams.length}`);
+            }
+            if (clinicUpdates.length > 0) {
+                clinicParams.push(id);
+                await pool.query(`UPDATE nl_clinicas SET ${clinicUpdates.join(', ')} WHERE establecimiento_id=$${clinicParams.length}`, clinicParams);
+            }
+        }
         return result.rows[0] || null;
     },
 
@@ -546,7 +574,7 @@ export const makeCrmPgRepository = ({ pool }) => ({
     createImportPreview: async ({ fileName, format, mapping, rows, actorUserId }) => withClient(pool, async (client) => {
         const batch = await client.query(
             `INSERT INTO nl_crm_importaciones (nombre_archivo,formato,mapeo,creado_por) VALUES ($1,$2,$3,$4) RETURNING *`,
-            [fileName, format, mapping, actorUserId]
+            [fileName, format, JSON.stringify(mapping || {}), actorUserId]
         );
         const previewRows = [];
         const seenValid = [];
@@ -578,7 +606,16 @@ export const makeCrmPgRepository = ({ pool }) => ({
                 `INSERT INTO nl_crm_importacion_filas
                  (importacion_id,numero_fila,datos_originales,datos_normalizados,errores,estado,duplicado_establecimiento_id,aprobada)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-                [batch.rows[0].id,row.rowNumber,row.original,row.normalized,row.errors,status,duplicate?.id || null,status === 'valida']
+                [
+                    batch.rows[0].id,
+                    row.rowNumber,
+                    JSON.stringify(row.original || {}),
+                    row.normalized ? JSON.stringify(row.normalized) : null,
+                    JSON.stringify(row.errors || []),
+                    status,
+                    duplicate?.id || null,
+                    status === 'valida'
+                ]
             );
             previewRows.push({ ...inserted.rows[0], duplicado: duplicate });
         }

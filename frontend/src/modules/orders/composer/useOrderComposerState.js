@@ -33,6 +33,15 @@ const mergeContractRawState = (item, patch) => {
     if (Object.prototype.hasOwnProperty.call(patch, 'pilares_dentales')) {
         nextRawState.pilares_dentales = patch.pilares_dentales;
     }
+    if (Object.prototype.hasOwnProperty.call(patch, 'ponticos_dentales')) {
+        nextRawState.ponticos_dentales = patch.ponticos_dentales;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'tramos_detalle')) {
+        nextRawState.tramos_detalle = patch.tramos_detalle;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'guia_color')) {
+        nextRawState.guia_color = patch.guia_color;
+    }
     if (Object.prototype.hasOwnProperty.call(patch, 'requiresDentalSelection')) {
         nextRawState.requiresDentalSelection = patch.requiresDentalSelection;
     }
@@ -85,7 +94,8 @@ export const useOrderComposerState = () => {
 
     const addProduct = useCallback((product, initialPatch = {}) => {
         const nextItem = createDraftItem(product, initialPatch);
-        setItems((prevItems) => [...prevItems, nextItem]);
+        setItems([nextItem]);
+        setSelectedItemId(nextItem.id);
         return nextItem.id;
     }, []);
 
@@ -108,7 +118,10 @@ export const useOrderComposerState = () => {
             es_puente: !!dentalData?.es_puente,
             pieza_inicio: dentalData?.pieza_inicio || null,
             pieza_fin: dentalData?.pieza_fin || null,
-            pilares_dentales: dentalData?.pilares_dentales || []
+            pilares_dentales: dentalData?.pilares_dentales || [],
+            ponticos_dentales: dentalData?.ponticos_dentales || [],
+            tramos_detalle: dentalData?.tramos_detalle || [],
+            cantidad: dentalData?.cantidad ?? (dentalData?.piezas_dentales?.length || 0)
         });
     }, [applyToItem]);
 

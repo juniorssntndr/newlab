@@ -36,29 +36,29 @@ export default function WorkflowDetailCard({
                 reduceMotion
                     ? false
                     : useMobileMotion
-                        ? { opacity: 0, y: 12 }
-                        : { opacity: 0, y: 18, filter: variant === 'landing' ? 'blur(10px)' : 'none' }
+                        ? { opacity: 0, y: 10 }
+                        : { opacity: 0, y: 12 }
             }
             animate={
                 reduceMotion
-                    ? { opacity: 1, y: 0, filter: 'blur(0px)' }
+                    ? { opacity: 1, y: 0 }
                     : useMobileMotion
                         ? { opacity: 1, y: 0 }
-                        : { opacity: 1, y: 0, filter: 'blur(0px)' }
+                        : { opacity: 1, y: 0 }
             }
             exit={
                 reduceMotion
                     ? { opacity: 1 }
                     : useMobileMotion
-                        ? { opacity: 0, y: -10 }
-                        : { opacity: 0, y: -16, filter: variant === 'landing' ? 'blur(10px)' : 'none' }
+                        ? { opacity: 0, y: -8 }
+                        : { opacity: 0, y: -10 }
             }
             transition={
                 reduceMotion
                     ? { duration: 0 }
                     : useMobileMotion
-                        ? { duration: 0.24, ease: [0.22, 1, 0.36, 1] }
-                        : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }
+                        ? { duration: 0.2, ease: [0.16, 1, 0.3, 1] }
+                        : { duration: 0.22, ease: [0.16, 1, 0.3, 1] }
             }
         >
             <figure className={classes.media}>
@@ -93,23 +93,21 @@ export default function WorkflowDetailCard({
             </figure>
             {variant === 'login' ? null : (
                 <div className={classes.hud}>
-                    <div className={classes.head}>
-                        <div className={classes.icon} aria-hidden="true">
-                            <i className={`bi ${step.icon}`}></i>
-                        </div>
-                        <div>
-                            <span className={classes.step}>Paso {step.number}</span>
-                            <h3>{step.title}</h3>
-                        </div>
+                    <div className="afinix-workflow-kicker-pill">
+                        <i className={`bi ${step.icon}`} aria-hidden="true"></i>
+                        <span>PASO {step.number} · {step.title.toUpperCase()}</span>
                     </div>
-                    <p>{step.text}</p>
-                    {step.benefit ? (
-                        <div className={classes.benefit}>
-                            <i className="bi bi-star-fill" aria-hidden="true"></i>
-                            <span>
-                                <strong>Beneficio: </strong>
-                                {step.benefit}
-                            </span>
+                    <h3 className="afinix-workflow-hero-action">{step.action || step.text}</h3>
+                    {step.chips && step.chips.length > 0 ? (
+                        <div className="afinix-workflow-chips">
+                            {step.chips.map((chip) => (
+                                <div key={chip} className="afinix-workflow-chip">
+                                    <span className="afinix-workflow-chip-icon" aria-hidden="true">
+                                        <i className="bi bi-check2"></i>
+                                    </span>
+                                    <span className="afinix-workflow-chip-text">{chip}</span>
+                                </div>
+                            ))}
                         </div>
                     ) : null}
                 </div>

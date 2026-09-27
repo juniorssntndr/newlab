@@ -1,5 +1,14 @@
-const GASTOS_OPERATIVOS = ['servicios', 'sueldos', 'alquiler', 'logistica', 'combustible', 'movilidad', 'marketing', 'otros'];
 const COSTOS_DIRECTOS = ['materiales'];
+const GASTOS_OPERATIVOS = [
+    'logistica',
+    'servicios',
+    'alquiler',
+    'sueldos',
+    'mantenimiento',
+    'gastos_generales',
+    'marketing',
+    'otros'
+];
 
 const normalizePago = (pago) => ({
     ...pago,
@@ -41,8 +50,8 @@ export const makeFinanceService = ({ financeRepository }) => ({
                 saldo_inicial: parseFloat(row.saldo_inicial || 0)
             })),
             categorias_gasto: {
-                operativo: GASTOS_OPERATIVOS,
                 costo_directo: COSTOS_DIRECTOS,
+                operativo: GASTOS_OPERATIVOS,
                 otro: []
             }
         };
@@ -344,6 +353,49 @@ export const makeFinanceService = ({ financeRepository }) => ({
             }
         };
     },
+    registerConsolidatedPayment: async ({ user, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+
+        const totalCobrado = parseFloat(body?.totalCobrado || 0);
+        const orderPayments = Array.isArray(body?.orderPayments) ? body.orderPayments : [];
+
+        if (totalCobrado <= 0 && orderPayments.length === 0) {
+            return {
+                ok: false,
+                status: 400,
+                error: 'Debe especificar al menos un pedido o un monto válido a cobrar.'
+            };
+        }
+
+        const result = await financeRepository.registerConsolidatedPayment({
+            actorUserId: user.id,
+            consolidatedInput: {
+                ...body,
+                totalCobrado
+            }
+        });
+
+        if (result.accountError) {
+            return { ok: false, status: 400, error: result.accountError };
+        }
+
+        return {
+            ok: true,
+            status: 201,
+            data: {
+                message: 'Cobro consolidado registrado exitosamente',
+                movimiento: result.movimiento,
+                pagos: result.pagos
+            },
+            meta: {
+                movimiento_id: result.movimiento?.id,
+                total_cobrado: totalCobrado,
+                pedidos_afectados: result.pagos?.length || 0
+            }
+        };
+    },
     conciliarPago: async ({ user, pagoId }) => {
         if (forbiddenForClient(user)) {
             return { ok: false, status: 403, error: 'No autorizado' };
@@ -621,5 +673,203 @@ export const makeFinanceService = ({ financeRepository }) => ({
                 }))
             }
         };
+    },
+    listAccountsWithBalance: async ({ user }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const accounts = await financeRepository.listAccountsWithBalance();
+        return { ok: true, status: 200, data: accounts };
+    },
+    createAccount: async ({ user, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const nombre = body?.nombre?.trim();
+        if (!nombre) {
+            return { ok: false, status: 400, error: 'El nombre de la cuenta es obligatorio' };
+        }
+        const account = await financeRepository.createAccount({
+            nombre,
+            tipo_cuenta: body?.tipo_cuenta || 'banco',
+            banco: body?.banco?.trim() || null,
+            numero_cuenta: body?.numero_cuenta?.trim() || null,
+            cci: body?.cci?.trim() || null,
+            moneda: body?.moneda || 'PEN',
+            saldo_inicial: parseFloat(body?.saldo_inicial || 0),
+            color: body?.color || '#0284c7',
+            descripcion: body?.descripcion?.trim() || null
+        });
+        return { ok: true, status: 201, data: account };
+    },
+    updateAccount: async ({ user, accountId, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const id = Number(accountId);
+        if (!id) {
+            return { ok: false, status: 400, error: 'ID de cuenta inválido' };
+        }
+        const account = await financeRepository.updateAccount({
+            id,
+            nombre: body?.nombre?.trim(),
+            tipo_cuenta: body?.tipo_cuenta,
+            banco: body?.banco?.trim(),
+            numero_cuenta: body?.numero_cuenta?.trim(),
+            cci: body?.cci?.trim(),
+            moneda: body?.moneda,
+            color: body?.color,
+            descripcion: body?.descripcion?.trim(),
+            activo: body?.activo
+        });
+        if (!account) {
+            return { ok: false, status: 404, error: 'Cuenta no encontrada' };
+        }
+        return { ok: true, status: 200, data: account };
+    },
+    registerTransfer: async ({ user, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const origenId = Number(body?.cuenta_origen_id);
+        const destinoId = Number(body?.cuenta_destino_id);
+        const monto = parseFloat(body?.monto || 0);
+
+        if (!origenId || !destinoId || origenId === destinoId) {
+            return { ok: false, status: 400, error: 'Las cuentas de origen y destino deben ser distintas y válidas' };
+        }
+        if (Number.isNaN(monto) || monto <= 0) {
+            return { ok: false, status: 400, error: 'El monto a transferir debe ser mayor a 0' };
+        }
+
+        const transfer = await financeRepository.registerTransfer({
+            actorUserId: user.id,
+            cuenta_origen_id: origenId,
+            cuenta_destino_id: destinoId,
+            monto,
+            fecha: body?.fecha || null,
+            referencia: body?.referencia?.trim() || null,
+            motivo: body?.motivo?.trim() || 'Transferencia entre cuentas'
+        });
+
+        return {
+            ok: true,
+            status: 201,
+            data: {
+                message: 'Transferencia realizada con éxito',
+                transfer
+            }
+        };
+    },
+    listTransfers: async ({ user, query = {} }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const transfers = await financeRepository.listTransfers({ limit: query.limit });
+        return { ok: true, status: 200, data: transfers };
+    },
+    listSocios: async ({ user }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const socios = await financeRepository.listSocios();
+        return { ok: true, status: 200, data: socios };
+    },
+    createSocio: async ({ user, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const nombre = body?.nombre?.trim();
+        if (!nombre) {
+            return { ok: false, status: 400, error: 'El nombre del socio es obligatorio' };
+        }
+        const socio = await financeRepository.createSocio({
+            nombre,
+            documento_tipo: body?.documento_tipo || 'DNI',
+            documento_numero: body?.documento_numero?.trim() || null,
+            porcentaje_participacion: parseFloat(body?.porcentaje_participacion || 0),
+            telefono: body?.telefono?.trim() || null,
+            email: body?.email?.trim() || null
+        });
+        return { ok: true, status: 201, data: socio };
+    },
+    updateSocio: async ({ user, socioId, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const id = Number(socioId);
+        if (!id) {
+            return { ok: false, status: 400, error: 'ID de socio inválido' };
+        }
+        const socio = await financeRepository.updateSocio({
+            id,
+            nombre: body?.nombre?.trim(),
+            documento_tipo: body?.documento_tipo,
+            documento_numero: body?.documento_numero?.trim(),
+            porcentaje_participacion: body?.porcentaje_participacion !== undefined ? parseFloat(body.porcentaje_participacion) : undefined,
+            telefono: body?.telefono?.trim(),
+            email: body?.email?.trim(),
+            activo: body?.activo
+        });
+        if (!socio) {
+            return { ok: false, status: 404, error: 'Socio no encontrado' };
+        }
+        return { ok: true, status: 200, data: socio };
+    },
+    deleteSocio: async ({ user, socioId }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const id = Number(socioId);
+        if (!id) {
+            return { ok: false, status: 400, error: 'ID de socio inválido' };
+        }
+        const result = await financeRepository.deleteSocio({ id });
+        if (!result?.socio) {
+            return { ok: false, status: 404, error: 'Socio no encontrado' };
+        }
+        return { ok: true, status: 200, data: result };
+    },
+    registerRetiroSocio: async ({ user, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const socioId = Number(body?.socio_id);
+        const cuentaId = Number(body?.cuenta_id);
+        const monto = parseFloat(body?.monto || 0);
+
+        if (!socioId || !cuentaId) {
+            return { ok: false, status: 400, error: 'Selecciona el socio y la cuenta bancaria de origen' };
+        }
+        if (Number.isNaN(monto) || monto <= 0) {
+            return { ok: false, status: 400, error: 'El monto de retiro debe ser mayor a 0' };
+        }
+
+        const retiro = await financeRepository.registerRetiroSocio({
+            actorUserId: user.id,
+            socio_id: socioId,
+            cuenta_id: cuentaId,
+            monto,
+            fecha_movimiento: body?.fecha_movimiento || null,
+            referencia: body?.referencia?.trim() || 'Retiro Utilidades',
+            descripcion: body?.descripcion?.trim() || 'Distribución de utilidades a socio',
+            tipo_fondo: body?.tipo_fondo || 'banco'
+        });
+
+        return {
+            ok: true,
+            status: 201,
+            data: {
+                message: 'Retiro de utilidades registrado exitosamente',
+                retiro
+            }
+        };
+    },
+    listRetirosSocios: async ({ user, query = {} }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const retiros = await financeRepository.listRetirosSocios({ limit: query.limit });
+        return { ok: true, status: 200, data: retiros };
     }
 });

@@ -85,4 +85,11 @@ export const getUseNewBillingAcl = () => parseBooleanEnv(process.env.USE_NEW_BIL
 
 export const getIgvFactor = () => parseFloat(process.env.IGV_FACTOR || '1.18');
 
+export const getVapidConfig = () => ({
+    publicKey: process.env.VAPID_PUBLIC_KEY || 'BD8Y2PDleFDRxvCg0rEvAYkwPAQNDZRVyJgLFftQ4kHUwx0zaYzbdD-zhMTRMsDNEuXn7j2x1JJK4DI08CLO1To',
+    privateKey: process.env.VAPID_PRIVATE_KEY || '_hyrSyMaktKGvPzyk9xoIMgL_ijTUrfLAHtd95HLoWA',
+    subject: process.env.VAPID_SUBJECT || 'mailto:notificaciones@afinixlab.com'
+});
+
 export const isProd = () => isProduction;
+

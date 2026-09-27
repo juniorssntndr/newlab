@@ -116,4 +116,19 @@ app.listen(PORT, () => {
         env: sentryConfig.environment,
         billing_acl_mode: app.locals?.modules?.billing?.billingAclMode || 'unknown'
     });
+
+    try {
+        import('./modules/billing/application/services/billingPassiveWorker.js').then(({ startBillingPassiveWorker }) => {
+            startBillingPassiveWorker({
+                pool: app.locals.pool,
+                billingModule: app.locals?.modules?.billing,
+                intervalMs: 5 * 60 * 1000
+            });
+            logger.info('billing_passive_worker_initialized', { interval_sec: 300 });
+        }).catch((err) => {
+            logger.error('failed_to_initialize_billing_passive_worker', { error: err.message });
+        });
+    } catch (workerErr) {
+        logger.error('billing_passive_worker_startup_error', { error: workerErr.message });
+    }
 });

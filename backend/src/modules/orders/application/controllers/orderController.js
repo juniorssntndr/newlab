@@ -34,6 +34,7 @@ export const makeOrderController = ({ orderService }) => ({
                 user: req.user,
                 filters: {
                     estado: req.query.estado,
+                    filtro: req.query.filtro,
                     clinica_id: req.query.clinica_id,
                     search: req.query.search,
                     responsable_id: req.query.responsable_id,

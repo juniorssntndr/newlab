@@ -25,4 +25,10 @@
     .equipo-modal-fields {
         grid-template-columns: 1fr;
     }
+
+    .equipo-modal-fields .form-group[style*="grid-column"],
+    .equipo-modal-fields .form-group[style*="gridColumn"],
+    .equipo-modal-fields .col-span-2 {
+        grid-column: span 1 !important;
+    }
 }

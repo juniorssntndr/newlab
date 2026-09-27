@@ -160,6 +160,13 @@ const Login = () => {
                         <button type="submit" className="login-btn" disabled={loading}>
                             {loading ? 'Ingresando...' : 'Iniciar sesion'}
                         </button>
+
+                        <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
+                            <span style={{ color: 'var(--color-text-secondary, #64748b)' }}>¿Eres un consultorio u odontólogo nuevo? </span>
+                            <Link to="/registro" style={{ color: 'var(--color-primary, #0284c7)', fontWeight: 700, textDecoration: 'none' }}>
+                                Regístrate aquí
+                            </Link>
+                        </div>
                     </form>
 
                     <div className="login-card-footer">

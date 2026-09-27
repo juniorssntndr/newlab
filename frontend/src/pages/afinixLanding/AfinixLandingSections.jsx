@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import { A11y, Autoplay, EffectFade, Pagination } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
@@ -10,14 +10,11 @@ import 'swiper/css/pagination';
 import {
     contactChannels,
     heroSlides,
-    heroTrackingSteps,
     mobileQuickLinks,
     socialLinks,
 } from './afinixLandingContent.js';
 import { whatsappHref } from '../../config/siteSeo.js';
 import AfinixLogo from '../../components/AfinixLogo';
-import AnimatedCheck from '../../components/icons/animated/AnimatedCheck.jsx';
-import AnimatedRadar from '../../components/icons/animated/AnimatedRadar.jsx';
 
 const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 const WHATSAPP_CHANNEL = contactChannels.find((channel) => channel.label === 'WhatsApp') ?? contactChannels[0];
@@ -30,8 +27,6 @@ const HEADER_MENU_LINKS = [
     { href: '/#contacto', label: 'Contacto' },
 ];
 const HERO_EASE = [0.16, 1, 0.3, 1];
-const TRACKING_CHECK_SETTLE_MS = 140;
-const TRACKING_CHECK_STAGGER_MS = 620;
 const heroBackgroundMotion = (reduced, isActive) =>
     reduced
         ? {}
@@ -56,22 +51,28 @@ const heroVisualMotion = (reduced, isActive) =>
     reduced
         ? {}
         : {
-            initial: { opacity: 0, x: 72, filter: 'blur(16px)' },
-            animate: isActive
-                ? { opacity: 1, x: 0, filter: 'blur(0px)' }
-                : { opacity: 0, x: 52, filter: 'blur(12px)' },
-            transition: { duration: 1.05, delay: 0.22, ease: HERO_EASE },
+            initial: { opacity: 0 },
+            animate: isActive ? { opacity: 1 } : { opacity: 0 },
+            transition: { duration: 0.5, ease: HERO_EASE },
         };
-const heroFloatCardMotion = (reduced, isActive, index) =>
+const heroFloatCardMotion = (reduced, isActive, index, isMobile = false) =>
     reduced
         ? {}
-        : {
-            initial: { opacity: 0, x: 104, scale: 0.94, filter: 'blur(18px)' },
-            animate: isActive
-                ? { opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }
-                : { opacity: 0, x: 72, scale: 0.96, filter: 'blur(14px)' },
-            transition: { duration: 0.98, delay: 0.34 + index * 0.16, ease: HERO_EASE },
-        };
+        : isMobile
+            ? {
+                initial: { opacity: 0, y: 20, filter: 'blur(10px)' },
+                animate: isActive
+                    ? { opacity: 1, y: 0, filter: 'blur(0px)' }
+                    : { opacity: 0, y: 14, filter: 'blur(8px)' },
+                transition: { duration: 0.95, delay: 0.42 + index * 0.14, ease: HERO_EASE },
+            }
+            : {
+                initial: { opacity: 0, x: 48, scale: 0.96, filter: 'blur(12px)' },
+                animate: isActive
+                    ? { opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }
+                    : { opacity: 0, x: 36, scale: 0.96, filter: 'blur(8px)' },
+                transition: { duration: 0.95, delay: 0.38 + index * 0.14, ease: HERO_EASE },
+            };
 const headerEntranceMotion = (reduced, delay = 0) =>
     reduced
         ? {}
@@ -306,94 +307,14 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'light
     );
 }
 
-function HeroTrackingWidget({ reduceMotion, className = '' }) {
-    const [completedStep, setCompletedStep] = useState(reduceMotion ? heroTrackingSteps.length - 1 : -1);
-    const [trackingReady, setTrackingReady] = useState(reduceMotion);
-
-    useEffect(() => {
-        if (reduceMotion) {
-            setCompletedStep(heroTrackingSteps.length - 1);
-            setTrackingReady(true);
-            return undefined;
-        }
-
-        setCompletedStep(-1);
-        setTrackingReady(false);
-        return undefined;
-    }, [reduceMotion]);
-
-    useEffect(() => {
-        if (reduceMotion || !trackingReady) {
-            return undefined;
-        }
-
-        const timers = heroTrackingSteps.map((_, index) =>
-            window.setTimeout(() => {
-                setCompletedStep(index);
-            }, TRACKING_CHECK_SETTLE_MS + index * TRACKING_CHECK_STAGGER_MS),
-        );
-
-        return () => timers.forEach((timer) => window.clearTimeout(timer));
-    }, [reduceMotion, trackingReady]);
-
-    return (
-        <motion.aside
-            className={`afinix-hero-tracking ${className}`.trim()}
-            aria-label="Seguimiento de caso en línea"
-            {...(reduceMotion
-                ? {}
-                : {
-                    initial: { opacity: 0, y: 30, scale: 0.96, filter: 'blur(14px)' },
-                    animate: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' },
-                    transition: { duration: 0.9, delay: 0.9, ease: HERO_EASE },
-                    onAnimationComplete: () => setTrackingReady(true),
-                })}
-        >
-            <div className="afinix-hero-tracking-head">
-                <AnimatedRadar size={14} className="afinix-hero-tracking-dot-icon" />
-                <strong>Seguimiento en vivo</strong>
-            </div>
-            <ol className="afinix-hero-tracking-steps" aria-live="polite">
-                {heroTrackingSteps.map((step, index) => {
-                    const stepState = index <= completedStep ? 'is-done' : index === completedStep + 1 ? 'is-active' : 'is-pending';
-                    return (
-                        <li
-                            key={step.id}
-                            className={`afinix-hero-tracking-step ${stepState}`}
-                            data-state={stepState.replace('is-', '')}
-                        >
-                            <span className="afinix-hero-tracking-icon" aria-hidden="true">
-                                {stepState === 'is-done' ? (
-                                    <AnimatedCheck size={14} strokeWidth={3} />
-                                ) : stepState === 'is-active' ? (
-                                    <span className="afinix-hero-tracking-pulse"></span>
-                                ) : null}
-                            </span>
-                            <span className="afinix-hero-tracking-label">{step.label}</span>
-                        </li>
-                    );
-                })}
-            </ol>
-            <div className="afinix-hero-tracking-actions">
-                <p className="afinix-hero-tracking-alert" aria-label="Aviso de seguimiento">
-                    <i className="bi bi-bell" aria-hidden="true"></i>
-                    Estado en línea
-                </p>
-                <Link className="afinix-hero-tracking-portal" to={CLINIC_LOGIN_PATH}>
-                    Ir al portal
-                    <i className="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-                </Link>
-            </div>
-        </motion.aside>
-    );
-}
-
 export function HeroCarousel({ reduceMotion }) {
+    const heroRef = useRef(null);
+    const isHeroInView = useInView(heroRef, { once: false, amount: 0.25, margin: '-60px 0px -60px 0px' });
     const [activeSlide, setActiveSlide] = useState(0);
     const heroStackLayout = useMatchMedia('(max-width: 640px)');
 
     return (
-        <section className="afinix-hero" id="inicio" aria-label="Presentación: servicios digitales para clínicas">
+        <section className="afinix-hero" id="inicio" ref={heroRef} aria-label="Presentación: servicios digitales para clínicas">
             <div className="afinix-hero-stage">
                 <Swiper
                     className={`afinix-hero-swiper${heroStackLayout ? ' afinix-hero-swiper--stack' : ''}`}
@@ -421,131 +342,136 @@ export function HeroCarousel({ reduceMotion }) {
                     }}
                     onSlideChange={(swiper) => setActiveSlide(swiper.realIndex)}
                 >
-                    {heroSlides.map((slide, index) => (
-                        <SwiperSlide key={slide.kicker}>
-                            <article className="afinix-hero-slide">
-                                <div className="afinix-hero-media" aria-hidden="true">
-                                    <motion.div
-                                        className="afinix-hero-bg"
-                                        {...heroBackgroundMotion(reduceMotion, activeSlide === index)}
-                                    >
-                                        <img
-                                            src={slide.image}
-                                            alt=""
-                                            loading={index === 0 ? 'eager' : 'lazy'}
-                                            decoding="async"
-                                            fetchpriority={index === 0 ? 'high' : 'low'}
-                                        />
-                                    </motion.div>
-                                    <div className="afinix-hero-overlay"></div>
-                                </div>
-                                <div className="afinix-hero-layout">
-                                    <motion.div
-                                        className="afinix-hero-copy"
-                                        {...heroCopyMotion(reduceMotion, activeSlide === index)}
-                                    >
-                                        <div className="afinix-hero-copy-text">
-                                            <motion.span className="afinix-kicker" {...heroLineMotion(reduceMotion, activeSlide === index, 0.32)}>
-                                                <span className="afinix-kicker-desktop">{slide.kicker}</span>
-                                                <span className="afinix-kicker-mobile">{slide.kickerMobile || slide.kicker}</span>
-                                            </motion.span>
-                                            {index === 0 ? (
-                                                <motion.h1 className="afinix-hero-title" {...heroLineMotion(reduceMotion, activeSlide === index, 0.46)}>
-                                                    {slide.titleBefore}
-                                                    <span className="afinix-hero-accent">{slide.titleHighlight}</span>
-                                                    {slide.titleAfter}
-                                                </motion.h1>
-                                            ) : (
-                                                <motion.h2 className="afinix-hero-title" {...heroLineMotion(reduceMotion, activeSlide === index, 0.46)}>
-                                                    {slide.titleBefore}
-                                                    <span className="afinix-hero-accent">{slide.titleHighlight}</span>
-                                                    {slide.titleAfter}
-                                                </motion.h2>
-                                            )}
-                                            <motion.p className="afinix-hero-lead" {...heroLineMotion(reduceMotion, activeSlide === index, 0.64)}>
-                                                {slide.copy}
-                                            </motion.p>
-                                        </div>
-                                        <div className="afinix-hero-actions">
-                                            <motion.div {...heroButtonMotion(reduceMotion, activeSlide === index, 0.84)}>
-                                                <a
-                                                    className="afinix-hero-btn afinix-hero-btn--primary"
-                                                    href={whatsappHref()}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                >
-                                                    {slide.ctaMain}
-                                                    <i className="bi bi-arrow-right" aria-hidden="true"></i>
-                                                </a>
-                                            </motion.div>
-                                            <motion.div {...heroButtonMotion(reduceMotion, activeSlide === index, 0.98)}>
-                                                <a className="afinix-hero-btn afinix-hero-btn--ghost" href="/#servicios">
-                                                    {slide.ctaSecondary}
-                                                    <i className="bi bi-arrow-right" aria-hidden="true"></i>
-                                                </a>
-                                            </motion.div>
-                                        </div>
-                                    </motion.div>
-                                    <motion.div
-                                        className="afinix-hero-visual"
-                                        {...heroVisualMotion(reduceMotion, activeSlide === index)}
-                                    >
-                                        <svg className="afinix-hero-lines" viewBox="0 0 320 420" preserveAspectRatio="none" aria-hidden="true">
-                                            <path
-                                                className="afinix-hero-line-path"
-                                                d="M 12 72 L 140 96 L 220 52"
-                                                fill="none"
+                    {heroSlides.map((slide, index) => {
+                        const isSlideVisible = isHeroInView && activeSlide === index;
+
+                        return (
+                            <SwiperSlide key={slide.kicker}>
+                                <article className="afinix-hero-slide">
+                                    <div className="afinix-hero-media" aria-hidden="true">
+                                        <motion.div
+                                            className="afinix-hero-bg"
+                                            {...heroBackgroundMotion(reduceMotion, isSlideVisible)}
+                                        >
+                                            <img
+                                                src={slide.image}
+                                                alt=""
+                                                loading={index === 0 ? 'eager' : 'lazy'}
+                                                decoding="async"
+                                                fetchpriority={index === 0 ? 'high' : 'low'}
                                             />
-                                            <path
-                                                className="afinix-hero-line-path"
-                                                d="M 8 210 L 155 198 L 248 175"
-                                                fill="none"
-                                            />
-                                            <path
-                                                className="afinix-hero-line-path"
-                                                d="M 18 348 L 148 312 L 235 290"
-                                                fill="none"
-                                            />
-                                        </svg>
-                                        <div className="afinix-hero-cards">
-                                            {slide.floatCards.map((card, cardIndex) => (
-                                                <motion.div
-                                                    key={card.label}
-                                                    className="afinix-hero-float-card"
-                                                    {...heroFloatCardMotion(reduceMotion, activeSlide === index, cardIndex)}
-                                                >
-                                                    <span className="afinix-hero-float-icon">
-                                                        <i className={`bi ${card.icon}`} aria-hidden="true"></i>
-                                                    </span>
-                                                    <div className="afinix-hero-float-body">
-                                                        <span className="afinix-hero-float-label">{card.label}</span>
-                                                        <strong>{card.value}</strong>
-                                                    </div>
+                                        </motion.div>
+                                        <div className="afinix-hero-overlay"></div>
+                                    </div>
+                                    <div className="afinix-hero-layout">
+                                        <motion.div
+                                            className="afinix-hero-copy"
+                                            {...heroCopyMotion(reduceMotion, isSlideVisible)}
+                                        >
+                                            <div className="afinix-hero-copy-text">
+                                                <motion.span className="afinix-kicker" {...heroLineMotion(reduceMotion, isSlideVisible, 0.32)}>
+                                                    {slide.kickerIcon ? (
+                                                        <i className={`bi ${slide.kickerIcon} afinix-kicker-icon`} aria-hidden="true"></i>
+                                                    ) : null}
+                                                    <span className="afinix-kicker-desktop">{slide.kicker}</span>
+                                                    <span className="afinix-kicker-mobile">{slide.kickerMobile || slide.kicker}</span>
+                                                </motion.span>
+                                                {index === 0 ? (
+                                                    <motion.h1 className="afinix-hero-title" {...heroLineMotion(reduceMotion, isSlideVisible, 0.46)}>
+                                                        {slide.titleBefore}
+                                                        <span className="afinix-hero-accent">{slide.titleHighlight}</span>
+                                                        {slide.titleAfter}
+                                                    </motion.h1>
+                                                ) : (
+                                                    <motion.h2 className="afinix-hero-title" {...heroLineMotion(reduceMotion, isSlideVisible, 0.46)}>
+                                                        {slide.titleBefore}
+                                                        <span className="afinix-hero-accent">{slide.titleHighlight}</span>
+                                                        {slide.titleAfter}
+                                                    </motion.h2>
+                                                )}
+                                                <motion.p className="afinix-hero-lead" {...heroLineMotion(reduceMotion, isSlideVisible, 0.64)}>
+                                                    {slide.copyMobile || slide.copy}
+                                                </motion.p>
+                                            </div>
+                                            <div className="afinix-hero-actions">
+                                                <motion.div {...heroButtonMotion(reduceMotion, isSlideVisible, 0.84)}>
+                                                    <a
+                                                        className="afinix-hero-btn afinix-hero-btn--primary"
+                                                        href={whatsappHref()}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        {slide.ctaMain}
+                                                        <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                                                    </a>
                                                 </motion.div>
-                                            ))}
+                                                <motion.div {...heroButtonMotion(reduceMotion, isSlideVisible, 0.98)}>
+                                                    <a className="afinix-hero-btn afinix-hero-btn--ghost" href="/#servicios">
+                                                        {slide.ctaSecondary}
+                                                        <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                                                    </a>
+                                                </motion.div>
+                                            </div>
+                                        </motion.div>
+                                        <motion.div
+                                            className="afinix-hero-visual"
+                                            {...heroVisualMotion(reduceMotion, isSlideVisible)}
+                                        >
+                                            <div className="afinix-hero-cards">
+                                                {slide.floatCards.map((card, cardIndex) => (
+                                                    <motion.div
+                                                        key={card.label}
+                                                        className="afinix-hero-float-card"
+                                                        {...heroFloatCardMotion(reduceMotion, isSlideVisible, cardIndex, heroStackLayout)}
+                                                    >
+                                                        <span className="afinix-hero-float-icon">
+                                                            <i className={`bi ${card.icon}`} aria-hidden="true"></i>
+                                                        </span>
+                                                        <div className="afinix-hero-float-body">
+                                                            <span className="afinix-hero-float-label">{card.label}</span>
+                                                            <strong>{card.value}</strong>
+                                                        </div>
+                                                        <i className="bi bi-chevron-right afinix-hero-float-chevron" aria-hidden="true"></i>
+                                                    </motion.div>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                <div className="afinix-hero-footer-bar" aria-label="Acreditaciones y propuesta de valor">
+                                    <div className="afinix-hero-footer-item">
+                                        <i className="bi bi-people" aria-hidden="true"></i>
+                                        <div>
+                                            <strong>LABORATORIO DENTAL DIGITAL</strong>
+                                            <span>ALIADO DE SU CLÍNICA</span>
                                         </div>
-                                    </motion.div>
+                                    </div>
+                                    <div className="afinix-hero-footer-item">
+                                        <i className="bi bi-shield-check" aria-hidden="true"></i>
+                                        <div>
+                                            <strong>CALIDAD QUE SE NOTA</strong>
+                                            <span>EN CADA SONRISA</span>
+                                        </div>
+                                    </div>
+                                    <div className="afinix-hero-footer-item">
+                                        <i className="bi bi-graph-up-arrow" aria-hidden="true"></i>
+                                        <div>
+                                            <strong>MÁS TIEMPO PARA LO QUE IMPORTA</strong>
+                                            <span>SUS PACIENTES</span>
+                                        </div>
+                                    </div>
+                                    <div className="afinix-hero-footer-item">
+                                        <i className="bi bi-cpu" aria-hidden="true"></i>
+                                        <div>
+                                            <strong>PRECISIÓN QUE GENERA CONFIANZA</strong>
+                                            <span>CAD/CAM PARA UN MEJOR MAÑANA</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <HeroTrackingWidget reduceMotion={reduceMotion} className="afinix-hero-tracking--mobile" />
                             </article>
                         </SwiperSlide>
-                    ))}
+                    );
+                })}
                 </Swiper>
-                <HeroTrackingWidget reduceMotion={reduceMotion} className="afinix-hero-tracking--desktop" />
-                <motion.a
-                    className="afinix-hero-scroll-cue"
-                    href="#servicios"
-                    aria-label="Desplazarse para conocer los servicios"
-                    initial={reduceMotion ? false : { opacity: 0, x: "-50%", y: -8 }}
-                    animate={reduceMotion ? undefined : { opacity: 1, x: "-50%", y: 0 }}
-                    transition={reduceMotion ? undefined : { duration: 0.5, delay: 1.2, ease: HERO_EASE }}
-                >
-                    <span className="afinix-hero-scroll-cue__arrows" aria-hidden="true">
-                        <i className="bi bi-chevron-down"></i>
-                        <i className="bi bi-chevron-down"></i>
-                        <i className="bi bi-chevron-down"></i>
-                    </span>
-                </motion.a>
             </div>
         </section>
     );

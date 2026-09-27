@@ -12,6 +12,7 @@ import auditRoutes from '../routes/audit.js';
 import facturacionRoutes from '../routes/facturacion.js';
 import consultasRoutes from '../routes/consultas.js';
 import doctoresRoutes from '../routes/doctores.js';
+import proveedoresRoutes from '../routes/proveedores.js';
 
 export const registerRoutes = (app, compositionRoot) => {
     app.use('/api/auth', authRoutes);
@@ -24,6 +25,7 @@ export const registerRoutes = (app, compositionRoot) => {
     app.use('/api/notificaciones', notificacionesRoutes);
     app.use('/api/categorias', categoriasRoutes);
     app.use('/api/inventory', inventoryRoutes);
+    app.use('/api/proveedores', proveedoresRoutes);
     app.use('/api/usuarios', usuariosRoutes);
     app.use('/api/audit', auditRoutes);
     app.use('/api/facturacion', facturacionRoutes);

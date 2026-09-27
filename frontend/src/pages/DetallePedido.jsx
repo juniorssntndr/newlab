@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
-import { formatDentalSelection, sortTeethByArchOrder } from '../utils/odontograma.js';
+import { formatDentalSelection, sortTeethByArchOrder, getToothRole } from '../utils/odontograma.js';
 import { apiClient } from '../services/http/apiClient.js';
 import { useOrderDetailQuery } from '../modules/orders/queries/useOrderDetailQuery.js';
 import { useUpdateOrderStatusMutation } from '../modules/orders/mutations/useUpdateOrderStatusMutation.js';
@@ -23,7 +24,19 @@ import {
     parseIntakeFromObservaciones,
 } from '../modules/orders/wizard/orderWizardConstants.js';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
+import OrderWhatsAppModal from '../components/orders/OrderWhatsAppModal.jsx';
+import CustomSelect from '../components/CustomSelect.jsx';
+import AnimatedCheck from '../components/icons/animated/AnimatedCheck.jsx';
 import { AFINIX_LAB_ADDRESS } from '../constants/labInfo.js';
+
+const STATUS_ICONS = {
+    pendiente: 'bi bi-inbox',
+    en_diseno: 'bi bi-pencil-square',
+    esperando_aprobacion: 'bi bi-patch-check',
+    en_produccion: 'bi bi-gear',
+    terminado: 'bi bi-check2-circle',
+    enviado: 'bi bi-truck',
+};
 
 const approvalStatusLabels = {
     pendiente: 'Pendiente',
@@ -32,10 +45,31 @@ const approvalStatusLabels = {
 };
 
 const fileTypeLabels = {
-    color: 'Imagen de color',
-    caso: 'Imagen del caso',
-    final: 'Imagen final',
-    otro: 'Otra imagen'
+    stl: 'Modelo 3D',
+    color: 'Foto de color',
+    caso: 'Foto clínica',
+    final: 'Trabajo terminado',
+    doc: 'Documento / PDF',
+    otro: 'Archivo adjunto'
+};
+
+const detectFileType = (file) => {
+    const name = (file?.name || '').toLowerCase();
+    const ext = name.split('.').pop();
+    if (['stl', 'obj', 'ply', '3mf'].includes(ext)) return 'stl';
+    if (['pdf'].includes(ext)) return 'doc';
+    if (name.includes('color') || name.includes('toma')) return 'color';
+    if (name.includes('final') || name.includes('control')) return 'final';
+    if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) return 'caso';
+    return 'otro';
+};
+
+const getFileVisual = (file) => {
+    const ext = (file?.nombre_original || file?.url || '').split('.').pop().toLowerCase();
+    const is3D = ['stl', 'obj', 'ply', '3mf'].includes(ext) || file?.tipo === 'stl';
+    const isPdf = ['pdf'].includes(ext) || file?.tipo === 'doc';
+    const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) || ['color', 'caso', 'final'].includes(file?.tipo);
+    return { is3D, isPdf, isImage, ext };
 };
 
 const formatFileSize = (bytes) => {
@@ -67,10 +101,10 @@ const DetallePedido = () => {
     const [rollbackState, setRollbackState] = useState('');
     const [rollbackReason, setRollbackReason] = useState('');
     const [forceModalOpen, setForceModalOpen] = useState(false);
+    const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
     const [forceReason, setForceReason] = useState('');
-    const [caseFileType, setCaseFileType] = useState('caso');
-    const [caseFile, setCaseFile] = useState(null);
-    const [caseFileModalOpen, setCaseFileModalOpen] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const [uploadingFiles, setUploadingFiles] = useState(false);
     const [meetModalOpen, setMeetModalOpen] = useState(false);
     const [meetUrl, setMeetUrl] = useState('');
     const [meetScheduledAt, setMeetScheduledAt] = useState('');
@@ -82,6 +116,8 @@ const DetallePedido = () => {
     const adjustButtonRef = useRef(null);
     const adjustTextareaRef = useRef(null);
     const caseFileInputRef = useRef(null);
+    const stepperScrollRef = useRef(null);
+    const activeStepRef = useRef(null);
     const { data: pedido, isLoading } = useOrderDetailQuery(id);
     const updateOrderStatusMutation = useUpdateOrderStatusMutation();
     const createOrderApprovalMutation = useCreateOrderApprovalMutation();
@@ -127,6 +163,32 @@ const DetallePedido = () => {
             setDeliveryDate('');
         }
     }, [pedido?.fecha_entrega]);
+
+    useEffect(() => {
+        const scrollToActive = () => {
+            const container = stepperScrollRef.current;
+            const activeEl = activeStepRef.current;
+            if (!container || !activeEl) return;
+            const containerWidth = container.clientWidth;
+            const activeWidth = activeEl.clientWidth;
+            const targetLeft = Math.round(activeEl.offsetLeft - (containerWidth - activeWidth) / 2);
+            container.scrollTo({
+                left: Math.max(0, targetLeft),
+                behavior: 'smooth',
+            });
+        };
+
+        if (pedido?.estado) {
+            const rafId = requestAnimationFrame(scrollToActive);
+            const timer1 = setTimeout(scrollToActive, 80);
+            const timer2 = setTimeout(scrollToActive, 280);
+            return () => {
+                cancelAnimationFrame(rafId);
+                clearTimeout(timer1);
+                clearTimeout(timer2);
+            };
+        }
+    }, [pedido?.estado, pedido?.id]);
 
     useEffect(() => {
         if (!adjustPopoverOpen) return;
@@ -224,36 +286,55 @@ const DetallePedido = () => {
         setApprovalNote('');
     };
 
-    const submitCaseFile = async () => {
-        if (!caseFile) {
-            alert('Selecciona una imagen para subir');
-            return;
-        }
-        if (!caseFile.type?.startsWith('image/')) {
-            alert('Solo se permiten archivos de imagen');
-            return;
-        }
-        if (caseFile.size > 8 * 1024 * 1024) {
-            alert('La imagen no debe superar 8 MB');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('image', caseFile);
-        formData.append('tipo', caseFileType);
-
+    const handleFilesUpload = async (filesList) => {
+        if (!filesList || filesList.length === 0) return;
+        setUploadingFiles(true);
         try {
-            await uploadOrderFileMutation.mutateAsync({
-                orderId: id,
-                payload: formData
-            });
-            setCaseFile(null);
-            setCaseFileModalOpen(false);
+            const filesArray = Array.from(filesList);
+            for (const file of filesArray) {
+                if (file.size > 50 * 1024 * 1024) {
+                    alert(`"${file.name}" supera el límite de 50 MB.`);
+                    continue;
+                }
+                const detectedType = detectFileType(file);
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('tipo', detectedType);
+
+                await uploadOrderFileMutation.mutateAsync({
+                    orderId: id,
+                    payload: formData
+                });
+            }
+        } catch (err) {
+            alert(err.message || 'Error al subir archivo');
+        } finally {
+            setUploadingFiles(false);
+            setIsDragOver(false);
             if (caseFileInputRef.current) {
                 caseFileInputRef.current.value = '';
             }
-        } catch (err) {
-            alert(err.message);
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isDragOver) setIsDragOver(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+        if (e.dataTransfer?.files?.length) {
+            handleFilesUpload(e.dataTransfer.files);
         }
     };
 
@@ -355,6 +436,9 @@ const DetallePedido = () => {
 
     const currentIdx = ORDER_STATUS_FLOW.indexOf(pedido.estado);
     const nextStatus = currentIdx < ORDER_STATUS_FLOW.length - 1 ? ORDER_STATUS_FLOW[currentIdx + 1] : null;
+    const progressPercent = currentIdx >= 0 && ORDER_STATUS_FLOW.length > 1
+        ? (currentIdx / (ORDER_STATUS_FLOW.length - 1)) * 100
+        : 0;
     const isClient = isClientRole(user);
     const isLab = isLabStaffRole(user);
     const statusLabel = (estado) => getOrderStatusLabel(estado, { forClient: isClient });
@@ -397,113 +481,184 @@ const DetallePedido = () => {
 
     return (
         <div className="animate-fade-in pedido-detail">
-            {isLab && (nextStatus || ['en_diseno', 'esperando_aprobacion'].includes(pedido.estado) || rollbackOptions.length > 0) ? (
-                <div className="page-header pedido-detail-header">
+            <div className="page-header pedido-detail-header">
+                <button
+                    type="button"
+                    className="page-back-btn desktop-only"
+                    onClick={() => navigate('/pedidos')}
+                    title="Volver a Pedidos"
+                    aria-label="Volver a pedidos"
+                >
+                    <i className="bi bi-arrow-left" aria-hidden="true"></i>
+                    <span>Volver a Pedidos</span>
+                </button>
+
+                {isLab ? (
                     <div className="pedido-actions">
-                        {nextStatus && (
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={() => (nextStatus === 'esperando_aprobacion' ? setApprovalModalOpen(true) : changeStatus(nextStatus))}
-                                disabled={updating}
-                            >
-                                {updating
-                                    ? 'Actualizando...'
-                                    : nextStatus === 'esperando_aprobacion'
-                                        ? 'Enviar a aprobación'
-                                        : `Avanzar a: ${statusLabel(nextStatus)}`}
-                                <i className="bi bi-arrow-right"></i>
-                            </button>
-                        )}
-                        {['en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => { setForceReason(''); setForceModalOpen(true); }}
-                                disabled={updating}
-                            >
-                                <i className="bi bi-skip-forward"></i> Forzar a Producción
-                            </button>
-                        )}
                         {rollbackOptions.length > 0 && (
                             <button
                                 type="button"
-                                className="btn btn-secondary"
+                                className="btn btn-secondary pedido-action-icon-btn"
                                 onClick={() => {
                                     setRollbackState(rollbackOptions[rollbackOptions.length - 1]);
                                     setRollbackReason('');
                                     setRollbackModalOpen(true);
                                 }}
                                 disabled={updating}
+                                title={`Retroceder estado (a: ${statusLabel(rollbackOptions[rollbackOptions.length - 1])})`}
+                                aria-label="Retroceder estado"
                             >
-                                <i className="bi bi-arrow-counterclockwise"></i> Retroceder
+                                <i className="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                            </button>
+                        )}
+
+                        {['en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
+                            <button
+                                type="button"
+                                className="btn btn-secondary pedido-action-icon-btn"
+                                onClick={() => {
+                                    setForceReason('');
+                                    setForceModalOpen(true);
+                                }}
+                                disabled={updating}
+                                title="Forzar avance directo a producción"
+                                aria-label="Forzar a producción"
+                            >
+                                <i className="bi bi-lightning-charge" aria-hidden="true"></i>
+                            </button>
+                        )}
+
+                        <button
+                            type="button"
+                            className="btn btn-secondary pedido-action-icon-btn pedido-action-whatsapp"
+                            onClick={() => setWhatsAppModalOpen(true)}
+                            title="Notificar por WhatsApp a la clínica"
+                            aria-label="WhatsApp"
+                        >
+                            <i className="bi bi-whatsapp" style={{ color: '#25D366' }} aria-hidden="true"></i>
+                        </button>
+
+                        {nextStatus && (
+                            <button
+                                type="button"
+                                className="btn btn-primary pedido-action-primary-btn"
+                                onClick={() => (nextStatus === 'esperando_aprobacion' ? setApprovalModalOpen(true) : changeStatus(nextStatus))}
+                                disabled={updating}
+                                title={
+                                    updating
+                                        ? 'Actualizando...'
+                                        : nextStatus === 'esperando_aprobacion'
+                                            ? 'Enviar a aprobación'
+                                            : `Avanzar a: ${statusLabel(nextStatus)}`
+                                }
+                            >
+                                <span>
+                                    {updating
+                                        ? 'Actualizando...'
+                                        : nextStatus === 'esperando_aprobacion'
+                                            ? 'Enviar a aprobación'
+                                            : `Avanzar a ${statusLabel(nextStatus)}`}
+                                </span>
+                                <i className="bi bi-arrow-right" aria-hidden="true"></i>
                             </button>
                         )}
                     </div>
-                </div>
-            ) : null}
+                ) : null}
+            </div>
 
-            <div className="card pedido-detail-flow">
+            <div className="card pedido-detail-flow" role="region" aria-label="Seguimiento del pedido">
+                <div className="pedido-stepper-header">
+                    <span className="order-wizard-confirm-label">
+                        <i className="bi bi-diagram-3" aria-hidden="true"></i>
+                        Seguimiento del caso
+                    </span>
+
+                    {currentIdx >= 0 && (
+                        <span className="pedido-stepper-step-counter" aria-label={`Paso ${currentIdx + 1} de ${ORDER_STATUS_FLOW.length}`}>
+                            Paso <strong>{currentIdx + 1}</strong> de {ORDER_STATUS_FLOW.length}
+                        </span>
+                    )}
+                </div>
+
                 <div
-                    className="pedido-detail-progress"
-                    role="status"
-                    aria-label={
-                        currentIdx >= 0
-                            ? `Estado ${statusLabel(pedido.estado)}, paso ${currentIdx + 1} de ${ORDER_STATUS_FLOW.length}`
-                            : `Estado ${statusLabel(pedido.estado)}`
-                    }
+                    className="pedido-stepper-scroll-container"
+                    ref={stepperScrollRef}
+                    role="region"
+                    aria-label="Línea de etapas del trabajo"
                 >
-                    <div className="pedido-detail-progress-head">
-                        <div className="pedido-detail-progress-copy">
-                            <span className="pedido-detail-progress-kicker">Estado actual</span>
-                            <strong>{statusLabel(pedido.estado)}</strong>
-                        </div>
-                        {currentIdx >= 0 ? (
-                            <span className="pedido-detail-progress-count">
-                                {currentIdx + 1} de {ORDER_STATUS_FLOW.length}
-                            </span>
-                        ) : null}
+                    <div className="pedido-stepper-track-wrap">
+                        <div className="pedido-stepper-rail-bg" aria-hidden="true" />
+                        <motion.div
+                            className="pedido-stepper-rail-fill"
+                            aria-hidden="true"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progressPercent}%` }}
+                            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                        />
+
+                        <ol className="pedido-stepper-track" role="list">
+                            {ORDER_STATUS_FLOW.map((s, i) => {
+                                const isDone = i < currentIdx;
+                                const isCurrent = i === currentIdx;
+                                const isPending = i > currentIdx;
+
+                                return (
+                                    <li
+                                        key={s}
+                                        ref={isCurrent ? activeStepRef : null}
+                                        role="listitem"
+                                        className={[
+                                            'pedido-stepper-step',
+                                            isDone ? 'is-done' : '',
+                                            isCurrent ? 'is-current' : '',
+                                            isPending ? 'is-pending' : '',
+                                        ].filter(Boolean).join(' ')}
+                                        aria-current={isCurrent ? 'step' : undefined}
+                                    >
+                                        <div className="pedido-stepper-node-wrapper">
+                                            {isCurrent ? (
+                                                <motion.div
+                                                    className="pedido-stepper-node is-current"
+                                                    animate={{
+                                                        boxShadow: [
+                                                            '0 0 0 0 rgba(var(--color-primary-rgb), 0.45)',
+                                                            '0 0 0 9px rgba(var(--color-primary-rgb), 0)',
+                                                            '0 0 0 0 rgba(var(--color-primary-rgb), 0.45)',
+                                                        ],
+                                                        scale: [1, 1.05, 1],
+                                                    }}
+                                                    transition={{
+                                                        duration: 2.2,
+                                                        repeat: Infinity,
+                                                        ease: 'easeInOut',
+                                                    }}
+                                                >
+                                                    <i className={`${STATUS_ICONS[s] || 'bi bi-check-circle'} pedido-stepper-icon`} aria-hidden="true"></i>
+                                                </motion.div>
+                                            ) : isDone ? (
+                                                <div className="pedido-stepper-node is-done">
+                                                    <AnimatedCheck size={16} strokeWidth={2.6} />
+                                                </div>
+                                            ) : (
+                                                <div className="pedido-stepper-node is-pending">
+                                                    <span className="pedido-stepper-node-num">{i + 1}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pedido-stepper-content">
+                                            <span className="pedido-stepper-label">{statusLabel(s)}</span>
+                                            {isCurrent && (
+                                                <span className="pedido-stepper-tag is-current">
+                                                    <span className="pedido-stepper-tag-dot" /> En curso
+                                                </span>
+                                            )}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ol>
                     </div>
-                    <ol className="pedido-detail-progress-track" aria-hidden="true">
-                        {ORDER_STATUS_FLOW.map((s, i) => (
-                            <li
-                                key={s}
-                                className={[
-                                    'pedido-detail-progress-seg',
-                                    i === currentIdx ? 'is-current' : '',
-                                    i < currentIdx ? 'is-done' : '',
-                                ].filter(Boolean).join(' ')}
-                                title={statusLabel(s)}
-                            />
-                        ))}
-                    </ol>
-                </div>
-
-                <div
-                    className="status-timeline pedido-detail-status-timeline"
-                    role="list"
-                    aria-label={
-                        currentIdx >= 0
-                            ? `Progreso del pedido: ${statusLabel(pedido.estado)}, paso ${currentIdx + 1} de ${ORDER_STATUS_FLOW.length}`
-                            : `Progreso del pedido: ${statusLabel(pedido.estado)}`
-                    }
-                >
-                    {ORDER_STATUS_FLOW.map((s, i) => (
-                        <div
-                            key={s}
-                            role="listitem"
-                            className={[
-                                'status-step',
-                                i === currentIdx ? 'is-current' : '',
-                                i < currentIdx ? 'is-done' : '',
-                            ].filter(Boolean).join(' ')}
-                        >
-                            <div className="status-step-dot" aria-hidden="true">
-                                {i < currentIdx ? <i className="bi bi-check"></i> : i + 1}
-                            </div>
-                            <div className="status-step-label">{statusLabel(s)}</div>
-                        </div>
-                    ))}
                 </div>
             </div>
 
@@ -627,9 +782,7 @@ const DetallePedido = () => {
                                                     <strong>{product.nombre}</strong>
                                                 </div>
                                                 <div className="order-wizard-confirm-clinical">
-                                                    {isBridge ? (
-                                                        <span className="order-wizard-confirm-qty">{formatDentalSelection(item)}</span>
-                                                    ) : teeth.length > 0 ? (
+                                                    {teeth.length > 0 ? (
                                                         <div
                                                             className={[
                                                                 'order-wizard-confirm-teeth',
@@ -638,11 +791,19 @@ const DetallePedido = () => {
                                                             data-count={teeth.length}
                                                             aria-label="Piezas seleccionadas"
                                                         >
-                                                            {teeth.map((tooth) => (
-                                                                <span key={`${i}-${tooth}`} className="order-wizard-confirm-tooth">
-                                                                    {tooth}
-                                                                </span>
-                                                            ))}
+                                                            {teeth.map((tooth) => {
+                                                                const role = getToothRole(tooth, item);
+                                                                const roleLabel = role === 'pilar' ? 'Pilar' : role === 'pontico' ? 'Póntico' : 'Unitaria';
+                                                                return (
+                                                                    <span
+                                                                        key={`${i}-${tooth}`}
+                                                                        className={`order-wizard-confirm-tooth is-${role}`}
+                                                                        title={`Pieza ${tooth} (${roleLabel})`}
+                                                                    >
+                                                                        {tooth}
+                                                                    </span>
+                                                                );
+                                                            })}
                                                         </div>
                                                     ) : (
                                                         <span className="order-wizard-confirm-qty">
@@ -678,17 +839,21 @@ const DetallePedido = () => {
                         </div>
                         {user?.tipo === 'admin' ? (
                             <div className="pedido-detail-field-actions">
-                                <select
-                                    className="form-select form-select-sm"
+                                <CustomSelect
+                                    size="sm"
                                     value={responsableId}
                                     onChange={e => setResponsableId(e.target.value)}
                                     aria-label="Asignar responsable"
-                                >
-                                    <option value="">Sin asignar</option>
-                                    {responsables.map(r => (
-                                        <option key={r.id} value={r.id}>{r.nombre}</option>
-                                    ))}
-                                </select>
+                                    placeholder="Sin asignar"
+                                    options={[
+                                        { value: '', label: 'Sin asignar', icon: 'bi-person-dash' },
+                                        ...responsables.map(r => ({
+                                            value: String(r.id),
+                                            label: r.nombre,
+                                            icon: 'bi-person'
+                                        }))
+                                    ]}
+                                />
                                 <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
                                     <i className="bi bi-check2"></i>
                                     {savingResponsable ? 'Guardando...' : 'Guardar'}
@@ -721,40 +886,54 @@ const DetallePedido = () => {
                     ) : null}
 
                     <div className="card pedido-detail-design">
-                        <div className="card-header">
-                            <h3 className="card-title">
-                                <i className="bi bi-badge-3d" aria-hidden="true"></i>
-                                Diseño 3D
-                            </h3>
+                        <div className="card-header pedido-detail-design-header">
+                            <div className="pedido-detail-design-header-left">
+                                <h3 className="card-title">
+                                    <i className="bi bi-badge-3d text-primary" aria-hidden="true"></i>
+                                    <span>Diseño 3D</span>
+                                </h3>
+                            </div>
+                            {approvalLink ? (
+                                <span className={`approval-review-status ${approvalBadgeClass}`}>
+                                    {approvalStatusLabels[approvalEstado] || approvalEstado.replace(/_/g, ' ')}
+                                </span>
+                            ) : null}
                         </div>
                         <div className="approval-card">
                             {approvalLink ? (
                                 <div className="approval-review">
-                                    <div className="approval-review-head">
-                                        <div className="approval-review-icon">
-                                            <i className="bi bi-cube"></i>
-                                        </div>
-                                        <div className="approval-review-copy">
-                                            <div className="approval-review-title">Diseño listo para revisión</div>
-                                        </div>
-                                        <span className={`approval-review-status ${approvalBadgeClass}`}>
-                                            {approvalStatusLabels[approvalEstado] || approvalEstado.replace(/_/g, ' ')}
-                                        </span>
-                                    </div>
-                                    <div className="approval-review-main">
+                                    <div className="approval-actions-single-row">
                                         <a
                                             href={approvalLink}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="btn btn-primary approval-review-primary"
+                                            className="btn btn-primary approval-action-main-btn"
                                             aria-label="Abrir diseño 3D en una nueva pestaña"
                                         >
-                                            <i className="bi bi-box-arrow-up-right"></i> Ver diseño 3D
+                                            <i className="bi bi-box-arrow-up-right"></i>
+                                            <span>Ver diseño 3D</span>
                                         </a>
                                         {isLab && (
-                                            <button className="btn btn-secondary btn-sm approval-review-secondary" onClick={() => setApprovalModalOpen(true)}>
-                                                <i className="bi bi-upload"></i> Subir nueva versión
-                                            </button>
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary approval-action-icon-btn"
+                                                    onClick={() => setApprovalModalOpen(true)}
+                                                    title="Subir nueva versión del diseño 3D"
+                                                    aria-label="Subir nueva versión"
+                                                >
+                                                    <i className="bi bi-arrow-repeat"></i>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary approval-action-icon-btn"
+                                                    onClick={() => setWhatsAppModalOpen(true)}
+                                                    title="Notificar por WhatsApp a la clínica"
+                                                    aria-label="WhatsApp"
+                                                >
+                                                    <i className="bi bi-whatsapp" style={{ color: '#25D366' }}></i>
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                     {hasMeetRequest && (
@@ -839,13 +1018,18 @@ const DetallePedido = () => {
                                 </div>
                             ) : (
                                 <div className="approval-review-empty">
-                                    <div>
-                                        <h4>Diseño 3D aún no disponible</h4>
-                                        <p>Pendiente de link Exocad.</p>
+                                    <div className="approval-empty-copy">
+                                        <i className="bi bi-link-45deg" aria-hidden="true"></i>
+                                        <span>Pendiente de link Exocad</span>
                                     </div>
                                     {isLab && ['pendiente', 'en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
-                                        <button className="btn btn-primary btn-sm" onClick={() => setApprovalModalOpen(true)} aria-label="Subir link interactivo de Exocad">
-                                            <i className="bi bi-upload"></i> Subir link interactivo
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary btn-sm"
+                                            onClick={() => setApprovalModalOpen(true)}
+                                            aria-label="Subir link interactivo de Exocad"
+                                        >
+                                            <i className="bi bi-upload"></i> Subir link
                                         </button>
                                     )}
                                 </div>
@@ -855,69 +1039,133 @@ const DetallePedido = () => {
                     </div>
 
                     <div className="card pedido-detail-files">
-                        <div className="card-header">
-                            <h3 className="card-title">Archivos del caso</h3>
+                        <div className="card-header pedido-detail-files-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <h3 className="card-title">Archivos del caso</h3>
+                                <span className="badge badge-secondary" style={{ fontSize: '0.72rem', fontWeight: 600 }}>
+                                    {caseFiles.length}
+                                </span>
+                            </div>
                         </div>
                         <div className="card-body">
                             {isLab && (
-                            <div className="case-file-upload">
-                                <select
-                                    id={`case-file-type-${id}`}
-                                    className="form-select"
-                                    value={caseFileType}
-                                    onChange={e => setCaseFileType(e.target.value)}
-                                    aria-label="Tipo de imagen"
+                                <div
+                                    className={`case-file-dropzone${isDragOver ? ' is-dragover' : ''}${uploadingFiles ? ' is-uploading' : ''}`}
+                                    onDragOver={handleDragOver}
+                                    onDragEnter={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                    onClick={() => !uploadingFiles && caseFileInputRef.current?.click()}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label="Arrastrar o seleccionar archivos del caso"
                                 >
-                                    {Object.entries(fileTypeLabels).map(([type, label]) => (
-                                        <option key={type} value={type}>{label}</option>
-                                    ))}
-                                </select>
-                                <label className="case-file-compact-picker" htmlFor={`case-file-input-${id}`} aria-label="Seleccionar imagen del caso">
                                     <input
-                                        id={`case-file-input-${id}`}
                                         ref={caseFileInputRef}
-                                        className="case-file-input"
                                         type="file"
-                                        accept="image/*"
-                                        onChange={e => {
-                                            const selectedFile = e.target.files?.[0] || null;
-                                            setCaseFile(selectedFile);
-                                            if (selectedFile) {
-                                                setCaseFileModalOpen(true);
-                                            }
-                                        }}
+                                        multiple
+                                        accept=".stl,.obj,.ply,.3mf,.png,.jpg,.jpeg,.webp,.pdf,.zip"
+                                        style={{ display: 'none' }}
+                                        onChange={(e) => handleFilesUpload(e.target.files)}
                                     />
-                                    <span className="case-file-compact-icon">
-                                        <i className="bi bi-cloud-arrow-up"></i>
-                                    </span>
-                                    <span>Seleccionar imagen</span>
-                                    <small>PNG, JPG o WebP · máx. 8 MB</small>
-                                </label>
-                            </div>
-                            )}
-                            {caseFiles.length === 0 ? (
-                                <div className="empty-state case-files-empty">
-                                    <i className="bi bi-images empty-state-icon"></i>
-                                    <p className="empty-state-text">Aún no hay archivos para este caso.</p>
-                                </div>
-                            ) : (
-                                <div className="case-files-grid">
-                                    {caseFiles.map(file => (
-                                        <a
-                                            key={file.id}
-                                            className="case-file-tile"
-                                            href={file.url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >
-                                            <img src={file.url} alt={file.nombre_original || fileTypeLabels[file.tipo] || 'Archivo del caso'} loading="lazy" />
-                                            <div className="case-file-meta">
-                                                <span className="case-file-type">{fileTypeLabels[file.tipo] || file.tipo || 'Archivo'}</span>
-                                                <span>{formatFileSize(file.size_bytes)}</span>
+
+                                    {uploadingFiles ? (
+                                        <div className="dropzone-uploading-state">
+                                            <div className="spinner-border text-primary" role="status" style={{ width: '1.75rem', height: '1.75rem' }}></div>
+                                            <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-primary)' }}>
+                                                Subiendo y procesando archivo(s)...
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="dropzone-icon-circle">
+                                                <i className="bi bi-cloud-arrow-up"></i>
                                             </div>
-                                            <div className="case-file-name">{file.nombre_original || 'Imagen del caso'}</div>
-                                        </a>
-                                    ))}
+                                            <div className="dropzone-text-group">
+                                                <strong className="dropzone-primary-text">
+                                                    Arrastrá modelos 3D, fotos o documentos aquí
+                                                </strong>
+                                                <span className="dropzone-subtext">
+                                                    o haz clic para explorar en tu equipo · STL, OBJ, PLY, JPG, PNG, PDF (hasta 50 MB)
+                                                </span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {caseFiles.length === 0 ? (
+                                !isLab && (
+                                    <div className="empty-state case-files-empty">
+                                        <i className="bi bi-folder2-open empty-state-icon"></i>
+                                        <p className="empty-state-text">No hay archivos adjuntos en este caso.</p>
+                                    </div>
+                                )
+                            ) : (
+                                <div className="case-files-gallery">
+                                    {caseFiles.map((file) => {
+                                        const visual = getFileVisual(file);
+                                        return (
+                                            <div key={file.id} className="case-file-card">
+                                                <div className="case-file-card-preview">
+                                                    {visual.isImage ? (
+                                                        <img
+                                                            src={file.url}
+                                                            alt={file.nombre_original || 'Foto clínica'}
+                                                            loading="lazy"
+                                                            className="case-file-img"
+                                                        />
+                                                    ) : visual.is3D ? (
+                                                        <div className="case-file-3d-placeholder">
+                                                            <i className="bi bi-box"></i>
+                                                            <span>3D MESH</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="case-file-doc-placeholder">
+                                                            <i className="bi bi-file-earmark-pdf"></i>
+                                                            <span>PDF</span>
+                                                        </div>
+                                                    )}
+                                                    <span className={`case-file-badge case-file-badge--${file.tipo || 'otro'}`}>
+                                                        {fileTypeLabels[file.tipo] || visual.ext.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                                <div className="case-file-card-body">
+                                                    <span className="case-file-card-name" title={file.nombre_original || file.url}>
+                                                        {file.nombre_original || 'Archivo del caso'}
+                                                    </span>
+                                                    <div className="case-file-card-footer">
+                                                        <span className="case-file-card-size">
+                                                            {formatFileSize(file.size_bytes)}
+                                                        </span>
+                                                        <div className="case-file-card-actions">
+                                                            <a
+                                                                href={file.url}
+                                                                download={file.nombre_original || true}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="btn-icon"
+                                                                title="Descargar archivo"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <i className="bi bi-download"></i>
+                                                            </a>
+                                                            <a
+                                                                href={file.url}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="btn-icon"
+                                                                title="Abrir en pestaña nueva"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <i className="bi bi-box-arrow-up-right"></i>
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -966,6 +1214,9 @@ const DetallePedido = () => {
                 open={approvalModalOpen}
                 onClose={() => setApprovalModalOpen(false)}
                 title="Enviar a Aprobación"
+                kicker="CAD / CAM • Diseño Digital"
+                subtitle="Compartir visor 3D Exocad para validación clínica"
+                icon="bi-send"
                 footer={
                     <>
                         <button className="btn btn-secondary" onClick={() => setApprovalModalOpen(false)}>Cancelar</button>
@@ -977,13 +1228,17 @@ const DetallePedido = () => {
             >
                 <div className="form-group">
                     <label className="form-label">Link Exocad Viewer *</label>
-                    <input
-                        className="form-input"
-                        type="url"
-                        placeholder="https://viewer.exocad.com/..."
-                        value={exocadLink}
-                        onChange={e => setExocadLink(e.target.value)}
-                    />
+                    <div className="form-input-box has-lead">
+                        <i className="bi bi-link-45deg form-input-lead" aria-hidden="true" />
+                        <input
+                            className="form-input"
+                            type="url"
+                            placeholder="https://viewer.exocad.com/..."
+                            value={exocadLink}
+                            onChange={e => setExocadLink(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
                 </div>
                 <div className="form-group">
                     <label className="form-label">Nota adicional (opcional)</label>
@@ -1004,6 +1259,9 @@ const DetallePedido = () => {
                     setMeetModalOpen(false);
                 }}
                 title="Agregar link de Meet"
+                kicker="Comunicación Clínica • Videollamada"
+                subtitle="Enlace de Google Meet para sesión clínica virtual"
+                icon="bi-camera-video"
                 footer={
                     <>
                         <button className="btn btn-secondary" onClick={() => setMeetModalOpen(false)} disabled={updating}>Cancelar</button>
@@ -1015,77 +1273,42 @@ const DetallePedido = () => {
             >
                 <div className="form-group">
                     <label className="form-label">Link de Google Meet *</label>
-                    <input
-                        className="form-input"
-                        type="url"
-                        placeholder="https://meet.google.com/abc-defg-hij"
-                        value={meetUrl}
-                        onChange={e => setMeetUrl(e.target.value)}
-                    />
+                    <div className="form-input-box has-lead">
+                        <i className="bi bi-link-45deg form-input-lead" aria-hidden="true" />
+                        <input
+                            className="form-input"
+                            type="url"
+                            placeholder="https://meet.google.com/abc-defg-hij"
+                            value={meetUrl}
+                            onChange={e => setMeetUrl(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
                 </div>
                 <div className="form-group">
                     <label className="form-label">Fecha y hora programada (opcional)</label>
-                    <input
-                        className="form-input"
-                        type="datetime-local"
-                        value={meetScheduledAt}
-                        onChange={e => setMeetScheduledAt(e.target.value)}
-                    />
+                    <div className="form-input-box has-lead">
+                        <i className="bi bi-calendar-event form-input-lead" aria-hidden="true" />
+                        <input
+                            className="form-input"
+                            type="datetime-local"
+                            value={meetScheduledAt}
+                            onChange={e => setMeetScheduledAt(e.target.value)}
+                        />
+                    </div>
                     <small className="form-help">Creá el Meet en Google Calendar y pegá aquí el enlace para que el cliente pueda unirse.</small>
                 </div>
             </Modal>
 
-            <Modal
-                open={caseFileModalOpen}
-                onClose={() => {
-                    if (uploadingFile) return;
-                    setCaseFileModalOpen(false);
-                    setCaseFile(null);
-                    if (caseFileInputRef.current) {
-                        caseFileInputRef.current.value = '';
-                    }
-                }}
-                title="Subir imagen del caso"
-                footer={
-                    <>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => {
-                                setCaseFileModalOpen(false);
-                                setCaseFile(null);
-                                if (caseFileInputRef.current) {
-                                    caseFileInputRef.current.value = '';
-                                }
-                            }}
-                            disabled={uploadingFile}
-                        >
-                            Cancelar
-                        </button>
-                        <button className="btn btn-primary" onClick={submitCaseFile} disabled={uploadingFile || !caseFile}>
-                            <i className="bi bi-cloud-arrow-up"></i> {uploadingFile ? 'Subiendo...' : 'Subir imagen'}
-                        </button>
-                    </>
-                }
-            >
-                <div className="case-file-dialog">
-                    <div className="case-file-dialog-icon">
-                        <i className="bi bi-image"></i>
-                    </div>
-                    <div className="case-file-dialog-info">
-                        <span className="case-file-dialog-label">{fileTypeLabels[caseFileType]}</span>
-                        <strong>{caseFile?.name || 'Imagen seleccionada'}</strong>
-                        <span>{caseFile ? formatFileSize(caseFile.size) : '—'}</span>
-                    </div>
-                </div>
-                <small className="form-help">
-                    Confirmá que esta imagen corresponde a “{fileTypeLabels[caseFileType]}”. Si no, cancelá y elegí otro tipo antes de seleccionar el archivo.
-                </small>
-            </Modal>
+
 
             <Modal
                 open={rollbackModalOpen}
                 onClose={() => setRollbackModalOpen(false)}
                 title="Retroceder estado"
+                kicker="Flujo Técnico • Control de Calidad"
+                subtitle="Retroceder la orden técnica a una fase previa"
+                icon="bi-arrow-counterclockwise"
                 footer={
                     <>
                         <button className="btn btn-secondary" onClick={() => setRollbackModalOpen(false)}>Cancelar</button>
@@ -1104,24 +1327,25 @@ const DetallePedido = () => {
             >
                 <div className="form-group">
                     <label className="form-label">Estado destino</label>
-                    <select
-                        className="form-select"
+                    <CustomSelect
                         value={rollbackState}
                         onChange={e => setRollbackState(e.target.value)}
-                    >
-                        {rollbackOptions.map(state => (
-                            <option key={state} value={state}>{statusLabel(state)}</option>
-                        ))}
-                    </select>
+                        aria-label="Estado destino"
+                        options={rollbackOptions.map(state => ({
+                            value: state,
+                            label: statusLabel(state)
+                        }))}
+                    />
                 </div>
                 <div className="form-group">
-                    <label className="form-label">Motivo *</label>
+                    <label className="form-label">Motivo <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                     <textarea
                         className="form-textarea"
                         rows={3}
                         placeholder="Describe el motivo del retroceso"
                         value={rollbackReason}
                         onChange={e => setRollbackReason(e.target.value)}
+                        autoFocus
                     />
                 </div>
             </Modal>
@@ -1129,6 +1353,9 @@ const DetallePedido = () => {
                 open={forceModalOpen}
                 onClose={() => setForceModalOpen(false)}
                 title="Forzar avance a Producción"
+                kicker="Flujo Técnico • Override de Producción"
+                subtitle="Avance directo a producción bajo justificación técnica"
+                icon="bi-skip-forward"
                 footer={
                     <>
                         <button className="btn btn-secondary" onClick={() => setForceModalOpen(false)}>Cancelar</button>
@@ -1146,16 +1373,26 @@ const DetallePedido = () => {
                 }
             >
                 <div className="form-group">
-                    <label className="form-label">Motivo *</label>
+                    <label className="form-label">Motivo <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                     <textarea
                         className="form-textarea"
                         rows={3}
                         placeholder="Describe por qué se avanza sin aprobación"
                         value={forceReason}
                         onChange={e => setForceReason(e.target.value)}
+                        autoFocus
                     />
                 </div>
             </Modal>
+
+            <OrderWhatsAppModal
+                isOpen={whatsAppModalOpen}
+                open={whatsAppModalOpen}
+                onClose={() => setWhatsAppModalOpen(false)}
+                pedido={pedido}
+                items={pedido?.items || []}
+                approvalLink={approvalLink}
+            />
         </div>
     );
 };

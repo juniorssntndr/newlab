@@ -2,11 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { requireRole, forbidRole, authenticateToken } from '../../middleware/auth.js';
+import { requireRole, forbidRole, requireModule, authenticateToken } from '../../middleware/auth.js';
 
 process.env.JWT_SECRET = 'role-matrix-test-secret';
 
-const createToken = (tipo) => jwt.sign({ id: 10, tipo, nombre: `User-${tipo}` }, process.env.JWT_SECRET);
+const createToken = (tipo, modulos = null) => {
+    const payload = { id: 10, tipo, nombre: `User-${tipo}` };
+    if (modulos) payload.modulos = modulos;
+    return jwt.sign(payload, process.env.JWT_SECRET);
+};
 
 const buildTestApp = () => {
     const app = express();
@@ -27,6 +31,11 @@ const buildTestApp = () => {
 
     // Customer route
     app.get('/api/test/customer', requireRole('cliente'), (req, res) => res.json({ ok: true }));
+
+    // Module-based routes
+    app.get('/api/test/module/caja', requireModule('caja'), (req, res) => res.json({ ok: true }));
+    app.get('/api/test/module/produccion', requireModule('produccion'), (req, res) => res.json({ ok: true }));
+    app.get('/api/test/module/crm', requireModule('crm'), (req, res) => res.json({ ok: true }));
 
     return new Promise((resolve) => {
         const server = app.listen(0, () => resolve(server));
@@ -117,3 +126,44 @@ test('Role Matrix: Visitador is restricted to CRM and blocked from financial/pro
         await new Promise((resolve) => server.close(resolve));
     }
 });
+
+test('Role Matrix: Admin bypasses requireModule regardless of explicit list', async () => {
+    const server = await buildTestApp();
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const token = createToken('admin', []);
+
+    try {
+        const r1 = await fetch(`${base}/api/test/module/caja`, { headers: { Authorization: `Bearer ${token}` } });
+        assert.equal(r1.status, 200);
+
+        const r2 = await fetch(`${base}/api/test/module/produccion`, { headers: { Authorization: `Bearer ${token}` } });
+        assert.equal(r2.status, 200);
+
+        const r3 = await fetch(`${base}/api/test/module/crm`, { headers: { Authorization: `Bearer ${token}` } });
+        assert.equal(r3.status, 200);
+    } finally {
+        await new Promise((resolve) => server.close(resolve));
+    }
+});
+
+test('Role Matrix: requireModule enforces granular permissions per user', async () => {
+    const server = await buildTestApp();
+    const base = `http://127.0.0.1:${server.address().port}`;
+
+    // Técnico con permiso granular añadido de caja, pero sin crm
+    const customTecnicoToken = createToken('tecnico', ['produccion', 'caja']);
+
+    try {
+        const rProd = await fetch(`${base}/api/test/module/produccion`, { headers: { Authorization: `Bearer ${customTecnicoToken}` } });
+        assert.equal(rProd.status, 200);
+
+        const rCaja = await fetch(`${base}/api/test/module/caja`, { headers: { Authorization: `Bearer ${customTecnicoToken}` } });
+        assert.equal(rCaja.status, 200);
+
+        const rCrm = await fetch(`${base}/api/test/module/crm`, { headers: { Authorization: `Bearer ${customTecnicoToken}` } });
+        assert.equal(rCrm.status, 403);
+    } finally {
+        await new Promise((resolve) => server.close(resolve));
+    }
+});
+

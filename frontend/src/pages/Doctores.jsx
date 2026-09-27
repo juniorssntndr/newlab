@@ -374,6 +374,9 @@ const Doctores = () => {
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 title={modalTitle}
+                kicker="Doctores • Directorio Odontológico"
+                subtitle={editing ? "Actualización de colegiatura y datos del doctor" : "Registro de nuevo doctor colegiado"}
+                icon="bi-person-badge"
                 size={(!editing && step === 'dni') ? undefined : 'lg'}
                 footer={
                     <>
@@ -436,20 +439,23 @@ const Doctores = () => {
                             <label className="form-label" htmlFor="doctor-dni-input">
                                 DNI del doctor <span className="doctor-modal-required" aria-hidden="true">*</span>
                             </label>
-                            <input
-                                id="doctor-dni-input"
-                                className="form-input doctor-modal-dni-input"
-                                placeholder="12345678 (8 dígitos)"
-                                value={dniInput}
-                                onChange={e => setDniInput(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter' && dniInput.replace(/\D/g, '').length === 8) handleConsultarDNI();
-                                }}
-                                maxLength={8}
-                                inputMode="numeric"
-                                autoComplete="off"
-                                autoFocus
-                            />
+                            <div className="form-input-box has-lead">
+                                <i className="bi bi-person-vcard form-input-lead" aria-hidden="true" />
+                                <input
+                                    id="doctor-dni-input"
+                                    className="form-input doctor-modal-dni-input"
+                                    placeholder="12345678 (8 dígitos)"
+                                    value={dniInput}
+                                    onChange={e => setDniInput(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && dniInput.replace(/\D/g, '').length === 8) handleConsultarDNI();
+                                    }}
+                                    maxLength={8}
+                                    inputMode="numeric"
+                                    autoComplete="off"
+                                    autoFocus
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -469,42 +475,54 @@ const Doctores = () => {
                         <div className="doctor-modal-fields">
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-preview-cop">N° COP (opcional)</label>
-                                <input
-                                    id="doctor-preview-cop"
-                                    className="form-input doctor-modal-mono-input"
-                                    placeholder="Ej: 12345"
-                                    value={form.cop}
-                                    onChange={e => setForm(p => ({ ...p, cop: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-award form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-preview-cop"
+                                        className="form-input doctor-modal-mono-input"
+                                        placeholder="Ej: 12345"
+                                        value={form.cop}
+                                        onChange={e => setForm(p => ({ ...p, cop: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-preview-esp">Especialidad (opcional)</label>
-                                <input
-                                    id="doctor-preview-esp"
-                                    className="form-input"
-                                    placeholder="Ej: Ortodoncia"
-                                    value={form.especialidad}
-                                    onChange={e => setForm(p => ({ ...p, especialidad: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-mortarboard form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-preview-esp"
+                                        className="form-input"
+                                        placeholder="Ej: Ortodoncia"
+                                        value={form.especialidad}
+                                        onChange={e => setForm(p => ({ ...p, especialidad: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-preview-email">Email (opcional)</label>
-                                <input
-                                    id="doctor-preview-email"
-                                    className="form-input"
-                                    type="email"
-                                    value={form.email}
-                                    onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-envelope form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-preview-email"
+                                        className="form-input"
+                                        type="email"
+                                        value={form.email}
+                                        onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-preview-tel">Teléfono (opcional)</label>
-                                <input
-                                    id="doctor-preview-tel"
-                                    className="form-input"
-                                    value={form.telefono}
-                                    onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-telephone form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-preview-tel"
+                                        className="form-input"
+                                        value={form.telefono}
+                                        onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-preview-bday">Cumpleaños (opcional)</label>
@@ -534,62 +552,81 @@ const Doctores = () => {
                                 <label className="form-label" htmlFor="doctor-edit-nombre">
                                     Nombre <span className="doctor-modal-required" aria-hidden="true">*</span>
                                 </label>
-                                <input
-                                    id="doctor-edit-nombre"
-                                    className="form-input"
-                                    value={form.nombre}
-                                    onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-person form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-edit-nombre"
+                                        className="form-input"
+                                        value={form.nombre}
+                                        onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+                                        autoFocus
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-edit-dni">DNI</label>
-                                <input
-                                    id="doctor-edit-dni"
-                                    className="form-input doctor-modal-mono-input"
-                                    value={form.dni}
-                                    maxLength={8}
-                                    inputMode="numeric"
-                                    onChange={e => setForm(p => ({ ...p, dni: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-person-vcard form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-edit-dni"
+                                        className="form-input doctor-modal-mono-input"
+                                        value={form.dni}
+                                        maxLength={8}
+                                        inputMode="numeric"
+                                        onChange={e => setForm(p => ({ ...p, dni: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-edit-cop">N° COP</label>
-                                <input
-                                    id="doctor-edit-cop"
-                                    className="form-input doctor-modal-mono-input"
-                                    placeholder="Ej: 12345"
-                                    value={form.cop}
-                                    onChange={e => setForm(p => ({ ...p, cop: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-award form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-edit-cop"
+                                        className="form-input doctor-modal-mono-input"
+                                        placeholder="Ej: 12345"
+                                        value={form.cop}
+                                        onChange={e => setForm(p => ({ ...p, cop: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-edit-esp">Especialidad</label>
-                                <input
-                                    id="doctor-edit-esp"
-                                    className="form-input"
-                                    placeholder="Ej: Ortodoncia"
-                                    value={form.especialidad}
-                                    onChange={e => setForm(p => ({ ...p, especialidad: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-mortarboard form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-edit-esp"
+                                        className="form-input"
+                                        placeholder="Ej: Ortodoncia"
+                                        value={form.especialidad}
+                                        onChange={e => setForm(p => ({ ...p, especialidad: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-edit-email">Email</label>
-                                <input
-                                    id="doctor-edit-email"
-                                    className="form-input"
-                                    type="email"
-                                    value={form.email}
-                                    onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-envelope form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-edit-email"
+                                        className="form-input"
+                                        type="email"
+                                        value={form.email}
+                                        onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-edit-tel">Teléfono</label>
-                                <input
-                                    id="doctor-edit-tel"
-                                    className="form-input"
-                                    value={form.telefono}
-                                    onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
-                                />
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-telephone form-input-lead" aria-hidden="true" />
+                                    <input
+                                        id="doctor-edit-tel"
+                                        className="form-input"
+                                        value={form.telefono}
+                                        onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="doctor-edit-bday">Cumpleaños</label>

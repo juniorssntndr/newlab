@@ -10,7 +10,8 @@ const FOCUSABLE_SELECTOR = [
     '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-const Modal = ({ open, onClose, title, children, footer, size = '', className = '', bodyClassName = '' }) => {
+const Modal = ({ open, isOpen, onClose, title, subtitle, icon, kicker, children, footer, size = '', className = '', bodyClassName = '' }) => {
+    const isModalOpen = Boolean(open ?? isOpen);
     const [mounted, setMounted] = useState(false);
     const modalRef = useRef(null);
     const onCloseRef = useRef(onClose);
@@ -27,7 +28,7 @@ const Modal = ({ open, onClose, title, children, footer, size = '', className = 
     }, [onClose]);
 
     useEffect(() => {
-        if (!open || !mounted) return undefined;
+        if (!isModalOpen || !mounted) return undefined;
 
         previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         const previousOverflow = document.body.style.overflow;
@@ -90,13 +91,13 @@ const Modal = ({ open, onClose, title, children, footer, size = '', className = 
             document.body.style.overflow = previousOverflow;
             previousFocusRef.current?.focus?.();
         };
-    }, [open, mounted]);
+    }, [isModalOpen, mounted]);
 
-    if (!open || !mounted) return null;
+    if (!isModalOpen || !mounted) return null;
 
     const modalContent = (
         <div className="modal-backdrop" onClick={onClose}>
-            <div className={`modal ${size === 'lg' ? 'modal-lg' : size === 'xl' ? 'modal-xl' : size === '2xl' ? 'modal-2xl' : ''} ${className}`.trim()}
+            <div className={`modal ${size === 'sm' ? 'modal-sm' : size === 'lg' ? 'modal-lg' : size === 'xl' ? 'modal-xl' : size === '2xl' ? 'modal-2xl' : ''} ${className}`.trim()}
                 ref={modalRef}
                 role="dialog"
                 aria-modal="true"
@@ -104,7 +105,18 @@ const Modal = ({ open, onClose, title, children, footer, size = '', className = 
                 tabIndex={-1}
                 onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3 className="modal-title" id={titleId}>{title}</h3>
+                    <div className="modal-header-main">
+                        {icon && (
+                            <div className="modal-avatar-badge">
+                                {typeof icon === 'string' ? <i className={`bi ${icon}`} aria-hidden="true"></i> : icon}
+                            </div>
+                        )}
+                        <div className="modal-header-text">
+                            {kicker && <div className="modal-kicker">{kicker}</div>}
+                            <h3 className="modal-title" id={titleId}>{title}</h3>
+                            {subtitle && <p className="modal-subtitle">{subtitle}</p>}
+                        </div>
+                    </div>
                     <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar modal">
                         <i className="bi bi-x-lg" aria-hidden="true"></i>
                     </button>

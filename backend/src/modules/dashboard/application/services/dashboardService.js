@@ -19,9 +19,14 @@ const toDateFromRow = (value) => {
 };
 
 const toDateKey = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string' && value.length >= 10) return value.slice(0, 10);
     const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) return String(value || '').slice(0, 10);
-    return date.toISOString().slice(0, 10);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 const average = (values) => {
@@ -77,6 +82,9 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
                 en_diseno: enDisenoCount,
                 esperando_aprobacion: esperandoAprobacionCount,
                 trabajos_por_terminar: pendientesCount + enDisenoCount + esperandoAprobacionCount + enProduccionCount,
+                en_taller: pendientesCount + enDisenoCount + esperandoAprobacionCount + enProduccionCount,
+                entregas_hoy: Number.parseInt(stats.entregasHoy?.rows?.[0]?.count || 0, 10),
+                listos_despacho: Number.parseInt(stats.listosDespacho?.rows?.[0]?.count || 0, 10),
                 retrasados: Number.parseInt(stats.retrasados.rows[0].count || 0, 10),
                 clinicas_activas: Number.parseInt(stats.clinicasActivas.rows[0].count, 10),
                 terminados_mes: Number.parseInt(stats.terminadosMes.rows[0].count, 10),
@@ -120,8 +128,10 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
     getFinance: async ({ query }) => {
         const from = toDateSql(query.from);
         const to = toDateSql(query.to);
-        const fromDate = from || new Date(Date.now() - (90 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
-        const toDate = to || new Date().toISOString().slice(0, 10);
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+        const startOfMonth = `${today.slice(0, 7)}-01`;
+        const fromDate = from || startOfMonth;
+        const toDate = to || today;
         const filters = {
             clinica_id: query.clinica_id ? Number.parseInt(query.clinica_id, 10) : null,
             producto_id: query.producto_id ? Number.parseInt(query.producto_id, 10) : null
@@ -146,7 +156,7 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
             dashboardRepository.listFinanceIncomeBreakdown({ filters, fromDate, toDate }),
             dashboardRepository.getFinanceStrategicComparisons({ filters, fromDate, toDate, prevFromDate, prevToDate }),
             dashboardRepository.listFinanceHistoricalTops({ filters, fromDate, toDate }),
-            dashboardRepository.listFinanceMonthlySeries({ filters })
+            dashboardRepository.listFinanceMonthlySeries({ filters, fromDate, toDate })
         ]);
 
         const ingresosDia = toNumber(ingresosKpis.ingresos_dia);
@@ -158,6 +168,8 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
         const ingresosAnio = toNumber(ingresosKpis.ingresos_anio);
 
         const ingresosPeriodo = toNumber(periodAggregates.ingresosPeriodo.total);
+        const ingresosPeriodoCaja = toNumber(periodAggregates.ingresosPeriodo.total_caja);
+        const ingresosPeriodoBanco = toNumber(periodAggregates.ingresosPeriodo.total_banco);
         const egresosPeriodo = toNumber(periodAggregates.egresosPeriodo.total);
 
         const gastosOperativos = periodAggregates.gastosBreakdown
@@ -206,11 +218,11 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
         const flujoPromedioDiario = calculateProjectedDailyFlow(dailyNetFlows);
         const saldoTotal = saldoCaja + saldoBancos;
 
-        const costosFijosMes = periodAggregates.gastosBreakdown
+        const costosFijosPeriodo = periodAggregates.gastosBreakdown
             .filter((row) => row.grupo_gasto === 'operativo')
             .reduce((sum, row) => sum + toNumber(row.total), 0);
 
-        const costosVariablesMes = periodAggregates.gastosBreakdown
+        const costosVariablesPeriodo = periodAggregates.gastosBreakdown
             .filter((row) => row.grupo_gasto === 'costo_directo')
             .reduce((sum, row) => sum + toNumber(row.total), 0);
 
@@ -230,8 +242,8 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
             .slice(0, 3)
             .reduce((sum, row) => sum + toNumber(row.total), 0);
 
-        const margenContribucion = ingresosMes > 0 ? (ingresosMes - costosVariablesMes) / ingresosMes : 0;
-        const puntoEquilibrio = margenContribucion > 0 ? costosFijosMes / margenContribucion : null;
+        const margenContribucion = ingresosPeriodo > 0 ? (ingresosPeriodo - costosVariablesPeriodo) / ingresosPeriodo : 0;
+        const puntoEquilibrio = margenContribucion > 0 ? costosFijosPeriodo / margenContribucion : null;
         const margenOperativo = ingresosPeriodo > 0 ? ((ingresosPeriodo - egresosPeriodo) / ingresosPeriodo) * 100 : 0;
 
         const ingresosPrevPeriodo = toNumber(strategicComparison.ingresosPrevPeriodo.total);
@@ -240,18 +252,28 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
         const ingresoSeriesMap = new Map(monthlySeries.ingresosMensuales.map((row) => [toDateKey(row.periodo), toNumber(row.ingresos)]));
         const egresoSeriesMap = new Map(monthlySeries.egresosMensuales.map((row) => [toDateKey(row.periodo), toNumber(row.egresos)]));
 
+        const startYear = Number.parseInt(fromDate.slice(0, 4), 10);
+        const startMonth = Number.parseInt(fromDate.slice(5, 7), 10) - 1;
+        const endYear = Number.parseInt(toDate.slice(0, 4), 10);
+        const endMonth = Number.parseInt(toDate.slice(5, 7), 10) - 1;
+
         const monthlySeriesMerged = [];
-        for (let i = 5; i >= 0; i -= 1) {
-            const date = new Date();
-            date.setDate(1);
-            date.setMonth(date.getMonth() - i);
-            const key = date.toISOString().slice(0, 10);
+        let curYear = startYear;
+        let curMonth = startMonth;
+
+        while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+            const key = `${curYear}-${String(curMonth + 1).padStart(2, '0')}-01`;
             monthlySeriesMerged.push({
                 periodo: key,
                 ingresos: ingresoSeriesMap.get(key) || 0,
                 egresos: egresoSeriesMap.get(key) || 0,
                 flujo_neto: (ingresoSeriesMap.get(key) || 0) - (egresoSeriesMap.get(key) || 0)
             });
+            curMonth += 1;
+            if (curMonth > 11) {
+                curMonth = 0;
+                curYear += 1;
+            }
         }
 
         return {
@@ -276,6 +298,9 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
                 mes: ingresosMes,
                 mes_caja: ingresosMesCaja,
                 mes_banco: ingresosMesBanco,
+                periodo: ingresosPeriodo,
+                periodo_caja: ingresosPeriodoCaja,
+                periodo_banco: ingresosPeriodoBanco,
                 anio: ingresosAnio,
                 por_clinica: incomeBreakdown.ingresosPorClinica.map((row) => ({
                     clinica: row.clinica,
@@ -288,23 +313,40 @@ export const makeDashboardService = ({ dashboardRepository }) => ({
             },
             gastos: {
                 mes_total: flowMonthEgresos,
+                periodo_total: egresosPeriodo,
                 total_operativos: gastosOperativos,
                 total_costos_directos: costosDirectos,
                 total_caja: egresosCaja,
                 total_banco: egresosBanco,
-                por_categoria: periodAggregates.gastosBreakdown.map((row) => ({
-                    grupo_gasto: row.grupo_gasto,
-                    categoria: row.categoria,
-                    tipo_fondo: row.tipo_fondo,
-                    total: toNumber(row.total)
-                }))
+                por_categoria: (() => {
+                    const catMap = new Map();
+                    periodAggregates.gastosBreakdown.forEach((row) => {
+                        const cat = row.categoria || 'sin_categoria';
+                        const current = catMap.get(cat) || {
+                            categoria: cat,
+                            grupo_gasto: row.grupo_gasto,
+                            total: 0
+                        };
+                        current.total += toNumber(row.total);
+                        catMap.set(cat, current);
+                    });
+                    return Array.from(catMap.values()).sort((a, b) => b.total - a.total);
+                })()
             },
             metricas: {
                 ingresos_periodo: ingresosPeriodo,
                 egresos_periodo: egresosPeriodo,
+                utilidad_neta: ingresosPeriodo - egresosPeriodo,
+                margen_neto_pct: ingresosPeriodo > 0 ? ((ingresosPeriodo - egresosPeriodo) / ingresosPeriodo) * 100 : 0,
+                flujo_neto_periodo: ingresosPeriodo - egresosPeriodo,
                 margen_operativo: margenOperativo,
                 punto_equilibrio: puntoEquilibrio,
                 flujo_proyectado_diario: flujoPromedioDiario
+            },
+            cuentas_por_cobrar: {
+                total_calle: toNumber(periodAggregates.cuentasPorCobrar?.total_deuda_calle),
+                periodo: toNumber(periodAggregates.cuentasPorCobrar?.deuda_periodo),
+                pedidos_pendientes_count: Number.parseInt(periodAggregates.cuentasPorCobrar?.pedidos_pendientes_count || 0, 10)
             },
             estrategicos: {
                 kpis: {

@@ -13,18 +13,33 @@ router.get('/', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { search, estado } = req.query;
-        let query = 'SELECT * FROM nl_clinicas WHERE 1=1';
+        let query = `
+            SELECT c.*, 
+                   u.id as usuario_id, 
+                   u.email as usuario_email, 
+                   u.nombre as usuario_nombre, 
+                   u.estado as usuario_estado,
+                   (u.id IS NOT NULL) as tiene_portal
+            FROM nl_clinicas c
+            LEFT JOIN LATERAL (
+                SELECT id, email, nombre, estado 
+                FROM nl_usuarios 
+                WHERE clinica_id = c.id AND tipo = 'cliente' 
+                ORDER BY id ASC LIMIT 1
+            ) u ON true
+            WHERE 1=1
+        `;
         const params = [];
 
         if (search) {
             params.push(`%${search}%`);
-            query += ` AND (nombre ILIKE $${params.length} OR razon_social ILIKE $${params.length} OR ruc ILIKE $${params.length})`;
+            query += ` AND (c.nombre ILIKE $${params.length} OR c.razon_social ILIKE $${params.length} OR c.ruc ILIKE $${params.length})`;
         }
         if (estado) {
             params.push(estado);
-            query += ` AND estado = $${params.length}`;
+            query += ` AND c.estado = $${params.length}`;
         }
-        query += ' ORDER BY nombre ASC';
+        query += ' ORDER BY c.nombre ASC';
 
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -158,13 +173,29 @@ router.post('/', requireRole('admin', 'operador', 'tecnico'), async (req, res, n
             nombre_comercial, estado_ruc, condicion_ruc, departamento, provincia, distrito,
             doctor_contacto_principal_id, doctor_ids = [], crm = {},
         } = req.body;
-        if (!nombre) return res.status(400).json({ error: 'Nombre es requerido' });
+        if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'Nombre es requerido' });
         if (ruc && !/^\d{11}$/.test(String(ruc))) {
             return res.status(400).json({ error: 'El RUC debe tener exactamente 11 dígitos numéricos', code: 'INVALID_DOCUMENT' });
         }
 
         try {
             const result = await withClinicTransaction(pool, async (client) => {
+                const existingClinic = await client.query(
+                    `SELECT id, nombre, ruc FROM nl_clinicas 
+                     WHERE LOWER(TRIM(nombre)) = LOWER(TRIM($1))
+                        OR ($2::text IS NOT NULL AND ruc = $2)
+                     LIMIT 1`,
+                    [nombre, ruc || null]
+                );
+                if (existingClinic.rows.length > 0) {
+                    const row = existingClinic.rows[0];
+                    const isRuc = ruc && row.ruc === ruc;
+                    const err = new Error(isRuc ? 'Ya existe una clínica con ese RUC' : `Ya existe una clínica registrada con el nombre "${row.nombre}"`);
+                    err.status = 409;
+                    err.code = isRuc ? 'DUPLICATE_RUC' : 'DUPLICATE_CLINIC_NAME';
+                    throw err;
+                }
+
                 const inserted = await client.query(
                     `INSERT INTO nl_clinicas
                         (nombre, razon_social, ruc, dni, email, telefono, direccion, contacto_nombre,
@@ -184,6 +215,9 @@ router.post('/', requireRole('admin', 'operador', 'tecnico'), async (req, res, n
             });
             return res.status(201).json(result);
         } catch (dbErr) {
+            if (dbErr.status) {
+                return res.status(dbErr.status).json({ error: dbErr.message, code: dbErr.code });
+            }
             if (dbErr.code === '23505') {
                 return res.status(409).json({ error: 'Ya existe una clínica con ese RUC', code: 'DUPLICATE_RUC' });
             }
@@ -191,8 +225,6 @@ router.post('/', requireRole('admin', 'operador', 'tecnico'), async (req, res, n
         }
     } catch (err) { next(err); }
 });
-
-// PUT /api/clinicas/:id
 router.put('/:id', requireRole('admin', 'operador', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
@@ -248,7 +280,10 @@ router.put('/:id', requireRole('admin', 'operador', 'tecnico'), async (req, res,
 router.delete('/:id', requireRole('admin'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        await pool.query('UPDATE nl_clinicas SET estado = $1 WHERE id = $2', ['inactivo', req.params.id]);
+        const clinicRes = await pool.query('UPDATE nl_clinicas SET estado = $1 WHERE id = $2 RETURNING establecimiento_id', ['inactivo', req.params.id]);
+        if (clinicRes.rows[0]?.establecimiento_id) {
+            await pool.query('UPDATE nl_crm_establecimientos SET activo = FALSE WHERE id = $1', [clinicRes.rows[0].establecimiento_id]);
+        }
         res.json({ message: 'Clínica desactivada' });
     } catch (err) { next(err); }
 });

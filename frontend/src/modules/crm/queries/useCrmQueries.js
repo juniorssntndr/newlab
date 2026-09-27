@@ -77,6 +77,15 @@ export const useCrmDoctoresQuery = (filters = {}) => {
     });
 };
 
+export const useCrmClinicasQuery = (filters = {}) => {
+    const { getHeaders } = useAuth();
+    return useQuery({
+        queryKey: ['crm', 'clinicas-oficiales', filters],
+        queryFn: () => crmApi.fetchClinicas({ filters, headers: getHeaders() }),
+        staleTime: 30000,
+    });
+};
+
 export const useCrmUsuariosQuery = () => {
     const { getHeaders } = useAuth();
     return useQuery({
@@ -103,6 +112,11 @@ export const useCrmMutations = () => {
 
     const updateEstablecimientoMutation = useMutation({
         mutationFn: ({ id, payload }) => crmApi.updateEstablecimiento({ id, payload, headers: getHeaders() }),
+        onSuccess: invalidateCrm,
+    });
+
+    const deleteEstablecimientoMutation = useMutation({
+        mutationFn: (id) => crmApi.deleteEstablecimiento({ id, headers: getHeaders() }),
         onSuccess: invalidateCrm,
     });
 
@@ -146,9 +160,36 @@ export const useCrmMutations = () => {
         onSuccess: invalidateCrm,
     });
 
+    const deleteDoctorMutation = useMutation({
+        mutationFn: (id) => crmApi.deleteDoctor({ id, headers: getHeaders() }),
+        onSuccess: invalidateCrm,
+    });
+
+    const updateDoctorClinicasMutation = useMutation({
+        mutationFn: ({ id, clinicaIds }) => crmApi.updateDoctorClinicas({ id, clinicaIds, headers: getHeaders() }),
+        onSuccess: invalidateCrm,
+    });
+
+    const updateClinicaMutation = useMutation({
+        mutationFn: ({ id, payload }) => crmApi.updateClinica({ id, payload, headers: getHeaders() }),
+        onSuccess: () => {
+            invalidateCrm();
+            queryClient.invalidateQueries({ queryKey: ['crm', 'clinicas-oficiales'] });
+        },
+    });
+
+    const deleteClinicaMutation = useMutation({
+        mutationFn: (id) => crmApi.deleteClinica({ id, headers: getHeaders() }),
+        onSuccess: () => {
+            invalidateCrm();
+            queryClient.invalidateQueries({ queryKey: ['crm', 'clinicas-oficiales'] });
+        },
+    });
+
     return {
         createEstablecimiento: createEstablecimientoMutation.mutateAsync,
         updateEstablecimiento: updateEstablecimientoMutation.mutateAsync,
+        deleteEstablecimiento: deleteEstablecimientoMutation.mutateAsync,
         assignEstablecimiento: assignEstablecimientoMutation.mutateAsync,
         convertEstablecimiento: convertEstablecimientoMutation.mutateAsync,
         createReclamo: createReclamoMutation.mutateAsync,
@@ -157,9 +198,14 @@ export const useCrmMutations = () => {
         updateVisita: updateVisitaMutation.mutateAsync,
         createDoctor: createDoctorMutation.mutateAsync,
         updateDoctor: updateDoctorMutation.mutateAsync,
+        deleteDoctor: deleteDoctorMutation.mutateAsync,
+        updateDoctorClinicas: updateDoctorClinicasMutation.mutateAsync,
+        updateClinica: updateClinicaMutation.mutateAsync,
+        deleteClinica: deleteClinicaMutation.mutateAsync,
         isPending:
             createEstablecimientoMutation.isPending ||
             updateEstablecimientoMutation.isPending ||
+            deleteEstablecimientoMutation.isPending ||
             assignEstablecimientoMutation.isPending ||
             convertEstablecimientoMutation.isPending ||
             createReclamoMutation.isPending ||
@@ -167,6 +213,10 @@ export const useCrmMutations = () => {
             createVisitaMutation.isPending ||
             updateVisitaMutation.isPending ||
             createDoctorMutation.isPending ||
-            updateDoctorMutation.isPending,
+            updateDoctorMutation.isPending ||
+            deleteDoctorMutation.isPending ||
+            updateDoctorClinicasMutation.isPending ||
+            updateClinicaMutation.isPending ||
+            deleteClinicaMutation.isPending,
     };
 };

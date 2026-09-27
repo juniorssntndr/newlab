@@ -27,7 +27,19 @@ export const makeFinanceRoutes = ({ financeController }) => {
     router.get('/sesiones-caja', labCashier, financeController.listCashSessions);
     router.post('/sesiones-caja/abrir', labCashier, financeController.openCashSession);
     router.post('/sesiones-caja/:sesionId/cerrar', labCashier, financeController.closeCashSession);
-    router.post('/sesiones-caja/:sesionId/reabrir', requireRole('admin'), financeController.reopenCashSession);
+    // Rutas de Tesorería Multi-Banco, Transferencias y Socios
+    router.get('/cuentas', labCashier, financeController.listAccountsWithBalance);
+    router.post('/cuentas', requireRole('admin'), financeController.createAccount);
+    router.put('/cuentas/:id', requireRole('admin'), financeController.updateAccount);
+    router.get('/transferencias', labCashier, financeController.listTransfers);
+    router.post('/transferencias', labCashier, financeController.registerTransfer);
+    router.get('/socios', labCashier, financeController.listSocios);
+    router.post('/socios', requireRole('admin'), financeController.createSocio);
+    router.put('/socios/:id', requireRole('admin'), financeController.updateSocio);
+    router.delete('/socios/:id', requireRole('admin'), financeController.deleteSocio);
+    router.get('/retiros-socios', labCashier, financeController.listRetirosSocios);
+    router.post('/retiros-socios', requireRole('admin'), financeController.registerRetiroSocio);
+
     router.get('/:id', labCashier, financeController.getOrderFinanceDetail);
     router.post('/:id/pagos', labCashier, validateBody(createPagoSchema), financeController.registerPago);
 

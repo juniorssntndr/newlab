@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useCrmMutations } from '../queries/useCrmQueries.js';
 import toast from 'react-hot-toast';
 
@@ -28,49 +29,57 @@ export const ComplaintModal = ({ establishment, onClose, onSaved }) => {
         }
     };
 
-    return (
+    return createPortal(
         <div className="crm-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
             <div className="crm-modal" onClick={(e) => e.stopPropagation()}>
                 <form onSubmit={handleSubmit}>
                     <div className="crm-modal-header">
-                        <div>
-                            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: '#dc2626' }}>
-                                <i className="bi bi-exclamation-triangle-fill" style={{ marginRight: '0.375rem' }}></i>
-                                Registrar Reclamo Comercial
-                            </h2>
-                            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: '0.125rem 0 0 0' }}>
-                                {establishment?.nombre}
-                            </p>
+                        <div className="crm-modal-header-main">
+                            <div className="crm-modal-avatar-badge" style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}>
+                                <i className="bi bi-exclamation-triangle-fill"></i>
+                            </div>
+                            <div className="crm-modal-header-text">
+                                <div className="crm-modal-kicker" style={{ color: '#dc2626' }}>CALIDAD Y CONTROL CLÍNICO</div>
+                                <h2 className="crm-modal-title">Registrar Reclamo u Observación</h2>
+                                <p className="crm-modal-subtitle">
+                                    {establishment?.nombre || 'Establecimiento'}
+                                </p>
+                            </div>
                         </div>
-                        <button type="button" className="crm-btn crm-btn-secondary crm-btn-icon" onClick={onClose}>
+                        <button type="button" className="crm-btn crm-btn-secondary crm-btn-icon" onClick={onClose} aria-label="Cerrar">
                             <i className="bi bi-x-lg"></i>
                         </button>
                     </div>
 
-                    <div className="crm-modal-body">
-                        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.8125rem', color: '#991b1b' }}>
-                            Un reclamo abierto eleva la prioridad visual del cliente y sugiere una visita de resolución en 7 días, conservando la causa real de salud comercial por pedidos.
+                    <div className="crm-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                        <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', padding: '0.75rem 0.875rem', borderRadius: '0.5rem', fontSize: '0.8125rem', color: '#991b1b', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                            <i className="bi bi-info-circle-fill" style={{ marginTop: '2px', flexShrink: 0 }}></i>
+                            <span>Un reclamo abierto eleva la prioridad visual del cliente y sugiere una visita técnica de resolución en 7 días.</span>
                         </div>
 
-                        <div className="crm-form-group">
+                        <div className="crm-form-group" style={{ margin: 0 }}>
                             <label className="crm-form-label">Motivo del Reclamo *</label>
-                            <input
-                                type="text"
-                                className="crm-form-control"
-                                value={motivo}
-                                onChange={(e) => setMotivo(e.target.value)}
-                                placeholder="Ej. Demora en entrega de trabajo, ajuste de mordida..."
-                                required
-                            />
+                            <div className="form-input-box has-lead">
+                                <i className="bi bi-exclamation-octagon input-icon-lead"></i>
+                                <input
+                                    type="text"
+                                    className="crm-form-control"
+                                    value={motivo}
+                                    onChange={(e) => setMotivo(e.target.value)}
+                                    placeholder="Ej. Demora en entrega de trabajo, ajuste de mordida..."
+                                    required
+                                />
+                            </div>
                         </div>
 
-                        <div className="crm-form-group">
+                        <div className="crm-form-group" style={{ margin: 0 }}>
                             <label className="crm-form-label">Detalle o Circunstancias</label>
                             <textarea
                                 className="crm-form-control"
                                 value={detalle}
                                 onChange={(e) => setDetalle(e.target.value)}
                                 placeholder="Indica detalles para que el equipo comercial y técnico puedan actuar..."
+                                rows={3}
                             ></textarea>
                         </div>
                     </div>
@@ -85,7 +94,8 @@ export const ComplaintModal = ({ establishment, onClose, onSaved }) => {
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

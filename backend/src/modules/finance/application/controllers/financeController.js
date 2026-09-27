@@ -203,6 +203,28 @@ export const makeFinanceController = ({ financeService }) => ({
             next(error);
         }
     },
+    registerConsolidatedPayment: async (req, res, next) => {
+        try {
+            const result = await financeService.registerConsolidatedPayment({
+                user: req.user,
+                body: req.body
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'movimiento_financiero',
+                    entidadId: result.meta.movimiento_id,
+                    accion: 'cobro_consolidado_created',
+                    descripcion: `Cobro consolidado en mostrador por S/. ${result.meta.total_cobrado.toFixed(2)} (${result.meta.pedidos_afectados} pedidos)`,
+                    metadata: result.meta
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
     conciliarPago: async (req, res, next) => {
         try {
             const result = await financeService.conciliarPago({
@@ -398,6 +420,94 @@ export const makeFinanceController = ({ financeService }) => ({
                 user: req.user,
                 clinicaId: req.params.clinicaId
             });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listAccountsWithBalance: async (req, res, next) => {
+        try {
+            const result = await financeService.listAccountsWithBalance({ user: req.user });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    createAccount: async (req, res, next) => {
+        try {
+            const result = await financeService.createAccount({ user: req.user, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    updateAccount: async (req, res, next) => {
+        try {
+            const result = await financeService.updateAccount({ user: req.user, accountId: req.params.id, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    registerTransfer: async (req, res, next) => {
+        try {
+            const result = await financeService.registerTransfer({ user: req.user, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listTransfers: async (req, res, next) => {
+        try {
+            const result = await financeService.listTransfers({ user: req.user, query: req.query });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listSocios: async (req, res, next) => {
+        try {
+            const result = await financeService.listSocios({ user: req.user });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    createSocio: async (req, res, next) => {
+        try {
+            const result = await financeService.createSocio({ user: req.user, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    updateSocio: async (req, res, next) => {
+        try {
+            const result = await financeService.updateSocio({ user: req.user, socioId: req.params.id, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    deleteSocio: async (req, res, next) => {
+        try {
+            const result = await financeService.deleteSocio({ user: req.user, socioId: req.params.id });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    registerRetiroSocio: async (req, res, next) => {
+        try {
+            const result = await financeService.registerRetiroSocio({ user: req.user, body: req.body });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    listRetirosSocios: async (req, res, next) => {
+        try {
+            const result = await financeService.listRetirosSocios({ user: req.user, query: req.query });
             return sendServiceResult(res, result);
         } catch (error) {
             next(error);

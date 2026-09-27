@@ -27,8 +27,11 @@ const { Pool } = pg;
 
 export const createCompositionRoot = () => {
     const pool = new Pool({ connectionString: getDatabaseUrl() });
+    pool.on('error', (err) => {
+        console.error('Unexpected error on idle pg client', err);
+    });
     const orderRepository = makeOrderPgRepository({ pool });
-    const orderService = makeOrderService({ orderRepository });
+    const orderService = makeOrderService({ orderRepository, pool });
     const orderController = makeOrderController({ orderService });
     const orderRoutes = makeOrderRoutes({ orderController });
     const financeRepository = makeFinancePgRepository({ pool });

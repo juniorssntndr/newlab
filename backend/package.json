@@ -6,7 +6,7 @@
     "scripts": {
         "start": "node src/index.js",
         "server": "node src/index.js",
-        "dev": "node --watch src/index.js",
+        "dev": "node --watch --watch-path=src src/index.js",
         "migrate": "node src/db/run_migration.js",
         "migrate:billing": "node src/db/run_billing_migrations.js",
         "bootstrap:clean": "node src/db/bootstrap_clean.js",
@@ -41,6 +41,7 @@
         "jsonwebtoken": "^9.0.2",
         "multer": "^2.0.2",
         "pg": "^8.11.5",
+        "web-push": "^3.6.7",
         "zod": "^4.1.8"
     }
 }

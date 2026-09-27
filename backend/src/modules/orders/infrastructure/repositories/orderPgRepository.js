@@ -55,7 +55,11 @@ export const makeOrderPgRepository = ({ pool }) => ({
             params.push(user.clinica_id);
             query += ` AND p.clinica_id = $${params.length}`;
         }
-        if (filters.estado) {
+        if (filters.filtro === 'retrasados' || filters.estado === 'retrasados') {
+            query += ` AND p.fecha_entrega < CURRENT_DATE AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+        } else if (filters.filtro === 'entregas_hoy' || filters.estado === 'entregas_hoy') {
+            query += ` AND p.fecha_entrega = CURRENT_DATE AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+        } else if (filters.estado) {
             params.push(filters.estado);
             query += ` AND p.estado = $${params.length}`;
         }
@@ -110,7 +114,11 @@ export const makeOrderPgRepository = ({ pool }) => ({
                 countParams.push(user.clinica_id);
                 countQuery += ` AND p.clinica_id = $${countParams.length}`;
             }
-            if (filters.estado) {
+            if (filters.filtro === 'retrasados' || filters.estado === 'retrasados') {
+                countQuery += ` AND p.fecha_entrega < CURRENT_DATE AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+            } else if (filters.filtro === 'entregas_hoy' || filters.estado === 'entregas_hoy') {
+                countQuery += ` AND p.fecha_entrega = CURRENT_DATE AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+            } else if (filters.estado) {
                 countParams.push(filters.estado);
                 countQuery += ` AND p.estado = $${countParams.length}`;
             }
@@ -139,7 +147,7 @@ export const makeOrderPgRepository = ({ pool }) => ({
     },
     getOrderBaseById: async ({ orderId }) => {
         const result = await pool.query(
-            `SELECT p.*, c.nombre as clinica_nombre, c.ruc as clinica_ruc, c.dni as clinica_dni, c.razon_social as clinica_razon_social, c.direccion as clinica_direccion, u.nombre as responsable_nombre, cr.nombre as creador_nombre,
+            `SELECT p.*, c.nombre as clinica_nombre, c.ruc as clinica_ruc, c.dni as clinica_dni, c.razon_social as clinica_razon_social, c.direccion as clinica_direccion, c.telefono as clinica_telefono, c.contacto_nombre as clinica_contacto_nombre, u.nombre as responsable_nombre, cr.nombre as creador_nombre,
               COALESCE(
                 (
                   SELECT NULLIF(TRIM(e.direccion_fiscal), '')
@@ -252,14 +260,17 @@ export const makeOrderPgRepository = ({ pool }) => ({
                     const itemTotal = (item.precio_unitario || 0) * (item.cantidad || 1);
 
                     await client.query(
-                        `INSERT INTO nl_pedido_items (pedido_id, producto_id, piezas_dentales, pilares_dentales, es_puente, pieza_inicio, pieza_fin,
+                        `INSERT INTO nl_pedido_items (pedido_id, producto_id, piezas_dentales, pilares_dentales, ponticos_dentales, tramos_detalle, guia_color, es_puente, pieza_inicio, pieza_fin,
                          material, color_vita, color_munon, textura, oclusion, notas, cantidad, precio_unitario, subtotal)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
                         [
                             pedido.id,
                             item.producto_id,
                             item.piezas_dentales || [],
                             item.pilares_dentales || [],
+                            item.ponticos_dentales || [],
+                            JSON.stringify(item.tramos_detalle || []),
+                            item.guia_color || 'vita',
                             item.es_puente || false,
                             item.pieza_inicio,
                             item.pieza_fin,

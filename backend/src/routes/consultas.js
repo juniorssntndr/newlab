@@ -94,4 +94,37 @@ router.post('/identidad', authenticateToken, requireRole('admin', 'operador', 't
     }
 });
 
+/**
+ * GET /api/consultas/catalogo-landing
+ * Endpoint público para el carrusel de servicios de la landing page.
+ */
+router.get('/catalogo-landing', async (req, res) => {
+    try {
+        const pool = req.app.locals.pool;
+        const query = `
+            SELECT 
+                p.id,
+                COALESCE(NULLIF(p.nombre_comercial, ''), p.nombre) AS name,
+                p.nombre AS technical_name,
+                COALESCE(NULLIF(p.descripcion_landing, ''), p.descripcion) AS detail,
+                COALESCE(NULLIF(p.material_comercial, ''), m.nombre, p.material_default, 'Material dental certificado') AS material,
+                p.tiempo_estimado_dias,
+                CASE 
+                    WHEN p.tiempo_estimado_dias IS NOT NULL THEN (p.tiempo_estimado_dias * 24) || ' horas'
+                    ELSE '48 horas'
+                END AS "leadTime",
+                p.image_url AS image,
+                p.orden_landing
+            FROM nl_productos p
+            LEFT JOIN nl_materiales m ON m.id = p.material_id
+            WHERE p.destacado_landing = true AND p.activo = true
+            ORDER BY p.orden_landing ASC, p.id ASC
+        `;
+        const { rows } = await pool.query(query);
+        res.json({ ok: true, data: rows });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: 'Error al obtener catálogo de la landing' });
+    }
+});
+
 export default router;

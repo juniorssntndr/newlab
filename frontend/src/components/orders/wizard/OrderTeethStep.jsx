@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import OdontogramaInteractive from '../../OdontogramaInteractive.jsx';
 import Modal from '../../Modal.jsx';
 import {
@@ -14,12 +14,21 @@ const LOWER_ARCH_SET = new Set(LOWER_ARCH);
 const VITA_GROUPS = [
     ['Tonos A', ['A1', 'A2', 'A3', 'A3.5', 'A4']],
     ['Tonos B', ['B1', 'B2', 'B3', 'B4']],
-    ['Tonos C / D / Bleach', ['C1', 'D2', 'BL1']],
+    ['Tonos C / D / Bleach', ['C1', 'C2', 'C3', 'C4', 'D2', 'D3', 'D4', 'BL1', 'BL2', 'BL3', 'BL4']],
+];
+
+const CHROMASCOP_GROUPS = [
+    ['Tonos 100 (Blanco / Claro)', ['110', '120', '130', '140']],
+    ['Tonos 200 (Amarillo cálido)', ['210', '220', '230', '240']],
+    ['Tonos 300 (Gris claro / Marrón)', ['310', '320', '330', '340']],
+    ['Tonos 400 (Gris oscuro)', ['410', '420', '430', '440']],
+    ['Tonos 500 (Rojizo / Oscuro)', ['510', '520', '530', '540']],
+    ['Bleach', ['010', '020', '030', '040']],
 ];
 
 /**
  * Paso Piezas: odontograma + tono.
- * Móvil: contenedor blanco con VITA + botón a popup de instrucciones.
+ * Móvil: contenedor blanco con selector de tono + botón a popup de instrucciones.
  * Desktop: tono + notas inline.
  */
 const OrderTeethStep = ({
@@ -27,8 +36,10 @@ const OrderTeethStep = ({
     selection,
     onChange,
     colorVita = '',
+    guiaColor = 'vita',
     notes = '',
     onColorChange,
+    onGuiaColorChange,
     onNotesChange,
     onClear,
     onContinue,
@@ -43,6 +54,26 @@ const OrderTeethStep = ({
     const hasNotes = notesValue.trim().length > 0;
     const [activeArch, setActiveArch] = useState('upper');
     const [notesOpen, setNotesOpen] = useState(false);
+    const [activeGuia, setActiveGuia] = useState(() => (
+        String(guiaColor || '').toLowerCase() === 'chromascop' ? 'chromascop' : 'vita'
+    ));
+
+    useEffect(() => {
+        if (guiaColor) {
+            const normalized = String(guiaColor).toLowerCase() === 'chromascop' ? 'chromascop' : 'vita';
+            setActiveGuia(normalized);
+        }
+    }, [guiaColor]);
+
+    const handleGuiaChange = (nextGuia) => {
+        if (nextGuia === activeGuia) return;
+        setActiveGuia(nextGuia);
+        onGuiaColorChange?.(nextGuia);
+        if (selectedShade) {
+            onColorChange?.('');
+        }
+        setPickerOpen(true);
+    };
     const [notesDraft, setNotesDraft] = useState(notesValue);
     const [isMobile, setIsMobile] = useState(() => (
         typeof window !== 'undefined' && window.matchMedia(MOBILE_ARCH_QUERY).matches
@@ -102,53 +133,190 @@ const OrderTeethStep = ({
     const mapFocus = isMobile && showOdontogram;
     const showInlineNotes = !mapFocus;
     const shadeMissing = !selectedShade;
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const pickerRef = useRef(null);
 
-    const vitaSelect = (
+    useEffect(() => {
+        if (!pickerOpen) return undefined;
+        const handleOutsideClick = (event) => {
+            if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+                setPickerOpen(false);
+            }
+        };
+        document.addEventListener('pointerdown', handleOutsideClick);
+        return () => document.removeEventListener('pointerdown', handleOutsideClick);
+    }, [pickerOpen]);
+
+    const activeGroups = activeGuia === 'chromascop' ? CHROMASCOP_GROUPS : VITA_GROUPS;
+    const guideLabel = activeGuia === 'chromascop' ? 'Chromascop' : 'VITA';
+
+    const shadeSelect = (
         <div className={`form-group order-teeth-field order-teeth-vita-field${shadeMissing ? ' is-required-empty' : ' has-shade'}`}>
-            <label className="form-label" htmlFor="order-teeth-color">
-                Tono VITA
-            </label>
-            <select
-                id="order-teeth-color"
-                className={`form-select order-teeth-vita-select${selectedShade ? ' has-value' : ' is-empty'}`}
-                value={selectedShade}
-                onChange={(event) => onColorChange?.(event.target.value)}
-                aria-label="Seleccionar tono VITA"
-                aria-required="true"
-                required
-            >
-                <option value="">Elegir tono</option>
-                {VITA_GROUPS.map(([group, values]) => (
-                    <optgroup key={group} label={group}>
-                        {values.map((value) => (
-                            <option key={value} value={value}>{value}</option>
+            <div className="order-teeth-shade-header">
+                <label className="form-label">
+                    Tono
+                </label>
+                <div className="order-teeth-guide-tabs" role="tablist" aria-label="Guía de color">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeGuia === 'vita'}
+                        className={`order-teeth-guide-tab${activeGuia === 'vita' ? ' is-active' : ''}`}
+                        onClick={() => handleGuiaChange('vita')}
+                    >
+                        VITA
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeGuia === 'chromascop'}
+                        className={`order-teeth-guide-tab${activeGuia === 'chromascop' ? ' is-active' : ''}`}
+                        onClick={() => handleGuiaChange('chromascop')}
+                    >
+                        CHROMASCOP
+                    </button>
+                </div>
+            </div>
+
+            <div className="order-teeth-shade-picker" ref={pickerRef}>
+                <button
+                    type="button"
+                    className={`order-teeth-shade-trigger${selectedShade ? ' has-value' : ' is-empty'}${pickerOpen ? ' is-open' : ''}`}
+                    onClick={() => setPickerOpen((prev) => !prev)}
+                    aria-expanded={pickerOpen}
+                    aria-haspopup="listbox"
+                    aria-label="Seleccionar tono"
+                >
+                    <div className="order-teeth-shade-trigger-main">
+                        <span
+                            className="order-teeth-shade-trigger-swatch"
+                            style={{
+                                background: selectedShade
+                                    ? (selectedShade.startsWith('0') || selectedShade.startsWith('BL') ? '#ffffff' : '#fef3c7')
+                                    : '#e2e8f0'
+                            }}
+                            aria-hidden="true"
+                        />
+                        {selectedShade ? (
+                            <>
+                                <span className="order-teeth-shade-trigger-label">{selectedShade}</span>
+                                <span className="order-teeth-shade-trigger-guide-tag">{activeGuia}</span>
+                            </>
+                        ) : (
+                            <span className="order-teeth-shade-trigger-placeholder">Elegir tono ({guideLabel})</span>
+                        )}
+                    </div>
+                    <i className="bi bi-chevron-down order-teeth-shade-trigger-chevron" aria-hidden="true" />
+                </button>
+
+                {pickerOpen && (
+                    <div className="order-teeth-shade-popover" role="listbox" aria-label={`Tonos ${guideLabel}`}>
+                        {activeGroups.map(([group, values]) => (
+                            <div key={group} className="order-teeth-shade-group">
+                                <div className="order-teeth-shade-group-title">{group}</div>
+                                <div className="order-teeth-shade-grid">
+                                    {values.map((value) => {
+                                        const isSelected = selectedShade === value;
+                                        return (
+                                            <button
+                                                key={value}
+                                                type="button"
+                                                role="option"
+                                                aria-selected={isSelected}
+                                                className={`order-teeth-shade-chip${isSelected ? ' is-selected' : ''}`}
+                                                onClick={() => {
+                                                    onColorChange?.(value);
+                                                    setPickerOpen(false);
+                                                }}
+                                            >
+                                                {value}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         ))}
-                    </optgroup>
-                ))}
-            </select>
+                    </div>
+                )}
+            </div>
+
             {shadeMissing ? (
                 <span className="order-teeth-vita-hint">Elige un tono para continuar.</span>
             ) : null}
         </div>
     );
 
+    const [helpTooltipOpen, setHelpTooltipOpen] = useState(false);
+    const helpTooltipRef = useRef(null);
+
+    useEffect(() => {
+        if (!helpTooltipOpen) return undefined;
+        const handleOutside = (event) => {
+            if (helpTooltipRef.current && !helpTooltipRef.current.contains(event.target)) {
+                setHelpTooltipOpen(false);
+            }
+        };
+        document.addEventListener('pointerdown', handleOutside);
+        return () => document.removeEventListener('pointerdown', handleOutside);
+    }, [helpTooltipOpen]);
+
     return (
         <div className={`order-teeth-step${!showOdontogram ? ' is-specs-only' : ''}${mapFocus ? ' is-map-focus' : ''}`}>
             {showOdontogram ? (
                 <div className="order-teeth-step-map">
                     <div className="order-teeth-step-map-head">
-                        <h2 className="order-teeth-step-title">
-                            {count > 0 ? 'Revisa o ajusta las piezas' : 'Selecciona las piezas'}
-                        </h2>
+                        <div className="order-teeth-title-wrap" ref={helpTooltipRef}>
+                            <h2 className="order-teeth-step-title">
+                                {count > 0 ? 'Revisa o ajusta las piezas' : 'Selecciona las piezas'}
+                            </h2>
+                            <button
+                                type="button"
+                                className={`order-teeth-help-btn${helpTooltipOpen ? ' is-active' : ''}`}
+                                onClick={() => setHelpTooltipOpen((prev) => !prev)}
+                                aria-label="¿Cómo marcar piezas?"
+                                title="¿Cómo marcar piezas?"
+                            >
+                                <i className="bi bi-question-lg" aria-hidden="true" />
+                            </button>
+
+                            {/* Tooltip Pop-up flotante orgánico (posicionado absoluto, sin empujar nada) */}
+                            {helpTooltipOpen && (
+                                <div className="order-teeth-help-floating-popover" role="tooltip">
+                                    <div className="order-teeth-help-floating-head">
+                                        <span>¿Cómo marcar piezas?</span>
+                                        <button
+                                            type="button"
+                                            className="order-teeth-help-floating-close"
+                                            onClick={() => setHelpTooltipOpen(false)}
+                                            aria-label="Cerrar"
+                                        >
+                                            <i className="bi bi-x" aria-hidden="true" />
+                                        </button>
+                                    </div>
+                                    <div className="order-teeth-help-floating-rows">
+                                        <div className="order-teeth-help-floating-row">
+                                            <span className="order-teeth-help-dot order-teeth-help-dot--blue" />
+                                            <span><strong>1 Clic / Toque:</strong> Corona unitaria</span>
+                                        </div>
+                                        <div className="order-teeth-help-floating-row">
+                                            <span className="order-teeth-help-dot order-teeth-help-dot--green" />
+                                            <span><strong>Arrastrar:</strong> Puente (conecta pilares y pónticos)</span>
+                                        </div>
+                                        <div className="order-teeth-help-floating-row">
+                                            <span className="order-teeth-help-dot order-teeth-help-dot--orange" />
+                                            <span><strong>Clic en puente:</strong> Alternar pilar / póntico</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         {count > 0 ? (
                             <button type="button" className="order-teeth-clear" onClick={clearAll}>
                                 Borrar
                             </button>
                         ) : null}
                     </div>
-                    <p className="order-teeth-step-help">
-                        Haz clic o arrastra sobre las piezas.
-                    </p>
+
                     <div
                         className="order-teeth-arch-toggle"
                         role="group"
@@ -205,7 +373,7 @@ const OrderTeethStep = ({
                     </>
                 ) : null}
 
-                {vitaSelect}
+                {shadeSelect}
 
                 {mapFocus ? (
                     <button
@@ -279,8 +447,10 @@ const OrderTeethStep = ({
                     onChange={(event) => setNotesDraft(event.target.value)}
                 />
             </Modal>
+
         </div>
     );
 };
 
 export default OrderTeethStep;
+

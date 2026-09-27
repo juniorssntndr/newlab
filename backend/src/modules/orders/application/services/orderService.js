@@ -1,6 +1,7 @@
 import { getIgvFactor } from '../../../../config/env.js';
+import { sendPushNotificationToMany } from '../../../notifications/pushNotificationService.js';
 
-export const makeOrderService = ({ orderRepository }) => {
+export const makeOrderService = ({ orderRepository, pool }) => {
     const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
     const igvFactor = getIgvFactor();
 
@@ -24,6 +25,13 @@ export const makeOrderService = ({ orderRepository }) => {
                 link
             });
         }
+        if (pool && admins.length > 0) {
+            sendPushNotificationToMany({
+                pool,
+                userIds: admins.map((a) => a.id),
+                payload: { title, body: message, url: link }
+            }).catch(() => {});
+        }
     };
 
     const notifyClinicUsers = async (clinicId, type, title, message, link) => {
@@ -36,6 +44,13 @@ export const makeOrderService = ({ orderRepository }) => {
                 message,
                 link
             });
+        }
+        if (pool && users.length > 0) {
+            sendPushNotificationToMany({
+                pool,
+                userIds: users.map((u) => u.id),
+                payload: { title, body: message, url: link }
+            }).catch(() => {});
         }
     };
 
@@ -373,7 +388,7 @@ export const makeOrderService = ({ orderRepository }) => {
             };
         }
 
-        const type = ['color', 'caso', 'final', 'otro'].includes(fileInput.type) ? fileInput.type : 'otro';
+        const type = ['color', 'caso', 'final', 'otro', 'stl', 'doc'].includes(fileInput.type) ? fileInput.type : 'otro';
         const created = await orderRepository.addOrderFile({
             orderId,
             type,

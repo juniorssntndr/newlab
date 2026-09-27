@@ -28,6 +28,7 @@ router.delete('/movimientos/:movimientoId', labCashier, delegateToFinance('delet
 // Rutas estáticas antes de /:id para que Express no capture "estado-cuenta" o "saldos-favor" como id.
 router.get('/estado-cuenta/:clinica_id', labCashier, delegateToFinance('getEstadoCuentaByClinica'));
 router.post('/pagos-masivos', labCashier, delegateToFinance('registerPagosMasivos'));
+router.post('/cobro-consolidado', labCashier, delegateToFinance('registerConsolidatedPayment'));
 router.patch('/pagos/:pagoId/conciliar', labCashier, delegateToFinance('conciliarPago'));
 router.post('/saldos-favor', labCashier, delegateToFinance('registerSaldoFavor'));
 router.post('/saldos-favor/:clinicaId', labCashier, delegateToFinance('registerSaldoFavor'));
@@ -41,6 +42,20 @@ router.get('/sesiones-caja', labCashier, delegateToFinance('listCashSessions'));
 router.post('/sesiones-caja/abrir', labCashier, delegateToFinance('openCashSession'));
 router.post('/sesiones-caja/:sesionId/cerrar', labCashier, delegateToFinance('closeCashSession'));
 router.post('/sesiones-caja/:sesionId/reabrir', requireRole('admin'), delegateToFinance('reopenCashSession'));
+
+// Rutas de Tesorería Multi-Banco, Transferencias y Socios
+router.get('/cuentas', labCashier, delegateToFinance('listAccountsWithBalance'));
+router.post('/cuentas', requireRole('admin'), delegateToFinance('createAccount'));
+router.put('/cuentas/:id', requireRole('admin'), delegateToFinance('updateAccount'));
+router.get('/transferencias', labCashier, delegateToFinance('listTransfers'));
+router.post('/transferencias', labCashier, delegateToFinance('registerTransfer'));
+router.get('/socios', labCashier, delegateToFinance('listSocios'));
+router.post('/socios', requireRole('admin'), delegateToFinance('createSocio'));
+router.put('/socios/:id', requireRole('admin'), delegateToFinance('updateSocio'));
+router.delete('/socios/:id', requireRole('admin'), delegateToFinance('deleteSocio'));
+router.get('/retiros-socios', labCashier, delegateToFinance('listRetirosSocios'));
+router.post('/retiros-socios', requireRole('admin'), delegateToFinance('registerRetiroSocio'));
+
 router.get('/:id', labCashier, delegateToFinance('getOrderFinanceDetail'));
 router.post('/:id/pagos', labCashier, validateBody(createPagoSchema), delegateToFinance('registerPago'));
 

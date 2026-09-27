@@ -69,11 +69,43 @@ const sheetRows = async (file, format) => {
     return rows;
 };
 
+const cleanHeader = (str) => String(str || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+
+const FIELD_ALIASES = {
+    nombre: ['nombre', 'nombres', 'nombrecompleto', 'title', 'doctor', 'odontologo', 'clinica', 'consultorio', 'establecimiento', 'razonsocial', 'name', 'fullname'],
+    telefono: ['telefono', 'celular', 'movil', 'phone', 'whatsapp', 'contacto'],
+    email: ['email', 'correo', 'correoelectronico', 'mail'],
+    direccion: ['direccion', 'domicilio', 'ubicacion', 'address'],
+    latitud: ['latitud', 'lat', 'latitude'],
+    longitud: ['longitud', 'lng', 'lon', 'longitude'],
+    tipo: ['tipo', 'tipoestablecimiento', 'categoria', 'type'],
+    etapa: ['etapa', 'fase', 'stage'],
+    origen: ['origen', 'fuente', 'source', 'city', 'ciudad'],
+    origen_id: ['origenid', 'id', 'codigo', 'externalid', 'pageurl'],
+    notas: ['notas', 'nota', 'observaciones', 'comentarios', 'notes', 'website', 'additionalinfo']
+};
+
 const valueFromMapping = (record, headers, mapping, field) => {
     const configured = mapping?.[field];
-    if (configured === undefined || configured === null || configured === '') return record[field];
-    if (Number.isInteger(configured)) return record[headers[configured]];
-    return record[String(configured)];
+    if (configured !== undefined && configured !== null && configured !== '') {
+        if (Number.isInteger(configured)) return record[headers[configured]];
+        return record[String(configured)];
+    }
+    if (record[field] !== undefined) return record[field];
+
+    const aliases = FIELD_ALIASES[field] || [field];
+    for (const header of headers) {
+        const cleaned = cleanHeader(header);
+        if (aliases.includes(cleaned)) {
+            return record[header];
+        }
+    }
+    return undefined;
 };
 
 const normalizeImportRows = (matrix, mapping, actorUserId) => {

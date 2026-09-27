@@ -102,3 +102,59 @@ test('Caja Diaria: reopenCashSession solo permite a usuarios con rol admin', asy
     });
     assert.equal(resAdmin.ok, true);
 });
+
+test('Cobro Mostrador: Pasa descuento comercial y motivo correctamente al repositorio', async () => {
+    let capturedInput = null;
+    const mockRepo = {
+        registerPayment: async ({ orderId, actorUserId, paymentInput }) => {
+            capturedInput = paymentInput;
+            return {
+                notFound: false,
+                pedido: { id: orderId, codigo: 'NL-00123' },
+                cuentaId: 1,
+                payment: { id: 50, pedido_id: orderId, monto: paymentInput.monto }
+            };
+        }
+    };
+
+    const service = makeFinanceService({ financeRepository: mockRepo });
+    const result = await service.registerPago({
+        user: { id: 1, tipo: 'admin' },
+        orderId: 123,
+        body: {
+            monto: 250,
+            descuento: 20,
+            motivo_descuento: 'Cortesía comercial',
+            tipo_fondo: 'caja',
+            metodo: 'efectivo'
+        }
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(capturedInput.monto, 250);
+    assert.equal(capturedInput.descuento, 20);
+    assert.equal(capturedInput.motivo_descuento, 'Cortesía comercial');
+});
+
+test('Cobro Mostrador: Propaga error cuando el repositorio rechaza descuento excesivo', async () => {
+    const mockRepo = {
+        registerPayment: async () => ({
+            accountError: 'El descuento (S/. 300.00) no puede exceder el saldo actual del pedido (S/. 270.00)'
+        })
+    };
+
+    const service = makeFinanceService({ financeRepository: mockRepo });
+    const result = await service.registerPago({
+        user: { id: 1, tipo: 'admin' },
+        orderId: 123,
+        body: {
+            monto: 250,
+            descuento: 300,
+            motivo_descuento: 'Error cajero'
+        }
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 400);
+    assert.match(result.error, /El descuento .* no puede exceder/);
+});

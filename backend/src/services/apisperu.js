@@ -234,7 +234,12 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
         if (esFactura && (!pedido.ruc || pedido.ruc.length !== 11)) {
             throw new Error('Para emitir Factura, la clínica debe tener un RUC válido (11 dígitos).');
         }
-        const itemsRes = await pool.query('SELECT * FROM nl_pedido_items WHERE pedido_id = $1', [pedidoId]);
+        const itemsRes = await pool.query(`
+            SELECT pi.*, pr.nombre AS producto_nombre
+            FROM nl_pedido_items pi
+            LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
+            WHERE pi.pedido_id = $1
+        `, [pedidoId]);
         const items = itemsRes.rows;
         if (items.length === 0) throw new Error('El pedido no tiene ítems para facturar.');
 
@@ -246,7 +251,7 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
             return {
                 codProducto: item.producto_id ? String(item.producto_id) : 'SRV001',
                 unidad: 'ZZ',
-                descripcion: `${item.material || 'Servicio Dental'} - ${item.piezas_dentales?.join(',') || 'General'}`,
+                descripcion: item.producto_nombre || item.material || 'Servicio Odontológico',
                 cantidad,
                 mtoValorUnitario: +valorUnitario.toFixed(6),
                 mtoValorVenta: +parseFloat(item.subtotal).toFixed(2),

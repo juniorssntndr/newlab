@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import * as crmApi from '../api/crmApi.js';
 import { useAuth } from '../../../state/AuthContext.jsx';
 import toast from 'react-hot-toast';
@@ -9,6 +10,24 @@ export const ImportModal = ({ onClose, onImportCompleted }) => {
     const [loading, setLoading] = useState(false);
     const [previewData, setPreviewData] = useState(null);
     const [filterStatus, setFilterStatus] = useState('todos');
+
+    const handleDownloadTemplate = () => {
+        const headers = ['Nombre', 'Telefono', 'Direccion', 'Email', 'Tipo', 'Etapa', 'Latitud', 'Longitud', 'Origen', 'Notas'];
+        const sampleRows = [
+            ['Dr. Juan Carlos Pérez', '958123456', 'Av. Cayma 405, Cayma, Arequipa', 'dr.perez@ejemplo.com', 'odontologo', 'nuevo', '-16.39889', '-71.53500', 'prospeccion_arequipa', 'Especialista en Rehabilitación Oral'],
+            ['Clínica Dental San Juan', '959888777', 'Calle Mercaderes 120, Arequipa', 'contacto@dentalsanjuan.pe', 'clinica', 'nuevo', '-16.39950', '-71.53600', 'prospeccion_arequipa', 'Dispone de 3 sillones dentales']
+        ];
+        const csvContent = '\uFEFF' + [headers.join(','), ...sampleRows.map(r => r.map(c => `"${c}"`).join(','))].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'plantilla_importacion_prospectos.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     const handleFileChange = (e) => {
         const selected = e.target.files?.[0];
@@ -64,7 +83,7 @@ export const ImportModal = ({ onClose, onImportCompleted }) => {
         return r.estado === filterStatus;
     });
 
-    return (
+    return createPortal(
         <div className="crm-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
             <div className="crm-modal" style={{ maxWidth: '850px' }} onClick={(e) => e.stopPropagation()}>
                 <div className="crm-modal-header">
@@ -101,9 +120,19 @@ export const ImportModal = ({ onClose, onImportCompleted }) => {
                                     onChange={handleFileChange}
                                     style={{ display: 'none' }}
                                 />
-                                <label htmlFor="crm-import-file-input" className="crm-btn crm-btn-secondary" style={{ cursor: 'pointer' }}>
-                                    <i className="bi bi-folder2-open"></i> {file ? file.name : 'Buscar archivo en tu equipo'}
-                                </label>
+                                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <label htmlFor="crm-import-file-input" className="crm-btn crm-btn-secondary" style={{ cursor: 'pointer' }}>
+                                        <i className="bi bi-folder2-open"></i> {file ? file.name : 'Buscar archivo en tu equipo'}
+                                    </label>
+                                    <button
+                                        type="button"
+                                        className="crm-btn crm-btn-secondary"
+                                        onClick={handleDownloadTemplate}
+                                        title="Descargar plantilla CSV con formato oficial"
+                                    >
+                                        <i className="bi bi-download text-primary"></i> Descargar Plantilla CSV
+                                    </button>
+                                </div>
                             </div>
 
                             {file && (
@@ -192,13 +221,17 @@ export const ImportModal = ({ onClose, onImportCompleted }) => {
                                                 </td>
                                                 <td style={{ fontSize: '0.75rem', color: '#64748b' }}>
                                                     {r.duplicado ? (
-                                                        <span>Coincide con: {r.duplicado.nombre || r.duplicado.criterio}</span>
-                                                    ) : r.errores && r.errores.length > 0 ? (
-                                                        <span style={{ color: '#dc2626' }}>{r.errores.join(', ')}</span>
-                                                    ) : (
-                                                        'Lista para crear'
-                                                    )}
-                                                </td>
+                                                         <span>Coincide con: {r.duplicado.nombre || r.duplicado.criterio}</span>
+                                                     ) : r.errores && r.errores.length > 0 ? (
+                                                         <span style={{ color: '#dc2626' }}>
+                                                             {Array.isArray(r.errores)
+                                                                 ? r.errores.map((e) => (typeof e === 'object' ? (e.message || e.field || JSON.stringify(e)) : String(e))).join(', ')
+                                                                 : String(r.errores)}
+                                                         </span>
+                                                     ) : (
+                                                         'Lista para crear'
+                                                     )}
+                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -252,7 +285,8 @@ export const ImportModal = ({ onClose, onImportCompleted }) => {
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

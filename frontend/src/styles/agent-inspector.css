@@ -329,3 +329,20 @@
     transform: translate(-50%, 0) scale(1);
   }
 }
+
+@media (max-width: 768px) {
+  .agent-inspector-trigger {
+    bottom: 12px;
+    right: 12px;
+    left: auto;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    opacity: 0.65;
+  }
+
+  .agent-inspector-trigger:hover,
+  .agent-inspector-trigger:focus,
+  .agent-inspector-trigger.is-active {
+    opacity: 1;
+  }
+}

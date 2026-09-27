@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import path from 'path';
 import { authenticateToken, forbidRole } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { createPedidoSchema } from '../validation/schemas.js';
@@ -8,14 +9,25 @@ const router = Router();
 router.use(authenticateToken);
 router.use(forbidRole('visitador'));
 
+const ALLOWED_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.stl', '.obj', '.ply', '.pdf', '.zip'];
+
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 8 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
     fileFilter: (req, file, cb) => {
-        if (!file.mimetype.startsWith('image/')) {
-            return cb(new Error('Solo se permiten imagenes'));
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        if (
+            file.mimetype?.startsWith('image/') ||
+            ALLOWED_EXTS.includes(ext) ||
+            file.mimetype === 'application/pdf' ||
+            file.mimetype === 'application/sla' ||
+            file.mimetype === 'application/octet-stream' ||
+            file.mimetype === 'model/stl'
+        ) {
+            cb(null, true);
+        } else {
+            cb(new Error('Formato no permitido. Se admiten fotos (PNG, JPG, WebP), modelos 3D (STL, OBJ, PLY) y documentos (PDF).'));
         }
-        cb(null, true);
     }
 });
 

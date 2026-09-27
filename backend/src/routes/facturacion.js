@@ -148,9 +148,19 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
             return res.status(400).json({ error: 'Tipo de comprobante inválido. Use 01 (Factura) o 03 (Boleta).' });
         }
         const pool = req.app.locals.pool;
+        const orderIdsToCheck = Array.isArray(req.body?.orderIds) && req.body.orderIds.length > 0
+            ? req.body.orderIds.map(Number).filter(n => Number.isInteger(n) && n > 0)
+            : [Number(req.params.pedidoId)];
+
         const existing = await pool.query(
-            "SELECT id, estado_sunat, idempotency_key FROM nl_comprobantes WHERE pedido_id = $1 AND estado_sunat != 'anulado' ORDER BY created_at DESC LIMIT 1",
-            [req.params.pedidoId]
+            `SELECT c.id, c.estado_sunat, c.idempotency_key, p.codigo AS pedido_codigo
+             FROM nl_comprobante_pedidos cp
+             JOIN nl_comprobantes c ON c.id = cp.comprobante_id
+             JOIN nl_pedidos p ON p.id = cp.pedido_id
+             WHERE cp.pedido_id = ANY($1::int[])
+               AND c.estado_sunat != 'anulado'
+             ORDER BY c.created_at DESC LIMIT 1`,
+            [orderIdsToCheck]
         );
         if (existing.rows.length > 0) {
             const current = existing.rows[0];
@@ -158,7 +168,7 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
                 && current.idempotency_key === req.body.idempotencyKey
                 && ['generado', 'error'].includes(current.estado_sunat);
             if (!sameRetry) {
-                return res.status(409).json({ error: 'El pedido ya tiene un comprobante activo emitido.' });
+                return res.status(409).json({ error: `El pedido ${current.pedido_codigo || ''} ya tiene un comprobante activo emitido.` });
             }
         }
 
@@ -223,6 +233,20 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
 
             const persisted = await pool.query('SELECT * FROM nl_comprobantes WHERE id = $1 LIMIT 1', [result.data.invoiceId]);
             comprobante = persisted.rows[0] || result.data;
+        }
+
+        // Vincular comprobante a todos los pedidos involucrados en caso de consolidación
+        if (comprobante?.id) {
+            const orderIdsToLink = Array.isArray(req.body?.orderIds) && req.body.orderIds.length > 0
+                ? req.body.orderIds.map(Number).filter(n => Number.isInteger(n) && n > 0)
+                : [Number(req.params.pedidoId)];
+
+            for (const pid of orderIdsToLink) {
+                await pool.query(
+                    'INSERT INTO nl_comprobante_pedidos (comprobante_id, pedido_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                    [comprobante.id, pid]
+                );
+            }
         }
 
         // Persistir receptor local solo si no constaba en RENIEC/SUNAT
@@ -330,6 +354,31 @@ router.get('/resumenes-diarios/:resumenId/status', async (req, res, next) => {
     }
 });
 
+// ─── GET /empresa ─────────────────────────────────────────────────────────────
+router.get('/empresa', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const { rows } = await pool.query(`
+            SELECT 
+                id, ruc, razon_social, nombre_comercial, direccion_fiscal, ubigeo,
+                entorno, serie_factura, serie_boleta, activo,
+                CASE WHEN token_apisperu IS NOT NULL AND length(trim(token_apisperu)) > 10 THEN true ELSE false END AS has_token
+            FROM nl_empresas
+            WHERE activo = true
+            ORDER BY id ASC
+            LIMIT 1
+        `);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Empresa emisora no configurada.' });
+        }
+
+        res.json({ data: rows[0] });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // ─── GET /comprobantes/:id/print ─────────────────────────────────────────────
 router.get('/comprobantes/:id/print', async (req, res, next) => {
     try {
@@ -375,17 +424,36 @@ router.get('/comprobantes/:id/print', async (req, res, next) => {
         const receptor_direccion = row.receptor_direccion || row.cl_direccion || '';
         const receptor_tipo_doc = row.receptor_tipo_doc || (receptor_documento.length === 11 ? '6' : '1');
 
-        const { rows: itemRows } = await pool.query(`
+        let { rows: itemRows } = await pool.query(`
             SELECT
-                COALESCE(NULLIF(TRIM(pi.material), ''), pr.nombre, 'Servicio dental') AS descripcion,
+                COALESCE(NULLIF(TRIM(pr.nombre), ''), NULLIF(TRIM(pi.material), ''), 'Servicio dental') AS descripcion,
                 pi.cantidad,
                 pi.precio_unitario,
-                pi.subtotal
-            FROM nl_pedido_items pi
+                pi.subtotal,
+                p.codigo AS pedido_codigo,
+                p.paciente_nombre
+            FROM nl_comprobante_pedidos cp
+            JOIN nl_pedido_items pi ON pi.pedido_id = cp.pedido_id
+            JOIN nl_pedidos p ON p.id = cp.pedido_id
             LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
-            WHERE pi.pedido_id = $1
-            ORDER BY pi.id
-        `, [row.pedido_id]);
+            WHERE cp.comprobante_id = $1
+            ORDER BY cp.pedido_id, pi.id
+        `, [id]);
+
+        if (itemRows.length === 0) {
+            const fallback = await pool.query(`
+                SELECT
+                    COALESCE(NULLIF(TRIM(pr.nombre), ''), NULLIF(TRIM(pi.material), ''), 'Servicio dental') AS descripcion,
+                    pi.cantidad,
+                    pi.precio_unitario,
+                    pi.subtotal
+                FROM nl_pedido_items pi
+                LEFT JOIN nl_productos pr ON pr.id = pi.producto_id
+                WHERE pi.pedido_id = $1
+                ORDER BY pi.id
+            `, [row.pedido_id]);
+            itemRows = fallback.rows;
+        }
 
         const isDemoUrl = (url) => {
             if (!url) return false;
@@ -493,6 +561,24 @@ router.get('/:comprobanteId/status', async (req, res, next) => {
     }
 });
 
+// ─── POST /:comprobanteId/sincronizar ─────────────────────────────────────────
+router.post('/:comprobanteId/sincronizar', async (req, res, next) => {
+    try {
+        if (!requireTecnico(req, res)) return;
+        const pool = req.app.locals.pool;
+        const billingModule = getBillingModule(req);
+        const { syncOrRetryComprobante } = await import('../modules/billing/application/services/billingPassiveWorker.js');
+        const result = await syncOrRetryComprobante({
+            pool,
+            billingModule,
+            comprobanteId: req.params.comprobanteId
+        });
+        res.json(result);
+    } catch (err) {
+        next(err);
+    }
+});
+
 // ─── GET /:pedidoId — Comprobantes de un pedido ───────────────────────────────
 router.get('/:pedidoId', async (req, res, next) => {
     try {
@@ -559,7 +645,16 @@ router.get('/', async (req, res, next) => {
         }
         if (q) {
             params.push(`%${q}%`);
-            conditions.push(`(p.paciente_nombre ILIKE $${params.length} OR CONCAT(c.serie,'-',c.correlativo) ILIKE $${params.length})`);
+            conditions.push(`(
+                p.paciente_nombre ILIKE $${params.length}
+                OR CONCAT(c.serie,'-',c.correlativo) ILIKE $${params.length}
+                OR EXISTS (
+                    SELECT 1 FROM nl_comprobante_pedidos cp_q
+                    JOIN nl_pedidos p_q ON p_q.id = cp_q.pedido_id
+                    WHERE cp_q.comprobante_id = c.id
+                      AND (p_q.codigo ILIKE $${params.length} OR p_q.paciente_nombre ILIKE $${params.length})
+                )
+            )`);
         }
 
         const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -579,7 +674,19 @@ router.get('/', async (req, res, next) => {
                    p.codigo AS pedido_codigo,
                    p.paciente_nombre,
                    cl.nombre AS clinica_nombre,
-                   (SELECT COUNT(*) FROM nl_notas_credito WHERE comprobante_id = c.id) AS notas_credito_count
+                   (SELECT COUNT(*) FROM nl_notas_credito WHERE comprobante_id = c.id) AS notas_credito_count,
+                   (
+                       SELECT json_agg(json_build_object('id', cp_p.id, 'codigo', cp_p.codigo, 'paciente_nombre', cp_p.paciente_nombre))
+                       FROM nl_comprobante_pedidos cp
+                       JOIN nl_pedidos cp_p ON cp_p.id = cp.pedido_id
+                       WHERE cp.comprobante_id = c.id
+                   ) AS pedidos_vinculados,
+                   (
+                       SELECT array_agg(cp_p.codigo)
+                       FROM nl_comprobante_pedidos cp
+                       JOIN nl_pedidos cp_p ON cp_p.id = cp.pedido_id
+                       WHERE cp.comprobante_id = c.id
+                   ) AS pedidos_codigos
             FROM nl_comprobantes c
             JOIN nl_pedidos p ON c.pedido_id = p.id
             LEFT JOIN nl_clinicas cl ON p.clinica_id = cl.id
