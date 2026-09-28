@@ -4,6 +4,7 @@ import Sidebar from './Sidebar.jsx';
 import Header from './Header.jsx';
 import NotificationToasts from './NotificationToasts.jsx';
 import NotificationPermissionModal from './notifications/NotificationPermissionModal.jsx';
+import DoctorGiftTicketPopup from './DoctorGiftTicketPopup.jsx';
 
 const Layout = () => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -25,6 +26,7 @@ const Layout = () => {
             </main>
             <NotificationToasts />
             <NotificationPermissionModal />
+            <DoctorGiftTicketPopup />
         </div>
     );
 };

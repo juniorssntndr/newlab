@@ -8,10 +8,14 @@ router.use(authenticateToken);
 // Helper to get db pool
 const getPool = (req) => req.app.locals.pool;
 
-// Helper to generate unique coupon codes
-const generateCouponCode = (prefix = 'RUL') => {
-    const randomHex = crypto.randomBytes(3).toString('hex').toUpperCase();
-    return `${prefix}-${randomHex}`;
+// Generador de códigos limpios de exactamente 6 caracteres (alfanumérico sin caracteres confusos)
+const generate6DigitCode = () => {
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
 };
 
 // =========================================================================
@@ -88,11 +92,13 @@ router.post('/cupones', forbidRole('cliente'), async (req, res) => {
             INSERT INTO nl_descuentos (
                 codigo, descripcion, tipo, valor, tope_descuento_maximo,
                 monto_minimo_pedido, limite_usos_total, limite_usos_por_doctor,
-                fecha_inicio, fecha_fin, clinica_id, creado_por, origen, evento_nombre
+                fecha_inicio, fecha_fin, clinica_id, creado_por, origen, evento_nombre,
+                para_un_solo_producto
             ) VALUES (
                 $1, $2, $3, $4, $5,
                 $6, $7, $8,
-                COALESCE($9, NOW()), $10, $11, $12, COALESCE($13, 'manual'), $14
+                COALESCE($9, NOW()), $10, $11, $12, COALESCE($13, 'manual'), $14,
+                TRUE
             ) RETURNING *
         `, [
             cleanCode,
@@ -144,7 +150,6 @@ router.delete('/cupones/:id', requireRole('admin'), async (req, res) => {
         const check = await pool.query('SELECT usos_actuales FROM nl_descuentos WHERE id = $1', [id]);
         if (check.rows.length === 0) return res.status(404).json({ error: 'Cupón no encontrado' });
         if (check.rows[0].usos_actuales > 0) {
-            // Desactivar en lugar de borrar si ya tiene usos históricos
             await pool.query('UPDATE nl_descuentos SET activo = FALSE, updated_at = NOW() WHERE id = $1', [id]);
             return res.json({ ok: true, message: 'Cupón desactivado (conserva historial de auditoría)' });
         }
@@ -247,7 +252,8 @@ router.post('/cupones/validar', async (req, res) => {
                 descripcion: coupon.descripcion,
                 monto_descuento: montoDescuento,
                 total_original: orderTotal,
-                total_final: totalFinal
+                total_final: totalFinal,
+                para_un_solo_producto: coupon.para_un_solo_producto
             }
         });
     } catch (err) {
@@ -256,14 +262,51 @@ router.post('/cupones/validar', async (req, res) => {
 });
 
 // =========================================================================
-// 4. RULETA DE LA SUERTE (HERRAMIENTA DE EVENTOS / VISITAS)
+// 4. GESTIÓN Y PERSONALIZACIÓN DE SECTORES / PREMIOS (RULETA)
 // =========================================================================
-router.get('/ruleta/premios', forbidRole('cliente'), async (req, res) => {
+
+// Listar todos los premios/sectores para administración (incluyendo inactivos y stock)
+router.get('/ruleta/premios/admin', forbidRole('cliente'), async (req, res) => {
+    const pool = getPool(req);
+    try {
+        const result = await pool.query(`
+            SELECT 
+                p.*,
+                CASE 
+                    WHEN p.stock_disponible IS NOT NULL AND p.stock_entregado >= p.stock_disponible THEN TRUE 
+                    ELSE FALSE 
+                END AS agotado
+            FROM nl_ruleta_premios p 
+            ORDER BY p.orden ASC, p.id ASC
+        `);
+
+        // Calcular probabilidad porcentual de los premios activos con stock
+        const activos = result.rows.filter(p => p.activo && (!p.stock_disponible || p.stock_entregado < p.stock_disponible));
+        const totalPesoActivo = activos.reduce((acc, p) => acc + (Number(p.probabilidad_peso) || 1), 0);
+
+        const conPorcentaje = result.rows.map(p => {
+            const isEligible = p.activo && (!p.stock_disponible || p.stock_entregado < p.stock_disponible);
+            const probPct = isEligible && totalPesoActivo > 0 
+                ? Number(((Number(p.probabilidad_peso) / totalPesoActivo) * 100).toFixed(1)) 
+                : 0;
+            return { ...p, probabilidad_porcentaje: probPct };
+        });
+
+        res.json({ ok: true, data: conPorcentaje, totalPesoActivo });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al cargar administración de premios', details: err.message });
+    }
+});
+
+// Obtener premios activos disponibles para girar (público / kiosco)
+router.get('/ruleta/premios', async (req, res) => {
     const pool = getPool(req);
     try {
         const result = await pool.query(`
             SELECT * FROM nl_ruleta_premios 
-            ORDER BY id ASC
+            WHERE activo = TRUE 
+              AND (stock_disponible IS NULL OR stock_entregado < stock_disponible)
+            ORDER BY orden ASC, id ASC
         `);
         res.json({ ok: true, data: result.rows });
     } catch (err) {
@@ -271,28 +314,167 @@ router.get('/ruleta/premios', forbidRole('cliente'), async (req, res) => {
     }
 });
 
-router.post('/ruleta/girar', forbidRole('cliente'), async (req, res) => {
+// Crear nuevo sector / premio
+router.post('/ruleta/premios', forbidRole('cliente'), async (req, res) => {
+    const pool = getPool(req);
+    const {
+        titulo,
+        tipo_premio,
+        valor,
+        descripcion,
+        color_hex,
+        texto_color,
+        probabilidad_peso,
+        stock_disponible
+    } = req.body;
+
+    if (!titulo || !tipo_premio) {
+        return res.status(400).json({ error: 'Título y tipo de premio son requeridos' });
+    }
+
+    try {
+        const insertRes = await pool.query(`
+            INSERT INTO nl_ruleta_premios (
+                titulo, tipo_premio, valor, descripcion, color_hex, texto_color,
+                probabilidad_peso, stock_disponible, stock_entregado, activo
+            ) VALUES ($1, $2, $3, $4, COALESCE($5, '#0284c7'), COALESCE($6, '#ffffff'), COALESCE($7, 10), $8, 0, TRUE)
+            RETURNING *
+        `, [
+            String(titulo).trim(),
+            tipo_premio,
+            valor !== undefined && valor !== null && valor !== '' ? Number(valor) : 0,
+            descripcion || null,
+            color_hex,
+            texto_color,
+            probabilidad_peso ? Number.parseInt(probabilidad_peso, 10) : 10,
+            stock_disponible !== undefined && stock_disponible !== null && stock_disponible !== '' 
+                ? Number.parseInt(stock_disponible, 10) 
+                : null
+        ]);
+
+        res.status(201).json({ ok: true, data: insertRes.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al crear sector de la ruleta', details: err.message });
+    }
+});
+
+// Modificar sector / premio
+router.put('/ruleta/premios/:id', forbidRole('cliente'), async (req, res) => {
+    const pool = getPool(req);
+    const { id } = req.params;
+    const {
+        titulo,
+        tipo_premio,
+        valor,
+        descripcion,
+        color_hex,
+        texto_color,
+        probabilidad_peso,
+        stock_disponible,
+        activo
+    } = req.body;
+
+    try {
+        const updateRes = await pool.query(`
+            UPDATE nl_ruleta_premios 
+            SET 
+                titulo = COALESCE($1, titulo),
+                tipo_premio = COALESCE($2, tipo_premio),
+                valor = COALESCE($3, valor),
+                descripcion = $4,
+                color_hex = COALESCE($5, color_hex),
+                texto_color = COALESCE($6, texto_color),
+                probabilidad_peso = COALESCE($7, probabilidad_peso),
+                stock_disponible = $8,
+                activo = COALESCE($9, activo),
+                updated_at = NOW()
+            WHERE id = $10
+            RETURNING *
+        `, [
+            titulo,
+            tipo_premio,
+            valor !== undefined ? Number(valor) : null,
+            descripcion || null,
+            color_hex,
+            texto_color,
+            probabilidad_peso !== undefined ? Number.parseInt(probabilidad_peso, 10) : null,
+            stock_disponible !== undefined && stock_disponible !== null && stock_disponible !== '' 
+                ? Number.parseInt(stock_disponible, 10) 
+                : null,
+            activo,
+            id
+        ]);
+
+        if (updateRes.rows.length === 0) return res.status(404).json({ error: 'Sector no encontrado' });
+        res.json({ ok: true, data: updateRes.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al actualizar sector', details: err.message });
+    }
+});
+
+// Alternar estado activo / inactivo de un sector
+router.patch('/ruleta/premios/:id/toggle', forbidRole('cliente'), async (req, res) => {
+    const pool = getPool(req);
+    const { id } = req.params;
+    try {
+        const updateRes = await pool.query(`
+            UPDATE nl_ruleta_premios 
+            SET activo = NOT activo, updated_at = NOW() 
+            WHERE id = $1 
+            RETURNING *
+        `, [id]);
+        if (updateRes.rows.length === 0) return res.status(404).json({ error: 'Sector no encontrado' });
+        res.json({ ok: true, data: updateRes.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al cambiar estado del sector', details: err.message });
+    }
+});
+
+// Eliminar o desactivar sector de ruleta
+router.delete('/ruleta/premios/:id', forbidRole('cliente'), async (req, res) => {
+    const pool = getPool(req);
+    const { id } = req.params;
+    try {
+        const check = await pool.query('SELECT COUNT(*)::int AS total FROM nl_ruleta_giros WHERE premio_id = $1', [id]);
+        if (check.rows[0].total > 0) {
+            await pool.query('UPDATE nl_ruleta_premios SET activo = FALSE, updated_at = NOW() WHERE id = $1', [id]);
+            return res.json({ ok: true, message: 'Sector desactivado (conserva historial de giros pasados)' });
+        }
+        const delRes = await pool.query('DELETE FROM nl_ruleta_premios WHERE id = $1 RETURNING id', [id]);
+        if (delRes.rows.length === 0) return res.status(404).json({ error: 'Sector no encontrado' });
+        res.json({ ok: true, message: 'Sector eliminado exitosamente' });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al eliminar sector', details: err.message });
+    }
+});
+
+// =========================================================================
+// 5. GIRO DE LA RULETA (EJECUCIÓN, STOCK, GENERACIÓN DE TICKET Y NOTIFICACIÓN)
+// =========================================================================
+router.post('/ruleta/girar', async (req, res) => {
     const pool = getPool(req);
     const { doctor_nombre, clinica_id, doctor_telefono, evento_nombre } = req.body;
 
     if (!doctor_nombre || !String(doctor_nombre).trim()) {
-        return res.status(400).json({ error: 'El nombre del doctor es requerido para registrar el giro.' });
+        return res.status(400).json({ error: 'El nombre del doctor es requerido para participar.' });
     }
 
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        // 1. Obtener premios activos con sus ponderaciones
+        // 1. Obtener premios activos que tengan stock disponible
         const premiosRes = await client.query(`
             SELECT * FROM nl_ruleta_premios 
             WHERE activo = TRUE 
-            ORDER BY id ASC
+              AND (stock_disponible IS NULL OR stock_entregado < stock_disponible)
+            ORDER BY orden ASC, id ASC
+            FOR UPDATE
         `);
 
         if (premiosRes.rows.length === 0) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: 'No hay premios activos configurados en la ruleta.' });
+            return res.status(400).json({ error: 'No hay premios disponibles actualmente en la ruleta.' });
         }
 
         const premios = premiosRes.rows;
@@ -311,40 +493,47 @@ router.post('/ruleta/girar', forbidRole('cliente'), async (req, res) => {
             randomNum -= peso;
         }
 
-        let couponCodeGenerated = null;
+        // 3. Descontar stock entregado
+        await client.query(`
+            UPDATE nl_ruleta_premios 
+            SET stock_entregado = stock_entregado + 1, updated_at = NOW() 
+            WHERE id = $1
+        `, [selectedPrize.id]);
 
-        // 3. Si el premio es descuento (porcentaje o monto_fijo), generar cupón real
+        let couponCodeGenerated = null;
+        const fechaVencimientoTicket = new Date();
+        fechaVencimientoTicket.setDate(fechaVencimientoTicket.getDate() + 30); // Exactamente 30 días (1 mes)
+
+        // 4. Si el premio es descuento (porcentaje o monto_fijo), generar código de 6 dígitos
         if (['porcentaje', 'monto_fijo'].includes(selectedPrize.tipo_premio) && Number(selectedPrize.valor) > 0) {
-            couponCodeGenerated = generateCouponCode('RUL');
-            const fechaFin = new Date();
-            fechaFin.setDate(fechaFin.getDate() + 30); // 30 días de vigencia por defecto
+            couponCodeGenerated = generate6DigitCode();
 
             await client.query(`
                 INSERT INTO nl_descuentos (
                     codigo, descripcion, tipo, valor, limite_usos_total, limite_usos_por_doctor,
-                    fecha_fin, clinica_id, creado_por, origen, evento_nombre
+                    fecha_fin, clinica_id, creado_por, origen, evento_nombre, para_un_solo_producto
                 ) VALUES (
                     $1, $2, $3, $4, 1, 1,
-                    $5, $6, $7, 'ruleta_evento', $8
+                    $5, $6, $7, 'ruleta_evento', $8, TRUE
                 )
             `, [
                 couponCodeGenerated,
-                `Premio Ruleta: ${selectedPrize.titulo} (Evento: ${evento_nombre || 'Visita Asesor'})`,
+                `Premio Ruleta: ${selectedPrize.titulo} (Evento: ${evento_nombre || 'Visita Asesor'}) - Válido para 1 solo trabajo`,
                 selectedPrize.tipo_premio,
                 Number(selectedPrize.valor),
-                fechaFin,
+                fechaVencimientoTicket,
                 clinica_id ? Number(clinica_id) : null,
                 req.user?.id || null,
                 evento_nombre || 'Visita a Clínica'
             ]);
         }
 
-        // 4. Registrar giro en la auditoría
+        // 5. Registrar giro en el historial
         const giroRes = await client.query(`
             INSERT INTO nl_ruleta_giros (
                 premio_id, asesor_usuario_id, clinica_id, doctor_nombre, doctor_telefono,
-                evento_nombre, codigo_descuento_generado
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                evento_nombre, codigo_descuento_generado, fecha_vencimiento_ticket
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
         `, [
             selectedPrize.id,
@@ -353,8 +542,45 @@ router.post('/ruleta/girar', forbidRole('cliente'), async (req, res) => {
             String(doctor_nombre).trim(),
             doctor_telefono ? String(doctor_telefono).trim() : null,
             evento_nombre ? String(evento_nombre).trim() : 'Visita a Clínica',
-            couponCodeGenerated
+            couponCodeGenerated,
+            fechaVencimientoTicket
         ]);
+
+        // 6. Si se asignó a una clínica que tiene cuenta en el portal, enviar notificación con pop-up
+        if (clinica_id) {
+            const clinicUsers = await client.query(`
+                SELECT id, nombre, email FROM nl_usuarios 
+                WHERE clinica_id = $1 AND tipo = 'cliente' AND activo = TRUE
+            `, [clinica_id]);
+
+            for (const user of clinicUsers.rows) {
+                const notifTitulo = '🎉 ¡Tienes un nuevo regalo en tu portal AFINIX LAB!';
+                const notifMensaje = couponCodeGenerated
+                    ? `Felicidades Dr(a). Has ganado un ${selectedPrize.titulo}. Tu código exclusivo es: ${couponCodeGenerated}. Válido por 30 días para tu próximo pedido.`
+                    : `Felicidades Dr(a). Has ganado: ${selectedPrize.titulo}. Tu asesor te entregará el detalle.`;
+
+                const ticketData = JSON.stringify({
+                    codigo: couponCodeGenerated,
+                    premio_titulo: selectedPrize.titulo,
+                    tipo_premio: selectedPrize.tipo_premio,
+                    valor: selectedPrize.valor,
+                    doctor_nombre: doctor_nombre.trim(),
+                    fecha_vencimiento: fechaVencimientoTicket.toISOString(),
+                    evento_nombre: evento_nombre || 'Visita Comercial Afinix',
+                    para_un_solo_producto: true
+                });
+
+                await client.query(`
+                    INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link, data)
+                    VALUES ($1, 'premio_ruleta', $2, $3, '/pedidos/nuevo', $4)
+                `, [
+                    user.id,
+                    notifTitulo,
+                    notifMensaje,
+                    ticketData
+                ]);
+            }
+        }
 
         await client.query('COMMIT');
 
@@ -362,7 +588,17 @@ router.post('/ruleta/girar', forbidRole('cliente'), async (req, res) => {
             ok: true,
             premio: selectedPrize,
             giro: giroRes.rows[0],
-            codigo_descuento: couponCodeGenerated
+            codigo_descuento: couponCodeGenerated,
+            ticket: {
+                codigo: couponCodeGenerated,
+                premio_titulo: selectedPrize.titulo,
+                tipo_premio: selectedPrize.tipo_premio,
+                valor: selectedPrize.valor,
+                doctor_nombre: doctor_nombre.trim(),
+                fecha_vencimiento: fechaVencimientoTicket.toISOString(),
+                para_un_solo_producto: true,
+                evento_nombre: evento_nombre || 'Visita Comercial'
+            }
         });
     } catch (err) {
         await client.query('ROLLBACK');

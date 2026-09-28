@@ -141,6 +141,14 @@ const NuevoPedido = () => {
     const [validatingCoupon, setValidatingCoupon] = useState(false);
     const [couponError, setCouponError] = useState('');
 
+    useEffect(() => {
+        const pending = sessionStorage.getItem('afinix_pending_coupon');
+        if (pending) {
+            setCouponInput(pending);
+            sessionStorage.removeItem('afinix_pending_coupon');
+        }
+    }, []);
+
     const baseOrderTotal = useMemo(() => {
         const base = Number(total || 0);
         if (!isExpressOrder || base <= 0) return base;

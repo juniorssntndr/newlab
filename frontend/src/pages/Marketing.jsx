@@ -13,8 +13,28 @@ export default function Marketing() {
     const [metricas, setMetricas] = useState(null);
     const [cupones, setCupones] = useState([]);
     const [historialGiros, setHistorialGiros] = useState([]);
+    const [sectoresRuleta, setSectoresRuleta] = useState([]);
+    const [totalPesoActivo, setTotalPesoActivo] = useState(0);
     const [clinicas, setClinicas] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Sub-pestaña dentro de Ruleta
+    const [ruletaSubTab, setRuletaSubTab] = useState('girar'); // 'girar' | 'sectores' | 'historial'
+
+    // Modal Crear/Editar Sector de Ruleta
+    const [showSectorModal, setShowSectorModal] = useState(false);
+    const [editingSector, setEditingSector] = useState(null);
+    const [savingSector, setSavingSector] = useState(false);
+    const [sectorForm, setSectorForm] = useState({
+        titulo: '',
+        tipo_premio: 'porcentaje',
+        valor: '10',
+        descripcion: '',
+        color_hex: '#0284c7',
+        texto_color: '#ffffff',
+        probabilidad_peso: '10',
+        stock_disponible: ''
+    });
 
     // Modal Crear Cupón
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -37,11 +57,12 @@ export default function Marketing() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [metricasRes, cuponesRes, girosRes, clinicasRes] = await Promise.all([
+            const [metricasRes, cuponesRes, girosRes, clinicasRes, premiosRes] = await Promise.all([
                 apiClient.get('/api/marketing/metricas', { headers: getHeaders() }).catch(() => ({ data: { data: null } })),
                 apiClient.get('/api/marketing/cupones', { headers: getHeaders() }).catch(() => ({ data: { data: [] } })),
                 apiClient.get('/api/marketing/ruleta/historial', { headers: getHeaders() }).catch(() => ({ data: { data: [] } })),
-                apiClient.get('/api/clinicas', { headers: getHeaders() }).catch(() => ({ data: [] }))
+                apiClient.get('/api/clinicas', { headers: getHeaders() }).catch(() => []),
+                apiClient.get('/api/marketing/ruleta/premios/admin', { headers: getHeaders() }).catch(() => ({ data: [] }))
             ]);
 
             const mData = metricasRes?.data !== undefined ? metricasRes.data : metricasRes;
@@ -55,6 +76,10 @@ export default function Marketing() {
 
             const clData = Array.isArray(clinicasRes) ? clinicasRes : (clinicasRes?.data || []);
             setClinicas(clData);
+
+            const pData = premiosRes?.data !== undefined ? premiosRes.data : premiosRes;
+            setSectoresRuleta(Array.isArray(pData) ? pData : []);
+            setTotalPesoActivo(premiosRes?.totalPesoActivo || 0);
         } catch (err) {
             toast.error('Error al sincronizar datos de marketing');
         } finally {
@@ -151,6 +176,108 @@ export default function Marketing() {
         { value: 'porcentaje', label: 'Porcentaje (% de descuento)' },
         { value: 'monto_fijo', label: 'Monto Fijo en Soles (S/. descuento)' }
     ];
+
+    const prizeTypeOptions = [
+        { value: 'porcentaje', label: 'Descuento Porcentual (% OFF)' },
+        { value: 'monto_fijo', label: 'Descuento Fijo en Soles (S/. OFF)' },
+        { value: 'merch', label: 'Merchandising / Regalo Físico (Agenda, Taza, etc.)' },
+        { value: 'sin_premio', label: 'Sin Premio (Sigue intentando)' }
+    ];
+
+    const colorPresets = [
+        { hex: '#0284c7', label: 'Azul Afinix' },
+        { hex: '#0369a1', label: 'Azul Marino' },
+        { hex: '#f59e0b', label: 'Dorado Ámbar' },
+        { hex: '#10b981', label: 'Verde Éxito' },
+        { hex: '#8b5cf6', label: 'Violeta / Púrpura' },
+        { hex: '#ec4899', label: 'Rosa Magenta' },
+        { hex: '#ef4444', label: 'Rojo Coral' },
+        { hex: '#475569', label: 'Gris Grafito' }
+    ];
+
+    const handleOpenNewSector = () => {
+        setEditingSector(null);
+        setSectorForm({
+            titulo: '',
+            tipo_premio: 'porcentaje',
+            valor: '10',
+            descripcion: '',
+            color_hex: '#0284c7',
+            texto_color: '#ffffff',
+            probabilidad_peso: '10',
+            stock_disponible: ''
+        });
+        setShowSectorModal(true);
+    };
+
+    const handleOpenEditSector = (sector) => {
+        setEditingSector(sector);
+        setSectorForm({
+            titulo: sector.titulo,
+            tipo_premio: sector.tipo_premio,
+            valor: sector.valor !== null && sector.valor !== undefined ? String(sector.valor) : '',
+            descripcion: sector.descripcion || '',
+            color_hex: sector.color_hex || '#0284c7',
+            texto_color: sector.texto_color || '#ffffff',
+            probabilidad_peso: String(sector.probabilidad_peso || 10),
+            stock_disponible: sector.stock_disponible !== null && sector.stock_disponible !== undefined ? String(sector.stock_disponible) : ''
+        });
+        setShowSectorModal(true);
+    };
+
+    const handleSaveSector = async (e) => {
+        e.preventDefault();
+        if (!sectorForm.titulo.trim()) {
+            toast.error('El título del sector es requerido');
+            return;
+        }
+
+        setSavingSector(true);
+        try {
+            if (editingSector) {
+                await apiClient.put(`/api/marketing/ruleta/premios/${editingSector.id}`, sectorForm, {
+                    headers: getHeaders()
+                });
+                toast.success('Sector actualizado con éxito');
+            } else {
+                await apiClient.post('/api/marketing/ruleta/premios', sectorForm, {
+                    headers: getHeaders()
+                });
+                toast.success('Nuevo sector creado en la ruleta');
+            }
+            setShowSectorModal(false);
+            loadData();
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Error al guardar sector');
+        } finally {
+            setSavingSector(false);
+        }
+    };
+
+    const handleToggleSector = async (id) => {
+        try {
+            await apiClient.patch(`/api/marketing/ruleta/premios/${id}/toggle`, {}, {
+                headers: getHeaders()
+            });
+            toast.success('Estado del sector actualizado');
+            loadData();
+        } catch {
+            toast.error('Error al cambiar estado del sector');
+        }
+    };
+
+    const handleDeleteSector = async (id) => {
+        if (!window.confirm('¿Seguro que deseas eliminar este sector de la ruleta?')) return;
+        try {
+            const res = await apiClient.delete(`/api/marketing/ruleta/premios/${id}`, {
+                headers: getHeaders()
+            });
+            toast.success(res.data?.message || 'Sector eliminado');
+            loadData();
+        } catch {
+            toast.error('Error al eliminar sector');
+        }
+    };
 
     return (
         <div className="page-container animate-fade-in" style={{ paddingBottom: '3rem' }}>
@@ -451,76 +578,340 @@ export default function Marketing() {
 
             {activeTab === 'ruleta' && (
                 <div>
-                    {/* Componente Interactivo de Ruleta para Asesores */}
-                    <WheelOfFortune onGiroCompletado={loadData} />
-
-                    {/* Tabla de Historial de Giros */}
-                    <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <i className="bi bi-clock-history text-primary"></i>
-                                Historial de Giros y Doctores Premiados
-                            </h3>
-                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                Últimos 100 giros registrados en visitas y eventos
-                            </span>
+                    {/* Barra de Herramientas y Modo Kiosco */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '1rem',
+                        marginBottom: '1.25rem',
+                        background: 'var(--color-bg-secondary, #f8fafc)',
+                        padding: '1rem 1.25rem',
+                        borderRadius: '12px',
+                        border: '1px solid var(--color-border, #e2e8f0)'
+                    }}>
+                        {/* Sub-pestañas de Ruleta */}
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <button
+                                type="button"
+                                className={`btn btn-sm ${ruletaSubTab === 'girar' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={() => setRuletaSubTab('girar')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+                            >
+                                <i className="bi bi-play-circle-fill"></i>
+                                Girar Ruleta (Visitas)
+                            </button>
+                            <button
+                                type="button"
+                                className={`btn btn-sm ${ruletaSubTab === 'sectores' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={() => setRuletaSubTab('sectores')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+                            >
+                                <i className="bi bi-sliders"></i>
+                                Configurar Sectores & Probabilidades ({sectoresRuleta.length})
+                            </button>
+                            <button
+                                type="button"
+                                className={`btn btn-sm ${ruletaSubTab === 'historial' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={() => setRuletaSubTab('historial')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+                            >
+                                <i className="bi bi-clock-history"></i>
+                                Historial de Giros ({historialGiros.length})
+                            </button>
                         </div>
 
-                        {historialGiros.length === 0 ? (
-                            <p style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem 0' }}>
-                                Aún no se han realizado giros de ruleta. ¡Utiliza la herramienta superior en tu próxima visita!
-                            </p>
-                        ) : (
+                        {/* Botón Lanzador Modo Kiosco / Pantalla Completa */}
+                        <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={() => window.open('/ruleta-evento', '_blank')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                fontWeight: 600,
+                                background: 'rgba(2, 132, 199, 0.08)'
+                            }}
+                            title="Abre la ruleta en una ventana limpia sin menús, ideal para tablets o stands en congresos"
+                        >
+                            <i className="bi bi-box-arrow-up-right"></i>
+                            Abrir en Pantalla Completa (Modo Kiosco / Evento)
+                        </button>
+                    </div>
+
+                    {/* VISTA 1: GIRAR RULETA */}
+                    {ruletaSubTab === 'girar' && (
+                        <WheelOfFortune onGiroCompletado={loadData} />
+                    )}
+
+                    {/* VISTA 2: CONFIGURACIÓN DE SECTORES Y PROBABILIDADES */}
+                    {ruletaSubTab === 'sectores' && (
+                        <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <i className="bi bi-pie-chart-fill text-primary"></i>
+                                        Sectores y Algoritmo de Probabilidad
+                                    </h3>
+                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                                        Control de premios variables (merch, porcentaje, monto fijo o sin premio). Los premios con stock agotado o pausados se excluyen automáticamente del azar.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    onClick={handleOpenNewSector}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+                                >
+                                    <i className="bi bi-plus-lg"></i>
+                                    Nuevo Sector / Premio
+                                </button>
+                            </div>
+
+                            {/* Resumen de probabilidad activa */}
+                            <div style={{
+                                display: 'flex',
+                                gap: '1rem',
+                                flexWrap: 'wrap',
+                                background: 'var(--color-bg-secondary, #f8fafc)',
+                                padding: '0.85rem 1rem',
+                                borderRadius: '10px',
+                                marginBottom: '1.25rem',
+                                border: '1px solid #e2e8f0',
+                                fontSize: '0.85rem'
+                            }}>
+                                <div>
+                                    <span style={{ color: '#64748b' }}>Sectores Totales:</span>{' '}
+                                    <strong>{sectoresRuleta.length}</strong>
+                                </div>
+                                <div>
+                                    <span style={{ color: '#64748b' }}>En Giro Activo:</span>{' '}
+                                    <strong style={{ color: '#0284c7' }}>
+                                        {sectoresRuleta.filter(s => s.activo && (!s.stock_disponible || s.stock_entregado < s.stock_disponible)).length}
+                                    </strong>
+                                </div>
+                                <div>
+                                    <span style={{ color: '#64748b' }}>Peso Total Acumulado:</span>{' '}
+                                    <strong>{totalPesoActivo} pts</strong>
+                                </div>
+                            </div>
+
+                            {/* Tabla de sectores */}
                             <div style={{ overflowX: 'auto' }}>
                                 <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
                                     <thead>
                                         <tr>
-                                            <th>Fecha y Hora</th>
-                                            <th>Doctor Participante</th>
-                                            <th>Clínica</th>
-                                            <th>Evento / Motivo</th>
-                                            <th>Premio Obtenido</th>
-                                            <th>Cupón Generado</th>
-                                            <th>Asesor Afinix</th>
+                                            <th>Sector / Título</th>
+                                            <th>Tipo de Premio</th>
+                                            <th>Beneficio</th>
+                                            <th>Stock Físico</th>
+                                            <th>Peso & Probabilidad</th>
+                                            <th>Estado</th>
+                                            <th style={{ textAlign: 'right' }}>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {historialGiros.map((g) => (
-                                            <tr key={g.id}>
-                                                <td>{new Date(g.fecha_giro).toLocaleString('es-PE')}</td>
-                                                <td>
-                                                    <strong>{g.doctor_nombre}</strong>
-                                                    {g.doctor_telefono && (
-                                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                                            <i className="bi bi-telephone" style={{ marginRight: '3px' }}></i>
-                                                            {g.doctor_telefono}
+                                        {sectoresRuleta.map((s) => {
+                                            const isDepleted = s.stock_disponible !== null && s.stock_entregado >= s.stock_disponible;
+                                            return (
+                                                <tr key={s.id}>
+                                                    <td>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                            <div style={{
+                                                                width: '24px',
+                                                                height: '24px',
+                                                                borderRadius: '6px',
+                                                                backgroundColor: s.color_hex || '#0284c7',
+                                                                border: '1px solid rgba(0,0,0,0.15)',
+                                                                flexShrink: 0
+                                                            }} />
+                                                            <div>
+                                                                <strong style={{ display: 'block', color: '#0f172a' }}>{s.titulo}</strong>
+                                                                {s.descripcion && (
+                                                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                                        {s.descripcion}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </td>
-                                                <td>{g.clinica_nombre || '—'}</td>
-                                                <td>{g.evento_nombre}</td>
-                                                <td>
-                                                    <span className="badge" style={{ background: `${g.color_hex}22`, color: g.color_hex, fontWeight: 600 }}>
-                                                        {g.premio_titulo}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    {g.codigo_descuento_generado ? (
-                                                        <code style={{ background: '#f1f5f9', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
-                                                            {g.codigo_descuento_generado}
-                                                        </code>
-                                                    ) : (
-                                                        <span style={{ color: '#94a3b8' }}>—</span>
-                                                    )}
-                                                </td>
-                                                <td>{g.asesor_nombre || 'Equipo Comercial'}</td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                    <td>
+                                                        <span className="badge" style={{
+                                                            background: s.tipo_premio === 'merch' ? 'rgba(139, 92, 246, 0.15)' :
+                                                                s.tipo_premio === 'porcentaje' ? 'rgba(2, 132, 199, 0.15)' :
+                                                                s.tipo_premio === 'monto_fijo' ? 'rgba(16, 185, 129, 0.15)' : '#f1f5f9',
+                                                            color: s.tipo_premio === 'merch' ? '#8b5cf6' :
+                                                                s.tipo_premio === 'porcentaje' ? '#0284c7' :
+                                                                s.tipo_premio === 'monto_fijo' ? '#10b981' : '#64748b',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            {s.tipo_premio === 'merch' && <i className="bi bi-box-seam" style={{ marginRight: '4px' }}></i>}
+                                                            {s.tipo_premio === 'porcentaje' && <i className="bi bi-percent" style={{ marginRight: '4px' }}></i>}
+                                                            {s.tipo_premio === 'monto_fijo' && <i className="bi bi-cash" style={{ marginRight: '4px' }}></i>}
+                                                            {s.tipo_premio === 'sin_premio' && <i className="bi bi-emoji-neutral" style={{ marginRight: '4px' }}></i>}
+                                                            {s.tipo_premio === 'merch' ? 'Merch / Físico' :
+                                                                s.tipo_premio === 'porcentaje' ? 'Porcentaje' :
+                                                                s.tipo_premio === 'monto_fijo' ? 'Monto Soles' : 'Sin Premio'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {s.tipo_premio === 'porcentaje' && <strong>{Number(s.valor)}% DCTO</strong>}
+                                                        {s.tipo_premio === 'monto_fijo' && <strong>S/. {Number(s.valor).toFixed(2)} DCTO</strong>}
+                                                        {s.tipo_premio === 'merch' && <span style={{ color: '#475569' }}>Regalo de Marca</span>}
+                                                        {s.tipo_premio === 'sin_premio' && <span style={{ color: '#94a3b8' }}>—</span>}
+                                                    </td>
+                                                    <td>
+                                                        {s.stock_disponible === null ? (
+                                                            <span className="badge badge-light" style={{ background: '#f1f5f9', color: '#475569' }}>
+                                                                Ilimitado
+                                                            </span>
+                                                        ) : (
+                                                            <div>
+                                                                <span className={`badge ${isDepleted ? 'badge-danger' : 'badge-info'}`} style={{
+                                                                    background: isDepleted ? 'rgba(239, 68, 68, 0.15)' : 'rgba(2, 132, 199, 0.12)',
+                                                                    color: isDepleted ? '#ef4444' : '#0284c7',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    {Math.max(0, s.stock_disponible - s.stock_entregado)} de {s.stock_disponible} restantes
+                                                                </span>
+                                                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                                                                    {s.stock_entregado} entregados
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <span style={{ fontWeight: 600 }}>{s.probabilidad_peso} pts</span>
+                                                            <span className="badge badge-primary" style={{
+                                                                background: s.activo && !isDepleted ? 'rgba(2, 132, 199, 0.15)' : '#f1f5f9',
+                                                                color: s.activo && !isDepleted ? '#0284c7' : '#94a3b8',
+                                                                fontWeight: 700
+                                                            }}>
+                                                                {s.activo && !isDepleted ? `${s.probabilidad_porcentaje}%` : '0%'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {!s.activo ? (
+                                                            <span className="badge" style={{ background: '#f1f5f9', color: '#64748b' }}>Pausado</span>
+                                                        ) : isDepleted ? (
+                                                            <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>Agotado</span>
+                                                        ) : (
+                                                            <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>Activo</span>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ textAlign: 'right' }}>
+                                                        <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                                                            <button
+                                                                type="button"
+                                                                className={`btn btn-xs ${s.activo ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                                                onClick={() => handleToggleSector(s.id)}
+                                                                title={s.activo ? 'Pausar sector' : 'Activar sector'}
+                                                            >
+                                                                <i className={`bi ${s.activo ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-xs btn-outline-primary"
+                                                                onClick={() => handleOpenEditSector(s)}
+                                                                title="Editar sector"
+                                                            >
+                                                                <i className="bi bi-pencil"></i>
+                                                            </button>
+                                                            {user?.tipo === 'admin' && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-xs btn-outline-danger"
+                                                                    onClick={() => handleDeleteSector(s.id)}
+                                                                    title="Eliminar sector"
+                                                                >
+                                                                    <i className="bi bi-trash"></i>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
+
+                    {/* VISTA 3: HISTORIAL DE GIROS */}
+                    {ruletaSubTab === 'historial' && (
+                        <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <i className="bi bi-clock-history text-primary"></i>
+                                    Historial de Giros y Doctores Premiados
+                                </h3>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                    Últimos 100 giros registrados en visitas y eventos
+                                </span>
+                            </div>
+
+                            {historialGiros.length === 0 ? (
+                                <p style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem 0' }}>
+                                    Aún no se han realizado giros de ruleta. ¡Utiliza la herramienta superior en tu próxima visita!
+                                </p>
+                            ) : (
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
+                                        <thead>
+                                            <tr>
+                                                <th>Fecha y Hora</th>
+                                                <th>Doctor Participante</th>
+                                                <th>Clínica</th>
+                                                <th>Evento / Motivo</th>
+                                                <th>Premio Obtenido</th>
+                                                <th>Cupón (6 Dígitos)</th>
+                                                <th>Asesor Afinix</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historialGiros.map((g) => (
+                                                <tr key={g.id}>
+                                                    <td>{new Date(g.fecha_giro).toLocaleString('es-PE')}</td>
+                                                    <td>
+                                                        <strong>{g.doctor_nombre}</strong>
+                                                        {g.doctor_telefono && (
+                                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                                <i className="bi bi-telephone" style={{ marginRight: '3px' }}></i>
+                                                                {g.doctor_telefono}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td>{g.clinica_nombre || '—'}</td>
+                                                    <td>{g.evento_nombre}</td>
+                                                    <td>
+                                                        <span className="badge" style={{ background: `${g.color_hex}22`, color: g.color_hex, fontWeight: 600 }}>
+                                                            {g.premio_titulo}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {g.codigo_descuento_generado ? (
+                                                            <code style={{ background: '#f1f5f9', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.05em' }}>
+                                                                {g.codigo_descuento_generado}
+                                                            </code>
+                                                        ) : (
+                                                            <span style={{ color: '#94a3b8' }}>—</span>
+                                                        )}
+                                                    </td>
+                                                    <td>{g.asesor_nombre || 'Equipo Comercial'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -771,6 +1162,163 @@ export default function Marketing() {
                             style={{ fontWeight: 600 }}
                         >
                             {creating ? 'Guardando...' : 'Crear Cupón'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* MODAL CREAR / EDITAR SECTOR DE RULETA */}
+            <Modal
+                open={showSectorModal}
+                onClose={() => setShowSectorModal(false)}
+                title={editingSector ? 'Editar Sector de la Ruleta' : 'Nuevo Sector en la Ruleta'}
+                subtitle="Configura el premio, color, stock físico y peso de probabilidad (Interacty style)"
+                icon="bi-pie-chart-fill"
+                size="md"
+            >
+                <form onSubmit={handleSaveSector}>
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Título Visible en la Ruleta <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Ej. 15% OFF, Agenda 2026, S/. 50 Soles, Sigue Intentando"
+                            value={sectorForm.titulo}
+                            onChange={(e) => setSectorForm((prev) => ({ ...prev, titulo: e.target.value }))}
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Tipo de Premio <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <CustomSelect
+                            options={prizeTypeOptions}
+                            value={sectorForm.tipo_premio}
+                            onChange={(_, val) => setSectorForm((prev) => ({ ...prev, tipo_premio: val }))}
+                        />
+                    </div>
+
+                    {['porcentaje', 'monto_fijo'].includes(sectorForm.tipo_premio) && (
+                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                {sectorForm.tipo_premio === 'porcentaje' ? 'Porcentaje de Descuento (%)' : 'Monto de Descuento (S/.)'} <span style={{ color: '#ef4444' }}>*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                className="form-input"
+                                placeholder={sectorForm.tipo_premio === 'porcentaje' ? '15' : '50.00'}
+                                value={sectorForm.valor}
+                                onChange={(e) => setSectorForm((prev) => ({ ...prev, valor: e.target.value }))}
+                                required
+                            />
+                        </div>
+                    )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Stock Disponible (Unidades)
+                            </label>
+                            <input
+                                type="number"
+                                min="1"
+                                className="form-input"
+                                placeholder="Ilimitado (vacío)"
+                                value={sectorForm.stock_disponible}
+                                onChange={(e) => setSectorForm((prev) => ({ ...prev, stock_disponible: e.target.value }))}
+                            />
+                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                Al agotarse, sale de la ruleta automáticamente.
+                            </span>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Peso de Probabilidad (1 - 100) <span style={{ color: '#ef4444' }}>*</span>
+                            </label>
+                            <input
+                                type="number"
+                                min="1"
+                                max="1000"
+                                className="form-input"
+                                value={sectorForm.probabilidad_peso}
+                                onChange={(e) => setSectorForm((prev) => ({ ...prev, probabilidad_peso: e.target.value }))}
+                                required
+                            />
+                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                Mayor peso = más probable.
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Paleta de Color del Sector */}
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Color de la Tajada
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                            {colorPresets.map((c) => (
+                                <button
+                                    key={c.hex}
+                                    type="button"
+                                    onClick={() => setSectorForm((prev) => ({ ...prev, color_hex: c.hex }))}
+                                    style={{
+                                        width: '28px',
+                                        height: '28px',
+                                        borderRadius: '6px',
+                                        backgroundColor: c.hex,
+                                        border: sectorForm.color_hex === c.hex ? '3px solid #0f172a' : '1px solid rgba(0,0,0,0.2)',
+                                        cursor: 'pointer',
+                                        outline: 'none'
+                                    }}
+                                    title={c.label}
+                                />
+                            ))}
+                            <input
+                                type="color"
+                                value={sectorForm.color_hex}
+                                onChange={(e) => setSectorForm((prev) => ({ ...prev, color_hex: e.target.value }))}
+                                style={{ width: '36px', height: '28px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                title="Color personalizado"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Descripción / Observaciones
+                        </label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Ej. Entregar agenda corporativa en mano al doctor"
+                            value={sectorForm.descripcion}
+                            onChange={(e) => setSectorForm((prev) => ({ ...prev, descripcion: e.target.value }))}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => setShowSectorModal(false)}
+                            disabled={savingSector}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={savingSector}
+                            style={{ fontWeight: 600 }}
+                        >
+                            {savingSector ? 'Guardando...' : editingSector ? 'Actualizar Sector' : 'Crear Sector'}
                         </button>
                     </div>
                 </form>

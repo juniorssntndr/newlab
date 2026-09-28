@@ -26,6 +26,7 @@ import Calendario from './pages/Calendario.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Equipo from './pages/Equipo.jsx';
 import Marketing from './pages/Marketing.jsx';
+import RuletaKioskoPage from './pages/RuletaKioskoPage.jsx';
 
 import Almacen from './pages/Almacen.jsx';
 import CalendarioCliente from './pages/CalendarioCliente.jsx';
@@ -92,6 +93,7 @@ const App = () => {
                 ))}
                 <Route path="/login" element={<Login />} />
                 <Route path="/registro" element={<RegistroCliente />} />
+                <Route path="/ruleta-evento" element={<ProtectedRoute><ModuleRoute module="marketing"><RuletaKioskoPage /></ModuleRoute></ProtectedRoute>} />
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="dashboard" element={<ModuleRoute module="dashboard"><Dashboard /></ModuleRoute>} />
                     <Route path="productos" element={<ModuleRoute module="catalogo"><Productos /></ModuleRoute>} />
