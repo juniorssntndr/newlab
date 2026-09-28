@@ -37,7 +37,9 @@ export const createPedidoSchema = z.object({
     fecha_entrega: z.string().min(8).max(30),
     observaciones: z.string().trim().max(5000).optional().nullable(),
     archivos_urls: z.array(z.string().trim().max(2000)).optional().default([]),
-    items: z.array(itemsSchema).max(200).optional().default([])
+    items: z.array(itemsSchema).max(200).optional().default([]),
+    descuento_codigo: z.string().trim().max(50).optional().nullable(),
+    discountCode: z.string().trim().max(50).optional().nullable()
 });
 
 export const productoSchema = z.object({

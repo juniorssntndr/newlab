@@ -5,17 +5,18 @@ export const SYSTEM_MODULES = [
     { id: 'cobros', label: 'Gestión de Cobros', icon: 'bi-cash-stack', desc: 'Cartera de clínicas, saldos deudores y pagos consolidados' },
     { id: 'calendario', label: 'Calendario', icon: 'bi-calendar3', desc: 'Agenda de entregas, pruebas y visitas comerciales' },
     { id: 'crm', label: 'Gestión de Clientes', icon: 'bi-person-lines-fill', desc: 'CRM, mapa territorial, doctores, visitas y prospectos' },
+    { id: 'marketing', label: 'Marketing', icon: 'bi-megaphone', desc: 'Cupones de descuento, ruleta de visitas/eventos y fidelización' },
     { id: 'catalogo', label: 'Catálogo', icon: 'bi-box-seam', desc: 'Catálogo de trabajos dentales, materiales y precios' },
     { id: 'almacen', label: 'Almacén', icon: 'bi-boxes', desc: 'Inventario físico, stock de insumos y consumos' },
     { id: 'usuarios', label: 'Gestión de Usuarios', icon: 'bi-people', desc: 'Equipo interno, perfiles, permisos y clientes con portal' },
 ];
 
 export const DEFAULT_ROLE_MODULES = {
-    admin: ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'catalogo', 'almacen', 'usuarios', 'cuenta'],
-    socio: ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'catalogo', 'cuenta'],
+    admin: ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'marketing', 'catalogo', 'almacen', 'usuarios', 'cuenta'],
+    socio: ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'marketing', 'catalogo', 'cuenta'],
     tecnico: ['pedidos', 'catalogo', 'almacen', 'calendario', 'cuenta'],
     operador: ['caja', 'pedidos', 'calendario', 'crm', 'catalogo', 'cuenta'],
-    visitador: ['crm', 'calendario', 'cuenta'],
+    visitador: ['crm', 'marketing', 'calendario', 'cuenta'],
     cliente: ['pedidos_cliente', 'catalogo_cliente', 'cuenta'],
 };
 

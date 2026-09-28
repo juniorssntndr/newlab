@@ -13,6 +13,7 @@ import facturacionRoutes from '../routes/facturacion.js';
 import consultasRoutes from '../routes/consultas.js';
 import doctoresRoutes from '../routes/doctores.js';
 import proveedoresRoutes from '../routes/proveedores.js';
+import marketingRoutes from '../routes/marketing.js';
 
 export const registerRoutes = (app, compositionRoot) => {
     app.use('/api/auth', authRoutes);
@@ -20,6 +21,7 @@ export const registerRoutes = (app, compositionRoot) => {
     app.use('/api/doctores', doctoresRoutes);
     app.use('/api/productos', productosRoutes);
     app.use('/api/pedidos', pedidosRoutes);
+    app.use('/api/marketing', marketingRoutes);
     app.use('/api/finanzas', finanzasRoutes);
     app.use('/api/dashboard', dashboardRoutes);
     app.use('/api/notificaciones', notificacionesRoutes);

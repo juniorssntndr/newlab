@@ -110,7 +110,7 @@ export const makeOrderService = ({ orderRepository, pool }) => {
         };
     },
     createOrder: async ({ actorUserId, body }) => {
-        const { clinica_id, paciente_nombre, fecha_entrega, items } = body || {};
+        const { clinica_id, paciente_nombre, fecha_entrega, items, discountCode, descuento_codigo } = body || {};
         if (!clinica_id || !paciente_nombre || !fecha_entrega) {
             return {
                 ok: false,
@@ -125,8 +125,10 @@ export const makeOrderService = ({ orderRepository, pool }) => {
         const subtotal = Number((total / igvFactor).toFixed(2));
         const igv = Number((total - subtotal).toFixed(2));
 
+        const effectiveDiscountCode = descuento_codigo || discountCode || null;
+
         const created = await orderRepository.createOrder({
-            orderInput: body,
+            orderInput: { ...body, descuento_codigo: effectiveDiscountCode },
             totals: { total, subtotal, igv },
             actorUserId
         });

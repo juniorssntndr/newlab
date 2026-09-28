@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';
 import OrderWizardShell from '../components/orders/wizard/OrderWizardShell.jsx';
 import OrderWizardTimeline from '../components/orders/wizard/OrderWizardTimeline.jsx';
@@ -133,11 +134,69 @@ const NuevoPedido = () => {
     const productPrice = Number(productForUi?.precio_base ?? selectedItem?.precio_unitario ?? 0);
     const expressSurcharge = expressSurchargeAmount(productPrice, isExpressOrder);
     const displayUnitPrice = applyExpressSurcharge(productPrice, isExpressOrder);
-    const displayTotal = useMemo(() => {
+
+    // Estado del cupón de descuento en checkout
+    const [couponInput, setCouponInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [validatingCoupon, setValidatingCoupon] = useState(false);
+    const [couponError, setCouponError] = useState('');
+
+    const baseOrderTotal = useMemo(() => {
         const base = Number(total || 0);
         if (!isExpressOrder || base <= 0) return base;
         return Number((base * (1 + ORDER_EXPRESS_SURCHARGE_RATE)).toFixed(2));
     }, [total, isExpressOrder]);
+
+    const discountAmount = useMemo(() => {
+        if (!appliedCoupon) return 0;
+        if (appliedCoupon.tipo === 'porcentaje') {
+            let calc = (baseOrderTotal * Number(appliedCoupon.valor)) / 100;
+            if (appliedCoupon.tope_descuento_maximo && calc > Number(appliedCoupon.tope_descuento_maximo)) {
+                calc = Number(appliedCoupon.tope_descuento_maximo);
+            }
+            return Math.min(calc, baseOrderTotal);
+        }
+        return Math.min(Number(appliedCoupon.valor), baseOrderTotal);
+    }, [appliedCoupon, baseOrderTotal]);
+
+    const displayTotal = useMemo(() => {
+        return Math.max(0, Number((baseOrderTotal - discountAmount).toFixed(2)));
+    }, [baseOrderTotal, discountAmount]);
+
+    const handleApplyCoupon = async () => {
+        if (!couponInput.trim()) return;
+        setValidatingCoupon(true);
+        setCouponError('');
+        try {
+            const res = await apiClient.post('/api/marketing/cupones/validar', {
+                codigo: couponInput.trim(),
+                clinica_id: form.clinica_id || user?.clinica_id,
+                subtotal: baseOrderTotal
+            }, { headers: getHeaders() });
+
+            if (res.data?.valido) {
+                setAppliedCoupon(res.data.descuento);
+                setCouponError('');
+                toast.success(`¡Cupón ${res.data.descuento.codigo} aplicado!`);
+            } else {
+                setCouponError(res.data?.error || 'Cupón inválido');
+                toast.error(res.data?.error || 'Cupón inválido');
+            }
+        } catch (err) {
+            const msg = err.response?.data?.error || 'Error al validar cupón';
+            setCouponError(msg);
+            toast.error(msg);
+        } finally {
+            setValidatingCoupon(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponInput('');
+        setCouponError('');
+        toast('Cupón removido', { icon: 'ℹ️' });
+    };
     const priceLabel = productPrice > 0 ? `S/. ${displayUnitPrice.toFixed(2)}` : null;
     const etaLabel = displayDays
         ? `Entrega: ${displayDays} día${displayDays === 1 ? '' : 's'}${form.fecha_entrega ? ` · ${formatDeliveryShort(form.fecha_entrega)}` : ''}`
@@ -468,6 +527,7 @@ const NuevoPedido = () => {
             const pedido = await createOrderMutation.mutateAsync({
                 ...form,
                 observaciones,
+                descuento_codigo: appliedCoupon ? appliedCoupon.codigo : null,
                 items: items.map((item) => {
                     const baseUnit = Number(item.precio_unitario || item.precio_base || 0);
                     return {
@@ -843,15 +903,100 @@ const NuevoPedido = () => {
                                         </div>
                                     </div>
 
+                                    {/* SECCIÓN DE CUPÓN DE DESCUENTO */}
+                                    <div className="order-wizard-confirm-stat order-wizard-confirm-coupon" style={{
+                                        background: appliedCoupon ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-bg-secondary, #f8fafc)',
+                                        border: appliedCoupon ? '1px solid #10b981' : '1px dashed var(--color-border, #cbd5e1)',
+                                        borderRadius: '10px',
+                                        padding: '0.85rem'
+                                    }}>
+                                        {appliedCoupon ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                        <i className="bi bi-tag-fill text-success"></i>
+                                                        <strong style={{ color: '#047857', letterSpacing: '0.05em' }}>
+                                                            {appliedCoupon.codigo}
+                                                        </strong>
+                                                        <span className="badge badge-success" style={{ background: '#dcfce7', color: '#15803d', fontSize: '0.75rem' }}>
+                                                            {appliedCoupon.tipo === 'porcentaje' ? `${appliedCoupon.valor}% DCTO` : `S/. ${Number(appliedCoupon.valor).toFixed(2)} DCTO`}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '2px' }}>
+                                                        Ahorro aplicado: -S/. {discountAmount.toFixed(2)}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-xs btn-outline-danger"
+                                                    onClick={handleRemoveCoupon}
+                                                    title="Quitar cupón"
+                                                >
+                                                    <i className="bi bi-x-lg"></i> Quitar
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                    <input
+                                                        type="text"
+                                                        className="form-input"
+                                                        placeholder="¿Tienes un cupón de descuento?"
+                                                        value={couponInput}
+                                                        onChange={(e) => {
+                                                            setCouponInput(e.target.value.toUpperCase());
+                                                            setCouponError('');
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                handleApplyCoupon();
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            fontSize: '0.85rem',
+                                                            padding: '0.4rem 0.65rem',
+                                                            textTransform: 'uppercase',
+                                                            fontWeight: 600
+                                                        }}
+                                                        disabled={validatingCoupon}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-primary"
+                                                        onClick={handleApplyCoupon}
+                                                        disabled={validatingCoupon || !couponInput.trim()}
+                                                        style={{ whiteSpace: 'nowrap', fontWeight: 600 }}
+                                                    >
+                                                        {validatingCoupon ? 'Validando...' : 'Aplicar'}
+                                                    </button>
+                                                </div>
+                                                {couponError && (
+                                                    <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.35rem' }}>
+                                                        <i className="bi bi-exclamation-circle" style={{ marginRight: '3px' }}></i>
+                                                        {couponError}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="order-wizard-confirm-stat is-total order-wizard-confirm-stat-total">
                                         <div className="order-wizard-confirm-stat-copy">
                                             <span className="order-wizard-confirm-label">
                                                 <i className="bi bi-cash-stack" aria-hidden="true"></i>
-                                                Total
+                                                Total a Pagar
                                             </span>
-                                            <strong className="order-wizard-confirm-total-value">
-                                                S/. {displayTotal.toFixed(2)}
-                                            </strong>
+                                            <div style={{ textAlign: 'right' }}>
+                                                {appliedCoupon && (
+                                                    <div style={{ fontSize: '0.8rem', color: '#64748b', textDecoration: 'line-through', marginBottom: '2px' }}>
+                                                        S/. {baseOrderTotal.toFixed(2)}
+                                                    </div>
+                                                )}
+                                                <strong className="order-wizard-confirm-total-value" style={{ color: appliedCoupon ? '#059669' : undefined }}>
+                                                    S/. {displayTotal.toFixed(2)}
+                                                </strong>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

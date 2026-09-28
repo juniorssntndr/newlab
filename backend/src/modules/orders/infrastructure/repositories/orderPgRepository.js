@@ -235,10 +235,64 @@ export const makeOrderPgRepository = ({ pool }) => ({
 
         try {
             await client.query('BEGIN');
+            let finalTotal = total;
+            let finalSubtotal = subtotal;
+            let finalIgv = igv;
+            let appliedDiscount = null;
+            let appliedDiscountMonto = 0.00;
+
+            const rawDiscountCode = orderInput.descuento_codigo || orderInput.discountCode;
+            if (rawDiscountCode && typeof rawDiscountCode === 'string' && rawDiscountCode.trim().length > 0) {
+                const codeNormalized = rawDiscountCode.trim().toUpperCase();
+                const discountRes = await client.query(
+                    `SELECT * FROM nl_descuentos 
+                     WHERE UPPER(codigo) = $1 AND activo = TRUE 
+                     FOR UPDATE`,
+                    [codeNormalized]
+                );
+
+                if (discountRes.rows.length > 0) {
+                    const discountRow = discountRes.rows[0];
+                    const now = new Date();
+                    const isValidDate = (!discountRow.fecha_inicio || new Date(discountRow.fecha_inicio) <= now) &&
+                                        (!discountRow.fecha_fin || new Date(discountRow.fecha_fin) >= now);
+                    const isClinicAllowed = !discountRow.clinica_id || Number(discountRow.clinica_id) === Number(clinica_id);
+                    const hasUsesLeft = discountRow.limite_usos_total === null || discountRow.usos_actuales < discountRow.limite_usos_total;
+                    const meetsMinAmount = !discountRow.monto_minimo_pedido || total >= Number(discountRow.monto_minimo_pedido);
+
+                    if (isValidDate && isClinicAllowed && hasUsesLeft && meetsMinAmount) {
+                        if (discountRow.tipo === 'porcentaje') {
+                            let calc = (total * Number(discountRow.valor)) / 100;
+                            if (discountRow.tope_descuento_maximo && calc > Number(discountRow.tope_descuento_maximo)) {
+                                calc = Number(discountRow.tope_descuento_maximo);
+                            }
+                            appliedDiscountMonto = Math.min(calc, total);
+                        } else {
+                            appliedDiscountMonto = Math.min(Number(discountRow.valor), total);
+                        }
+                        appliedDiscountMonto = Number(appliedDiscountMonto.toFixed(2));
+                        finalTotal = Math.max(0, Number((total - appliedDiscountMonto).toFixed(2)));
+                        finalSubtotal = Number((finalTotal / 1.18).toFixed(2));
+                        finalIgv = Number((finalTotal - finalSubtotal).toFixed(2));
+                        appliedDiscount = discountRow;
+
+                        await client.query(
+                            `UPDATE nl_descuentos 
+                             SET usos_actuales = usos_actuales + 1, updated_at = NOW() 
+                             WHERE id = $1`,
+                            [discountRow.id]
+                        );
+                    }
+                }
+            }
 
             const pedidoResult = await client.query(
-                `INSERT INTO nl_pedidos (id, codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls, subtotal, igv, total, created_by)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+                `INSERT INTO nl_pedidos (
+                    id, codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls, 
+                    subtotal, igv, total, created_by,
+                    descuento_id, descuento_codigo, descuento_monto
+                 )
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
                 [
                     nextPedidoId,
                     codigo,
@@ -247,13 +301,34 @@ export const makeOrderPgRepository = ({ pool }) => ({
                     fecha_entrega,
                     observaciones,
                     archivos_urls,
-                    subtotal,
-                    igv,
-                    total,
-                    actorUserId
+                    finalSubtotal,
+                    finalIgv,
+                    finalTotal,
+                    actorUserId,
+                    appliedDiscount ? appliedDiscount.id : null,
+                    appliedDiscount ? appliedDiscount.codigo : null,
+                    appliedDiscountMonto
                 ]
             );
             const pedido = pedidoResult.rows[0];
+
+            if (appliedDiscount) {
+                await client.query(
+                    `INSERT INTO nl_descuentos_usos (
+                        descuento_id, pedido_id, clinica_id, usuario_id,
+                        monto_descontado, monto_pedido_original, monto_pedido_final
+                     ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    [
+                        appliedDiscount.id,
+                        pedido.id,
+                        clinica_id,
+                        actorUserId,
+                        appliedDiscountMonto,
+                        total,
+                        finalTotal
+                    ]
+                );
+            }
 
             if (Array.isArray(items) && items.length > 0) {
                 for (const item of items) {

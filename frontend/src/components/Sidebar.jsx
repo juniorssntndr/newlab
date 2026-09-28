@@ -63,6 +63,16 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                 },
             ]
             : []),
+        ...(canAccessModule(user, 'marketing')
+            ? [
+                {
+                    to: '/marketing',
+                    icon: 'bi-megaphone',
+                    label: 'Marketing',
+                    isActive: (loc) => loc.pathname.startsWith('/marketing'),
+                },
+            ]
+            : []),
         ...(canAccessModule(user, 'catalogo')
             ? [{ to: '/productos', icon: 'bi-box-seam', label: 'Catálogo' }]
             : []),

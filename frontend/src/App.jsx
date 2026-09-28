@@ -25,6 +25,7 @@ import CajaGastos from './pages/CajaGastos.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Cuenta from './pages/Cuenta.jsx';
 import Equipo from './pages/Equipo.jsx';
+import Marketing from './pages/Marketing.jsx';
 
 import Almacen from './pages/Almacen.jsx';
 import CalendarioCliente from './pages/CalendarioCliente.jsx';
@@ -119,6 +120,9 @@ const App = () => {
                     <Route path="crm/prospectos" element={<ModuleRoute module="crm"><CrmProspectosPage /></ModuleRoute>} />
                     <Route path="crm/visitas" element={<ModuleRoute module="crm"><CrmVisitasPage /></ModuleRoute>} />
                     <Route path="crm/mapa" element={<ModuleRoute module="crm"><CrmMapaPage /></ModuleRoute>} />
+
+                    {/* Marketing & Gamification Module */}
+                    <Route path="marketing" element={<ModuleRoute module="marketing"><Marketing /></ModuleRoute>} />
 
                     {/* Backward-compatibility Redirects */}
                     <Route path="clinicas" element={<Navigate to="/crm/clinicas" replace />} />
