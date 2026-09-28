@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';
 import { apiClient } from '../services/http/apiClient.js';
 import CustomSelect from '../components/CustomSelect.jsx';
+import Modal from '../components/Modal.jsx';
 import WheelOfFortune from '../components/WheelOfFortune.jsx';
 
 export default function Marketing() {
@@ -593,218 +594,187 @@ export default function Marketing() {
             )}
 
             {/* MODAL CREAR CUPÓN */}
-            {showCreateModal && (
-                <div className="modal-overlay" style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 9999,
-                    backdropFilter: 'blur(3px)',
-                    padding: '1rem'
-                }}>
-                    <div className="card" style={{
-                        maxWidth: '520px',
-                        width: '100%',
-                        padding: '1.5rem',
-                        borderRadius: '14px',
-                        maxHeight: '90vh',
-                        overflowY: 'auto'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
-                                <i className="bi bi-tag-fill text-primary" style={{ marginRight: '0.5rem' }}></i>
-                                Nuevo Cupón Promocional
-                            </h3>
+            <Modal
+                open={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title="Nuevo Cupón Promocional"
+                subtitle="Configura descuentos en soles o porcentaje con límites y vigencia"
+                icon="bi-tag-fill"
+                size="lg"
+            >
+                <form onSubmit={handleCreateCoupon}>
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                            <label className="form-label" style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600 }}>
+                                Código de Cupón <span style={{ color: '#ef4444' }}>*</span>
+                            </label>
                             <button
                                 type="button"
-                                className="btn btn-ghost btn-sm"
-                                onClick={() => setShowCreateModal(false)}
+                                className="btn btn-xs btn-outline-secondary"
+                                onClick={handleGenerateCode}
                             >
-                                <i className="bi bi-x-lg"></i>
+                                Generar Aleatorio
                             </button>
                         </div>
-
-                        <form onSubmit={handleCreateCoupon}>
-                            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                    <label className="form-label" style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Código de Cupón <span style={{ color: '#ef4444' }}>*</span>
-                                    </label>
-                                    <button
-                                        type="button"
-                                        className="btn btn-xs btn-outline-secondary"
-                                        onClick={handleGenerateCode}
-                                    >
-                                        Generar Aleatorio
-                                    </button>
-                                </div>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Ej. AFX-CLIENTE10 o BIENVENIDA50"
-                                    value={formData.codigo}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, codigo: e.target.value.toUpperCase() }))}
-                                    required
-                                    style={{ fontWeight: 700, letterSpacing: '0.05em' }}
-                                />
-                            </div>
-
-                            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                    Descripción o Motivo
-                                </label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Ej. 10% de bienvenida en su primera corona"
-                                    value={formData.descripcion}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
-                                />
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                                <div className="form-group">
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Tipo de Descuento
-                                    </label>
-                                    <CustomSelect
-                                        options={typeOptions}
-                                        value={formData.tipo}
-                                        onChange={(_, val) => setFormData((prev) => ({ ...prev, tipo: val }))}
-                                    />
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        {formData.tipo === 'porcentaje' ? 'Porcentaje (%)' : 'Monto Fijo (S/.)'} <span style={{ color: '#ef4444' }}>*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0.01"
-                                        className="form-input"
-                                        placeholder={formData.tipo === 'porcentaje' ? '15' : '50.00'}
-                                        value={formData.valor}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, valor: e.target.value }))}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                                <div className="form-group">
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Pedido Mínimo (S/.)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        className="form-input"
-                                        placeholder="0.00 (sin mínimo)"
-                                        value={formData.monto_minimo_pedido}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, monto_minimo_pedido: e.target.value }))}
-                                    />
-                                </div>
-
-                                {formData.tipo === 'porcentaje' ? (
-                                    <div className="form-group">
-                                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                            Tope Máximo DCTO (S/.)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            className="form-input"
-                                            placeholder="Opcional"
-                                            value={formData.tope_descuento_maximo}
-                                            onChange={(e) => setFormData((prev) => ({ ...prev, tope_descuento_maximo: e.target.value }))}
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="form-group">
-                                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                            Límite Usos Totales
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            className="form-input"
-                                            value={formData.limite_usos_total}
-                                            onChange={(e) => setFormData((prev) => ({ ...prev, limite_usos_total: e.target.value }))}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                    Asignación Exclusiva (Clínica / Doctor)
-                                </label>
-                                <CustomSelect
-                                    options={clinicOptions}
-                                    value={formData.clinica_id ? String(formData.clinica_id) : ''}
-                                    onChange={(_, val) => setFormData((prev) => ({ ...prev, clinica_id: val }))}
-                                    searchable
-                                    placeholder="Uso libre para cualquier clínica..."
-                                />
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                                <div className="form-group">
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Fecha de Vencimiento
-                                    </label>
-                                    <input
-                                        type="date"
-                                        className="form-input"
-                                        value={formData.fecha_fin}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, fecha_fin: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Nombre de Evento
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        placeholder="Ej. Expo Dental"
-                                        value={formData.evento_nombre}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, evento_nombre: e.target.value }))}
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={() => setShowCreateModal(false)}
-                                    disabled={creating}
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary"
-                                    disabled={creating}
-                                    style={{ fontWeight: 600 }}
-                                >
-                                    {creating ? 'Guardando...' : 'Crear Cupón'}
-                                </button>
-                            </div>
-                        </form>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Ej. AFX-CLIENTE10 o BIENVENIDA50"
+                            value={formData.codigo}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, codigo: e.target.value.toUpperCase() }))}
+                            required
+                            style={{ fontWeight: 700, letterSpacing: '0.05em' }}
+                        />
                     </div>
-                </div>
-            )}
+
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Descripción o Motivo
+                        </label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Ej. 10% de bienvenida en su primera corona"
+                            value={formData.descripcion}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
+                        />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Tipo de Descuento
+                            </label>
+                            <CustomSelect
+                                options={typeOptions}
+                                value={formData.tipo}
+                                onChange={(_, val) => setFormData((prev) => ({ ...prev, tipo: val }))}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                {formData.tipo === 'porcentaje' ? 'Porcentaje (%)' : 'Monto Fijo (S/.)'} <span style={{ color: '#ef4444' }}>*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                className="form-input"
+                                placeholder={formData.tipo === 'porcentaje' ? '15' : '50.00'}
+                                value={formData.valor}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, valor: e.target.value }))}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Pedido Mínimo (S/.)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="form-input"
+                                placeholder="0.00 (sin mínimo)"
+                                value={formData.monto_minimo_pedido}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, monto_minimo_pedido: e.target.value }))}
+                            />
+                        </div>
+
+                        {formData.tipo === 'porcentaje' ? (
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                    Tope Máximo DCTO (S/.)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    className="form-input"
+                                    placeholder="Opcional"
+                                    value={formData.tope_descuento_maximo}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, tope_descuento_maximo: e.target.value }))}
+                                />
+                            </div>
+                        ) : (
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                    Límite Usos Totales
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    className="form-input"
+                                    value={formData.limite_usos_total}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, limite_usos_total: e.target.value }))}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Asignación Exclusiva (Clínica / Doctor)
+                        </label>
+                        <CustomSelect
+                            options={clinicOptions}
+                            value={formData.clinica_id ? String(formData.clinica_id) : ''}
+                            onChange={(_, val) => setFormData((prev) => ({ ...prev, clinica_id: val }))}
+                            searchable
+                            placeholder="Uso libre para cualquier clínica..."
+                        />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Fecha de Vencimiento
+                            </label>
+                            <input
+                                type="date"
+                                className="form-input"
+                                value={formData.fecha_fin}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, fecha_fin: e.target.value }))}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Nombre de Evento
+                            </label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Ej. Expo Dental"
+                                value={formData.evento_nombre}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, evento_nombre: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => setShowCreateModal(false)}
+                            disabled={creating}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={creating}
+                            style={{ fontWeight: 600 }}
+                        >
+                            {creating ? 'Guardando...' : 'Crear Cupón'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

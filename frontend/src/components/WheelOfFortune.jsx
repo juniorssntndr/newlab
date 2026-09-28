@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import CustomSelect from './CustomSelect.jsx';
+import Modal from './Modal.jsx';
 import { apiClient } from '../services/http/apiClient.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
@@ -405,30 +406,19 @@ export default function WheelOfFortune({ onGiroCompletado }) {
             </div>
 
             {/* Modal de Resultado y Entrega de Cupón */}
-            {showResultModal && spinResult && (
-                <div className="modal-overlay" style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 9999,
-                    backdropFilter: 'blur(4px)',
-                    padding: '1rem'
-                }}>
-                    <div className="card" style={{
-                        maxWidth: '450px',
-                        width: '100%',
-                        padding: '1.75rem',
-                        textAlign: 'center',
-                        borderRadius: '16px',
-                        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
-                        animation: 'fadeIn 0.25s ease'
-                    }}>
+            <Modal
+                open={showResultModal && Boolean(spinResult)}
+                onClose={() => {
+                    setShowResultModal(false);
+                    setForm((prev) => ({ ...prev, doctor_nombre: '', doctor_telefono: '' }));
+                }}
+                title={spinResult?.premio?.tipo_premio === 'sin_premio' ? '¡Sigue Intentando!' : '¡Premio Otorgado!'}
+                subtitle={`Doctor(a): ${form.doctor_nombre || 'Participante'}`}
+                icon={spinResult?.premio?.tipo_premio === 'sin_premio' ? 'bi-emoji-neutral' : 'bi-gift-fill'}
+                size="md"
+            >
+                {spinResult && (
+                    <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
                         <div style={{
                             width: '64px',
                             height: '64px',
@@ -444,14 +434,6 @@ export default function WheelOfFortune({ onGiroCompletado }) {
                             <i className={spinResult.premio.tipo_premio === 'sin_premio' ? 'bi bi-emoji-neutral' : 'bi bi-gift-fill'}></i>
                         </div>
 
-                        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem', fontWeight: 700 }}>
-                            {spinResult.premio.tipo_premio === 'sin_premio' ? '¡Sigue Intentando!' : '¡Felicitaciones Dr(a)!'}
-                        </h3>
-
-                        <p style={{ color: 'var(--color-text-secondary, #64748b)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-                            Para: <strong>{form.doctor_nombre}</strong>
-                        </p>
-
                         <div style={{
                             background: 'var(--color-bg-secondary, #f8fafc)',
                             border: '2px dashed var(--color-primary, #0284c7)',
@@ -460,7 +442,7 @@ export default function WheelOfFortune({ onGiroCompletado }) {
                             marginBottom: '1.5rem'
                         }}>
                             <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>
-                                Premio Obtenido
+                                Resultado del Giro
                             </span>
                             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary, #0284c7)', margin: '0.25rem 0' }}>
                                 {spinResult.premio.titulo}
@@ -538,8 +520,8 @@ export default function WheelOfFortune({ onGiroCompletado }) {
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </Modal>
         </div>
     );
 }
