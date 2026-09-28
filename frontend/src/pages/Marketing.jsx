@@ -43,12 +43,17 @@ export default function Marketing() {
                 apiClient.get('/api/clinicas', { headers: getHeaders() }).catch(() => ({ data: [] }))
             ]);
 
-            setMetricas(metricasRes.data?.data || null);
-            setCupones(Array.isArray(cuponesRes.data?.data) ? cuponesRes.data.data : []);
-            setHistorialGiros(Array.isArray(girosRes.data?.data) ? girosRes.data.data : []);
-            if (Array.isArray(clinicasRes.data)) {
-                setClinicas(clinicasRes.data);
-            }
+            const mData = metricasRes?.data !== undefined ? metricasRes.data : metricasRes;
+            setMetricas(mData || null);
+
+            const cData = cuponesRes?.data !== undefined ? cuponesRes.data : cuponesRes;
+            setCupones(Array.isArray(cData) ? cData : []);
+
+            const gData = girosRes?.data !== undefined ? girosRes.data : girosRes;
+            setHistorialGiros(Array.isArray(gData) ? gData : []);
+
+            const clData = Array.isArray(clinicasRes) ? clinicasRes : (clinicasRes?.data || []);
+            setClinicas(clData);
         } catch (err) {
             toast.error('Error al sincronizar datos de marketing');
         } finally {

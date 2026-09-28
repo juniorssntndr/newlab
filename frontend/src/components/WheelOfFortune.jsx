@@ -31,17 +31,18 @@ export default function WheelOfFortune({ onGiroCompletado }) {
         const loadInitialData = async () => {
             try {
                 const [clinicasRes, premiosRes] = await Promise.all([
-                    apiClient.get('/api/clinicas', { headers: getHeaders() }).catch(() => ({ data: [] })),
+                    apiClient.get('/api/clinicas', { headers: getHeaders() }).catch(() => []),
                     apiClient.get('/api/marketing/ruleta/premios', { headers: getHeaders() }).catch(() => ({ data: [] }))
                 ]);
 
-                if (Array.isArray(clinicasRes.data)) {
-                    setClinicas(clinicasRes.data);
-                }
-                if (premiosRes.data && Array.isArray(premiosRes.data)) {
-                    setPremios(premiosRes.data);
-                }
+                const clinicsList = Array.isArray(clinicasRes) ? clinicasRes : (clinicasRes?.data || []);
+                setClinicas(clinicsList);
+
+                const rawPremios = premiosRes?.data !== undefined ? premiosRes.data : premiosRes;
+                const prizeList = Array.isArray(rawPremios) ? rawPremios : [];
+                setPremios(prizeList);
             } catch (err) {
+                console.error('Error loading wheel config:', err);
                 toast.error('Error al cargar configuración de la ruleta');
             } finally {
                 setLoadingPremios(false);
@@ -176,7 +177,8 @@ export default function WheelOfFortune({ onGiroCompletado }) {
                 headers: getHeaders()
             });
 
-            const { premio, codigo_descuento, giro } = response.data;
+            const resPayload = response?.data || response;
+            const { premio, codigo_descuento, giro } = resPayload;
 
             // 2. Calcular ángulo de destino para que la flecha (apuntando hacia abajo en el tope) coincida
             const prizeIndex = premios.findIndex((p) => p.id === premio.id);

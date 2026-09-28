@@ -1,24 +1,36 @@
 import { API_URL } from '../../config.js';
 
 const buildUrl = (path, query) => {
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const url = new URL(`${API_URL}${cleanPath}`, window.location.origin);
+    let cleanPath = path.startsWith('/') ? path : `/${path}`;
+    const base = (API_URL || '/api').replace(/\/+$/, '');
 
-    if (query) {
-        Object.entries(query).forEach(([key, value]) => {
-            if (value === undefined || value === null || value === '') {
-                return;
-            }
-
-            url.searchParams.set(key, value);
-        });
+    // Prevent duplicating the base path if cleanPath already begins with it (e.g. /api/marketing -> /api/marketing)
+    if (base && !cleanPath.startsWith(base + '/') && cleanPath !== base) {
+        cleanPath = `${base}${cleanPath}`;
     }
 
     if (API_URL.startsWith('http')) {
+        const url = new URL(cleanPath, API_URL);
+        if (query) {
+            Object.entries(query).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    url.searchParams.set(key, value);
+                }
+            });
+        }
         return url.toString();
     }
 
-    return `${API_URL}${cleanPath}${url.search}`;
+    const url = new URL(cleanPath, window.location.origin);
+    if (query) {
+        Object.entries(query).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                url.searchParams.set(key, value);
+            }
+        });
+    }
+
+    return `${cleanPath}${url.search}`;
 };
 
 export const apiClient = async (path, options = {}) => {
@@ -68,3 +80,10 @@ export const apiClient = async (path, options = {}) => {
 
     return payload;
 };
+
+// Convenience HTTP helpers
+apiClient.get = (path, options = {}) => apiClient(path, { ...options, method: 'GET' });
+apiClient.post = (path, body, options = {}) => apiClient(path, { ...options, method: 'POST', body });
+apiClient.patch = (path, body, options = {}) => apiClient(path, { ...options, method: 'PATCH', body });
+apiClient.put = (path, body, options = {}) => apiClient(path, { ...options, method: 'PUT', body });
+apiClient.delete = (path, options = {}) => apiClient(path, { ...options, method: 'DELETE' });

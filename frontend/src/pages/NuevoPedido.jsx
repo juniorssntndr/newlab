@@ -174,13 +174,15 @@ const NuevoPedido = () => {
                 subtotal: baseOrderTotal
             }, { headers: getHeaders() });
 
-            if (res.data?.valido) {
-                setAppliedCoupon(res.data.descuento);
+            const payload = res?.data !== undefined ? res.data : res;
+
+            if (payload?.valido) {
+                setAppliedCoupon(payload.descuento);
                 setCouponError('');
-                toast.success(`¡Cupón ${res.data.descuento.codigo} aplicado!`);
+                toast.success(`¡Cupón ${payload.descuento.codigo} aplicado!`);
             } else {
-                setCouponError(res.data?.error || 'Cupón inválido');
-                toast.error(res.data?.error || 'Cupón inválido');
+                setCouponError(payload?.error || 'Cupón inválido');
+                toast.error(payload?.error || 'Cupón inválido');
             }
         } catch (err) {
             const msg = err.response?.data?.error || 'Error al validar cupón';
