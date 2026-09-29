@@ -454,10 +454,7 @@ router.delete('/ruleta/premios/:id', forbidRole('cliente'), async (req, res) => 
 router.post('/ruleta/girar', async (req, res) => {
     const pool = getPool(req);
     const { doctor_nombre, clinica_id, doctor_telefono, evento_nombre } = req.body;
-
-    if (!doctor_nombre || !String(doctor_nombre).trim()) {
-        return res.status(400).json({ error: 'El nombre del doctor es requerido para participar.' });
-    }
+    const docNombre = String(doctor_nombre || '').trim() || 'Participante Invitado';
 
     const client = await pool.connect();
     try {
@@ -539,7 +536,7 @@ router.post('/ruleta/girar', async (req, res) => {
             selectedPrize.id,
             req.user?.id || null,
             clinica_id ? Number(clinica_id) : null,
-            String(doctor_nombre).trim(),
+            docNombre,
             doctor_telefono ? String(doctor_telefono).trim() : null,
             evento_nombre ? String(evento_nombre).trim() : 'Visita a Clínica',
             couponCodeGenerated,
@@ -564,7 +561,7 @@ router.post('/ruleta/girar', async (req, res) => {
                     premio_titulo: selectedPrize.titulo,
                     tipo_premio: selectedPrize.tipo_premio,
                     valor: selectedPrize.valor,
-                    doctor_nombre: doctor_nombre.trim(),
+                    doctor_nombre: docNombre,
                     fecha_vencimiento: fechaVencimientoTicket.toISOString(),
                     evento_nombre: evento_nombre || 'Visita Comercial Afinix',
                     para_un_solo_producto: true
@@ -594,7 +591,7 @@ router.post('/ruleta/girar', async (req, res) => {
                 premio_titulo: selectedPrize.titulo,
                 tipo_premio: selectedPrize.tipo_premio,
                 valor: selectedPrize.valor,
-                doctor_nombre: doctor_nombre.trim(),
+                doctor_nombre: docNombre,
                 fecha_vencimiento: fechaVencimientoTicket.toISOString(),
                 para_un_solo_producto: true,
                 evento_nombre: evento_nombre || 'Visita Comercial'

@@ -25,6 +25,12 @@ export default function Marketing() {
     const [showSectorModal, setShowSectorModal] = useState(false);
     const [editingSector, setEditingSector] = useState(null);
     const [savingSector, setSavingSector] = useState(false);
+    const [kioskParticipant, setKioskParticipant] = useState({
+        doctor_nombre: '',
+        clinica_id: '',
+        doctor_telefono: '',
+        evento_nombre: 'Visita Comercial'
+    });
     const [sectorForm, setSectorForm] = useState({
         titulo: '',
         tipo_premio: 'porcentaje',
@@ -277,6 +283,18 @@ export default function Marketing() {
         } catch {
             toast.error('Error al eliminar sector');
         }
+    };
+
+    const handleLaunchKiosk = (isFreeUse = false) => {
+        const payload = isFreeUse ? {
+            doctor_nombre: 'Participante Invitado',
+            clinica_id: '',
+            doctor_telefono: '',
+            evento_nombre: 'Visita Comercial'
+        } : kioskParticipant;
+
+        sessionStorage.setItem('afinix_ruleta_participante', JSON.stringify(payload));
+        window.open('/ruleta-evento', '_blank');
     };
 
     return (
@@ -622,28 +640,202 @@ export default function Marketing() {
                             </button>
                         </div>
 
-                        {/* Botón Lanzador Modo Kiosco / Pantalla Completa */}
+                        {/* Botón Lanzador Rápido */}
                         <button
                             type="button"
-                            className="btn btn-outline-primary btn-sm"
-                            onClick={() => window.open('/ruleta-evento', '_blank')}
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleLaunchKiosk(true)}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.5rem',
-                                fontWeight: 600,
-                                background: 'rgba(2, 132, 199, 0.08)'
+                                fontWeight: 700,
+                                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
                             }}
-                            title="Abre la ruleta en una ventana limpia sin menús, ideal para tablets o stands en congresos"
+                            title="Abre la ruleta limpia en pantalla completa, estilo Interacty"
                         >
                             <i className="bi bi-box-arrow-up-right"></i>
-                            Abrir en Pantalla Completa (Modo Kiosco / Evento)
+                            Lanzar Modo Kiosco Libre
                         </button>
                     </div>
 
-                    {/* VISTA 1: GIRAR RULETA */}
+                    {/* VISTA 1: PREPARACIÓN Y LANZADOR MODO INTERACTY */}
                     {ruletaSubTab === 'girar' && (
-                        <WheelOfFortune onGiroCompletado={loadData} />
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                            {/* Tarjeta 1: Preparación con Doctor Específico */}
+                            <div className="card dashboard-ops-panel" style={{ padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                                    <span style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '8px',
+                                        background: 'rgba(2, 132, 199, 0.12)',
+                                        color: '#0284c7',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1.2rem'
+                                    }}>
+                                        <i className="bi bi-person-fill-check"></i>
+                                    </span>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
+                                            Preparar Visita para Doctor Específico
+                                        </h3>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                                            Vincula el premio a la cuenta del doctor para que le llegue un pop-up a su portal.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                        Nombre del Doctor(a)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Ej. Dr. Carlos Valdivia"
+                                        value={kioskParticipant.doctor_nombre}
+                                        onChange={(e) => setKioskParticipant((prev) => ({ ...prev, doctor_nombre: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                        Clínica / Consultorio (Asignación)
+                                    </label>
+                                    <CustomSelect
+                                        options={clinicOptions}
+                                        value={kioskParticipant.clinica_id ? String(kioskParticipant.clinica_id) : ''}
+                                        onChange={(_, val) => setKioskParticipant((prev) => ({ ...prev, clinica_id: val }))}
+                                        placeholder="Uso Libre (o vincular con cuenta en portal)"
+                                        searchable
+                                    />
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                        Teléfono / WhatsApp (para entrega)
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        className="form-input"
+                                        placeholder="Ej. 958123456"
+                                        value={kioskParticipant.doctor_telefono}
+                                        onChange={(e) => setKioskParticipant((prev) => ({ ...prev, doctor_telefono: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                        Motivo o Evento
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Ej. Visita Clínica San Juan / Congreso Odontológico"
+                                        value={kioskParticipant.evento_nombre}
+                                        onChange={(e) => setKioskParticipant((prev) => ({ ...prev, evento_nombre: e.target.value }))}
+                                    />
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={() => handleLaunchKiosk(false)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.85rem',
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        boxShadow: '0 4px 15px rgba(2, 132, 199, 0.35)'
+                                    }}
+                                >
+                                    <i className="bi bi-box-arrow-up-right"></i>
+                                    🚀 Lanzar Ruleta para este Doctor
+                                </button>
+                            </div>
+
+                            {/* Tarjeta 2: Modo Stand / Evento Libre */}
+                            <div className="card dashboard-ops-panel" style={{
+                                padding: '1.5rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.05) 0%, rgba(56, 189, 248, 0.02) 100%)',
+                                border: '1px solid rgba(2, 132, 199, 0.2)'
+                            }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                                        <span style={{
+                                            width: '36px',
+                                            height: '36px',
+                                            borderRadius: '8px',
+                                            background: 'rgba(16, 185, 129, 0.12)',
+                                            color: '#10b981',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '1.2rem'
+                                        }}>
+                                            <i className="bi bi-stars"></i>
+                                        </span>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
+                                                Modo Kiosco Libre (Interacty Style)
+                                            </h3>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                                                Ideal para ferias, stands o visitas express donde el doctor gira al instante.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div style={{
+                                        background: '#ffffff',
+                                        padding: '1.25rem',
+                                        borderRadius: '12px',
+                                        border: '1px dashed #cbd5e1',
+                                        marginBottom: '1.5rem'
+                                    }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0f172a', marginBottom: '0.5rem' }}>
+                                            ¿Cómo funciona la Ruleta en Pantalla Completa?
+                                        </div>
+                                        <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.82rem', color: '#475569', lineHeight: 1.6 }}>
+                                            <li>Pantalla limpia y oscura con los colores oficiales de <strong>AFINIX LAB</strong>.</li>
+                                            <li><strong>Giro con 1 solo clic</strong> en el centro o sobre cualquier parte de la ruleta.</li>
+                                            <li><strong>Ruleta infinita:</strong> Al terminar el giro, muestra el premio con su código de 6 dígitos y botón de reinicio inmediato para el siguiente participante.</li>
+                                            <li>Todos los códigos quedan registrados automáticamente en el historial de marketing.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="btn btn-success"
+                                    onClick={() => handleLaunchKiosk(true)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.85rem',
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
+                                        backgroundColor: '#10b981',
+                                        borderColor: '#10b981',
+                                        color: '#ffffff'
+                                    }}
+                                >
+                                    <i className="bi bi-play-circle-fill"></i>
+                                    ✨ Abrir Ruleta Libre Ahora (Pantalla Completa)
+                                </button>
+                            </div>
+                        </div>
                     )}
 
                     {/* VISTA 2: CONFIGURACIÓN DE SECTORES Y PROBABILIDADES */}
