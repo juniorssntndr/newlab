@@ -5,6 +5,7 @@ import { apiClient } from '../services/http/apiClient.js';
 import CustomSelect from '../components/CustomSelect.jsx';
 import Modal from '../components/Modal.jsx';
 import WheelOfFortune from '../components/WheelOfFortune.jsx';
+import '../styles/marketing.css';
 
 export default function Marketing() {
     const { getHeaders, user } = useAuth();
@@ -298,26 +299,15 @@ export default function Marketing() {
     };
 
     return (
-        <div className="page-container animate-fade-in" style={{ paddingBottom: '3rem' }}>
+        <div className="page-container animate-fade-in marketing-page">
             {/* Header del módulo */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                        <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '10px',
-                            background: 'rgba(2, 132, 199, 0.15)',
-                            color: 'var(--color-primary, #0284c7)'
-                        }}>
-                            <i className="bi bi-megaphone-fill"></i>
-                        </span>
+            <div className="page-header marketing-header">
+                <div className="page-header-left">
+                    <h1>
+                        <i className="bi bi-megaphone-fill text-primary" aria-hidden="true"></i>
                         Marketing & Fidelización Comercial
                     </h1>
-                    <p style={{ margin: '0.25rem 0 0', color: 'var(--color-text-secondary, #64748b)', fontSize: '0.88rem' }}>
+                    <p>
                         AFINIX DENTAL LAB S.A.C. · Cupones de descuento, ruleta para visitas de campo y recompensas por hitos.
                     </p>
                 </div>
@@ -325,11 +315,12 @@ export default function Marketing() {
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                     <button
                         type="button"
-                        className="btn btn-outline-secondary"
+                        className="btn btn-secondary"
                         onClick={loadData}
                         title="Actualizar datos"
+                        aria-label="Actualizar datos"
                     >
-                        <i className="bi bi-arrow-clockwise"></i>
+                        <i className="bi bi-arrow-clockwise" aria-hidden="true"></i>
                     </button>
                     <button
                         type="button"
@@ -340,98 +331,91 @@ export default function Marketing() {
                         }}
                         style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
                     >
-                        <i className="bi bi-plus-lg"></i>
+                        <i className="bi bi-plus-lg" aria-hidden="true"></i>
                         Nuevo Cupón
                     </button>
                 </div>
             </div>
 
-            {/* KPI Cards */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem'
-            }}>
-                <div className="card dashboard-kpi-card" style={{ padding: '1.15rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Cupones Activos</span>
-                        <i className="bi bi-tags-fill text-primary" style={{ fontSize: '1.25rem' }}></i>
+            {/* Shared collection-dashboard KPI presentation. */}
+            <div className="grid dashboard-kpi-grid-liquid marketing-kpi-grid">
+                <div className="card kpi-card dashboard-kpi-card dashboard-kpi-card--primary">
+                    <div className="dashboard-kpi-shell">
+                        <div className="dashboard-kpi-row">
+                            <div className="kpi-icon" aria-hidden="true"><i className="bi bi-tags-fill" aria-hidden="true"></i></div>
+                            <div className="dashboard-kpi-heading-group">
+                                <div className="dashboard-kpi-heading">Cupones Activos</div>
+                                <div className="dashboard-kpi-main-value">{metricas?.cupones_activos ?? cupones.filter(c => c.activo).length}</div>
+                                <div className="dashboard-kpi-note">Disponibles para canje</div>
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.35rem', color: 'var(--color-primary, #0284c7)' }}>
-                        {metricas?.cupones_activos ?? cupones.filter(c => c.activo).length}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Disponibles para canje</div>
                 </div>
-
-                <div className="card dashboard-kpi-card" style={{ padding: '1.15rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Canjes Totales</span>
-                        <i className="bi bi-bag-check-fill text-success" style={{ fontSize: '1.25rem' }}></i>
+                <div className="card kpi-card dashboard-kpi-card dashboard-kpi-card--success">
+                    <div className="dashboard-kpi-shell">
+                        <div className="dashboard-kpi-row">
+                            <div className="kpi-icon" aria-hidden="true"><i className="bi bi-bag-check-fill" aria-hidden="true"></i></div>
+                            <div className="dashboard-kpi-heading-group">
+                                <div className="dashboard-kpi-heading">Canjes Totales</div>
+                                <div className="dashboard-kpi-main-value">{metricas?.total_canjes ?? 0}</div>
+                                <div className="dashboard-kpi-note">Órdenes con descuento</div>
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.35rem', color: '#10b981' }}>
-                        {metricas?.total_canjes ?? 0}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Órdenes con descuento</div>
                 </div>
-
-                <div className="card dashboard-kpi-card" style={{ padding: '1.15rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Ahorro Otorgado</span>
-                        <i className="bi bi-cash-stack text-warning" style={{ fontSize: '1.25rem' }}></i>
+                <div className="card kpi-card dashboard-kpi-card dashboard-kpi-card--warning">
+                    <div className="dashboard-kpi-shell">
+                        <div className="dashboard-kpi-row">
+                            <div className="kpi-icon" aria-hidden="true"><i className="bi bi-cash-stack" aria-hidden="true"></i></div>
+                            <div className="dashboard-kpi-heading-group">
+                                <div className="dashboard-kpi-heading">Ahorro Otorgado</div>
+                                <div className="dashboard-kpi-main-value">S/. {Number(metricas?.total_ahorrado_soles || 0).toFixed(2)}</div>
+                                <div className="dashboard-kpi-note">Beneficio total a doctores</div>
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.35rem', color: '#f59e0b' }}>
-                        S/. {Number(metricas?.total_ahorrado_soles || 0).toFixed(2)}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Beneficio total a doctores</div>
                 </div>
-
-                <div className="card dashboard-kpi-card" style={{ padding: '1.15rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Giros de Ruleta</span>
-                        <i className="bi bi-disc text-info" style={{ fontSize: '1.25rem' }}></i>
+                <div className="card kpi-card dashboard-kpi-card dashboard-kpi-card--primary">
+                    <div className="dashboard-kpi-shell">
+                        <div className="dashboard-kpi-row">
+                            <div className="kpi-icon" aria-hidden="true"><i className="bi bi-disc" aria-hidden="true"></i></div>
+                            <div className="dashboard-kpi-heading-group">
+                                <div className="dashboard-kpi-heading">Giros de Ruleta</div>
+                                <div className="dashboard-kpi-main-value">{metricas?.total_giros_ruleta ?? historialGiros.length}</div>
+                                <div className="dashboard-kpi-note">Participantes en visitas</div>
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.35rem', color: '#06b6d4' }}>
-                        {metricas?.total_giros_ruleta ?? historialGiros.length}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Participantes en visitas</div>
                 </div>
             </div>
 
             {/* Pestañas de Navegación */}
-            <div style={{
-                display: 'flex',
-                gap: '0.5rem',
-                borderBottom: '1px solid var(--color-border, #e2e8f0)',
-                marginBottom: '1.5rem',
-                overflowX: 'auto',
-                whiteSpace: 'nowrap'
-            }}>
+            <div className="section-tabs dashboard-view-switcher marketing-tabs" role="group" aria-label="Secciones de marketing">
                 <button
                     type="button"
-                    className={`btn ${activeTab === 'cupones' ? 'btn-primary' : 'btn-ghost'}`}
+                    className={`btn section-tab dashboard-view-tab ${activeTab === 'cupones' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveTab('cupones')}
-                    style={{ borderRadius: '8px 8px 0 0', display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: 'none' }}
+                    aria-pressed={activeTab === 'cupones'}
                 >
-                    <i className="bi bi-ticket-perforated"></i>
+                    <i className="bi bi-ticket-perforated" aria-hidden="true"></i>
                     Cupones de Descuento ({cupones.length})
                 </button>
                 <button
                     type="button"
-                    className={`btn ${activeTab === 'ruleta' ? 'btn-primary' : 'btn-ghost'}`}
+                    className={`btn section-tab dashboard-view-tab ${activeTab === 'ruleta' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveTab('ruleta')}
-                    style={{ borderRadius: '8px 8px 0 0', display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: 'none' }}
+                    aria-pressed={activeTab === 'ruleta'}
                 >
-                    <i className="bi bi-disc"></i>
+                    <i className="bi bi-disc" aria-hidden="true"></i>
                     Ruleta de la Suerte (Eventos & Visitas)
                 </button>
                 <button
                     type="button"
-                    className={`btn ${activeTab === 'fidelizacion' ? 'btn-primary' : 'btn-ghost'}`}
+                    className={`btn section-tab dashboard-view-tab ${activeTab === 'fidelizacion' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveTab('fidelizacion')}
-                    style={{ borderRadius: '8px 8px 0 0', display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: 'none' }}
+                    aria-pressed={activeTab === 'fidelizacion'}
                 >
-                    <i className="bi bi-trophy"></i>
+                    <i className="bi bi-trophy" aria-hidden="true"></i>
                     Hitos & Fidelización (Rewards)
                 </button>
             </div>
@@ -441,23 +425,23 @@ export default function Marketing() {
                 <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Listado Oficial de Cupones</h3>
-                        <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
                             Los cupones se validan en tiempo real en el Paso 3 del pedido técnico.
                         </span>
                     </div>
 
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <div className="spinner-border text-primary" role="status"></div>
-                            <p style={{ marginTop: '0.5rem', color: '#64748b' }}>Cargando cupones...</p>
+                            <div className="spinner" role="status" aria-label="Cargando cupones"></div>
+                            <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)' }}>Cargando cupones...</p>
                         </div>
                     ) : cupones.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
-                            <i className="bi bi-tag" style={{ fontSize: '2.5rem', opacity: 0.5 }}></i>
+                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-secondary)' }}>
+                            <i className="bi bi-tag" aria-hidden="true" style={{ fontSize: '2.5rem', opacity: 0.5 }}></i>
                             <p style={{ marginTop: '0.5rem' }}>No hay cupones registrados todavía.</p>
                             <button
                                 type="button"
-                                className="btn btn-outline-primary btn-sm"
+                                className="btn btn-secondary btn-sm"
                                 onClick={() => {
                                     handleGenerateCode();
                                     setShowCreateModal(true);
@@ -467,7 +451,7 @@ export default function Marketing() {
                             </button>
                         </div>
                     ) : (
-                        <div style={{ overflowX: 'auto' }}>
+                        <div className="data-table-wrapper marketing-table-wrap">
                             <table className="data-table" style={{ width: '100%', fontSize: '0.88rem' }}>
                                 <thead>
                                     <tr>
@@ -487,8 +471,8 @@ export default function Marketing() {
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                     <code style={{
-                                                        background: 'rgba(2, 132, 199, 0.1)',
-                                                        color: 'var(--color-primary, #0284c7)',
+                                                        background: 'var(--color-primary-ultra-light)',
+                                                        color: 'var(--color-primary)',
                                                         padding: '0.2rem 0.5rem',
                                                         borderRadius: '6px',
                                                         fontWeight: 700
@@ -497,16 +481,17 @@ export default function Marketing() {
                                                     </code>
                                                     <button
                                                         type="button"
-                                                        className="btn btn-xs btn-ghost"
+                                                        className="btn btn-sm btn-ghost"
                                                         onClick={() => copyToClipboard(c.codigo)}
                                                         title="Copiar código"
+                                                        aria-label="Copiar código"
                                                         style={{ padding: '0.15rem 0.35rem' }}
                                                     >
-                                                        <i className="bi bi-copy"></i>
+                                                        <i className="bi bi-copy" aria-hidden="true"></i>
                                                     </button>
                                                 </div>
                                                 {c.descripcion && (
-                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '2px' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px' }}>
                                                         {c.descripcion}
                                                     </span>
                                                 )}
@@ -516,27 +501,27 @@ export default function Marketing() {
                                                     {c.tipo === 'porcentaje' ? `${Number(c.valor)}% DCTO` : `S/. ${Number(c.valor).toFixed(2)}`}
                                                 </strong>
                                                 {c.monto_minimo_pedido > 0 && (
-                                                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
                                                         Mín: S/. {Number(c.monto_minimo_pedido).toFixed(2)}
                                                     </div>
                                                 )}
                                             </td>
                                             <td>
                                                 {c.clinica_nombre ? (
-                                                    <span style={{ color: '#0284c7', fontWeight: 500 }}>
-                                                        <i className="bi bi-hospital" style={{ marginRight: '4px' }}></i>
+                                                    <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
+                                                        <i className="bi bi-hospital" aria-hidden="true" style={{ marginRight: '4px' }}></i>
                                                         {c.clinica_nombre}
                                                     </span>
                                                 ) : (
-                                                    <span className="badge badge-light" style={{ background: '#f1f5f9', color: '#475569' }}>
+                                                    <span className="badge badge-inactive" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
                                                         Uso Libre (Cualquiera)
                                                     </span>
                                                 )}
                                             </td>
                                             <td>
                                                 <span className="badge" style={{
-                                                    background: c.origen === 'ruleta_evento' ? 'rgba(139, 92, 246, 0.15)' : 'rgba(2, 132, 199, 0.1)',
-                                                    color: c.origen === 'ruleta_evento' ? '#8b5cf6' : '#0284c7'
+                                                    background: c.origen === 'ruleta_evento' ? 'var(--color-primary-light)' : 'var(--color-primary-ultra-light)',
+                                                    color: c.origen === 'ruleta_evento' ? 'var(--color-primary)' : 'var(--color-primary)'
                                                 }}>
                                                     {c.origen === 'ruleta_evento' ? 'Ruleta Evento' : (c.origen || 'Manual')}
                                                 </span>
@@ -550,13 +535,13 @@ export default function Marketing() {
                                                         Hasta {new Date(c.fecha_fin).toLocaleDateString('es-PE')}
                                                     </span>
                                                 ) : (
-                                                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Permanente</span>
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Permanente</span>
                                                 )}
                                             </td>
                                             <td>
-                                                <span className={`badge ${c.activo ? 'badge-success' : 'badge-secondary'}`} style={{
-                                                    background: c.activo ? 'rgba(16, 185, 129, 0.15)' : '#f1f5f9',
-                                                    color: c.activo ? '#10b981' : '#64748b',
+                                                <span className={`badge ${c.activo ? 'badge-success' : 'badge-inactive'}`} style={{
+                                                    background: c.activo ? 'var(--color-success-bg)' : 'var(--color-bg-alt)',
+                                                    color: c.activo ? 'var(--color-success)' : 'var(--color-text-secondary)',
                                                     padding: '0.2rem 0.6rem',
                                                     borderRadius: '12px'
                                                 }}>
@@ -567,20 +552,22 @@ export default function Marketing() {
                                                 <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
                                                     <button
                                                         type="button"
-                                                        className={`btn btn-xs ${c.activo ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                                        className={`btn btn-sm ${c.activo ? 'btn-ghost' : 'btn-ghost'}`}
                                                         onClick={() => handleToggleActive(c.id)}
                                                         title={c.activo ? 'Pausar cupón' : 'Activar cupón'}
+                                                        aria-label={c.activo ? 'Pausar cupón' : 'Activar cupón'}
                                                     >
-                                                        <i className={`bi ${c.activo ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
+                                                        <i className={`bi ${c.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
                                                     </button>
                                                     {user?.tipo === 'admin' && (
                                                         <button
                                                             type="button"
-                                                            className="btn btn-xs btn-outline-danger"
+                                                            className="btn btn-sm btn-ghost marketing-danger-action"
                                                             onClick={() => handleDeleteCoupon(c.id)}
                                                             title="Eliminar cupón"
+                                                            aria-label="Eliminar cupón"
                                                         >
-                                                            <i className="bi bi-trash"></i>
+                                                            <i className="bi bi-trash" aria-hidden="true"></i>
                                                         </button>
                                                     )}
                                                 </div>
@@ -604,38 +591,41 @@ export default function Marketing() {
                         flexWrap: 'wrap',
                         gap: '1rem',
                         marginBottom: '1.25rem',
-                        background: 'var(--color-bg-secondary, #f8fafc)',
+                        background: 'var(--color-bg-alt)',
                         padding: '1rem 1.25rem',
                         borderRadius: '12px',
-                        border: '1px solid var(--color-border, #e2e8f0)'
+                        border: '1px solid var(--color-border)'
                     }}>
                         {/* Sub-pestañas de Ruleta */}
-                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <div className="section-tabs marketing-tabs marketing-subtabs" role="group" aria-label="Secciones de ruleta">
                             <button
                                 type="button"
-                                className={`btn btn-sm ${ruletaSubTab === 'girar' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                className={`btn btn-sm ${ruletaSubTab === 'girar' ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={() => setRuletaSubTab('girar')}
+                    aria-pressed={ruletaSubTab === 'girar'}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                             >
-                                <i className="bi bi-play-circle-fill"></i>
+                                <i className="bi bi-play-circle-fill" aria-hidden="true"></i>
                                 Girar Ruleta (Visitas)
                             </button>
                             <button
                                 type="button"
-                                className={`btn btn-sm ${ruletaSubTab === 'sectores' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                className={`btn btn-sm ${ruletaSubTab === 'sectores' ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={() => setRuletaSubTab('sectores')}
+                    aria-pressed={ruletaSubTab === 'sectores'}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                             >
-                                <i className="bi bi-sliders"></i>
+                                <i className="bi bi-sliders" aria-hidden="true"></i>
                                 Configurar Sectores & Probabilidades ({sectoresRuleta.length})
                             </button>
                             <button
                                 type="button"
-                                className={`btn btn-sm ${ruletaSubTab === 'historial' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                className={`btn btn-sm ${ruletaSubTab === 'historial' ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={() => setRuletaSubTab('historial')}
+                    aria-pressed={ruletaSubTab === 'historial'}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                             >
-                                <i className="bi bi-clock-history"></i>
+                                <i className="bi bi-clock-history" aria-hidden="true"></i>
                                 Historial de Giros ({historialGiros.length})
                             </button>
                         </div>
@@ -650,18 +640,19 @@ export default function Marketing() {
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 fontWeight: 700,
-                                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
+                                boxShadow: 'var(--shadow-sm)'
                             }}
                             title="Abre la ruleta limpia en pantalla completa, estilo Interacty"
+                            aria-label="Abre la ruleta limpia en pantalla completa, estilo Interacty"
                         >
-                            <i className="bi bi-box-arrow-up-right"></i>
+                            <i className="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                             Lanzar Modo Kiosco Libre
                         </button>
                     </div>
 
                     {/* VISTA 1: PREPARACIÓN Y LANZADOR MODO INTERACTY */}
                     {ruletaSubTab === 'girar' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
                             {/* Tarjeta 1: Preparación con Doctor Específico */}
                             <div className="card dashboard-ops-panel" style={{ padding: '1.5rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -669,30 +660,31 @@ export default function Marketing() {
                                         width: '36px',
                                         height: '36px',
                                         borderRadius: '8px',
-                                        background: 'rgba(2, 132, 199, 0.12)',
-                                        color: '#0284c7',
+                                        background: 'var(--color-primary-light)',
+                                        color: 'var(--color-primary)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         fontSize: '1.2rem'
                                     }}>
-                                        <i className="bi bi-person-fill-check"></i>
+                                        <i className="bi bi-person-fill-check" aria-hidden="true"></i>
                                     </span>
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
                                             Preparar Visita para Doctor Específico
                                         </h3>
-                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                             Vincula el premio a la cuenta del doctor para que le llegue un pop-up a su portal.
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                    <label htmlFor="marketing-kioskParticipant-doctor_nombre" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                         Nombre del Doctor(a)
                                     </label>
                                     <input
+                                        id="marketing-kioskParticipant-doctor_nombre"
                                         type="text"
                                         className="form-input"
                                         placeholder="Ej. Dr. Carlos Valdivia"
@@ -702,10 +694,11 @@ export default function Marketing() {
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                    <label htmlFor="marketing-kioskParticipant-clinica_id" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                         Clínica / Consultorio (Asignación)
                                     </label>
                                     <CustomSelect
+                                        id="marketing-kioskParticipant-clinica_id"
                                         options={clinicOptions}
                                         value={kioskParticipant.clinica_id ? String(kioskParticipant.clinica_id) : ''}
                                         onChange={(_, val) => setKioskParticipant((prev) => ({ ...prev, clinica_id: val }))}
@@ -715,10 +708,11 @@ export default function Marketing() {
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                    <label htmlFor="marketing-kioskParticipant-doctor_telefono" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                         Teléfono / WhatsApp (para entrega)
                                     </label>
                                     <input
+                                        id="marketing-kioskParticipant-doctor_telefono"
                                         type="tel"
                                         className="form-input"
                                         placeholder="Ej. 958123456"
@@ -728,10 +722,11 @@ export default function Marketing() {
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                    <label htmlFor="marketing-kioskParticipant-evento_nombre" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                         Motivo o Evento
                                     </label>
                                     <input
+                                        id="marketing-kioskParticipant-evento_nombre"
                                         type="text"
                                         className="form-input"
                                         placeholder="Ej. Visita Clínica San Juan / Congreso Odontológico"
@@ -755,7 +750,7 @@ export default function Marketing() {
                                         boxShadow: '0 4px 15px rgba(2, 132, 199, 0.35)'
                                     }}
                                 >
-                                    <i className="bi bi-box-arrow-up-right"></i>
+                                    <i className="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                                     🚀 Lanzar Ruleta para este Doctor
                                 </button>
                             </div>
@@ -776,19 +771,19 @@ export default function Marketing() {
                                             height: '36px',
                                             borderRadius: '8px',
                                             background: 'rgba(16, 185, 129, 0.12)',
-                                            color: '#10b981',
+                                            color: 'var(--color-success)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             fontSize: '1.2rem'
                                         }}>
-                                            <i className="bi bi-stars"></i>
+                                            <i className="bi bi-stars" aria-hidden="true"></i>
                                         </span>
                                         <div>
                                             <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
                                                 Modo Kiosco Libre (Interacty Style)
                                             </h3>
-                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                                 Ideal para ferias, stands o visitas express donde el doctor gira al instante.
                                             </p>
                                         </div>
@@ -801,10 +796,10 @@ export default function Marketing() {
                                         border: '1px dashed #cbd5e1',
                                         marginBottom: '1.5rem'
                                     }}>
-                                        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0f172a', marginBottom: '0.5rem' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: '0.5rem' }}>
                                             ¿Cómo funciona la Ruleta en Pantalla Completa?
                                         </div>
-                                        <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.82rem', color: '#475569', lineHeight: 1.6 }}>
+                                        <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.82rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
                                             <li>Pantalla limpia y oscura con los colores oficiales de <strong>AFINIX LAB</strong>.</li>
                                             <li><strong>Giro con 1 solo clic</strong> en el centro o sobre cualquier parte de la ruleta.</li>
                                             <li><strong>Ruleta infinita:</strong> Al terminar el giro, muestra el premio con su código de 6 dígitos y botón de reinicio inmediato para el siguiente participante.</li>
@@ -826,12 +821,12 @@ export default function Marketing() {
                                         justifyContent: 'center',
                                         gap: '0.5rem',
                                         boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
-                                        backgroundColor: '#10b981',
-                                        borderColor: '#10b981',
+                                        backgroundColor: 'var(--color-success)',
+                                        borderColor: 'var(--color-success)',
                                         color: '#ffffff'
                                     }}
                                 >
-                                    <i className="bi bi-play-circle-fill"></i>
+                                    <i className="bi bi-play-circle-fill" aria-hidden="true"></i>
                                     ✨ Abrir Ruleta Libre Ahora (Pantalla Completa)
                                 </button>
                             </div>
@@ -844,10 +839,10 @@ export default function Marketing() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
                                 <div>
                                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <i className="bi bi-pie-chart-fill text-primary"></i>
+                                        <i className="bi bi-pie-chart-fill text-primary" aria-hidden="true"></i>
                                         Sectores y Algoritmo de Probabilidad
                                     </h3>
-                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
                                         Control de premios variables (merch, porcentaje, monto fijo o sin premio). Los premios con stock agotado o pausados se excluyen automáticamente del azar.
                                     </p>
                                 </div>
@@ -858,7 +853,7 @@ export default function Marketing() {
                                     onClick={handleOpenNewSector}
                                     style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                                 >
-                                    <i className="bi bi-plus-lg"></i>
+                                    <i className="bi bi-plus-lg" aria-hidden="true"></i>
                                     Nuevo Sector / Premio
                                 </button>
                             </div>
@@ -868,31 +863,31 @@ export default function Marketing() {
                                 display: 'flex',
                                 gap: '1rem',
                                 flexWrap: 'wrap',
-                                background: 'var(--color-bg-secondary, #f8fafc)',
+                                background: 'var(--color-bg-alt)',
                                 padding: '0.85rem 1rem',
                                 borderRadius: '10px',
                                 marginBottom: '1.25rem',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--color-border)',
                                 fontSize: '0.85rem'
                             }}>
                                 <div>
-                                    <span style={{ color: '#64748b' }}>Sectores Totales:</span>{' '}
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>Sectores Totales:</span>{' '}
                                     <strong>{sectoresRuleta.length}</strong>
                                 </div>
                                 <div>
-                                    <span style={{ color: '#64748b' }}>En Giro Activo:</span>{' '}
-                                    <strong style={{ color: '#0284c7' }}>
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>En Giro Activo:</span>{' '}
+                                    <strong style={{ color: 'var(--color-primary)' }}>
                                         {sectoresRuleta.filter(s => s.activo && (!s.stock_disponible || s.stock_entregado < s.stock_disponible)).length}
                                     </strong>
                                 </div>
                                 <div>
-                                    <span style={{ color: '#64748b' }}>Peso Total Acumulado:</span>{' '}
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>Peso Total Acumulado:</span>{' '}
                                     <strong>{totalPesoActivo} pts</strong>
                                 </div>
                             </div>
 
                             {/* Tabla de sectores */}
-                            <div style={{ overflowX: 'auto' }}>
+                            <div className="data-table-wrapper marketing-table-wrap">
                                 <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
                                     <thead>
                                         <tr>
@@ -917,13 +912,13 @@ export default function Marketing() {
                                                                 height: '24px',
                                                                 borderRadius: '6px',
                                                                 backgroundColor: s.color_hex || '#0284c7',
-                                                                border: '1px solid rgba(0,0,0,0.15)',
+                                                                border: '1px solid var(--color-border)',
                                                                 flexShrink: 0
                                                             }} />
                                                             <div>
-                                                                <strong style={{ display: 'block', color: '#0f172a' }}>{s.titulo}</strong>
+                                                                <strong style={{ display: 'block', color: 'var(--color-text)' }}>{s.titulo}</strong>
                                                                 {s.descripcion && (
-                                                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
                                                                         {s.descripcion}
                                                                     </span>
                                                                 )}
@@ -932,18 +927,18 @@ export default function Marketing() {
                                                     </td>
                                                     <td>
                                                         <span className="badge" style={{
-                                                            background: s.tipo_premio === 'merch' ? 'rgba(139, 92, 246, 0.15)' :
-                                                                s.tipo_premio === 'porcentaje' ? 'rgba(2, 132, 199, 0.15)' :
-                                                                s.tipo_premio === 'monto_fijo' ? 'rgba(16, 185, 129, 0.15)' : '#f1f5f9',
-                                                            color: s.tipo_premio === 'merch' ? '#8b5cf6' :
-                                                                s.tipo_premio === 'porcentaje' ? '#0284c7' :
-                                                                s.tipo_premio === 'monto_fijo' ? '#10b981' : '#64748b',
+                                                            background: s.tipo_premio === 'merch' ? 'var(--color-primary-light)' :
+                                                                s.tipo_premio === 'porcentaje' ? 'var(--color-primary-light)' :
+                                                                s.tipo_premio === 'monto_fijo' ? 'var(--color-success-bg)' : 'var(--color-bg-alt)',
+                                                            color: s.tipo_premio === 'merch' ? 'var(--color-primary)' :
+                                                                s.tipo_premio === 'porcentaje' ? 'var(--color-primary)' :
+                                                                s.tipo_premio === 'monto_fijo' ? 'var(--color-success)' : 'var(--color-text-secondary)',
                                                             fontWeight: 600
                                                         }}>
-                                                            {s.tipo_premio === 'merch' && <i className="bi bi-box-seam" style={{ marginRight: '4px' }}></i>}
-                                                            {s.tipo_premio === 'porcentaje' && <i className="bi bi-percent" style={{ marginRight: '4px' }}></i>}
-                                                            {s.tipo_premio === 'monto_fijo' && <i className="bi bi-cash" style={{ marginRight: '4px' }}></i>}
-                                                            {s.tipo_premio === 'sin_premio' && <i className="bi bi-emoji-neutral" style={{ marginRight: '4px' }}></i>}
+                                                            {s.tipo_premio === 'merch' && <i className="bi bi-box-seam" aria-hidden="true" style={{ marginRight: '4px' }}></i>}
+                                                            {s.tipo_premio === 'porcentaje' && <i className="bi bi-percent" aria-hidden="true" style={{ marginRight: '4px' }}></i>}
+                                                            {s.tipo_premio === 'monto_fijo' && <i className="bi bi-cash" aria-hidden="true" style={{ marginRight: '4px' }}></i>}
+                                                            {s.tipo_premio === 'sin_premio' && <i className="bi bi-emoji-neutral" aria-hidden="true" style={{ marginRight: '4px' }}></i>}
                                                             {s.tipo_premio === 'merch' ? 'Merch / Físico' :
                                                                 s.tipo_premio === 'porcentaje' ? 'Porcentaje' :
                                                                 s.tipo_premio === 'monto_fijo' ? 'Monto Soles' : 'Sin Premio'}
@@ -952,24 +947,24 @@ export default function Marketing() {
                                                     <td>
                                                         {s.tipo_premio === 'porcentaje' && <strong>{Number(s.valor)}% DCTO</strong>}
                                                         {s.tipo_premio === 'monto_fijo' && <strong>S/. {Number(s.valor).toFixed(2)} DCTO</strong>}
-                                                        {s.tipo_premio === 'merch' && <span style={{ color: '#475569' }}>Regalo de Marca</span>}
-                                                        {s.tipo_premio === 'sin_premio' && <span style={{ color: '#94a3b8' }}>—</span>}
+                                                        {s.tipo_premio === 'merch' && <span style={{ color: 'var(--color-text-secondary)' }}>Regalo de Marca</span>}
+                                                        {s.tipo_premio === 'sin_premio' && <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>}
                                                     </td>
                                                     <td>
                                                         {s.stock_disponible === null ? (
-                                                            <span className="badge badge-light" style={{ background: '#f1f5f9', color: '#475569' }}>
+                                                            <span className="badge badge-inactive" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
                                                                 Ilimitado
                                                             </span>
                                                         ) : (
                                                             <div>
-                                                                <span className={`badge ${isDepleted ? 'badge-danger' : 'badge-info'}`} style={{
-                                                                    background: isDepleted ? 'rgba(239, 68, 68, 0.15)' : 'rgba(2, 132, 199, 0.12)',
-                                                                    color: isDepleted ? '#ef4444' : '#0284c7',
+                                                                <span className={`badge ${isDepleted ? 'badge-danger' : 'marketing-badge-primary'}`} style={{
+                                                                    background: isDepleted ? 'var(--color-error-bg)' : 'var(--color-primary-light)',
+                                                                    color: isDepleted ? 'var(--color-error)' : 'var(--color-primary)',
                                                                     fontWeight: 600
                                                                 }}>
                                                                     {Math.max(0, s.stock_disponible - s.stock_entregado)} de {s.stock_disponible} restantes
                                                                 </span>
-                                                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                                                                <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
                                                                     {s.stock_entregado} entregados
                                                                 </div>
                                                             </div>
@@ -978,9 +973,9 @@ export default function Marketing() {
                                                     <td>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                             <span style={{ fontWeight: 600 }}>{s.probabilidad_peso} pts</span>
-                                                            <span className="badge badge-primary" style={{
-                                                                background: s.activo && !isDepleted ? 'rgba(2, 132, 199, 0.15)' : '#f1f5f9',
-                                                                color: s.activo && !isDepleted ? '#0284c7' : '#94a3b8',
+                                                            <span className="badge marketing-badge-primary" style={{
+                                                                background: s.activo && !isDepleted ? 'var(--color-primary-light)' : 'var(--color-bg-alt)',
+                                                                color: s.activo && !isDepleted ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
                                                                 fontWeight: 700
                                                             }}>
                                                                 {s.activo && !isDepleted ? `${s.probabilidad_porcentaje}%` : '0%'}
@@ -989,39 +984,42 @@ export default function Marketing() {
                                                     </td>
                                                     <td>
                                                         {!s.activo ? (
-                                                            <span className="badge" style={{ background: '#f1f5f9', color: '#64748b' }}>Pausado</span>
+                                                            <span className="badge" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>Pausado</span>
                                                         ) : isDepleted ? (
-                                                            <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>Agotado</span>
+                                                            <span className="badge" style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)' }}>Agotado</span>
                                                         ) : (
-                                                            <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>Activo</span>
+                                                            <span className="badge" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>Activo</span>
                                                         )}
                                                     </td>
                                                     <td style={{ textAlign: 'right' }}>
                                                         <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
                                                             <button
                                                                 type="button"
-                                                                className={`btn btn-xs ${s.activo ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                                                className={`btn btn-sm ${s.activo ? 'btn-ghost' : 'btn-ghost'}`}
                                                                 onClick={() => handleToggleSector(s.id)}
                                                                 title={s.activo ? 'Pausar sector' : 'Activar sector'}
+                                                                aria-label={s.activo ? 'Pausar sector' : 'Activar sector'}
                                                             >
-                                                                <i className={`bi ${s.activo ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
+                                                                <i className={`bi ${s.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                className="btn btn-xs btn-outline-primary"
+                                                                className="btn btn-sm btn-secondary"
                                                                 onClick={() => handleOpenEditSector(s)}
                                                                 title="Editar sector"
+                                                                aria-label="Editar sector"
                                                             >
-                                                                <i className="bi bi-pencil"></i>
+                                                                <i className="bi bi-pencil" aria-hidden="true"></i>
                                                             </button>
                                                             {user?.tipo === 'admin' && (
                                                                 <button
                                                                     type="button"
-                                                                    className="btn btn-xs btn-outline-danger"
+                                                                    className="btn btn-sm btn-ghost marketing-danger-action"
                                                                     onClick={() => handleDeleteSector(s.id)}
                                                                     title="Eliminar sector"
+                                                                    aria-label="Eliminar sector"
                                                                 >
-                                                                    <i className="bi bi-trash"></i>
+                                                                    <i className="bi bi-trash" aria-hidden="true"></i>
                                                                 </button>
                                                             )}
                                                         </div>
@@ -1040,20 +1038,20 @@ export default function Marketing() {
                         <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <i className="bi bi-clock-history text-primary"></i>
+                                    <i className="bi bi-clock-history text-primary" aria-hidden="true"></i>
                                     Historial de Giros y Doctores Premiados
                                 </h3>
-                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                     Últimos 100 giros registrados en visitas y eventos
                                 </span>
                             </div>
 
                             {historialGiros.length === 0 ? (
-                                <p style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem 0' }}>
+                                <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '1.5rem 0' }}>
                                     Aún no se han realizado giros de ruleta. ¡Utiliza la herramienta superior en tu próxima visita!
                                 </p>
                             ) : (
-                                <div style={{ overflowX: 'auto' }}>
+                                <div className="data-table-wrapper marketing-table-wrap">
                                     <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
                                         <thead>
                                             <tr>
@@ -1073,8 +1071,8 @@ export default function Marketing() {
                                                     <td>
                                                         <strong>{g.doctor_nombre}</strong>
                                                         {g.doctor_telefono && (
-                                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                                                <i className="bi bi-telephone" style={{ marginRight: '3px' }}></i>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                                                <i className="bi bi-telephone" aria-hidden="true" style={{ marginRight: '3px' }}></i>
                                                                 {g.doctor_telefono}
                                                             </div>
                                                         )}
@@ -1082,17 +1080,18 @@ export default function Marketing() {
                                                     <td>{g.clinica_nombre || '—'}</td>
                                                     <td>{g.evento_nombre}</td>
                                                     <td>
-                                                        <span className="badge" style={{ background: `${g.color_hex}22`, color: g.color_hex, fontWeight: 600 }}>
+                                                        <span className="badge marketing-badge-primary">
+                                                            <span className="marketing-prize-dot" style={{ backgroundColor: g.color_hex }} aria-hidden="true" />
                                                             {g.premio_titulo}
                                                         </span>
                                                     </td>
                                                     <td>
                                                         {g.codigo_descuento_generado ? (
-                                                            <code style={{ background: '#f1f5f9', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.05em' }}>
+                                                            <code style={{ background: 'var(--color-bg-alt)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.05em' }}>
                                                                 {g.codigo_descuento_generado}
                                                             </code>
                                                         ) : (
-                                                            <span style={{ color: '#94a3b8' }}>—</span>
+                                                            <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
                                                         )}
                                                     </td>
                                                     <td>{g.asesor_nombre || 'Equipo Comercial'}</td>
@@ -1114,61 +1113,61 @@ export default function Marketing() {
                             width: '42px',
                             height: '42px',
                             borderRadius: '10px',
-                            background: 'rgba(245, 158, 11, 0.15)',
-                            color: '#f59e0b',
+                            background: 'var(--color-warning-bg)',
+                            color: 'var(--color-warning)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '1.35rem'
                         }}>
-                            <i className="bi bi-stars"></i>
+                            <i className="bi bi-stars" aria-hidden="true"></i>
                         </span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
                                 Motor de Fidelización y Gamificación Continua (Rewards)
                             </h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
                                 Reglas automáticas para premiar la recurrencia y celebrar fechas especiales con los doctores.
                             </p>
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '1rem' }}>
-                        <div style={{ background: 'var(--color-bg-secondary, #f8fafc)', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.25rem', marginTop: '1rem' }}>
+                        <div style={{ background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <i className="bi bi-10-circle-fill text-primary" style={{ fontSize: '1.3rem' }}></i>
+                                <i className="bi bi-10-circle-fill text-primary" aria-hidden="true" style={{ fontSize: '1.3rem' }}></i>
                                 <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600 }}>Hitos por Volumen de Pedidos</h4>
                             </div>
-                            <p style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                                 Disparador automático: cuando una clínica alcanza sus primeros <strong>10 trabajos</strong> o <strong>50 trabajos</strong> técnicos, el sistema genera automáticamente un cupón especial de felicitación y alerta al asesor asignado.
                             </p>
-                            <span className="badge badge-success" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
-                                <i className="bi bi-check-circle" style={{ marginRight: '4px' }}></i> Arquitectura Lista
+                            <span className="badge badge-success" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>
+                                <i className="bi bi-check-circle" aria-hidden="true" style={{ marginRight: '4px' }}></i> Arquitectura Lista
                             </span>
                         </div>
 
-                        <div style={{ background: 'var(--color-bg-secondary, #f8fafc)', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem' }}>
+                        <div style={{ background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <i className="bi bi-cake2-fill text-warning" style={{ fontSize: '1.3rem' }}></i>
+                                <i className="bi bi-cake2-fill text-warning" aria-hidden="true" style={{ fontSize: '1.3rem' }}></i>
                                 <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600 }}>Cumpleaños de Doctores (CRM)</h4>
                             </div>
-                            <p style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                                 Conectado con la fecha de nacimiento registrada en <strong>Gestión de Clientes (CRM)</strong>. Muestra alertas preventivas de 7 días antes para coordinar el envío de regalo físico o cupón cumpleañero por WhatsApp.
                             </p>
-                            <span className="badge badge-primary" style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7' }}>
-                                <i className="bi bi-link-45deg" style={{ marginRight: '4px' }}></i> Conectado con CRM
+                            <span className="badge marketing-badge-primary" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                                <i className="bi bi-link-45deg" aria-hidden="true" style={{ marginRight: '4px' }}></i> Conectado con CRM
                             </span>
                         </div>
 
-                        <div style={{ background: 'var(--color-bg-secondary, #f8fafc)', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem' }}>
+                        <div style={{ background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <i className="bi bi-share-fill text-info" style={{ fontSize: '1.3rem' }}></i>
+                                <i className="bi bi-share-fill text-info" aria-hidden="true" style={{ fontSize: '1.3rem' }}></i>
                                 <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600 }}>Campañas & Redes Sociales</h4>
                             </div>
-                            <p style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                                 Creación de enlaces y códigos con seguimiento (UTM) para campañas en Instagram, Facebook y congresos odontológicos, midiendo cuántos pedidos provienen de cada esfuerzo publicitario.
                             </p>
-                            <span className="badge badge-light" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                            <span className="badge badge-inactive" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
                                 Planificado Fase 2
                             </span>
                         </div>
@@ -1178,6 +1177,8 @@ export default function Marketing() {
 
             {/* MODAL CREAR CUPÓN */}
             <Modal
+                className="marketing-modal"
+                bodyClassName="marketing-modal-body"
                 open={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 title="Nuevo Cupón Promocional"
@@ -1188,18 +1189,19 @@ export default function Marketing() {
                 <form onSubmit={handleCreateCoupon}>
                     <div className="form-group" style={{ marginBottom: '0.85rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                            <label className="form-label" style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600 }}>
-                                Código de Cupón <span style={{ color: '#ef4444' }}>*</span>
+                            <label htmlFor="marketing-formData-codigo" className="form-label" style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600 }}>
+                                Código de Cupón <span style={{ color: 'var(--color-error)' }}>*</span>
                             </label>
                             <button
                                 type="button"
-                                className="btn btn-xs btn-outline-secondary"
+                                className="btn btn-sm btn-secondary"
                                 onClick={handleGenerateCode}
                             >
                                 Generar Aleatorio
                             </button>
                         </div>
                         <input
+                            id="marketing-formData-codigo"
                             type="text"
                             className="form-input"
                             placeholder="Ej. AFX-CLIENTE10 o BIENVENIDA50"
@@ -1211,10 +1213,11 @@ export default function Marketing() {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                        <label htmlFor="marketing-formData-descripcion" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                             Descripción o Motivo
                         </label>
                         <input
+                            id="marketing-formData-descripcion"
                             type="text"
                             className="form-input"
                             placeholder="Ej. 10% de bienvenida en su primera corona"
@@ -1223,12 +1226,13 @@ export default function Marketing() {
                         />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            <label htmlFor="marketing-formData-tipo" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                 Tipo de Descuento
                             </label>
                             <CustomSelect
+                                id="marketing-formData-tipo"
                                 options={typeOptions}
                                 value={formData.tipo}
                                 onChange={(_, val) => setFormData((prev) => ({ ...prev, tipo: val }))}
@@ -1236,10 +1240,11 @@ export default function Marketing() {
                         </div>
 
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                {formData.tipo === 'porcentaje' ? 'Porcentaje (%)' : 'Monto Fijo (S/.)'} <span style={{ color: '#ef4444' }}>*</span>
+                            <label htmlFor="marketing-formData-valor" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                {formData.tipo === 'porcentaje' ? 'Porcentaje (%)' : 'Monto Fijo (S/.)'} <span style={{ color: 'var(--color-error)' }}>*</span>
                             </label>
                             <input
+                                id="marketing-formData-valor"
                                 type="number"
                                 step="0.01"
                                 min="0.01"
@@ -1252,12 +1257,13 @@ export default function Marketing() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            <label htmlFor="marketing-formData-monto_minimo_pedido" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                 Pedido Mínimo (S/.)
                             </label>
                             <input
+                                id="marketing-formData-monto_minimo_pedido"
                                 type="number"
                                 step="0.01"
                                 min="0"
@@ -1270,10 +1276,11 @@ export default function Marketing() {
 
                         {formData.tipo === 'porcentaje' ? (
                             <div className="form-group">
-                                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                <label htmlFor="marketing-formData-tope_descuento_maximo" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                     Tope Máximo DCTO (S/.)
                                 </label>
                                 <input
+                                    id="marketing-formData-tope_descuento_maximo"
                                     type="number"
                                     step="0.01"
                                     min="0"
@@ -1285,10 +1292,11 @@ export default function Marketing() {
                             </div>
                         ) : (
                             <div className="form-group">
-                                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                <label htmlFor="marketing-formData-limite_usos_total" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                     Límite Usos Totales
                                 </label>
                                 <input
+                                    id="marketing-formData-limite_usos_total"
                                     type="number"
                                     min="1"
                                     className="form-input"
@@ -1300,10 +1308,11 @@ export default function Marketing() {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                        <label htmlFor="marketing-formData-clinica_id" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                             Asignación Exclusiva (Clínica / Doctor)
                         </label>
                         <CustomSelect
+                            id="marketing-formData-clinica_id"
                             options={clinicOptions}
                             value={formData.clinica_id ? String(formData.clinica_id) : ''}
                             onChange={(_, val) => setFormData((prev) => ({ ...prev, clinica_id: val }))}
@@ -1312,12 +1321,13 @@ export default function Marketing() {
                         />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            <label htmlFor="marketing-formData-fecha_fin" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                 Fecha de Vencimiento
                             </label>
                             <input
+                                id="marketing-formData-fecha_fin"
                                 type="date"
                                 className="form-input"
                                 value={formData.fecha_fin}
@@ -1325,10 +1335,11 @@ export default function Marketing() {
                             />
                         </div>
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            <label htmlFor="marketing-formData-evento_nombre" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                 Nombre de Evento
                             </label>
                             <input
+                                id="marketing-formData-evento_nombre"
                                 type="text"
                                 className="form-input"
                                 placeholder="Ej. Expo Dental"
@@ -1361,19 +1372,22 @@ export default function Marketing() {
 
             {/* MODAL CREAR / EDITAR SECTOR DE RULETA */}
             <Modal
+                className="marketing-modal"
+                bodyClassName="marketing-modal-body"
                 open={showSectorModal}
                 onClose={() => setShowSectorModal(false)}
                 title={editingSector ? 'Editar Sector de la Ruleta' : 'Nuevo Sector en la Ruleta'}
-                subtitle="Configura el premio, color, stock físico y peso de probabilidad (Interacty style)"
+                subtitle="Configura el premio, color, stock físico y peso de probabilidad (Interacty style)" aria-label="Configura el premio, color, stock físico y peso de probabilidad (Interacty style)"
                 icon="bi-pie-chart-fill"
                 size="md"
             >
                 <form onSubmit={handleSaveSector}>
                     <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                            Título Visible en la Ruleta <span style={{ color: '#ef4444' }}>*</span>
+                        <label htmlFor="marketing-sectorForm-titulo" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Título Visible en la Ruleta <span style={{ color: 'var(--color-error)' }}>*</span>
                         </label>
                         <input
+                            id="marketing-sectorForm-titulo"
                             type="text"
                             className="form-input"
                             placeholder="Ej. 15% OFF, Agenda 2026, S/. 50 Soles, Sigue Intentando"
@@ -1384,10 +1398,11 @@ export default function Marketing() {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                            Tipo de Premio <span style={{ color: '#ef4444' }}>*</span>
+                        <label htmlFor="marketing-sectorForm-tipo_premio" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Tipo de Premio <span style={{ color: 'var(--color-error)' }}>*</span>
                         </label>
                         <CustomSelect
+                            id="marketing-sectorForm-tipo_premio"
                             options={prizeTypeOptions}
                             value={sectorForm.tipo_premio}
                             onChange={(_, val) => setSectorForm((prev) => ({ ...prev, tipo_premio: val }))}
@@ -1396,10 +1411,11 @@ export default function Marketing() {
 
                     {['porcentaje', 'monto_fijo'].includes(sectorForm.tipo_premio) && (
                         <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                {sectorForm.tipo_premio === 'porcentaje' ? 'Porcentaje de Descuento (%)' : 'Monto de Descuento (S/.)'} <span style={{ color: '#ef4444' }}>*</span>
+                            <label htmlFor="marketing-sectorForm-valor" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                {sectorForm.tipo_premio === 'porcentaje' ? 'Porcentaje de Descuento (%)' : 'Monto de Descuento (S/.)'} <span style={{ color: 'var(--color-error)' }}>*</span>
                             </label>
                             <input
+                                id="marketing-sectorForm-valor"
                                 type="number"
                                 step="0.01"
                                 min="0.01"
@@ -1412,12 +1428,13 @@ export default function Marketing() {
                         </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            <label htmlFor="marketing-sectorForm-stock_disponible" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                 Stock Disponible (Unidades)
                             </label>
                             <input
+                                id="marketing-sectorForm-stock_disponible"
                                 type="number"
                                 min="1"
                                 className="form-input"
@@ -1425,16 +1442,17 @@ export default function Marketing() {
                                 value={sectorForm.stock_disponible}
                                 onChange={(e) => setSectorForm((prev) => ({ ...prev, stock_disponible: e.target.value }))}
                             />
-                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
                                 Al agotarse, sale de la ruleta automáticamente.
                             </span>
                         </div>
 
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Peso de Probabilidad (1 - 100) <span style={{ color: '#ef4444' }}>*</span>
+                            <label htmlFor="marketing-sectorForm-probabilidad_peso" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Peso de Probabilidad (1 - 100) <span style={{ color: 'var(--color-error)' }}>*</span>
                             </label>
                             <input
+                                id="marketing-sectorForm-probabilidad_peso"
                                 type="number"
                                 min="1"
                                 max="1000"
@@ -1443,7 +1461,7 @@ export default function Marketing() {
                                 onChange={(e) => setSectorForm((prev) => ({ ...prev, probabilidad_peso: e.target.value }))}
                                 required
                             />
-                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
                                 Mayor peso = más probable.
                             </span>
                         </div>
@@ -1451,13 +1469,15 @@ export default function Marketing() {
 
                     {/* Paleta de Color del Sector */}
                     <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                        <label htmlFor="marketing-sectorForm-color_hex" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                             Color de la Tajada
                         </label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                             {colorPresets.map((c) => (
                                 <button
                                     key={c.hex}
+                                    className="marketing-color-swatch"
+                                    aria-pressed={sectorForm.color_hex === c.hex}
                                     type="button"
                                     onClick={() => setSectorForm((prev) => ({ ...prev, color_hex: c.hex }))}
                                     style={{
@@ -1465,28 +1485,32 @@ export default function Marketing() {
                                         height: '28px',
                                         borderRadius: '6px',
                                         backgroundColor: c.hex,
-                                        border: sectorForm.color_hex === c.hex ? '3px solid #0f172a' : '1px solid rgba(0,0,0,0.2)',
+                                        border: sectorForm.color_hex === c.hex ? '3px solid var(--color-text)' : '1px solid var(--color-border)',
                                         cursor: 'pointer',
-                                        outline: 'none'
+                                        outlineOffset: '3px'
                                     }}
                                     title={c.label}
+                                    aria-label={c.label}
                                 />
                             ))}
                             <input
+                                id="marketing-sectorForm-color_hex"
                                 type="color"
                                 value={sectorForm.color_hex}
                                 onChange={(e) => setSectorForm((prev) => ({ ...prev, color_hex: e.target.value }))}
                                 style={{ width: '36px', height: '28px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                                 title="Color personalizado"
+                                aria-label="Color personalizado"
                             />
                         </div>
                     </div>
 
                     <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                        <label htmlFor="marketing-sectorForm-descripcion" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                             Descripción / Observaciones
                         </label>
                         <input
+                            id="marketing-sectorForm-descripcion"
                             type="text"
                             className="form-input"
                             placeholder="Ej. Entregar agenda corporativa en mano al doctor"

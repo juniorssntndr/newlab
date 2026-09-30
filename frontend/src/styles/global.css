@@ -13126,14 +13126,14 @@ Rediseño UI: Nuevo Pedido Layout Base
   color: var(--color-primary);
 }
 
-/* Compact = icono + texto en fila (Confirmar) */
+/* Compact = cards estructuradas para Confirmar */
 .order-intake-step.is-compact .order-intake-options {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 0.85rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .order-intake-step.is-compact .order-intake-options {
     grid-template-columns: 1fr;
     gap: 0.65rem;
@@ -13141,45 +13141,76 @@ Rediseño UI: Nuevo Pedido Layout Base
 }
 
 .order-intake-step.is-compact .order-intake-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "icon copy check";
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.9rem 1rem;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  padding: 0.95rem 1rem;
+  min-height: 106px;
+  border: 1px solid var(--color-border-light);
   border-radius: 14px;
+  background: var(--color-surface, #fff);
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  text-align: left;
+}
+
+.order-intake-step.is-compact .order-intake-card:hover,
+.order-intake-step.is-compact .order-intake-card.is-selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
 }
 
 .order-intake-step.is-compact .order-intake-card-top {
-  display: contents;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .order-intake-step.is-compact .order-intake-card-icon {
-  grid-area: icon;
-  width: 2.25rem;
-  height: 2.25rem;
-  font-size: 1.1rem;
+  width: 2.35rem;
+  height: 2.35rem;
+  font-size: 1.15rem;
   background: color-mix(in srgb, var(--color-primary) 10%, #fff);
   border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border-light));
   border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .order-intake-step.is-compact .order-intake-card-check {
-  grid-area: check;
-  align-self: center;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.order-intake-step.is-compact .order-intake-card.is-selected .order-intake-card-check {
+  color: var(--color-primary);
 }
 
 .order-intake-step.is-compact .order-intake-card-copy {
-  grid-area: copy;
-  gap: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .order-intake-step.is-compact .order-intake-card-copy strong {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.3;
+  color: var(--color-text);
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .order-intake-step.is-compact .order-intake-card-copy span {
@@ -13187,8 +13218,9 @@ Rediseño UI: Nuevo Pedido Layout Base
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   line-height: 1.35;
+  color: var(--color-text-secondary);
 }
 
 .order-intake-step.is-compact .order-intake-note {
@@ -14803,6 +14835,20 @@ Rediseño UI: Nuevo Pedido Layout Base
   white-space: nowrap;
 }
 
+/* Colapso del aside lateral del wizard en pantallas medianas / intermedias (hasta 1140px)
+   para que la barra de navegación lateral de la app no comprima el contenido del wizard */
+@media (max-width: 1140px) {
+  .order-wizard-layout,
+  .order-wizard-layout.is-teeth {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .order-wizard-aside {
+    display: none !important;
+  }
+}
+
 @media (max-width: 900px) {
   .order-wizard {
     --ow-max: 100%;
@@ -14821,8 +14867,7 @@ Rediseño UI: Nuevo Pedido Layout Base
   .order-teeth-step,
   .order-wizard-product-toolbar,
   .order-wizard-paciente-fields,
-  .order-wizard-confirm-hero,
-  .order-intake-step.is-compact .order-intake-options {
+  .order-wizard-confirm-hero {
     grid-template-columns: 1fr;
   }
 
@@ -15447,4 +15492,48 @@ Rediseño UI: Nuevo Pedido Layout Base
     margin-top: 0.1rem;
     min-height: 2.55rem;
   }
+}
+
+/* Compact coupon disclosure stays inside the order confirmation total. */
+.order-wizard-confirm .order-confirm-price-row,
+.order-wizard-confirm .order-confirm-coupon-controls,
+.order-wizard-confirm .order-confirm-coupon-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.order-wizard-confirm .order-confirm-price { display: flex; flex-direction: column; min-width: 0; }
+.order-wizard-confirm .order-confirm-original-price { color: var(--color-text-secondary); font-size: 0.8rem; }
+.order-wizard-confirm .order-confirm-coupon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 36px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.order-wizard-confirm .order-confirm-coupon-action:hover:not(:disabled) { background: rgba(var(--color-primary-rgb), 0.1); }
+.order-wizard-confirm .order-confirm-coupon-action:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.order-wizard-confirm .order-confirm-coupon-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.order-wizard-confirm .order-confirm-coupon-editor:not([hidden]) { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.4rem; }
+.order-wizard-confirm .order-confirm-coupon-editor[hidden] { display: none; }
+.order-wizard-confirm .order-confirm-coupon-editor label,
+.order-wizard-confirm .order-confirm-coupon-status { font-size: 0.78rem; color: var(--color-text-secondary); }
+.order-wizard-confirm .order-confirm-coupon-status:empty { display: none; }
+.order-wizard-confirm .order-confirm-coupon-controls .form-input { flex: 1 1 140px; min-width: 0; width: auto; }
+.order-wizard-confirm .order-confirm-coupon-applied span { overflow-wrap: anywhere; flex: 1 1 140px; }
+.order-wizard-confirm .order-confirm-coupon-error { margin: 0; font-size: 0.78rem; color: var(--color-danger, #dc2626); }
+@media (max-width: 680px) {
+  .order-wizard-confirm .order-confirm-coupon-action { min-height: 44px; }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';
@@ -140,11 +140,35 @@ const NuevoPedido = () => {
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [validatingCoupon, setValidatingCoupon] = useState(false);
     const [couponError, setCouponError] = useState('');
+    const [couponEditorOpen, setCouponEditorOpen] = useState(false);
+    const couponRemoveRef = useRef(null);
+    const couponInputRef = useRef(null);
+    const couponToggleRef = useRef(null);
+    const couponRequestRef = useRef(false);
+    const couponFocusRequestedRef = useRef(false);
+
+    useEffect(() => {
+        if (couponEditorOpen && macroStep === 'confirmar' && couponFocusRequestedRef.current) {
+            couponInputRef.current?.focus();
+            couponFocusRequestedRef.current = false;
+        }
+    }, [couponEditorOpen, macroStep]);
+
+    useEffect(() => {
+        if (appliedCoupon) couponRemoveRef.current?.focus();
+    }, [appliedCoupon]);
+
+    const closeCouponEditor = () => {
+        if (couponRequestRef.current) return;
+        setCouponEditorOpen(false);
+        couponToggleRef.current?.focus();
+    };
 
     useEffect(() => {
         const pending = sessionStorage.getItem('afinix_pending_coupon');
         if (pending) {
             setCouponInput(pending);
+            setCouponEditorOpen(true);
             sessionStorage.removeItem('afinix_pending_coupon');
         }
     }, []);
@@ -172,7 +196,8 @@ const NuevoPedido = () => {
     }, [baseOrderTotal, discountAmount]);
 
     const handleApplyCoupon = async () => {
-        if (!couponInput.trim()) return;
+        if (!couponInput.trim() || couponRequestRef.current) return;
+        couponRequestRef.current = true;
         setValidatingCoupon(true);
         setCouponError('');
         try {
@@ -197,6 +222,7 @@ const NuevoPedido = () => {
             setCouponError(msg);
             toast.error(msg);
         } finally {
+            couponRequestRef.current = false;
             setValidatingCoupon(false);
         }
     };
@@ -362,12 +388,6 @@ const NuevoPedido = () => {
         const selectedProduct = productForUi || items[0]?.product || items[0] || null;
         return calculateEstimatedDeliveryDate(selectedProduct, isExpressOrder);
     }, [productForUi, items, isExpressOrder]);
-
-    useEffect(() => {
-        if (user?.clinica_id && clinicDisplayName) {
-            setClinicSearch(clinicDisplayName);
-        }
-    }, [user?.clinica_id, clinicDisplayName]);
 
     useEffect(() => {
         setForm((prev) => {
@@ -913,101 +933,84 @@ const NuevoPedido = () => {
                                         </div>
                                     </div>
 
-                                    {/* SECCIÓN DE CUPÓN DE DESCUENTO */}
-                                    <div className="order-wizard-confirm-stat order-wizard-confirm-coupon" style={{
-                                        background: appliedCoupon ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-bg-secondary, #f8fafc)',
-                                        border: appliedCoupon ? '1px solid #10b981' : '1px dashed var(--color-border, #cbd5e1)',
-                                        borderRadius: '10px',
-                                        padding: '0.85rem'
-                                    }}>
-                                        {appliedCoupon ? (
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                <div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                        <i className="bi bi-tag-fill text-success"></i>
-                                                        <strong style={{ color: '#047857', letterSpacing: '0.05em' }}>
-                                                            {appliedCoupon.codigo}
-                                                        </strong>
-                                                        <span className="badge badge-success" style={{ background: '#dcfce7', color: '#15803d', fontSize: '0.75rem' }}>
-                                                            {appliedCoupon.tipo === 'porcentaje' ? `${appliedCoupon.valor}% DCTO` : `S/. ${Number(appliedCoupon.valor).toFixed(2)} DCTO`}
-                                                        </span>
-                                                    </div>
-                                                    <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '2px' }}>
-                                                        Ahorro aplicado: -S/. {discountAmount.toFixed(2)}
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-xs btn-outline-danger"
-                                                    onClick={handleRemoveCoupon}
-                                                    title="Quitar cupón"
-                                                >
-                                                    <i className="bi bi-x-lg"></i> Quitar
-                                                </button>
+                                    <div className="order-wizard-confirm-stat is-total order-wizard-confirm-stat-total">
+                                        <span className="order-wizard-confirm-label">
+                                            <i className="bi bi-cash-stack" aria-hidden="true"></i>
+                                            Total a Pagar
+                                        </span>
+                                        <div className="order-confirm-price-row">
+                                            <div className="order-confirm-price">
+                                                {appliedCoupon ? <del className="order-confirm-original-price">S/. {baseOrderTotal.toFixed(2)}</del> : null}
+                                                <strong className="order-wizard-confirm-total-value">S/. {displayTotal.toFixed(2)}</strong>
                                             </div>
-                                        ) : (
-                                            <div>
-                                                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                            {!appliedCoupon ? (
+                                                <button
+                                                    ref={couponToggleRef}
+                                                    type="button"
+                                                    className="order-confirm-coupon-action"
+                                                    aria-expanded={couponEditorOpen}
+                                                    aria-controls="order-confirm-coupon-editor"
+                                                    disabled={validatingCoupon}
+                                                    onClick={() => {
+                                                        if (couponEditorOpen) closeCouponEditor();
+                                                        else {
+                                                            couponFocusRequestedRef.current = true;
+                                                            setCouponEditorOpen(true);
+                                                        }
+                                                    }}
+                                                >
+                                                    <i className="bi bi-tag" aria-hidden="true"></i>
+                                                    {couponEditorOpen ? 'Cerrar cupón' : 'Aplicar cupón'}
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                        <div className="order-confirm-coupon-status" role="status" aria-live="polite">
+                                            {appliedCoupon ? (
+                                                <div className="order-confirm-coupon-applied">
+                                                    <span><i className="bi bi-tag-fill" aria-hidden="true"></i> <strong>{appliedCoupon.codigo}</strong> · Ahorro: S/. {discountAmount.toFixed(2)}</span>
+                                                    <button ref={couponRemoveRef} type="button" className="order-confirm-coupon-action" onClick={() => {
+                                                        handleRemoveCoupon();
+                                                        setCouponEditorOpen(true);
+                                                        requestAnimationFrame(() => couponInputRef.current?.focus());
+                                                    }}>Quitar</button>
+                                                </div>
+                                            ) : validatingCoupon ? 'Validando cupón…' : null}
+                                        </div>
+                                        {!appliedCoupon ? (
+                                            <div id="order-confirm-coupon-editor" className="order-confirm-coupon-editor" hidden={!couponEditorOpen}>
+                                                <label htmlFor="order-confirm-coupon-code">Código de descuento</label>
+                                                <div className="order-confirm-coupon-controls">
                                                     <input
+                                                        ref={couponInputRef}
+                                                        id="order-confirm-coupon-code"
                                                         type="text"
                                                         className="form-input"
-                                                        placeholder="¿Tienes un cupón de descuento?"
+                                                        placeholder="Ingresa tu código"
                                                         value={couponInput}
-                                                        onChange={(e) => {
-                                                            setCouponInput(e.target.value.toUpperCase());
+                                                        aria-invalid={Boolean(couponError)}
+                                                        aria-describedby={couponError ? 'order-confirm-coupon-error' : undefined}
+                                                        onChange={(event) => {
+                                                            setCouponInput(event.target.value.toUpperCase());
                                                             setCouponError('');
                                                         }}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                e.preventDefault();
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === 'Enter') {
+                                                                event.preventDefault();
                                                                 handleApplyCoupon();
+                                                            } else if (event.key === 'Escape') {
+                                                                event.preventDefault();
+                                                                closeCouponEditor();
                                                             }
-                                                        }}
-                                                        style={{
-                                                            fontSize: '0.85rem',
-                                                            padding: '0.4rem 0.65rem',
-                                                            textTransform: 'uppercase',
-                                                            fontWeight: 600
                                                         }}
                                                         disabled={validatingCoupon}
                                                     />
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={handleApplyCoupon}
-                                                        disabled={validatingCoupon || !couponInput.trim()}
-                                                        style={{ whiteSpace: 'nowrap', fontWeight: 600 }}
-                                                    >
-                                                        {validatingCoupon ? 'Validando...' : 'Aplicar'}
+                                                    <button type="button" className="order-confirm-coupon-action" onClick={handleApplyCoupon} disabled={validatingCoupon || !couponInput.trim()}>
+                                                        {validatingCoupon ? 'Validando…' : 'Aplicar'}
                                                     </button>
                                                 </div>
-                                                {couponError && (
-                                                    <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.35rem' }}>
-                                                        <i className="bi bi-exclamation-circle" style={{ marginRight: '3px' }}></i>
-                                                        {couponError}
-                                                    </div>
-                                                )}
+                                                {couponError ? <p id="order-confirm-coupon-error" className="order-confirm-coupon-error" role="alert">{couponError}</p> : null}
                                             </div>
-                                        )}
-                                    </div>
-
-                                    <div className="order-wizard-confirm-stat is-total order-wizard-confirm-stat-total">
-                                        <div className="order-wizard-confirm-stat-copy">
-                                            <span className="order-wizard-confirm-label">
-                                                <i className="bi bi-cash-stack" aria-hidden="true"></i>
-                                                Total a Pagar
-                                            </span>
-                                            <div style={{ textAlign: 'right' }}>
-                                                {appliedCoupon && (
-                                                    <div style={{ fontSize: '0.8rem', color: '#64748b', textDecoration: 'line-through', marginBottom: '2px' }}>
-                                                        S/. {baseOrderTotal.toFixed(2)}
-                                                    </div>
-                                                )}
-                                                <strong className="order-wizard-confirm-total-value" style={{ color: appliedCoupon ? '#059669' : undefined }}>
-                                                    S/. {displayTotal.toFixed(2)}
-                                                </strong>
-                                            </div>
-                                        </div>
+                                        ) : null}
                                     </div>
                                 </div>
 
