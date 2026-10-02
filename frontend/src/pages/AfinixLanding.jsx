@@ -4,7 +4,6 @@ import '../styles/afinix-landing.css';
 import JsonLd from '../components/seo/JsonLd.jsx';
 import SeoHead from '../components/seo/SeoHead.jsx';
 import LandingThemeToggle from '../components/afinix/LandingThemeToggle.jsx';
-import AfinixOpeningPopup from '../components/afinix/AfinixOpeningPopup.jsx';
 import { buildJsonLdGraph, buildOrganizationJsonLd, buildWebSiteJsonLd } from '../config/seoJsonLd.js';
 import { AfinixLandingBoot } from './afinixLanding/AfinixLandingBoot.jsx';
 import { HeroCarousel, LandingNavbar } from './afinixLanding/AfinixLandingSections.jsx';
@@ -44,9 +43,7 @@ const AfinixLanding = () => {
                         <LandingThemeToggle
                             theme={theme}
                             onToggle={toggle}
-                            showSuggestion={showSuggestion}
-                            onAcceptSuggestion={acceptDarkSuggestion}
-                            onDismissSuggestion={dismissSuggestion}
+                            showSuggestion={false}
                         />
                     }
                 />
@@ -55,7 +52,6 @@ const AfinixLanding = () => {
                     <AfinixLandingBelowFold reduceMotion={Boolean(reduceMotion)} theme={theme} />
                 </Suspense>
             </main>
-            <AfinixOpeningPopup reduceMotion={Boolean(reduceMotion)} />
         </AfinixLandingBoot>
     );
 };

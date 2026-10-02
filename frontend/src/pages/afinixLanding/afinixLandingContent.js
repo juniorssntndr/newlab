@@ -4,6 +4,25 @@ const IMG = '/images/afinix-landing';
 
 export const heroSlides = [
     {
+        kickerIcon: 'bi-gift',
+        kicker: 'Pruebe nuestro flujo digital',
+        kickerMobile: '50% OFF primer caso',
+        titleBefore: 'Pruebe AFINIX. ',
+        titleHighlight: 'Envía tu primer caso con hasta 50% desc.',
+        titleAfter: '',
+        copy: 'Valide nuestro flujo digital en su clínica con respaldo total y tarifas preferenciales de bienvenida. Además, obtenga beneficios por colegas referidos.',
+        copyMobile: 'Valide nuestro flujo digital en su clínica con respaldo total y tarifas preferenciales de bienvenida.',
+        ctaMain: 'Enviar mi primer caso',
+        ctaSecondary: 'Ver catálogo',
+        image: `${IMG}/hero-precision.jpg`,
+        alt: 'Prueba de laboratorio dental digital en Arequipa con descuento de bienvenida',
+        floatCards: [
+            { icon: 'bi-tag', label: 'BIENVENIDA', value: '50% OFF primer caso' },
+            { icon: 'bi-people', label: 'RED COLEGAS', value: '30% OFF por referido' },
+            { icon: 'bi-shield-check', label: 'GARANTÍA', value: 'Repetición 100% sin costo' },
+        ],
+    },
+    {
         kickerIcon: 'bi-calendar2-check',
         kicker: 'Entregas puntuales, sin reprogramaciones',
         kickerMobile: 'Entregas puntuales',
@@ -58,25 +77,6 @@ export const heroSlides = [
             { icon: 'bi-box', label: 'CONTROL 3D', value: 'Visualizador interactivo' },
             { icon: 'bi-chat-left-dots', label: 'FEEDBACK', value: 'Comentarios en tiempo real' },
             { icon: 'bi-check2-square', label: 'PRODUCCIÓN', value: 'Fresado solo con visto bueno' },
-        ],
-    },
-    {
-        kickerIcon: 'bi-gift',
-        kicker: 'Pruebe nuestro flujo digital',
-        kickerMobile: '50% OFF primer caso',
-        titleBefore: 'Pruebe AFINIX. ',
-        titleHighlight: 'Envía tu primer caso con hasta 50% desc.',
-        titleAfter: '',
-        copy: 'Valide nuestro flujo digital en su clínica con respaldo total. Además, obtenga hasta 30% de descuento por cada colega referido.',
-        copyMobile: 'Valide nuestro flujo digital en su clínica con respaldo total y tarifas preferenciales de bienvenida.',
-        ctaMain: 'Enviar mi primer caso',
-        ctaSecondary: 'Ver catálogo',
-        image: `${IMG}/hero-precision.jpg`,
-        alt: 'Prueba de laboratorio dental digital en Arequipa con descuento de bienvenida',
-        floatCards: [
-            { icon: 'bi-tag', label: 'BIENVENIDA', value: '50% OFF primer caso' },
-            { icon: 'bi-people', label: 'RED COLEGAS', value: '30% OFF por referido' },
-            { icon: 'bi-shield-check', label: 'GARANTÍA', value: 'Repetición 100% sin costo' },
         ],
     },
 ];
