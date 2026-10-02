@@ -4,10 +4,7 @@ import SunMoonAnimatedIcon from '../icons/animated/SunMoonAnimatedIcon.jsx';
 
 export default function LandingThemeToggle({
     theme,
-    onToggle,
-    showSuggestion = false,
-    onAcceptSuggestion = null,
-    onDismissSuggestion = null
+    onToggle
 }) {
     const isDark = theme === 'dark';
     return (
@@ -22,13 +19,6 @@ export default function LandingThemeToggle({
             >
                 <SunMoonAnimatedIcon isDark={isDark} size={18} />
             </button>
-
-            {showSuggestion && onAcceptSuggestion && onDismissSuggestion && (
-                <ThemeSuggestionPopup
-                    onAccept={onAcceptSuggestion}
-                    onDismiss={onDismissSuggestion}
-                />
-            )}
         </div>
     );
 }

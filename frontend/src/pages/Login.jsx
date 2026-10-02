@@ -41,10 +41,10 @@ const Login = () => {
     const perfilHint = useMemo(() => {
         const p = (searchParams.get('perfil') || '').toLowerCase();
         if (p === 'clinicas' || p === 'cliente') {
-            return 'Acceso para clinicas y doctores: seguimiento de pedidos, disenos 3D y catalogo.';
+            return 'Acceso para clínicas y doctores: seguimiento de pedidos, diseños 3D y catálogo.';
         }
         if (p === 'laboratorio' || p === 'lab' || p === 'admin') {
-            return 'Acceso para el equipo del laboratorio: panel operativo y administracion.';
+            return 'Acceso para el equipo del laboratorio: panel operativo y administración.';
         }
         return null;
     }, [searchParams]);
@@ -82,9 +82,6 @@ const Login = () => {
                 <LandingThemeToggle
                     theme={theme}
                     onToggle={toggle}
-                    showSuggestion={showSuggestion}
-                    onAcceptSuggestion={acceptDarkSuggestion}
-                    onDismissSuggestion={dismissSuggestion}
                 />
             </div>
             <div className="login-shell">
@@ -132,7 +129,7 @@ const Login = () => {
 
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
-                            <label className="form-label" htmlFor="login-email">Correo electronico</label>
+                            <label className="form-label" htmlFor="login-email">Correo electrónico</label>
                             <input
                                 id="login-email"
                                 type="email"
@@ -145,7 +142,7 @@ const Login = () => {
                             />
                         </div>
                         <div className="form-group">
-                            <label className="form-label" htmlFor="login-password">Contrasena</label>
+                            <label className="form-label" htmlFor="login-password">Contraseña</label>
                             <input
                                 id="login-password"
                                 type="password"
@@ -158,7 +155,7 @@ const Login = () => {
                             />
                         </div>
                         <button type="submit" className="login-btn" disabled={loading}>
-                            {loading ? 'Ingresando...' : 'Iniciar sesion'}
+                            {loading ? 'Ingresando...' : 'Iniciar sesión'}
                         </button>
 
                         <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
@@ -193,14 +190,14 @@ const Login = () => {
 
                     {showDemoCredentials && (
                         <div className="login-demo">
-                            <p className="login-demo-title">Credenciales de demostracion</p>
+                            <p className="login-demo-title">Credenciales de demostración</p>
                             <div className="demo-credentials">
                                 <button type="button" className="demo-cred" onClick={() => fillDemo('admin@newlab.pe', 'admin123')}>
                                     <span className="demo-cred-role">Admin</span>
                                     <span className="demo-cred-email">admin@newlab.pe</span>
                                 </button>
                                 <button type="button" className="demo-cred" onClick={() => fillDemo('tecnico@newlab.pe', 'tecnico123')}>
-                                    <span className="demo-cred-role">Tecnico</span>
+                                    <span className="demo-cred-role">Técnico</span>
                                     <span className="demo-cred-email">tecnico@newlab.pe</span>
                                 </button>
                                 <button type="button" className="demo-cred" onClick={() => fillDemo('roberto@sonrisas.pe', 'cliente123')}>

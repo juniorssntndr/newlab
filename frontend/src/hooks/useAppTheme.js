@@ -68,19 +68,11 @@ export function useAppTheme() {
         }
     }, []);
 
-    // Initial DOM setup and evaluation of dark mode suggestion
+    // Initial DOM setup
     useEffect(() => {
         const saved = getSavedTheme();
         const initialTheme = saved || 'light';
         document.documentElement.setAttribute('data-theme', initialTheme);
-
-        // Show suggestion if no theme is explicitly saved, system is dark, and prompt was not dismissed
-        if (!saved && checkSystemPrefersDark() && !isSuggestionDismissed()) {
-            const timer = setTimeout(() => {
-                setShowSuggestion(true);
-            }, 600);
-            return () => clearTimeout(timer);
-        }
     }, []);
 
     const toggle = useCallback(() => {

@@ -123,19 +123,31 @@ router.post('/', ensureCanManageUsers, async (req, res, next) => {
 router.post('/:id/activar-cliente', ensureCanManageUsers, async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
+        const { clinica_id } = req.body || {};
         const userResult = await pool.query('SELECT id, clinica_id, tipo, estado FROM nl_usuarios WHERE id = $1', [req.params.id]);
         if (userResult.rows.length === 0) {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
         const target = userResult.rows[0];
+        const oldClinicaId = target.clinica_id;
+        const finalClinicaId = clinica_id ? Number(clinica_id) : oldClinicaId;
 
-        await pool.query("UPDATE nl_usuarios SET estado = 'activo' WHERE id = $1", [target.id]);
+        await pool.query("UPDATE nl_usuarios SET estado = 'activo', clinica_id = $2 WHERE id = $1", [target.id, finalClinicaId]);
 
-        if (target.clinica_id) {
-            await pool.query("UPDATE nl_clinicas SET estado = 'activo' WHERE id = $1", [target.clinica_id]);
+        if (finalClinicaId) {
+            await pool.query("UPDATE nl_clinicas SET estado = 'activo' WHERE id = $1", [finalClinicaId]);
         }
 
-        res.json({ message: 'Cuenta activada exitosamente', id: target.id, estado: 'activo' });
+        // Si se vinculó a otra clínica existente, limpiamos la clínica pendiente huérfana creada durante el registro
+        if (oldClinicaId && finalClinicaId && oldClinicaId !== finalClinicaId) {
+            const otherUsers = await pool.query('SELECT id FROM nl_usuarios WHERE clinica_id = $1 AND id != $2 LIMIT 1', [oldClinicaId, target.id]);
+            const orders = await pool.query('SELECT id FROM nl_pedidos WHERE clinica_id = $1 LIMIT 1', [oldClinicaId]);
+            if (otherUsers.rows.length === 0 && orders.rows.length === 0) {
+                await pool.query('DELETE FROM nl_clinicas WHERE id = $1', [oldClinicaId]);
+            }
+        }
+
+        res.json({ message: 'Cuenta activada exitosamente', id: target.id, estado: 'activo', clinica_id: finalClinicaId });
     } catch (err) { next(err); }
 });
 

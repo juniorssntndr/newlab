@@ -687,3 +687,180 @@
     background: linear-gradient(180deg, transparent 58%, rgba(2, 11, 30, 0.2));
   }
 }
+
+/* Registro de Clientes — Coherencia Visual & Adaptabilidad */
+.login-page .login-shell.registro-shell {
+  width: min(1200px, 100%);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 520px);
+  gap: clamp(1.5rem, 3.5vw, 3rem);
+}
+
+.login-page .registro-card {
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.login-page .registro-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--login-card-bg) 60%, transparent);
+  border: 1px solid var(--login-card-border);
+}
+
+.login-page .registro-step-pill {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--login-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-page .registro-step-pill.is-active {
+  background: var(--login-accent);
+  color: #ffffff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--login-accent) 40%, transparent);
+}
+
+.login-page .registro-step-pill.is-completed {
+  color: var(--login-heading);
+}
+
+.login-page .registro-step-pill .step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.login-page .registro-step-pill.is-active .step-num {
+  background: #ffffff;
+  color: var(--login-accent-strong);
+}
+
+.login-page .registro-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+/* CustomSelect en login / registro */
+.login-page .login-card .afinix-select-trigger {
+  min-height: 44px;
+  border-radius: 12px;
+  border-color: var(--login-input-border);
+  background: var(--login-input-bg);
+  color: var(--login-input-text);
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-page .login-card .afinix-select-trigger:hover:not(:disabled) {
+  border-color: var(--login-accent);
+}
+
+.login-page .login-card .afinix-select-trigger.is-open {
+  border-color: var(--login-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--login-focus) 25%, transparent);
+}
+
+.login-page .login-card .afinix-select-label-placeholder {
+  color: var(--login-muted-soft);
+}
+
+@media (max-width: 640px) {
+  .login-page {
+    padding: 0.5rem 0.75rem 2rem;
+  }
+
+  .login-page-topbar {
+    position: relative;
+    top: 0;
+    right: 0;
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto 0.5rem auto;
+    padding: 0 0.25rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .login-page .login-shell,
+  .login-page .login-shell.registro-shell {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+
+  .login-page .login-card,
+  .login-page .registro-card {
+    padding: 1.35rem 1.1rem 1.5rem !important;
+    border-radius: 20px !important;
+  }
+
+  .login-page .login-logo {
+    margin-bottom: 0.75rem;
+  }
+
+  .login-page .login-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .login-page .login-subtitle {
+    font-size: 0.82rem;
+    margin-bottom: 1rem;
+  }
+
+  .login-page .registro-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem;
+  }
+
+  .login-page .registro-stepper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+    margin-bottom: 1.15rem;
+    padding: 4px;
+    border-radius: 12px;
+  }
+
+  .login-page .registro-step-pill {
+    font-size: 0.78rem;
+    padding: 0.5rem 0.35rem;
+    border-radius: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .login-page .registro-step-pill .step-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .login-page .login-btn {
+    min-height: 46px;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+}
+

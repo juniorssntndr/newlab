@@ -65,6 +65,21 @@ const Equipo = () => {
     const [form, setForm] = useState(FORM_EMPTY);
     const [saving, setSaving] = useState(false);
 
+    // Modal de aprobación y vinculación de clínica para solicitudes pendientes
+    const [approvingUser, setApprovingUser] = useState(null);
+    const [approvalClinicChoice, setApprovalClinicChoice] = useState('existing');
+    const [approvalSelectedClinicId, setApprovalSelectedClinicId] = useState('');
+    const [approving, setApproving] = useState(false);
+
+    const clinicaOptions = useMemo(() => {
+        return clinicas
+            .filter(c => c.estado !== 'inactivo')
+            .map(c => ({
+                value: String(c.id),
+                label: `${c.nombre}${c.ruc ? ` (RUC: ${c.ruc})` : ''}${c.direccion ? ` — ${c.direccion}` : ''}`
+            }));
+    }, [clinicas]);
+
     const handleTabChange = (newTab) => {
         if (isVisitor && newTab === 'equipo') return;
         setActiveTab(newTab);
@@ -154,18 +169,60 @@ const Equipo = () => {
         });
     };
 
-    const handleActivarCliente = async (id, nombre, clinicaNombre) => {
+    const openApproveModal = (u) => {
+        setApprovingUser(u);
+        const matchingClinic = clinicas.find(c =>
+            c.nombre && u.clinica_nombre &&
+            c.nombre.trim().toLowerCase() === u.clinica_nombre.trim().toLowerCase() &&
+            c.id !== u.clinica_id
+        );
+        if (matchingClinic) {
+            setApprovalClinicChoice('existing');
+            setApprovalSelectedClinicId(String(matchingClinic.id));
+        } else {
+            setApprovalClinicChoice('keep_requested');
+            setApprovalSelectedClinicId(clinicas[0] ? String(clinicas[0].id) : '');
+        }
+    };
+
+    const confirmarActivacion = async () => {
+        if (!approvingUser) return;
+        if (approvalClinicChoice === 'existing' && !approvalSelectedClinicId) {
+            toast.error('Por favor, selecciona la clínica existente a vincular');
+            return;
+        }
+
+        setApproving(true);
         try {
-            const res = await fetch(`${API_URL}/usuarios/${id}/activar-cliente`, {
+            const payload = {};
+            if (approvalClinicChoice === 'existing' && approvalSelectedClinicId) {
+                payload.clinica_id = Number(approvalSelectedClinicId);
+            }
+
+            const res = await fetch(`${API_URL}/usuarios/${approvingUser.id}/activar-cliente`, {
                 method: 'POST',
-                headers: getHeaders()
+                headers: {
+                    ...getHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
             });
-            if (!res.ok) throw new Error('Error al activar cuenta');
-            toast.success(`Cuenta de ${nombre} (${clinicaNombre || 'Clínica'}) activada exitosamente`);
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al activar cuenta');
+
+            const clinicName = approvalClinicChoice === 'existing'
+                ? clinicas.find(c => String(c.id) === String(approvalSelectedClinicId))?.nombre || 'Clínica'
+                : approvingUser.clinica_nombre;
+
+            toast.success(`Cuenta de ${approvingUser.nombre} vinculada a ${clinicName} y activada exitosamente`);
+            setApprovingUser(null);
             fetchUsuarios();
             fetchClinicas();
         } catch (err) {
             toast.error(err.message || 'No se pudo activar la cuenta');
+        } finally {
+            setApproving(false);
         }
     };
 
@@ -625,8 +682,8 @@ const Equipo = () => {
                                                             <button
                                                                 className="btn btn-sm btn-primary"
                                                                 style={{ background: '#059669', borderColor: '#059669', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
-                                                                onClick={() => handleActivarCliente(u.id, u.nombre, u.clinica_nombre)}
-                                                                title="Aprobar solicitud y activar cuenta"
+                                                                onClick={() => openApproveModal(u)}
+                                                                title="Aprobar solicitud y vincular clínica"
                                                             >
                                                                 <i className="bi bi-check-circle-fill"></i> Aprobar
                                                             </button>
@@ -702,7 +759,7 @@ const Equipo = () => {
                                                 <button
                                                     className="btn btn-sm btn-primary"
                                                     style={{ flex: 1, background: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                                                    onClick={() => handleActivarCliente(u.id, u.nombre, u.clinica_nombre)}
+                                                    onClick={() => openApproveModal(u)}
                                                 >
                                                     <i className="bi bi-check-circle-fill"></i> Aprobar y Activar
                                                 </button>
@@ -1024,6 +1081,148 @@ const Equipo = () => {
                     </div>
                 </div>
             </Modal>
+
+            {/* Modal de Aprobación y Vinculación de Clínica */}
+            {approvingUser && (
+                <Modal
+                    isOpen={Boolean(approvingUser)}
+                    onClose={() => !approving && setApprovingUser(null)}
+                    title="Aprobar Solicitud de Doctor / Clínica"
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {/* Resumen del solicitante */}
+                        <div style={{
+                            background: 'var(--color-bg-secondary, #f8fafc)',
+                            padding: '1rem',
+                            borderRadius: '12px',
+                            border: '1px solid var(--color-border)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                <div style={{
+                                    width: '38px',
+                                    height: '38px',
+                                    borderRadius: '50%',
+                                    background: '#ecfdf5',
+                                    color: '#059669',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontWeight: 'bold',
+                                    fontSize: '1rem'
+                                }}>
+                                    <i className="bi bi-person-check-fill"></i>
+                                </div>
+                                <div>
+                                    <strong style={{ fontSize: '1rem', color: 'var(--color-text-primary)' }}>{approvingUser.nombre}</strong>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                        {approvingUser.email} {approvingUser.telefono ? `• Tel: ${approvingUser.telefono}` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '0.875rem', marginTop: '6px' }}>
+                                <span style={{ color: 'var(--color-text-secondary)' }}>Clínica indicada en el registro: </span>
+                                <strong style={{ color: 'var(--color-primary)' }}>{approvingUser.clinica_nombre || 'Consultorio Dental'}</strong>
+                            </div>
+                        </div>
+
+                        {/* Opciones de asignación de clínica */}
+                        <div>
+                            <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.65rem', display: 'block' }}>
+                                ¿A qué clínica vincular a este doctor?
+                            </label>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {/* Opción 1: Vincular a clínica existente */}
+                                <label style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '10px',
+                                    padding: '0.85rem',
+                                    borderRadius: '10px',
+                                    border: `1px solid ${approvalClinicChoice === 'existing' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                    background: approvalClinicChoice === 'existing' ? 'rgba(51, 142, 255, 0.05)' : 'transparent',
+                                    cursor: 'pointer'
+                                }}>
+                                    <input
+                                        type="radio"
+                                        name="approvalClinicChoice"
+                                        value="existing"
+                                        checked={approvalClinicChoice === 'existing'}
+                                        onChange={() => setApprovalClinicChoice('existing')}
+                                        style={{ marginTop: '3px' }}
+                                    />
+                                    <div style={{ flex: 1 }}>
+                                        <strong style={{ fontSize: '0.9rem' }}>Vincular a clínica existente en AFINIX</strong>
+                                        <p style={{ margin: '2px 0 8px 0', fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
+                                            Recomendado si ya existe la clínica. El doctor compartirá órdenes, pedidos y cuenta corriente con sus colegas.
+                                        </p>
+                                        {approvalClinicChoice === 'existing' && (
+                                            <div style={{ marginTop: '6px' }}>
+                                                <CustomSelect
+                                                    value={approvalSelectedClinicId}
+                                                    onChange={(e, val) => setApprovalSelectedClinicId(val || e.target.value)}
+                                                    options={clinicaOptions}
+                                                    searchable={true}
+                                                    placeholder="Buscar clínica registrada..."
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </label>
+
+                                {/* Opción 2: Mantener como clínica nueva */}
+                                <label style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '10px',
+                                    padding: '0.85rem',
+                                    borderRadius: '10px',
+                                    border: `1px solid ${approvalClinicChoice === 'keep_requested' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                    background: approvalClinicChoice === 'keep_requested' ? 'rgba(51, 142, 255, 0.05)' : 'transparent',
+                                    cursor: 'pointer'
+                                }}>
+                                    <input
+                                        type="radio"
+                                        name="approvalClinicChoice"
+                                        value="keep_requested"
+                                        checked={approvalClinicChoice === 'keep_requested'}
+                                        onChange={() => setApprovalClinicChoice('keep_requested')}
+                                        style={{ marginTop: '3px' }}
+                                    />
+                                    <div>
+                                        <strong style={{ fontSize: '0.9rem' }}>Confirmar como clínica nueva e independiente</strong>
+                                        <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
+                                            Se activará <em>"{approvingUser.clinica_nombre || 'Nueva Clínica'}"</em> como una nueva clínica en el sistema.
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Botones de acción */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => setApprovingUser(null)}
+                                disabled={approving}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ background: '#059669', borderColor: '#059669', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                onClick={confirmarActivacion}
+                                disabled={approving || (approvalClinicChoice === 'existing' && !approvalSelectedClinicId)}
+                            >
+                                <i className="bi bi-check-circle-fill"></i>
+                                {approving ? 'Activando...' : 'Aprobar y Activar Cuenta'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };
