@@ -78,7 +78,7 @@ const NuevoPedido = () => {
     const isClient = isClientRole(user);
     const preselectProductId = searchParams.get('productoId');
     const warmCatalog = peekVisibleCatalog();
-    const startsOnProductPicker = !isClient && !preselectProductId;
+    const startsOnProductPicker = !preselectProductId;
 
     const [clinicas, setClinicas] = useState([]);
     const [productos, setProductos] = useState(() => warmCatalog?.products || []);
@@ -241,22 +241,7 @@ const NuevoPedido = () => {
         ? `Incluye recargo express +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}% (S/. ${expressSurcharge.toFixed(2)})`
         : null;
 
-    const persistDraftAndGoCatalog = () => {
-        saveOrderWizardDraft({
-            form,
-            intakeMode,
-            intakeNote,
-            isExpressOrder,
-            macroStep: 'paciente',
-        });
-        navigate('/catalogo');
-    };
-
     const goToProductSelection = () => {
-        if (isClient) {
-            persistDraftAndGoCatalog();
-            return;
-        }
         setPickingProduct(true);
         setMacroStep('paciente');
     };
@@ -345,10 +330,10 @@ const NuevoPedido = () => {
     ]);
 
     useEffect(() => {
-        if (!catalogReady || isClient || preselectProductId) return;
+        if (!catalogReady || preselectProductId) return;
         if (items.length > 0) return;
         setPickingProduct(true);
-    }, [catalogReady, isClient, preselectProductId, items.length]);
+    }, [catalogReady, preselectProductId, items.length]);
 
     useEffect(() => {
         if (!selectedItemId && items.length > 0) {
@@ -430,9 +415,18 @@ const NuevoPedido = () => {
 
         const piezasDetail = (() => {
             if (needsDental) {
-                const teeth = selectedItem?.piezas_dentales?.length
-                    ? `${selectedItem.piezas_dentales.length} pieza(s)`
-                    : 'Sin piezas aún';
+                const teethCount = selectedItem?.piezas_dentales?.length || 0;
+                let teeth = 'Sin piezas aún';
+                if (teethCount > 0) {
+                    const modo = selectedItem?.modo_odontograma || selectedItem?.product?.modo_odontograma;
+                    if (modo === 'arcada') {
+                        teeth = `${selectedItem.cantidad || 1} arcada(s)`;
+                    } else if (modo === 'guia_quirurgica') {
+                        teeth = `${teethCount} sitio(s) · ${selectedItem.cantidad || 1} guía(s)`;
+                    } else {
+                        teeth = `${teethCount} pieza(s)`;
+                    }
+                }
                 return selectedItem?.color_vita ? `${teeth} · ${selectedItem.color_vita}` : teeth;
             }
             return selectedItem?.color_vita || 'Sin tono aún';
@@ -475,7 +469,7 @@ const NuevoPedido = () => {
         intakeMode,
     ]);
 
-    const closeWizard = () => navigate(isClient ? '/catalogo' : '/pedidos');
+    const closeWizard = () => navigate('/pedidos');
 
     const goBack = () => {
         setError('');
@@ -525,7 +519,9 @@ const NuevoPedido = () => {
             setError('Selecciona al menos un diente.');
             return;
         }
-        if (!String(selectedItem?.color_vita || '').trim()) {
+        const modo = selectedItem?.modo_odontograma || selectedItem?.product?.modo_odontograma;
+        const toneRequired = modo !== 'arcada' && modo !== 'guia_quirurgica';
+        if (toneRequired && !String(selectedItem?.color_vita || '').trim()) {
             setError('Elige un tono para continuar.');
             return;
         }
@@ -610,7 +606,7 @@ const NuevoPedido = () => {
                 ) : null}
 
                 <section className="order-wizard-main">
-                    {pickingProduct && !isClient ? (
+                    {pickingProduct ? (
                         <div className="order-wizard-card">
                             <div className="order-wizard-product-toolbar productos-filters-row">
                                 <div className="search-box productos-search-box">
@@ -682,17 +678,11 @@ const NuevoPedido = () => {
                                 />
                             ) : productCardLoading ? (
                                 <OrderSelectedProductCard loading variant="featured" />
-                            ) : isClient ? (
-                                <OrderSelectedProductCard
-                                    empty
-                                    variant="featured"
-                                    onEmptyAction={persistDraftAndGoCatalog}
-                                />
                             ) : (
                                 <OrderSelectedProductCard
                                     empty
                                     variant="featured"
-                                    emptyHint="Selecciona un producto del catálogo interno"
+                                    emptyHint="Selecciona un producto del catálogo"
                                     emptyActionLabel="Elegir producto"
                                     onEmptyAction={() => setPickingProduct(true)}
                                 />

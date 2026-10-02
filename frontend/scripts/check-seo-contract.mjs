@@ -44,7 +44,7 @@ const isBlockedByDisallow = (publicPath, disallowPath) => {
 };
 
 const run = () => {
-    assert.equal(CANONICAL_SITE_ORIGIN, 'https://www.affinixlab.com');
+    assert.equal(CANONICAL_SITE_ORIGIN, 'https://afinixlab.com');
 
     const sitemap = readText(sitemapPath);
     const robots = readText(robotsPath);

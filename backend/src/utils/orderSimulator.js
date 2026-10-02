@@ -43,7 +43,8 @@ const COLORES_VITA = ['A1', 'A2', 'A3', 'A3.5', 'B1', 'B2', 'BL2'];
  */
 export async function getOrCreateRealisticClient({ conCuenta = false, nombre = null, ruc = null, contacto = null } = {}) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const clinicaNombre = nombre || `Consultorio Dental Dr. ${contacto || 'Santander'} ${randomSuffix}`;
+    const sanitizedContact = contacto ? (contacto.startsWith('Dr.') || contacto.startsWith('Dra.') ? contacto : `Dr. ${contacto}`) : 'Dr. Carlos Mendoza';
+    const clinicaNombre = nombre || `Consultorio Dental ${sanitizedContact}`;
     const docNumero = ruc || `20${Math.floor(100000000 + Math.random() * 900000000)}`;
     const contactoNombre = contacto || 'Dr. Carlos Mendoza';
     const email = `contacto${randomSuffix}@dental${randomSuffix}.pe`;

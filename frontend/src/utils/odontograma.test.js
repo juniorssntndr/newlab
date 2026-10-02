@@ -7,6 +7,10 @@ import {
     isMolarTooth,
     isVeneerProduct,
     isBridgeProduct,
+    isArchProduct,
+    isSurgicalGuideProduct,
+    toggleFullArch,
+    calculateClinicalQuantity,
     normalizeBridgePillars,
     sortTeethByArchOrder,
     connectBridgeSpan,
@@ -15,7 +19,9 @@ import {
     toggleBridgeToothRole,
     toggleTooth,
     formatDentalSelection,
-    getToothRole
+    getToothRole,
+    UPPER_ARCH,
+    LOWER_ARCH
 } from './odontograma.js';
 
 const run = () => {
@@ -135,7 +141,66 @@ const run = () => {
     assert.equal(getToothRole('13', { es_puente: true, pieza_inicio: '13', pieza_fin: '11', piezas_dentales: ['13', '12', '11'] }), 'pilar');
     assert.equal(getToothRole('12', { es_puente: true, pieza_inicio: '13', pieza_fin: '11', piezas_dentales: ['13', '12', '11'] }), 'pontico');
 
-    console.log('ok - odontograma utils (single & multi-span bridges)');
+    // Detección de nuevos modos de producto
+    assert.equal(isArchProduct({ modo_odontograma: 'arcada' }), true);
+    assert.equal(isArchProduct({ nombre: 'Férula de Relajación Miorrelajante' }), true);
+    assert.equal(isArchProduct({ nombre: 'Prótesis Total Acrílica' }), true);
+    assert.equal(isArchProduct({ modo_odontograma: 'unitario', nombre: 'Corona Zirconia' }), false);
+
+    assert.equal(isSurgicalGuideProduct({ modo_odontograma: 'guia_quirurgica' }), true);
+    assert.equal(isSurgicalGuideProduct({ nombre: 'Guía Quirúrgica para 3 Implantes' }), true);
+    assert.equal(isSurgicalGuideProduct({ modo_odontograma: 'unitario', nombre: 'Corona Zirconia' }), false);
+
+    // Selección de arcada completa (toggleFullArch)
+    let archSel = buildItemSelection([], false);
+    archSel = toggleFullArch(archSel, 'upper');
+    assert.equal(archSel.piezas_dentales.length, 16);
+    assert.deepEqual(archSel.piezas_dentales, UPPER_ARCH);
+    // Deseleccionar arcada completa
+    archSel = toggleFullArch(archSel, 'upper');
+    assert.equal(archSel.piezas_dentales.length, 0);
+
+    // Selección bimaxilar
+    archSel = toggleFullArch(archSel, 'upper');
+    archSel = toggleFullArch(archSel, 'lower');
+    assert.equal(archSel.piezas_dentales.length, 32);
+
+    // Tarificación clínica (calculateClinicalQuantity)
+    // 1. Modo Unitario / Corona
+    const prodUnit = { modo_odontograma: 'unitario', precio_base: 150 };
+    assert.equal(calculateClinicalQuantity(prodUnit, ['11', '12', '13']), 3);
+
+    // 2. Modo Puente
+    const prodBridge = { modo_odontograma: 'puente', precio_base: 180 };
+    assert.equal(calculateClinicalQuantity(prodBridge, ['14', '15', '16', '17']), 4);
+
+    // 3. Modo Carilla (incluye molares/oclusales)
+    const prodVeneer = { modo_odontograma: 'carilla', precio_base: 200 };
+    assert.equal(calculateClinicalQuantity(prodVeneer, ['11', '21', '16']), 3);
+
+    // 4. Modo Arcada (Férulas, Prótesis Totales) -> 1 o 2 unidades (NUNCA 16 o 32)
+    const prodSplint = { modo_odontograma: 'arcada', precio_base: 120 };
+    // 1 arcada (todas las 16 piezas superiores) -> 1 unidad
+    assert.equal(calculateClinicalQuantity(prodSplint, UPPER_ARCH), 1);
+    // 1 arcada parcial (3 piezas superiores) -> 1 unidad
+    assert.equal(calculateClinicalQuantity(prodSplint, ['11', '12', '13']), 1);
+    // 2 arcadas (bimaxilar: piezas superiores e inferiores) -> 2 unidades
+    assert.equal(calculateClinicalQuantity(prodSplint, [...UPPER_ARCH, ...LOWER_ARCH]), 2);
+    assert.equal(calculateClinicalQuantity(prodSplint, ['11', '41']), 2);
+
+    // 5. Modo Guía Quirúrgica (hasta 5 implantes por arcada = 1 guía)
+    const prodGuide = { modo_odontograma: 'guia_quirurgica', precio_base: 300 };
+    // 1 a 5 implantes en maxilar superior -> 1 guía
+    assert.equal(calculateClinicalQuantity(prodGuide, ['11']), 1);
+    assert.equal(calculateClinicalQuantity(prodGuide, ['11', '12', '14', '21', '24']), 1);
+    // 6 implantes en maxilar superior -> 2 guías
+    assert.equal(calculateClinicalQuantity(prodGuide, ['11', '12', '13', '14', '21', '24']), 2);
+    // Implantes en ambas arcadas (ej. 3 superiores y 2 inferiores) -> 2 guías independientes
+    assert.equal(calculateClinicalQuantity(prodGuide, ['11', '12', '14', '31', '32']), 2);
+    // 6 superiores y 1 inferior -> 2 + 1 = 3 guías
+    assert.equal(calculateClinicalQuantity(prodGuide, ['11', '12', '13', '14', '15', '16', '31']), 3);
+
+    console.log('ok - odontograma utils (single & multi-span bridges + clinical modes & pricing)');
 };
 
 run();

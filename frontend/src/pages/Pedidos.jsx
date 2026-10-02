@@ -86,13 +86,9 @@ const Pedidos = () => {
     }, [getHeaders, isClient]);
 
     const goNewOrder = useCallback(() => {
-        if (isClient) {
-            navigate('/catalogo');
-            return;
-        }
         void fetchVisibleCatalog(getHeaders);
         navigate('/pedidos/nuevo');
-    }, [getHeaders, isClient, navigate]);
+    }, [getHeaders, navigate]);
 
     const filters = useMemo(() => ({
         estado: filtroEstado,

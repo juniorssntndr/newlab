@@ -1,4 +1,4 @@
-export const CANONICAL_SITE_ORIGIN = 'https://www.affinixlab.com';
+export const CANONICAL_SITE_ORIGIN = 'https://afinixlab.com';
 
 export const INDEXABLE_SITE_PATHS = [
     '/',

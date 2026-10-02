@@ -1,0 +1,29 @@
+/* Marketing uses the collection dashboard's shared tokens and components. */
+.marketing-page { padding-bottom: var(--space-12); min-width: 0; }
+.marketing-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4); }
+.marketing-page .marketing-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
+.marketing-page .marketing-tabs { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; margin-bottom: var(--space-6); }
+.marketing-page .marketing-tabs > .btn { flex-shrink: 0; white-space: nowrap; }
+.marketing-page .marketing-subtabs { min-width: 0; margin-bottom: 0; }
+.marketing-table-wrap { max-width: 100%; overflow-x: auto; }
+.marketing-page .data-table { font-size: 0.875rem; }
+.marketing-page .marketing-danger-action { color: var(--color-error); }
+.marketing-page .marketing-badge-primary { background: var(--color-primary-light); color: var(--color-primary); }
+.marketing-page .badge-inactive { background: var(--color-bg-alt); color: var(--color-text-secondary); }
+.marketing-page .card, .marketing-modal .form-group { min-width: 0; }
+.marketing-page .form-label, .marketing-modal .form-label { color: var(--color-text-secondary); }
+.marketing-page .btn:focus-visible, .marketing-modal .btn:focus-visible, .marketing-modal .marketing-color-swatch:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.marketing-modal .marketing-color-swatch { min-width: 36px; min-height: 36px; }
+@media (max-width: 1024px) {
+  .marketing-page .marketing-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .marketing-page .marketing-kpi-grid { gap: var(--space-3); }
+  .marketing-page .dashboard-kpi-main-value { font-size: 1.35rem; }
+  .marketing-page .dashboard-kpi-row { flex-wrap: wrap; gap: var(--space-2); }
+  .marketing-modal .marketing-form-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .marketing-page .btn, .marketing-modal .btn { min-height: 40px; }
+  .marketing-page .data-table { min-width: 740px; }
+}
+
+.marketing-prize-dot { width: 0.65rem; height: 0.65rem; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--color-border); }

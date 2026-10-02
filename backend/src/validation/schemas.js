@@ -52,6 +52,7 @@ export const productoSchema = z.object({
     activo: z.boolean().optional().default(true),
     visible: z.boolean().optional().default(true),
     admite_puente: z.boolean().optional().default(false),
+    modo_odontograma: z.enum(['unitario', 'puente', 'carilla', 'arcada', 'guia_quirurgica', 'ninguno']).optional().default('unitario'),
     nombre_comercial: z.string().trim().max(150).optional().nullable(),
     descripcion_landing: z.string().trim().max(5000).optional().nullable(),
     material_comercial: z.string().trim().max(100).optional().nullable(),

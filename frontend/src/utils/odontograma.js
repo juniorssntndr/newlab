@@ -67,6 +67,7 @@ export const normalizeBridgePillars = (bridgeTeeth = [], pillars = []) => {
 
 export const isBridgeProduct = (product) => {
     if (!product) return false;
+    if (product.modo_odontograma === 'puente') return true;
     if (product.admite_puente === true || product.admite_puente === 'true') return true;
     const source = [product.nombre, product.categoria_nombre, product.categoria_tipo, product.tipo]
         .filter(Boolean)
@@ -77,11 +78,93 @@ export const isBridgeProduct = (product) => {
 
 export const isVeneerProduct = (product) => {
     if (!product) return false;
+    if (product.modo_odontograma === 'carilla') return true;
     const source = [product.nombre, product.categoria_nombre, product.categoria_tipo, product.tipo]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
     return source.includes('carilla');
+};
+
+export const isArchProduct = (product) => {
+    if (!product) return false;
+    if (product.modo_odontograma === 'arcada') return true;
+    const source = [product.nombre, product.categoria_nombre, product.categoria_tipo, product.tipo]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+    return (
+        source.includes('ferula') ||
+        source.includes('férula') ||
+        source.includes('total') ||
+        source.includes('alineador')
+    );
+};
+
+export const isSurgicalGuideProduct = (product) => {
+    if (!product) return false;
+    if (product.modo_odontograma === 'guia_quirurgica') return true;
+    const source = [product.nombre, product.categoria_nombre, product.categoria_tipo, product.tipo]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+    return (
+        source.includes('guia') ||
+        source.includes('guía') ||
+        source.includes('quirurgic') ||
+        source.includes('quirúrgic')
+    );
+};
+
+export const toggleFullArch = (selection, archType) => {
+    const targetArch = archType === 'upper' ? UPPER_ARCH : LOWER_ARCH;
+    const currentTeeth = new Set(selection?.piezas_dentales || []);
+    const allSelected = targetArch.every((tooth) => currentTeeth.has(tooth));
+
+    let nextTeeth;
+    if (allSelected) {
+        nextTeeth = (selection?.piezas_dentales || []).filter((tooth) => !targetArch.includes(tooth));
+    } else {
+        nextTeeth = [...new Set([...(selection?.piezas_dentales || []), ...targetArch])];
+    }
+
+    return buildItemSelection(nextTeeth, false);
+};
+
+export const calculateClinicalQuantity = (product = {}, piezas = [], fallbackManual = 1) => {
+    const modo = product?.modo_odontograma || (
+        isBridgeProduct(product) ? 'puente' :
+        isArchProduct(product) ? 'arcada' :
+        isSurgicalGuideProduct(product) ? 'guia_quirurgica' :
+        isVeneerProduct(product) ? 'carilla' :
+        null
+    );
+
+    const pieces = sortTeethByArchOrder(piezas || []);
+
+    if (modo === 'arcada') {
+        const hasUpper = pieces.some((t) => UPPER_ARCH.includes(t));
+        const hasLower = pieces.some((t) => LOWER_ARCH.includes(t));
+        const archCount = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0);
+        return archCount > 0 ? archCount : (pieces.length > 0 ? 1 : 0);
+    }
+
+    if (modo === 'guia_quirurgica') {
+        const upperCount = pieces.filter((t) => UPPER_ARCH.includes(t)).length;
+        const lowerCount = pieces.filter((t) => LOWER_ARCH.includes(t)).length;
+        const upperGuides = upperCount > 0 ? Math.ceil(upperCount / 5) : 0;
+        const lowerGuides = lowerCount > 0 ? Math.ceil(lowerCount / 5) : 0;
+        const totalGuides = upperGuides + lowerGuides;
+        return totalGuides > 0 ? totalGuides : (pieces.length > 0 ? 1 : 0);
+    }
+
+    if (modo === 'ninguno') {
+        const parsed = Number.parseInt(fallbackManual, 10);
+        return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
+    }
+
+    // Modo unitario, puente, carilla
+    return pieces.length;
 };
 
 export const isMolarTooth = (tooth) => {

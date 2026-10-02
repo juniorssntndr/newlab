@@ -1,4 +1,4 @@
-import { normalizeBridgePillars } from '../../../utils/odontograma.js';
+import { normalizeBridgePillars, calculateClinicalQuantity } from '../../../utils/odontograma.js';
 import { buildContractRawState, normalizeOrderItem } from './orderItemNormalizer.js';
 
 const isPositiveInt = (value) => Number.isInteger(value) && value >= 1;
@@ -43,7 +43,8 @@ export const validateOrderPayloadContract = ({ items = [] } = {}) => {
             if (rawPieces.length < 1) {
                 errors.push(buildContractError(item, `${itemLabel}: requiere al menos una pieza dental seleccionada.`));
             }
-            if (rawCantidad === null || rawCantidad !== rawPieces.length) {
+            const expectedCantidad = calculateClinicalQuantity(item.product || item, rawPieces, item.cantidadManual);
+            if (rawCantidad === null || rawCantidad !== expectedCantidad) {
                 errors.push(buildContractError(item, `${itemLabel}: cantidad dental inconsistente con piezas seleccionadas.`));
             }
             if (item.es_puente) {
@@ -94,7 +95,7 @@ export const buildOrderPayload = (draft = {}) => {
         items: normalizedItems.map((item) => {
             const piezas = Array.isArray(item.piezas_dentales) ? item.piezas_dentales : [];
             const rawState = buildContractRawState(item);
-            const lockedCantidad = item.requiresDentalSelection ? piezas.length : item.cantidad;
+            const lockedCantidad = item.cantidad;
             const lockedSubtotal = Number((lockedCantidad * item.precio_unitario).toFixed(2));
 
             return {

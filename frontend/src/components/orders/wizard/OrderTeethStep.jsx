@@ -5,6 +5,12 @@ import {
     UPPER_ARCH,
     LOWER_ARCH,
     buildItemSelection,
+    isBridgeProduct,
+    isVeneerProduct,
+    isArchProduct,
+    isSurgicalGuideProduct,
+    toggleFullArch,
+    calculateClinicalQuantity
 } from '../../../utils/odontograma.js';
 
 const MOBILE_ARCH_QUERY = '(max-width: 900px)';
@@ -52,6 +58,15 @@ const OrderTeethStep = ({
     const selectedShade = String(colorVita || '').trim();
     const notesValue = String(notes || '');
     const hasNotes = notesValue.trim().length > 0;
+    const isBridge = isBridgeProduct(product);
+    const isVeneer = isVeneerProduct(product);
+    const isArch = isArchProduct(product);
+    const isSurgicalGuide = isSurgicalGuideProduct(product);
+
+    const clinicalQty = useMemo(() => {
+        return calculateClinicalQuantity(product, teeth, 1);
+    }, [product, teeth]);
+
     const [activeArch, setActiveArch] = useState('upper');
     const [notesOpen, setNotesOpen] = useState(false);
     const [activeGuia, setActiveGuia] = useState(() => (
@@ -126,13 +141,14 @@ const OrderTeethStep = ({
         setNotesOpen(false);
     };
 
+    const isNoToneRequired = isArch || isSurgicalGuide;
     const canContinue = showOdontogram
-        ? count >= 1 && Boolean(selectedShade)
+        ? (isNoToneRequired ? count >= 1 : (count >= 1 && Boolean(selectedShade)))
         : Boolean(selectedShade);
     const odontogramArch = isMobile ? activeArch : 'both';
     const mapFocus = isMobile && showOdontogram;
     const showInlineNotes = !mapFocus;
-    const shadeMissing = !selectedShade;
+    const shadeMissing = !isNoToneRequired && !selectedShade;
     const [pickerOpen, setPickerOpen] = useState(false);
     const pickerRef = useRef(null);
 
@@ -203,7 +219,9 @@ const OrderTeethStep = ({
                                 <span className="order-teeth-shade-trigger-guide-tag">{activeGuia}</span>
                             </>
                         ) : (
-                            <span className="order-teeth-shade-trigger-placeholder">Elegir tono ({guideLabel})</span>
+                            <span className="order-teeth-shade-trigger-placeholder">
+                                {`Elegir tono (${guideLabel})`}
+                            </span>
                         )}
                     </div>
                     <i className="bi bi-chevron-down order-teeth-shade-trigger-chevron" aria-hidden="true" />
@@ -294,18 +312,54 @@ const OrderTeethStep = ({
                                         </button>
                                     </div>
                                     <div className="order-teeth-help-floating-rows">
-                                        <div className="order-teeth-help-floating-row">
-                                            <span className="order-teeth-help-dot order-teeth-help-dot--blue" />
-                                            <span><strong>1 Clic / Toque:</strong> Corona unitaria</span>
-                                        </div>
-                                        <div className="order-teeth-help-floating-row">
-                                            <span className="order-teeth-help-dot order-teeth-help-dot--green" />
-                                            <span><strong>Arrastrar:</strong> Puente (conecta pilares y pónticos)</span>
-                                        </div>
-                                        <div className="order-teeth-help-floating-row">
-                                            <span className="order-teeth-help-dot order-teeth-help-dot--orange" />
-                                            <span><strong>Clic en puente:</strong> Alternar pilar / póntico</span>
-                                        </div>
+                                        {isBridge ? (
+                                            <>
+                                                <div className="order-teeth-help-floating-row">
+                                                    <span className="order-teeth-help-dot order-teeth-help-dot--blue" />
+                                                    <span><strong>1 Clic / Toque:</strong> Corona unitaria</span>
+                                                </div>
+                                                <div className="order-teeth-help-floating-row">
+                                                    <span className="order-teeth-help-dot order-teeth-help-dot--green" />
+                                                    <span><strong>Arrastrar:</strong> Puente (conecta pilares y pónticos)</span>
+                                                </div>
+                                                <div className="order-teeth-help-floating-row">
+                                                    <span className="order-teeth-help-dot order-teeth-help-dot--orange" />
+                                                    <span><strong>Clic en puente:</strong> Alternar pilar / póntico</span>
+                                                </div>
+                                            </>
+                                        ) : isArch ? (
+                                            <>
+                                                <div className="order-teeth-help-floating-row">
+                                                    <span className="order-teeth-help-dot order-teeth-help-dot--blue" />
+                                                    <span><strong>1 Clic en cualquier diente:</strong> Marca o desmarca la arcada completa</span>
+                                                </div>
+                                                <div className="order-teeth-help-floating-row">
+                                                    <span className="order-teeth-help-dot order-teeth-help-dot--green" />
+                                                    <span><strong>Tarificación:</strong> 1 arcada = 1 férula/unidad</span>
+                                                </div>
+                                            </>
+                                        ) : isSurgicalGuide ? (
+                                            <>
+                                                <div className="order-teeth-help-floating-row">
+                                                    <span className="order-teeth-help-dot order-teeth-help-dot--blue" />
+                                                    <span><strong>1 Clic / Toque:</strong> Marca la posición del implante</span>
+                                                </div>
+                                                <div className="order-teeth-help-floating-row">
+                                                    <span className="order-teeth-help-dot order-teeth-help-dot--green" />
+                                                    <span><strong>Tarificación:</strong> Hasta 5 implantes por arcada = 1 guía</span>
+                                                </div>
+                                            </>
+                                        ) : isVeneer ? (
+                                            <div className="order-teeth-help-floating-row">
+                                                <span className="order-teeth-help-dot order-teeth-help-dot--blue" />
+                                                <span><strong>1 Clic / Toque:</strong> Carilla (anterior, premolar y molar)</span>
+                                            </div>
+                                        ) : (
+                                            <div className="order-teeth-help-floating-row">
+                                                <span className="order-teeth-help-dot order-teeth-help-dot--blue" />
+                                                <span><strong>1 Clic / Toque:</strong> Corona unitaria</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -316,6 +370,8 @@ const OrderTeethStep = ({
                             </button>
                         ) : null}
                     </div>
+
+
 
                     <div
                         className="order-teeth-arch-toggle"
@@ -366,8 +422,16 @@ const OrderTeethStep = ({
                         <p>
                             {showOdontogram
                                 ? (count > 0
-                                    ? 'Elige el tono y deja una nota si hace falta.'
-                                    : 'Selecciona al menos una pieza para continuar.')
+                                    ? (isArch
+                                        ? `${clinicalQty} arcada${clinicalQty > 1 ? 's' : ''} (${clinicalQty} unidad${clinicalQty > 1 ? 'es' : ''}).`
+                                        : isSurgicalGuide
+                                            ? `${count} sitio${count > 1 ? 's' : ''} marcado${count > 1 ? 's' : ''} (${clinicalQty} guía${clinicalQty > 1 ? 's' : ''}).`
+                                            : `${count} pieza${count > 1 ? 's' : ''}. Elige el tono y deja una nota si hace falta.`)
+                                    : (isArch
+                                        ? 'Toca un diente para marcar la arcada.'
+                                        : isSurgicalGuide
+                                            ? 'Marca los sitios de implantes para continuar.'
+                                            : 'Selecciona al menos una pieza para continuar.'))
                                 : 'Color y nota para el laboratorio.'}
                         </p>
                     </>
@@ -384,7 +448,7 @@ const OrderTeethStep = ({
                         <span className="order-teeth-notes-trigger-copy">
                             <strong>Instrucciones para el laboratorio</strong>
                             <em className={hasNotes ? 'is-filled' : 'is-optional'}>
-                                {hasNotes ? 'Nota agregada' : 'Opcional'}
+                                {hasNotes ? 'Nota agregada' : isNoToneRequired ? 'Recomendado' : 'Opcional'}
                             </em>
                         </span>
                         <span className="order-teeth-notes-trigger-action">
@@ -400,8 +464,14 @@ const OrderTeethStep = ({
                         <textarea
                             id="order-teeth-notes"
                             className="form-textarea"
-                            rows={2}
-                            placeholder="Indicaciones específicas para este trabajo..."
+                            rows={3}
+                            placeholder={
+                                isArch
+                                    ? "Ej. Férula rígida 2.0mm, alivio en caninos / Blanda 1.5mm..."
+                                    : isSurgicalGuide
+                                        ? "Ej. Kit de cirugía guiada Neodent / Straumann, anillo metálico, soporte óseo / dentosoportada..."
+                                        : "Indicaciones específicas para este trabajo..."
+                            }
                             value={notesValue}
                             onChange={(event) => onNotesChange?.(event.target.value)}
                         />
@@ -442,7 +512,13 @@ const OrderTeethStep = ({
                     id="order-teeth-notes-modal"
                     className="form-textarea order-teeth-notes-modal-input"
                     rows={5}
-                    placeholder="Indicaciones específicas para este trabajo..."
+                    placeholder={
+                        isArch
+                            ? "Ej. Férula miorrelajante rígida de 2.0 mm, desoclusión canina..."
+                            : isSurgicalGuide
+                                ? "Ej. Kit quirúrgico guiado (marca/diámetro de fresas), soporte óseo/mucoso/dentario..."
+                                : "Indicaciones específicas para este trabajo..."
+                    }
                     value={notesDraft}
                     onChange={(event) => setNotesDraft(event.target.value)}
                 />

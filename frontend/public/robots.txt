@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.affinixlab.com/sitemap.xml
+Sitemap: https://afinixlab.com/sitemap.xml

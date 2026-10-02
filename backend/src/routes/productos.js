@@ -73,7 +73,7 @@ router.get('/', async (req, res, next) => {
 router.post('/', requireRole('admin'), upload.single('image'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible, admite_puente } = req.body;
+        const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible, admite_puente, modo_odontograma } = req.body;
         const image_url = req.file ? await uploadProductImage(req.file) : null;
         const categoriaId = toNullableInt(categoria_id);
         const materialId = toNullableInt(material_id);
@@ -81,13 +81,14 @@ router.post('/', requireRole('admin'), upload.single('image'), async (req, res, 
         const tiempoEstimadoDias = toNullableInt(tiempo_estimado_dias) ?? 5;
         const visibleValue = toNullableBoolean(visible);
         const admitePuenteValue = toNullableBoolean(admite_puente);
+        const modoOdontogramaValue = modo_odontograma || (admitePuenteValue ? 'puente' : 'unitario');
 
         if (!nombre) return res.status(400).json({ error: 'Nombre es requerido' });
 
         const result = await pool.query(
-            `INSERT INTO nl_productos (nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, image_url, visible, admite_puente)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-            [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, image_url, visibleValue ?? true, admitePuenteValue ?? false]
+            `INSERT INTO nl_productos (nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, image_url, visible, admite_puente, modo_odontograma)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+            [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, image_url, visibleValue ?? true, admitePuenteValue ?? false, modoOdontogramaValue]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) { next(err); }
@@ -152,6 +153,12 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
         if (hasOwn(req.body, 'admite_puente')) {
             params.push(toNullableBoolean(admite_puente) ?? false);
             updates.push(`admite_puente=$${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'modo_odontograma')) {
+            const modoValue = String(req.body.modo_odontograma || 'unitario').trim();
+            params.push(modoValue);
+            updates.push(`modo_odontograma=$${params.length}`);
         }
 
         if (image_url !== undefined) {

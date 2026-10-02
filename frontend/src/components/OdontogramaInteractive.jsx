@@ -9,6 +9,8 @@ import {
     normalizeBridgePillars,
     isBridgeProduct,
     isVeneerProduct,
+    isArchProduct,
+    toggleFullArch,
     isMolarTooth,
     getBridgeParts,
     connectBridgeSpan,
@@ -99,11 +101,10 @@ const OdontogramaInteractive = ({
 
     const isBridge = isBridgeProduct(product);
     const isVeneer = isVeneerProduct(product);
+    const isArch = isArchProduct(product);
     const bridgeParts = getBridgeParts(selection);
-    const disabledTeeth = useMemo(
-        () => new Set(isVeneer ? ARCH_ORDER.filter((tooth) => isMolarTooth(tooth)) : []),
-        [isVeneer]
-    );
+    // Para carillas se admiten todas las piezas (incluyendo oclusales/molares)
+    const disabledTeeth = useMemo(() => new Set(), []);
 
     const toggleBridgePillar = useCallback((tooth) => {
         if (!isBridge || disabled || disabledTeeth.has(tooth)) return;
@@ -170,6 +171,13 @@ const OdontogramaInteractive = ({
         if (disabled) return;
         if (disabledTeeth.has(tooth)) return;
 
+        if (isArch) {
+            const isUpper = UPPER_ARCH_SET.has(tooth);
+            const nextSelection = toggleFullArch(selection, isUpper ? 'upper' : 'lower');
+            onChange(nextSelection);
+            return;
+        }
+
         if (isBridge) {
             setBridgeAnchor(tooth);
             setBridgePointerStart(tooth);
@@ -196,6 +204,7 @@ const OdontogramaInteractive = ({
 
     const handlePointerEnter = (tooth) => {
         if (disabled || !isDragging || disabledTeeth.has(tooth)) return;
+        if (isArch) return;
 
         if (isBridge && bridgeAnchor) {
             if (tooth !== bridgePointerStart) {

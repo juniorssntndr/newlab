@@ -86,7 +86,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     ];
 
     const clientLinks = [
-        { to: '/catalogo', icon: 'bi-plus-circle', label: 'Pedir' },
+        { to: '/pedidos/nuevo', icon: 'bi-plus-circle', label: 'Pedir' },
         {
             to: '/pedidos',
             icon: 'bi-clipboard2-pulse',
@@ -121,7 +121,7 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                                     return `nav-item ${active ? 'active' : ''}${item.badge > 0 ? ' has-badge' : ''}`;
                                 }}
                                 onClick={onMobileClose}
-                                end={item.to === '/pedidos' || item.to === '/catalogo'}
+                                end={item.to === '/pedidos' || item.to === '/pedidos/nuevo' || item.to === '/catalogo'}
                             >
                                 <i className={`bi ${item.icon}`}></i>
                                 <span>{item.label}</span>

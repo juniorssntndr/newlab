@@ -30,6 +30,7 @@ const Productos = () => {
         tiempo_estimado_dias: 5,
         visible: true,
         admite_puente: false,
+        modo_odontograma: 'unitario',
         image: null,
         image_url: ''
     });
@@ -96,6 +97,7 @@ const Productos = () => {
             tiempo_estimado_dias: 5,
             visible: true,
             admite_puente: false,
+            modo_odontograma: 'unitario',
             image: null,
             image_url: ''
         });
@@ -118,6 +120,7 @@ const Productos = () => {
             tiempo_estimado_dias: p.tiempo_estimado_dias || 5,
             visible: p.visible,
             admite_puente: Boolean(p.admite_puente),
+            modo_odontograma: p.modo_odontograma || (p.admite_puente ? 'puente' : 'unitario'),
             image: null,
             image_url: p.image_url || ''
         });
@@ -304,7 +307,8 @@ const Productos = () => {
         formData.append('material_id', form.material_id);
         formData.append('tiempo_estimado_dias', form.tiempo_estimado_dias);
         formData.append('visible', form.visible);
-        formData.append('admite_puente', form.admite_puente);
+        formData.append('admite_puente', form.modo_odontograma === 'puente');
+        formData.append('modo_odontograma', form.modo_odontograma || 'unitario');
         if (form.image) {
             formData.append('image', form.image);
         }
@@ -833,24 +837,38 @@ const Productos = () => {
                             </label>
                         </div>
 
-                        <div className="form-option-row">
-                            <div className="form-option-content">
-                                <div className="form-option-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
-                                    <i className="bi bi-diagram-3-fill"></i>
-                                </div>
-                                <div>
-                                    <h4 className="form-option-title">Admite Puentes y Pónticos</h4>
-                                    <p className="form-option-desc">Habilita tramos continuos y pilares en odontograma</p>
-                                </div>
-                            </div>
-                            <label className="switch" style={{ margin: 0 }}>
-                                <input
-                                    type="checkbox"
-                                    checked={!!form.admite_puente}
-                                    onChange={e => setForm({ ...form, admite_puente: e.target.checked })}
-                                />
-                                <span className="slider round"></span>
+                        <div className="form-group" style={{ margin: '0.5rem 0' }}>
+                            <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <i className="bi bi-diagram-3-fill" style={{ color: 'var(--color-primary, #2563eb)' }}></i>
+                                Modo de Odontograma y Selección Clínica
                             </label>
+                            <CustomSelect
+                                value={form.modo_odontograma || 'unitario'}
+                                onChange={e => {
+                                    const nextModo = e.target.value;
+                                    setForm({
+                                        ...form,
+                                        modo_odontograma: nextModo,
+                                        admite_puente: nextModo === 'puente'
+                                    });
+                                }}
+                                options={[
+                                    { value: 'unitario', label: 'Corona / Unitario (Pieza a pieza, 1 clic)' },
+                                    { value: 'puente', label: 'Puente Fijo (Arrastre de tramos, pilares y pónticos)' },
+                                    { value: 'carilla', label: 'Carillas (Sector anterior, premolares y molares)' },
+                                    { value: 'arcada', label: 'Arcada Completa (Férulas, Prótesis Totales — cobro por arcada)' },
+                                    { value: 'guia_quirurgica', label: 'Guía Quirúrgica (Sitios de implantes, hasta 5 por arcada)' },
+                                    { value: 'ninguno', label: 'Sin Odontograma (Accesorios, modelos de estudio)' }
+                                ]}
+                            />
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '6px', marginBottom: 0 }}>
+                                {form.modo_odontograma === 'puente' && 'Permite arrastrar tramos entre piezas del mismo arco, calculando pilares y pónticos.'}
+                                {form.modo_odontograma === 'carilla' && 'Permite seleccionar cualquier pieza dental individual sin restricción en molares.'}
+                                {form.modo_odontograma === 'arcada' && 'Permite marcar la arcada completa (Superior/Inferior). La cantidad se cobra por arcada (1 o 2), no por diente.'}
+                                {form.modo_odontograma === 'guia_quirurgica' && 'Marca sitios de perforación de implantes. Hasta 5 implantes por arcada se cobran como 1 guía.'}
+                                {form.modo_odontograma === 'unitario' && 'Selección tradicional diente por diente. La cantidad equivale al total de piezas seleccionadas.'}
+                                {form.modo_odontograma === 'ninguno' && 'Omite el odontograma interactivo en el pedido.'}
+                            </p>
                         </div>
                     </div>
                 </div>
