@@ -51,7 +51,7 @@ export const OrderWhatsAppModal = ({
     // Enlace oficial 3D (prioridad 1: link de Exocad/3D cargado; prioridad 2: seguimiento)
     const currentApproval = (pedido?.aprobaciones || [])[0];
     const link3DReal = approvalLink || currentApproval?.link_exocad || currentApproval?.link_visor || pedido?.aprobacion?.link_exocad || '';
-    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://www.affinixlab.com';
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://afinixlab.com';
     const linkSeguimiento = `${appOrigin}/pedidos/${pedido?.id}`;
     const linkParaAprobacion = link3DReal || linkSeguimiento;
 

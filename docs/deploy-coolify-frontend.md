@@ -1,8 +1,8 @@
-# Despliegue frontend en Coolify (affinixlab.com)
+# Despliegue frontend en Coolify (afinixlab.com)
 
 Guía para servir el build de Vite (`frontend/dist`) con nginx en Coolify. Si ves **"Welcome to nginx!"**, el contenedor está vivo pero **no recibe los archivos compilados**.
 
-Panel: [panel.affinixlab.com](https://panel.affinixlab.com/)
+Panel: [panel.afinixlab.com](https://panel.afinixlab.com/)
 
 ---
 
@@ -24,8 +24,8 @@ Panel: [panel.affinixlab.com](https://panel.affinixlab.com/)
 
 Dominios:
 
-- `https://affinixlab.com`
-- `https://www.affinixlab.com`
+- `https://afinixlab.com`
+- `https://www.afinixlab.com`
 
 Tras guardar → **Redeploy** (no solo Restart).
 
@@ -36,13 +36,13 @@ Tras guardar → **Redeploy** (no solo Restart).
 Copiar desde [`deploy/coolify-frontend.env.example`](../deploy/coolify-frontend.env.example):
 
 ```ini
-VITE_SITE_ORIGIN=https://affinixlab.com
-VITE_API_URL=https://bak.affinixlab.com/api
+VITE_SITE_ORIGIN=https://afinixlab.com
+VITE_API_URL=https://bak.afinixlab.com/api
 ```
 
 `VITE_*` se inyectan en **build time**. Cualquier cambio requiere **Redeploy**.
 
-Backend en producción: `https://bak.affinixlab.com` (health: `/api/health`).
+Backend en producción: `https://bak.afinixlab.com` (health: `/api/health`).
 
 ---
 
@@ -50,13 +50,13 @@ Backend en producción: `https://bak.affinixlab.com` (health: `/api/health`).
 
 1. Logs de deploy: `npm ci` OK → `vite build` OK → copia a nginx sin errores.
 2. Navegador:
-   - `https://affinixlab.com/` → landing AFINIX (no página nginx)
-   - `https://affinixlab.com/login` → login (sin 404)
+   - `https://afinixlab.com/` → landing AFINIX (no página nginx)
+   - `https://afinixlab.com/login` → login (sin 404)
 3. Smoke desde local:
 
 ```bash
 cd backend
-SMOKE_BACKEND_URL=https://bak.affinixlab.com SMOKE_FRONTEND_URL=https://affinixlab.com npm run smoke
+SMOKE_BACKEND_URL=https://bak.afinixlab.com SMOKE_FRONTEND_URL=https://afinixlab.com npm run smoke
 ```
 
 ---
@@ -69,10 +69,10 @@ Servicio separado en Coolify. Checklist:
 |----------|--------|
 | `DATABASE_URL` | Postgres URL **interna** de Coolify |
 | `JWT_SECRET` | secreto largo |
-| `FRONTEND_ORIGIN` | `https://affinixlab.com,https://www.affinixlab.com` |
+| `FRONTEND_ORIGIN` | `https://afinixlab.com,https://www.afinixlab.com` |
 | `PORT` | respetar `$PORT` de Coolify |
 
-Dominio público: `https://bak.affinixlab.com`  
+Dominio público: `https://bak.afinixlab.com`  
 Health: `GET /api/health` → `{"status":"ok"}`
 
 Volumen persistente recomendado: `uploads_volume:/app/uploads`
@@ -106,8 +106,8 @@ Ver [`deploy/Dockerfile.frontend`](../deploy/Dockerfile.frontend).
 |---------|----------------|--------|
 | "Welcome to nginx!" | Publish Directory = `/` | Cambiar a `frontend/dist` y redeploy |
 | 404 en `/login` | SPA desactivado | Activar **Is it a SPA?** |
-| Login sin respuesta API | Falta `VITE_API_URL` | Añadir `https://bak.affinixlab.com/api` y redeploy |
-| CORS en login / `Failed to fetch` | `FRONTEND_ORIGIN` sin `www` | `https://affinixlab.com,https://www.affinixlab.com` (o redeploy backend con expansión www) |
+| Login sin respuesta API | Falta `VITE_API_URL` | Añadir `https://bak.afinixlab.com/api` y redeploy |
+| CORS en login / `Failed to fetch` | `FRONTEND_ORIGIN` sin `www` | `https://afinixlab.com,https://www.afinixlab.com` (o redeploy backend con expansión www) |
 | Build falla en `@newlab/contracts` | Install solo en `frontend/` | `npm ci` en raíz del monorepo |
 | exit code 255 al inicio Docker | Infra VPS (disco/memoria) | Revisar host Coolify; Rollback si existe |
 

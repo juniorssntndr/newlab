@@ -60,7 +60,7 @@ El despliegue está estructurado dentro del VPS del usuario usando **Coolify**:
 graph TD
     User([Cliente / Internet]) -->|HTTPS| Proxy[Proxy Inverso Coolify / Traefik]
     Proxy -->|Mapea dominio principal| Frontend[Contenedor Frontend - Svelte/React]
-    Proxy -->|Mapea bak.affinixlab.com| Backend[Contenedor Backend - Node.js/Express]
+    Proxy -->|Mapea bak.afinixlab.com| Backend[Contenedor Backend - Node.js/Express]
     Backend -->|Conexión Interna - Puerto 5432| DB[(Contenedor PostgreSQL)]
     
     style DB fill:#1b2a4a,stroke:#3498db,stroke-width:2px;
@@ -70,7 +70,7 @@ graph TD
 
 * **Aislamiento de la Base de Datos**: La base de datos no tiene mapeo de puertos hacia el exterior. Solo es visible dentro de la red virtual de Docker compartida con el backend.
 * **Variable de Entorno `DATABASE_URL`**: En el panel de Coolify del backend, se utiliza la dirección de red de Docker interna expuesta por Coolify (obtenida del campo *Postgres URL (internal)* con el formato `postgresql://user:password@<container_id>:5432/<db_name>`).
-* **CORS y Orígenes**: El backend (`backend/src/index.js`) tiene CORS configurado dinámicamente y solo acepta peticiones desde la variable `FRONTEND_ORIGIN` en producción (apuntando a `https://affinixlab.com`).
+* **CORS y Orígenes**: El backend (`backend/src/index.js`) tiene CORS configurado dinámicamente y solo acepta peticiones desde la variable `FRONTEND_ORIGIN` en producción (apuntando a `https://afinixlab.com`).
 
 ---
 
@@ -86,5 +86,5 @@ Para validar los cambios localmente en futuros ciclos de desarrollo:
 * **Prueba de Humo (Smoke Test)**:
   ```bash
   cd backend
-  SMOKE_BACKEND_URL=https://bak.affinixlab.com SMOKE_FRONTEND_URL=https://affinixlab.com npm run smoke
+  SMOKE_BACKEND_URL=https://bak.afinixlab.com SMOKE_FRONTEND_URL=https://afinixlab.com npm run smoke
   ```

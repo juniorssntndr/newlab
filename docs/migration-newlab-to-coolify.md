@@ -6,7 +6,7 @@ Esta guía detalla el proceso para migrar la base de datos y el almacenamiento d
 
 ## Paso 1: Crear la Base de Datos PostgreSQL en Coolify
 
-1. Ingresá a tu panel de Coolify en [panel.affinixlab.com](https://panel.affinixlab.com/).
+1. Ingresá a tu panel de Coolify en [panel.afinixlab.com](https://panel.afinixlab.com/).
 2. Hacé clic en **New Resource** (Nuevo Recurso) -> **Databases** -> **PostgreSQL**.
 3. Definí el nombre del servicio (ej. `newlab-db`), usuario y contraseña.
 4. Si tu backend va a seguir en Render (de manera temporal o definitiva):

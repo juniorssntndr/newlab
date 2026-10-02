@@ -2,7 +2,7 @@
 # Replace BACKEND_INTERNAL_HOST with the backend container hostname on the Coolify Docker network
 # (visible in the backend service → General → internal URL / container name).
 #
-# Prefer VITE_API_URL=https://bak.affinixlab.com/api in the frontend build when the backend
+# Prefer VITE_API_URL=https://bak.afinixlab.com/api in the frontend build when the backend
 # already has a public domain (current production setup).
 
 server {

@@ -2,7 +2,7 @@
 
 Producción sigue en **"Welcome to nginx!"** hasta que apliques estos cambios en el panel.
 
-1. Abrir [panel.affinixlab.com](https://panel.affinixlab.com/) → servicio **frontend** (`affinixlab.com`) → **Configuration → General**.
+1. Abrir [panel.afinixlab.com](https://panel.afinixlab.com/) → servicio **frontend** (`afinixlab.com`) → **Configuration → General**.
 
 2. Copiar exactamente:
 
@@ -20,8 +20,8 @@ Producción sigue en **"Welcome to nginx!"** hasta que apliques estos cambios en
 3. **Environment Variables** → pegar desde [`coolify-frontend.env.example`](coolify-frontend.env.example):
 
 ```
-VITE_SITE_ORIGIN=https://affinixlab.com
-VITE_API_URL=https://bak.affinixlab.com/api
+VITE_SITE_ORIGIN=https://afinixlab.com
+VITE_API_URL=https://bak.afinixlab.com/api
 ```
 
 4. Quitar **Custom Docker Options** innecesarias (SYS_ADMIN, fuse, etc.).
@@ -32,7 +32,7 @@ VITE_API_URL=https://bak.affinixlab.com/api
 
 ```bash
 cd backend
-SMOKE_BACKEND_URL=https://bak.affinixlab.com SMOKE_FRONTEND_URL=https://affinixlab.com npm run smoke
+SMOKE_BACKEND_URL=https://bak.afinixlab.com SMOKE_FRONTEND_URL=https://afinixlab.com npm run smoke
 ```
 
 Debe mostrar: `OK: backend health`, `OK: frontend home`, `OK: frontend login route`.

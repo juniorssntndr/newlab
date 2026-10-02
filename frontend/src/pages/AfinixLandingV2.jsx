@@ -36,12 +36,12 @@ const AfinixLandingV2 = () => {
         '@graph': [
             {
                 '@type': 'DentalLaboratory',
-                '@id': 'https://www.affinixlab.com/#organization',
+                '@id': 'https://afinixlab.com/#organization',
                 name: 'AFINIX Dental Lab - AFINIX DENTAL LAB S.A.C.',
                 legalName: 'AFINIX DENTAL LAB S.A.C.',
                 taxID: '20616033973',
-                url: 'https://www.affinixlab.com/landing-2',
-                logo: 'https://www.affinixlab.com/images/branding/logo-dark.png',
+                url: 'https://afinixlab.com/landing-2',
+                logo: 'https://afinixlab.com/images/branding/logo-dark.png',
                 description: 'Laboratorio dental digital en Arequipa especializado en prótesis fijas CAD/CAM, coronas de zirconia, disilicato y guías quirúrgicas 3D con aprobación digital previa.',
                 telephone: '+51910707060',
                 priceRange: '$$',
