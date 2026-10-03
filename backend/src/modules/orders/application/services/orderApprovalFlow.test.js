@@ -41,7 +41,7 @@ test('client adjustment request returns a pending approval order to design', asy
     assert.deepEqual(calls.notificationsRead, [{ orderId: 42, types: ['aprobacion'] }]);
 });
 
-test('approval response does not change the order workflow status', async () => {
+test('approval response advances the order workflow to production', async () => {
     const { service, calls } = makeHarness();
 
     await service.respondOrderApproval({
@@ -51,9 +51,9 @@ test('approval response does not change the order workflow status', async () => 
         body: { estado: 'aprobado' }
     });
 
-    assert.deepEqual(calls.statusUpdates, []);
+    assert.deepEqual(calls.statusUpdates, [{ orderId: 42, estado: 'en_produccion' }]);
     assert.equal(calls.timeline.at(-1).previousStatus, 'esperando_aprobacion');
-    assert.equal(calls.timeline.at(-1).nextStatus, 'esperando_aprobacion');
+    assert.equal(calls.timeline.at(-1).nextStatus, 'en_produccion');
     assert.deepEqual(calls.notificationsRead, [{ orderId: 42, types: ['aprobacion'] }]);
 });
 

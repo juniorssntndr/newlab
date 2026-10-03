@@ -674,9 +674,15 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             });
         }
 
-        const nextStatus = estado === 'ajuste_solicitado' && order.estado === 'esperando_aprobacion'
-            ? 'en_diseno'
-            : order.estado;
+        let nextStatus = order.estado;
+        if (order.estado === 'esperando_aprobacion') {
+            if (estado === 'aprobado') {
+                nextStatus = 'en_produccion';
+            } else if (estado === 'ajuste_solicitado') {
+                nextStatus = 'en_diseno';
+            }
+        }
+
         if (nextStatus !== order.estado) {
             await orderRepository.updateOrderStatus({ orderId, estado: nextStatus });
         }
