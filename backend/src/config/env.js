@@ -55,6 +55,13 @@ export const getSupabaseStorageConfig = () => ({
     bucket: process.env.SUPABASE_STORAGE_BUCKET || 'product-images'
 });
 
+export const getViewerConfig = () => ({
+    origin: (process.env.VIEWER_ORIGIN || 'https://viewer.afinixlab.com').replace(/\/$/, ''),
+    ttlSeconds: Math.min(Math.max(parseInt(process.env.VIEWER_TOKEN_TTL_SECONDS || '900', 10) || 900, 60), 3600),
+    storageDir: process.env.PRIVATE_VIEWER_STORAGE_DIR || '',
+    retentionDays: Math.max(parseInt(process.env.PRIVATE_VIEWER_RETENTION_DAYS || '60', 10) || 60, 1)
+});
+
 export const getGoogleCalendarConfig = () => ({
     clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '',

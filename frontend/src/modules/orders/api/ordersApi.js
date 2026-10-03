@@ -49,6 +49,10 @@ export const createOrderApprovalLink = ({ orderId, payload, headers }) => apiCli
     body: payload
 });
 
+export const createOrderViewerSession = ({ orderId, approvalId, headers }) => apiClient(`/pedidos/${orderId}/aprobacion/${approvalId}/visor`, {
+    method: 'POST', headers
+});
+
 export const uploadOrderFile = ({ orderId, payload, headers }) => apiClient(`/pedidos/${orderId}/archivos`, {
     method: 'POST',
     headers,

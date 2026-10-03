@@ -116,3 +116,14 @@ Deploy assets in repo:
 - `deploy/coolify-frontend.env.example` — build-time `VITE_*` for Coolify
 - `deploy/nginx-spa.conf` — SPA fallback for nginx
 - `deploy/Dockerfile.frontend` — optional self-contained Docker build (Plan B)
+
+## 11) Private Exocad viewer (`viewer.afinixlab.com`)
+
+The Exocad export is executable HTML, so it is intentionally not served by `afinixlab.com`, `bak.afinixlab.com`, or `/uploads`.
+
+1. Create `viewer.afinixlab.com` DNS and TLS in Coolify, reverse-proxying to the backend service at `/viewer`; do not route it to the frontend container.
+2. Mount persistent VPS storage at `PRIVATE_VIEWER_STORAGE_DIR=/data/afinix-private-viewers`; it must survive deployments and never be publicly mounted.
+3. Set `VIEWER_ORIGIN=https://viewer.afinixlab.com`, `VIEWER_TOKEN_TTL_SECONDS=900`, `PRIVATE_VIEWER_RETENTION_DAYS=60`, and restrict `FRONTEND_ORIGIN=https://afinixlab.com` (add staging origins explicitly when needed).
+4. Schedule `npm run cleanup:viewers` daily in Coolify. It removes HTML exports after 60 days; editable CAD source remains on the design PC.
+
+The API authorizes the order before issuing a 15-minute signed viewer URL. The viewer validates it, reads only the signed private key, returns `text/html` with `no-store`, and uses CSP `frame-ancestors` for configured AFINIX frontend origins. Existing local legacy approval files under `/uploads/pedidos/<id>/aprobaciones/*.html` remain accessible only through this signed route; arbitrary historical URLs are rejected and must be republished.

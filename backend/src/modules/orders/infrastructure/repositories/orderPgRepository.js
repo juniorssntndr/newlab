@@ -245,8 +245,8 @@ export const makeOrderPgRepository = ({ pool }) => ({
             if (rawDiscountCode && typeof rawDiscountCode === 'string' && rawDiscountCode.trim().length > 0) {
                 const codeNormalized = rawDiscountCode.trim().toUpperCase();
                 const discountRes = await client.query(
-                    `SELECT * FROM nl_descuentos 
-                     WHERE UPPER(codigo) = $1 AND activo = TRUE 
+                    `SELECT * FROM nl_descuentos
+                     WHERE UPPER(codigo) = $1 AND activo = TRUE
                      FOR UPDATE`,
                     [codeNormalized]
                 );
@@ -277,8 +277,8 @@ export const makeOrderPgRepository = ({ pool }) => ({
                         appliedDiscount = discountRow;
 
                         await client.query(
-                            `UPDATE nl_descuentos 
-                             SET usos_actuales = usos_actuales + 1, updated_at = NOW() 
+                            `UPDATE nl_descuentos
+                             SET usos_actuales = usos_actuales + 1, updated_at = NOW()
                              WHERE id = $1`,
                             [discountRow.id]
                         );
@@ -288,7 +288,7 @@ export const makeOrderPgRepository = ({ pool }) => ({
 
             const pedidoResult = await client.query(
                 `INSERT INTO nl_pedidos (
-                    id, codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls, 
+                    id, codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls,
                     subtotal, igv, total, created_by,
                     descuento_id, descuento_codigo, descuento_monto
                  )
@@ -401,10 +401,12 @@ export const makeOrderPgRepository = ({ pool }) => ({
         }
 
         updateParams.push(orderId);
-        updateQuery += ` WHERE id = $${updateParams.length} RETURNING *`;
+        updateQuery += ` WHERE id = $${updateParams.length} AND estado <> 'enviado' RETURNING *`;
 
         const updated = await pool.query(updateQuery, updateParams);
         const pedido = updated.rows[0];
+
+        if (!pedido) return { sentOrder: true };
 
         return {
             notFound: false,

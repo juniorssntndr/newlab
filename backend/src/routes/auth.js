@@ -6,6 +6,7 @@ import { getJwtSecret } from '../config/env.js';
 import { validateBody } from '../middleware/validate.js';
 import { loginSchema, registerClientSchema } from '../validation/schemas.js';
 import { writeAuditEvent } from '../services/audit.js';
+import { sendPushNotificationToMany } from '../modules/notifications/pushNotificationService.js';
 
 const router = Router();
 
@@ -26,15 +27,15 @@ export const resolveUserModules = (user) => {
 
     switch (user.tipo) {
         case 'admin':
-            return ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'catalogo', 'almacen', 'usuarios', 'cuenta'];
+            return ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'marketing', 'catalogo', 'almacen', 'usuarios', 'cuenta'];
         case 'socio':
-            return ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'catalogo', 'cuenta'];
+            return ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'marketing', 'catalogo', 'cuenta'];
         case 'tecnico':
             return ['pedidos', 'catalogo', 'almacen', 'calendario', 'cuenta'];
         case 'operador':
-            return ['caja', 'pedidos', 'calendario', 'crm', 'catalogo', 'cuenta'];
+            return ['caja', 'pedidos', 'calendario', 'crm', 'catalogo', 'usuarios', 'cuenta'];
         case 'visitador':
-            return ['crm', 'calendario', 'cuenta'];
+            return ['pedidos', 'crm', 'marketing', 'calendario', 'usuarios', 'cuenta'];
         case 'cliente':
             return ['pedidos_cliente', 'catalogo_cliente', 'cuenta'];
         default:
@@ -203,6 +204,29 @@ router.post('/register-client', validateBody(registerClientSchema), async (req, 
             descripcion: 'Auto-registro público de cliente (solicitud pendiente de verificación)',
             metadata: { email, clinica_nombre, ruc, telefono }
         });
+
+        // Notificar al equipo del laboratorio (admins, operadores y visitadores) sobre la solicitud pendiente
+        try {
+            const notifiedUsers = await pool.query(
+                "SELECT id FROM nl_usuarios WHERE tipo IN ('admin', 'operador', 'visitador') AND estado = 'activo'"
+            );
+            if (notifiedUsers.rows.length > 0) {
+                const notifTitle = `Nueva solicitud: Dr(a). ${nombre}`;
+                const notifLink = '/equipo?tab=pendientes';
+                await sendPushNotificationToMany({
+                    pool,
+                    userIds: notifiedUsers.rows.map((a) => a.id),
+                    payload: {
+                        title: 'Nueva solicitud en AFINIX Dental Lab',
+                        body: `${notifTitle} (${clinica_nombre})`,
+                        url: notifLink,
+                        icon: '/icon-192x192.png'
+                    }
+                });
+            }
+        } catch (notifErr) {
+            console.error('[Auth] Error enviando notificaciones de solicitud:', notifErr.message);
+        }
 
         res.status(201).json({
             message: 'Tu solicitud de registro ha sido recibida con éxito. Nuestro equipo de AFINIX Dental Lab validará tus datos para darte la bienvenida y activar tu acceso.',

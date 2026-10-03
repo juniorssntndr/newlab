@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import CrmNavigation from '../components/CrmNavigation.jsx';
 import CrmMapContainer from '../map/CrmMapContainer.jsx';
 import CrmMapBottomSheet from '../map/CrmMapBottomSheet.jsx';
@@ -6,7 +8,7 @@ import EstablishmentDrawer from '../components/EstablishmentDrawer.jsx';
 import VisitModal from '../components/VisitModal.jsx';
 import ConversionModal from '../components/ConversionModal.jsx';
 import EstablishmentModal from '../components/EstablishmentModal.jsx';
-import { useCrmEstablecimientosQuery } from '../queries/useCrmQueries.js';
+import { useCrmEstablecimientosQuery, useCrmMutations } from '../queries/useCrmQueries.js';
 import '../styles/crm.css';
 
 const AREQUIPA_DISTRITOS = [
@@ -47,6 +49,11 @@ export const CrmMapaPage = () => {
     const [filterDistrito, setFilterDistrito] = useState('');
     const [search, setSearch] = useState('');
 
+    const [searchParams, setSearchParams] = useSearchParams();
+    const { updateEstablecimiento } = useCrmMutations();
+    const asignarId = searchParams.get('asignarId');
+    const asignarNombre = searchParams.get('nombre');
+
     // Advanced map controls
     const [cleanStyle, setCleanStyle] = useState(true);
     const [proximityCenter, setProximityCenter] = useState(null); // { lat, lng, name }
@@ -54,6 +61,30 @@ export const CrmMapaPage = () => {
     const [routeStops, setRouteStops] = useState([]); // array of establishments
     const [isNewProspectOpen, setIsNewProspectOpen] = useState(false);
     const [newProspectCoords, setNewProspectCoords] = useState(null);
+
+    const handleMapClick = async (coords) => {
+        if (asignarId) {
+            try {
+                const updated = await updateEstablecimiento({
+                    id: Number(asignarId),
+                    payload: { latitud: coords.lat, longitud: coords.lng },
+                });
+                toast.success(`¡Ubicación de "${asignarNombre || 'la clínica'}" guardada en el mapa!`);
+                const newParams = new URLSearchParams(searchParams);
+                newParams.delete('asignarId');
+                newParams.delete('nombre');
+                setSearchParams(newParams);
+                refetch();
+                if (updated) setSelectedEstablishment(updated);
+            } catch (err) {
+                toast.error(err.message || 'Error al asignar ubicación');
+            }
+            return;
+        }
+
+        setNewProspectCoords(coords);
+        setIsNewProspectOpen(true);
+    };
 
     const { data, isLoading, refetch } = useCrmEstablecimientosQuery({
         etapa: filterEtapa || undefined,
@@ -272,6 +303,52 @@ export const CrmMapaPage = () => {
 
                 {/* Map Layout */}
                 <div className="crm-map-layout" style={{ position: 'relative', flex: 1 }}>
+                    {/* Banner de Modo Asignación Directa desde Edición de Clínica */}
+                    {asignarId && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '16px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 30,
+                            background: '#0284c7',
+                            color: '#ffffff',
+                            padding: '0.65rem 1.25rem',
+                            borderRadius: '30px',
+                            boxShadow: '0 8px 24px rgba(2, 132, 199, 0.45)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            maxWidth: '92%',
+                        }}>
+                            <i className="bi bi-geo-alt-fill" style={{ fontSize: '1.25rem', color: '#fef08a' }}></i>
+                            <span>Haz clic en el mapa sobre el punto donde se ubica <strong>"{asignarNombre || 'la clínica'}"</strong></span>
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-ghost"
+                                style={{
+                                    color: '#ffffff',
+                                    textDecoration: 'underline',
+                                    padding: '2px 8px',
+                                    fontSize: '0.8rem',
+                                    borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
+                                    borderRadius: 0,
+                                    marginLeft: '4px',
+                                }}
+                                onClick={() => {
+                                    const newParams = new URLSearchParams(searchParams);
+                                    newParams.delete('asignarId');
+                                    newParams.delete('nombre');
+                                    setSearchParams(newParams);
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    )}
+
                     <div className="crm-map-canvas">
                         <CrmMapContainer
                             establishments={establishments}
@@ -281,10 +358,7 @@ export const CrmMapaPage = () => {
                             proximityCenter={proximityCenter}
                             proximityRadius={proximityRadius}
                             routePoints={routeStops}
-                            onMapClick={(coords) => {
-                                setNewProspectCoords(coords);
-                                setIsNewProspectOpen(true);
-                            }}
+                            onMapClick={handleMapClick}
                         />
                     </div>
 
@@ -413,6 +487,10 @@ export const CrmMapaPage = () => {
                     onCreated={(created) => {
                         refetch();
                         if (created) setSelectedEstablishment(created);
+                    }}
+                    onSaved={(saved) => {
+                        refetch();
+                        if (saved) setSelectedEstablishment(saved);
                     }}
                 />
             )}

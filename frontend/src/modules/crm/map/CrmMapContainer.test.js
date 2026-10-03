@@ -39,6 +39,8 @@ const harness = ({ reject = false, setupThrows = false } = {}) => {
     };
     class Map {
         constructor() { maps.push(this); }
+        addListener() {}
+        setOptions() {}
         panTo(value) { this.center = value; }
         setZoom(value) { this.zoom = value; }
     }
@@ -52,7 +54,7 @@ const harness = ({ reject = false, setupThrows = false } = {}) => {
         clearMarkers() { this.markers = []; }
         setMap(value) { this.map = value; }
     }
-    const google = { maps: { Map, Marker, Size: class {}, event: {
+    const google = { maps: { Map, Marker, Size: class {}, Point: class {}, event: {
         clearInstanceListeners: (instance) => { instance.cleared = true; },
     } } };
     const loader = {
@@ -70,7 +72,7 @@ const harness = ({ reject = false, setupThrows = false } = {}) => {
         (name) => name === 'react' ? react : name === '@googlemaps/js-api-loader' ? loader : { MarkerClusterer },
         module, module.exports, { google },
     );
-    const point = { id: 1, nombre: 'Synthetic clinic', etapa: 'nuevo', latitud: -12, longitud: -77 };
+    const point = { id: 1, nombre: 'Synthetic clinic', etapa: 'nuevo', latitud: -16.4, longitud: -71.54 };
     let selected;
     const props = { establishments: [point], selectedEstablishment: point, onSelectEstablishment: (item) => { selected = item; } };
     let tree;
@@ -100,7 +102,7 @@ assert.equal(loaded.optionsCalls(), 1);
 assert.deepEqual([...new Set(loaded.imports)], ['maps', 'marker']);
 assert.equal(loaded.maps.length, 1);
 assert.equal(loaded.markers.length, 1, 'Preloaded points render when the async map becomes ready');
-assert.equal(loaded.maps[0].zoom, 15, 'Preselected point centers after map readiness');
+assert.equal(loaded.maps[0].zoom, 16, 'Preselected point centers after map readiness');
 loaded.markers[0].click();
 assert.equal(loaded.selected(), loaded.point);
 loaded.props.establishments = [];

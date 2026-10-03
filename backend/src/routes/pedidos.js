@@ -4,6 +4,8 @@ import path from 'path';
 import { authenticateToken, forbidRole } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { createPedidoSchema } from '../validation/schemas.js';
+import { requireOrderRepeatStaff, uploadRepeatPhotos } from '../modules/orders/transport/http/orderRepeatUpload.js';
+import { handleOptionalApprovalUpload } from '../modules/orders/transport/http/orderApprovalUpload.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -47,8 +49,12 @@ router.get('/google/calendar/auth-url', delegateToOrders('getGoogleCalendarAuthU
 router.post('/google/calendar/token', delegateToOrders('storeGoogleCalendarCode'));
 router.get('/:id', delegateToOrders('getOrderDetail'));
 router.post('/', validateBody(createPedidoSchema), delegateToOrders('createOrder'));
+router.get('/:id/repeticion/cotizacion', requireOrderRepeatStaff, delegateToOrders('getOrderRepeatQuote'));
+router.post('/:id/repeticion', requireOrderRepeatStaff, uploadRepeatPhotos, delegateToOrders('createOrderRepeat'));
+router.get('/:id/repeticion/fotos/:photoId', requireOrderRepeatStaff, delegateToOrders('getOrderRepeatPhoto'));
 router.patch('/:id/estado', delegateToOrders('updateOrderStatus'));
-router.post('/:id/aprobacion', delegateToOrders('createOrderApprovalLink'));
+router.post('/:id/aprobacion', handleOptionalApprovalUpload, delegateToOrders('createOrderApprovalLink'));
+router.post('/:id/aprobacion/:aprobacionId/visor', delegateToOrders('createViewerSession'));
 router.post('/:id/archivos', upload.single('image'), delegateToOrders('uploadOrderFile'));
 router.patch('/:id/responsable', delegateToOrders('updateOrderResponsible'));
 router.patch('/:id/fecha-entrega', delegateToOrders('updateOrderDeliveryDate'));

@@ -82,3 +82,29 @@ export const validateAndPersistClinicContact = async (client, {
 
     await client.query('UPDATE nl_clinicas SET doctor_contacto_principal_id=$1 WHERE id=$2', [principalId,clinicId]);
 };
+
+export const syncMissingClinicEstablishments = async (pool) => {
+    try {
+        await pool.query(
+            `UPDATE nl_clinicas c
+             SET estado = 'activo'
+             WHERE c.estado != 'activo'
+               AND EXISTS (
+                 SELECT 1 FROM nl_usuarios u
+                 WHERE u.clinica_id = c.id AND u.estado = 'activo'
+               )`
+        );
+
+        const missing = await pool.query(
+            `SELECT * FROM nl_clinicas
+             WHERE estado = 'activo' AND (establecimiento_id IS NULL OR establecimiento_id NOT IN (SELECT id FROM nl_crm_establecimientos))`
+        );
+        for (const clinic of missing.rows) {
+            await ensureClinicEstablishment(pool, clinic, { tipo: 'clinica' });
+        }
+        return missing.rows.length;
+    } catch (error) {
+        console.error('Error en syncMissingClinicEstablishments:', error);
+        return 0;
+    }
+};

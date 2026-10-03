@@ -1,7 +1,11 @@
 import { getIgvFactor } from '../../../../config/env.js';
 import { sendPushNotificationToMany } from '../../../notifications/pushNotificationService.js';
+import { makeOrderRepeatService } from './orderRepeatService.js';
+import { canManageOrderRepeats } from '../../domain/orderRepeat.js';
+import { uploadOrderApprovalHtml } from '../../../../services/storage.js';
+import { makeOrderViewerService } from './orderViewerService.js';
 
-export const makeOrderService = ({ orderRepository, pool }) => {
+export const makeOrderService = ({ orderRepository, repeatRepository, pool }) => {
     const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
     const igvFactor = getIgvFactor();
 
@@ -55,6 +59,8 @@ export const makeOrderService = ({ orderRepository, pool }) => {
     };
 
     return {
+    ...makeOrderRepeatService({ repeatRepository }),
+    ...makeOrderViewerService({ orderRepository }),
     listOrders: async ({ user, filters }) => {
         if (user?.tipo === 'visitador') return { ok: false, type: 'FORBIDDEN', error: 'No autorizado' };
         const { rows, total } = await orderRepository.listOrders({ user, filters });
@@ -90,11 +96,13 @@ export const makeOrderService = ({ orderRepository, pool }) => {
             }
         }
 
-        const [items, timeline, approvals, files] = await Promise.all([
+        const [items, timeline, approvals, files, relatedOrders, repeatPhotos] = await Promise.all([
             orderRepository.listOrderItems({ orderId }),
             orderRepository.listOrderTimeline({ orderId }),
             orderRepository.listOrderApprovals({ orderId }),
-            orderRepository.listOrderFiles({ orderId })
+            orderRepository.listOrderFiles({ orderId }),
+            repeatRepository.listRelated(orderId),
+            canManageOrderRepeats(user) ? repeatRepository.listPhotos(orderId) : []
         ]);
 
         return {
@@ -105,7 +113,9 @@ export const makeOrderService = ({ orderRepository, pool }) => {
                 items,
                 timeline,
                 aprobaciones: approvals,
-                archivos: files
+                archivos: files,
+                relatedOrders,
+                repeatPhotos
             }
         };
     },
@@ -200,6 +210,10 @@ export const makeOrderService = ({ orderRepository, pool }) => {
         const nextIdx = statusFlow.indexOf(estado);
         const isSameState = nextIdx === currentIdx;
 
+        if (current.estado === 'enviado') {
+            return { ok: false, type: 'BAD_REQUEST', error: 'Un pedido enviado no retrocede. Crea una repetición vinculada.' };
+        }
+
         if (isSameState && !(estado === 'esperando_aprobacion' && link_exocad)) {
             return {
                 ok: false,
@@ -264,6 +278,10 @@ export const makeOrderService = ({ orderRepository, pool }) => {
             };
         }
 
+        if (updated.sentOrder) {
+            return { ok: false, type: 'CONFLICT', error: 'El pedido ya fue enviado. Crea una repetición vinculada.' };
+        }
+
         // If transitioning to "esperando_aprobacion", we must create the approval link
         if (estado === 'esperando_aprobacion' && link_exocad) {
             await orderRepository.createOrderApprovalLink({
@@ -307,7 +325,7 @@ export const makeOrderService = ({ orderRepository, pool }) => {
             }
         };
     },
-    createOrderApprovalLink: async ({ user, orderId, body }) => {
+    createOrderApprovalLink: async ({ user, orderId, body, file }) => {
         if (user?.tipo === 'cliente') {
             return {
                 ok: false,
@@ -316,12 +334,20 @@ export const makeOrderService = ({ orderRepository, pool }) => {
             };
         }
 
-        const { link_exocad, comentario } = body || {};
+        let link_exocad = body?.link_exocad?.trim();
+        const comentario = body?.comentario?.trim();
+
+        if (file) {
+            const approvals = await orderRepository.listOrderApprovals({ orderId });
+            const nextVersion = (approvals?.length || 0) + 1;
+            link_exocad = await uploadOrderApprovalHtml({ file, orderId, version: nextVersion });
+        }
+
         if (!link_exocad) {
             return {
                 ok: false,
                 type: 'BAD_REQUEST',
-                error: 'Link de Exocad es requerido'
+                error: 'Archivo HTML del visor 3D o link es requerido'
             };
         }
 
@@ -332,6 +358,10 @@ export const makeOrderService = ({ orderRepository, pool }) => {
                 type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
             };
+        }
+
+        if (order.estado === 'enviado') {
+            return { ok: false, type: 'BAD_REQUEST', error: 'El pedido ya fue enviado. Publica el diseño en una repetición vinculada.' };
         }
 
         const result = await orderRepository.createOrderApprovalLink({
@@ -347,12 +377,27 @@ export const makeOrderService = ({ orderRepository, pool }) => {
             };
         }
 
+        const isTransition = order.estado !== 'esperando_aprobacion';
+        if (isTransition) {
+            await orderRepository.updateOrderStatus({
+                orderId,
+                estado: 'esperando_aprobacion'
+            });
+            await notifyClinicUsers(
+                order.clinica_id,
+                'aprobacion',
+                '⭐ Diseño listo para aprobar',
+                `Pedido ${order.codigo} tiene un nuevo diseño 3D listo para que lo revises.`,
+                `/pedidos/${orderId}`
+            );
+        }
+
         await orderRepository.addTimelineEntry({
             orderId,
-            previousStatus: null,
-            nextStatus: null,
+            previousStatus: order.estado,
+            nextStatus: 'esperando_aprobacion',
             userId: user.id,
-            comment: comentario || 'Nuevo link de aprobacion generado'
+            comment: comentario || (isTransition ? 'Diseño enviado a aprobación' : 'Nueva versión de diseño 3D subida')
         });
 
         return {
@@ -563,6 +608,10 @@ export const makeOrderService = ({ orderRepository, pool }) => {
             };
         }
 
+        if (order.estado === 'enviado') {
+            return { ok: false, type: 'BAD_REQUEST', error: 'El pedido ya fue enviado. Esta revisión no puede modificarse.' };
+        }
+
         const result = await orderRepository.respondOrderApproval({
             orderId,
             approvalId,
@@ -605,12 +654,18 @@ export const makeOrderService = ({ orderRepository, pool }) => {
             );
         }
 
+        const nextStatus = estado === 'ajuste_solicitado' && order.estado === 'esperando_aprobacion'
+            ? 'en_diseno'
+            : order.estado;
+        if (nextStatus !== order.estado) {
+            await orderRepository.updateOrderStatus({ orderId, estado: nextStatus });
+        }
+
         // Add timeline entry
         await orderRepository.addTimelineEntry({
             orderId,
             previousStatus: order.estado,
-            nextStatus: order.estado, // El estado del pedido no cambia automáticamente aquí según la lógica previa, 
-                                      // pero se registra la respuesta
+            nextStatus,
             userId: user.id,
             comment: `Diseño ${estado === 'aprobado' ? 'APROBADO' : 'CON AJUSTES'}. ${comentarioCliente}`
         });

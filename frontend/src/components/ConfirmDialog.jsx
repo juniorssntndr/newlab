@@ -15,8 +15,10 @@ const ConfirmDialog = ({
     variant = 'danger',
     confirming = false,
     icon = 'bi-exclamation-triangle',
+    confirmIcon,
 }) => {
     const confirmClass = variant === 'danger' ? 'btn btn-danger' : 'btn btn-primary';
+    const actionIcon = confirmIcon || (variant === 'danger' ? 'bi-trash' : 'bi-check-lg');
 
     return (
         <Modal
@@ -50,7 +52,7 @@ const ConfirmDialog = ({
                             </>
                         ) : (
                             <>
-                                <i className={`bi ${variant === 'danger' ? 'bi-trash' : 'bi-check-lg'}`} aria-hidden="true" />
+                                <i className={`bi ${actionIcon}`} aria-hidden="true" />
                                 {confirmLabel}
                             </>
                         )}

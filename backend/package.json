@@ -23,7 +23,8 @@
         "test:billing-phase2": "node --test src/modules/billing/__tests__/phase2.service.test.js",
         "test:billing-acl:coverage": "node scripts/check-billing-acl-coverage.mjs",
         "test:order-payment-invoice-e2e": "node --test src/routes/__tests__/order-payment-invoice-http.e2e.test.js",
-        "test:crm": "node --test src/modules/crm/domain/commercialHealth.test.js src/modules/crm/application/services/crmService.test.js src/modules/crm/application/services/clinicCrmIntegration.test.js src/modules/crm/infrastructure/repositories/crmPgRepository.test.js src/modules/crm/transport/http/crmRoutes.test.js"
+        "test:crm": "node --test src/modules/crm/domain/commercialHealth.test.js src/modules/crm/application/services/crmService.test.js src/modules/crm/application/services/clinicCrmIntegration.test.js src/modules/crm/infrastructure/repositories/crmPgRepository.test.js src/modules/crm/transport/http/crmRoutes.test.js",
+        "cleanup:viewers": "node scripts/cleanup_expired_viewers.js"
     },
     "dependencies": {
         "@newlab/contracts": "file:../packages/contracts",

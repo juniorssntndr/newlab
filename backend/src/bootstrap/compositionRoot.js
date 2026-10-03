@@ -1,6 +1,7 @@
 import pg from 'pg';
-import { getDatabaseUrl, getUseNewBillingAcl } from '../config/env.js';
+import { getDatabaseUrl, getUseNewBillingAcl, getIgvFactor } from '../config/env.js';
 import { makeOrderPgRepository } from '../modules/orders/infrastructure/repositories/orderPgRepository.js';
+import { makeOrderRepeatPgRepository } from '../modules/orders/infrastructure/repositories/orderRepeatPgRepository.js';
 import { makeOrderService } from '../modules/orders/application/services/orderService.js';
 import { makeOrderController } from '../modules/orders/application/controllers/orderController.js';
 import { makeOrderRoutes } from '../modules/orders/transport/http/orderRoutes.js';
@@ -31,7 +32,8 @@ export const createCompositionRoot = () => {
         console.error('Unexpected error on idle pg client', err);
     });
     const orderRepository = makeOrderPgRepository({ pool });
-    const orderService = makeOrderService({ orderRepository, pool });
+    const repeatRepository = makeOrderRepeatPgRepository({ pool, igvFactor: getIgvFactor() });
+    const orderService = makeOrderService({ orderRepository, repeatRepository, pool });
     const orderController = makeOrderController({ orderService });
     const orderRoutes = makeOrderRoutes({ orderController });
     const financeRepository = makeFinancePgRepository({ pool });

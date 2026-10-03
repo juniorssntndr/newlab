@@ -32,3 +32,84 @@
         grid-column: span 1 !important;
     }
 }
+
+/* Buscador interactivo de clínicas para modal de aprobación */
+.approval-search-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.approval-search-wrap .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-secondary, #94a3b8);
+    font-size: 0.8125rem;
+    pointer-events: none;
+}
+
+.approval-search-input {
+    width: 100%;
+    padding: 0.45rem 2rem 0.45rem 2.25rem;
+    font-size: 0.825rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-primary, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.approval-search-input:focus {
+    border-color: var(--color-primary, #0284c7);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+.approval-clear-btn {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary, #94a3b8);
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 0.85rem;
+}
+
+.approval-clinic-list-container {
+    max-height: 165px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.35rem 0.45rem;
+    background: var(--color-bg-secondary, #f8fafc);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 6px;
+}
+
+.approval-clinic-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.65rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    transition: background 0.12s ease;
+    border: 1px solid transparent;
+}
+
+.approval-clinic-item:hover {
+    background: var(--color-bg-hover, rgba(2, 132, 199, 0.06));
+}
+
+.approval-clinic-item.is-selected {
+    background: rgba(2, 132, 199, 0.1);
+    border-color: var(--color-primary, #0284c7);
+    font-weight: 600;
+}

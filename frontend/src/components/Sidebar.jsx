@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../state/AuthContext.jsx';
 import {
     canAccessModule,
     isClientRole
 } from '../utils/accessControl.js';
 import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
+import { apiClient } from '../services/http/apiClient.js';
 import AfinixLogo from './AfinixLogo.jsx';
 
 const getAppLogoTheme = () => (
@@ -14,7 +16,7 @@ const getAppLogoTheme = () => (
 
 const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
     const location = useLocation();
-    const { user, logout } = useAuth();
+    const { user, token, logout } = useAuth();
     const isClient = isClientRole(user);
     const [logoTheme, setLogoTheme] = useState(getAppLogoTheme);
 
@@ -37,12 +39,43 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
         ? pendingApprovalQuery.data.length
         : 0;
 
+    const staffPendingOrdersQuery = useOrdersListQuery({
+        filters: { estado: 'pendiente' },
+        enabled: !isClient && canAccessModule(user, 'pedidos'),
+    });
+    const pendingOrdersCount = !isClient && Array.isArray(staffPendingOrdersQuery.data)
+        ? staffPendingOrdersQuery.data.length
+        : 0;
+
+    const pendingUsersQuery = useQuery({
+        queryKey: ['usuarios', 'pendientes_count'],
+        queryFn: async () => {
+            try {
+                const data = await apiClient('/usuarios/pendientes-count', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                return Number(data?.count) || 0;
+            } catch {
+                return 0;
+            }
+        },
+        enabled: !isClient && Boolean(token && canAccessModule(user, 'usuarios')),
+        refetchInterval: 30000,
+    });
+    const pendingUsersCount = pendingUsersQuery.data || 0;
+
     const staffLinks = [
         ...(canAccessModule(user, 'dashboard')
             ? [{ to: '/dashboard', icon: 'bi-grid-1x2', label: 'Dashboard' }]
             : []),
         ...(canAccessModule(user, 'pedidos')
-            ? [{ to: '/pedidos', icon: 'bi-clipboard2-pulse', label: 'Gestión de pedidos' }]
+            ? [{
+                to: '/pedidos',
+                icon: 'bi-clipboard2-pulse',
+                label: 'Gestión de pedidos',
+                badge: pendingOrdersCount,
+                badgeLabel: pendingOrdersCount === 1 ? '1 nuevo pedido' : `${pendingOrdersCount} nuevos pedidos`
+            }]
             : []),
         ...(canAccessModule(user, 'caja')
             ? [{ to: '/caja-gastos', icon: 'bi-wallet2', label: 'Caja y Facturación' }]
@@ -80,7 +113,15 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
             ? [{ to: '/almacen', icon: 'bi-boxes', label: 'Almacén' }]
             : []),
         ...(canAccessModule(user, 'usuarios')
-            ? [{ to: '/equipo', icon: 'bi-people', label: 'Usuarios' }]
+            ? [{
+                to: '/equipo',
+                icon: 'bi-people',
+                label: 'Usuarios',
+                badge: pendingUsersCount,
+                badgeLabel: pendingUsersCount === 1
+                    ? '1 solicitud de cliente pendiente'
+                    : `${pendingUsersCount} solicitudes de cliente pendientes`,
+            }]
             : []),
         { to: '/cuenta', icon: 'bi-person-circle', label: 'Cuenta' },
     ];
@@ -124,10 +165,10 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
                                 end={item.to === '/pedidos' || item.to === '/pedidos/nuevo' || item.to === '/catalogo'}
                             >
                                 <i className={`bi ${item.icon}`}></i>
-                                <span>{item.label}</span>
+                                <span className="nav-item-label">{item.label}</span>
                                 {item.badge > 0 ? (
                                     <span
-                                        className="nav-item-badge"
+                                        className={`nav-item-badge ${item.badge < 10 ? 'is-circle' : ''}`}
                                         aria-label={item.badgeLabel || `${item.badge} pendientes`}
                                     >
                                         {item.badge > 99 ? '99+' : item.badge}

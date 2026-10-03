@@ -24,6 +24,32 @@ const sendServiceResult = (res, result) => {
 };
 
 export const makeOrderController = ({ orderService }) => ({
+    createViewerSession: async (req, res, next) => {
+        try { return sendServiceResult(res, await orderService.createViewerSession({ user: req.user, orderId: req.params.id, approvalId: req.params.aprobacionId, parentOrigin: req.get('origin') })); }
+        catch (error) { next(error); }
+    },
+    getOrderRepeatQuote: async (req, res, next) => {
+        try {
+            return sendServiceResult(res, await orderService.getOrderRepeatQuote({ user: req.user, orderId: req.params.id }));
+        } catch (error) { next(error); }
+    },
+    createOrderRepeat: async (req, res, next) => {
+        try {
+            return sendServiceResult(res, await orderService.createOrderRepeat({
+                user: req.user, orderId: req.params.id, body: req.body, files: req.files || []
+            }));
+        } catch (error) { next(error); }
+    },
+    getOrderRepeatPhoto: async (req, res, next) => {
+        try {
+            const result = await orderService.getOrderRepeatPhoto({ user: req.user, orderId: req.params.id, photoId: req.params.photoId });
+            if (!result.ok) return sendServiceResult(res, result);
+            const extension = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[result.data.mime_type];
+            res.set({ 'Content-Type': 'application/octet-stream', 'Cache-Control': 'private, no-store',
+                'X-Content-Type-Options': 'nosniff', 'Content-Disposition': `attachment; filename="evidencia.${extension}"` });
+            return res.send(result.data.data);
+        } catch (error) { next(error); }
+    },
     listOrders: async (req, res, next) => {
         try {
             const page = parseInt(req.query.page, 10) || 1;
@@ -42,7 +68,7 @@ export const makeOrderController = ({ orderService }) => ({
                     limit
                 }
             });
-            
+
             if (!result.ok) {
                 return sendServiceResult(res, result);
             }
@@ -136,7 +162,8 @@ export const makeOrderController = ({ orderService }) => ({
             const result = await orderService.createOrderApprovalLink({
                 user: req.user,
                 orderId: req.params.id,
-                body: req.body
+                body: req.body,
+                file: req.file
             });
 
             return sendServiceResult(res, result);

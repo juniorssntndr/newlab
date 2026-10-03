@@ -28,6 +28,11 @@ import OrderWhatsAppModal from '../components/orders/OrderWhatsAppModal.jsx';
 import CustomSelect from '../components/CustomSelect.jsx';
 import AnimatedCheck from '../components/icons/animated/AnimatedCheck.jsx';
 import { AFINIX_LAB_ADDRESS } from '../constants/labInfo.js';
+import OrderRepeatModal from '../components/orders/OrderRepeatModal.jsx';
+import OrderRepeatLinks from '../components/orders/OrderRepeatLinks.jsx';
+import { canRepeatOrder } from '../modules/orders/orderRepeat.js';
+import '../styles/order-repeats.css';
+import OrderDesignViewerModal from '../components/orders/OrderDesignViewerModal.jsx';
 
 const STATUS_ICONS = {
     pendiente: 'bi bi-inbox',
@@ -79,6 +84,21 @@ const formatFileSize = (bytes) => {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const getAccountPersonName = (value) => {
+    if (typeof value !== 'string' && typeof value !== 'number') return '';
+    const name = String(value).trim();
+    return name && !/^\d+$/.test(name) ? name : '';
+};
+
+const resolveTimelineResponsible = (detail, accounts) => String(detail || '').replace(
+    /Responsable asignado:\s*(\d+)\b/g,
+    (_, id) => {
+        const account = accounts.find((item) => String(item.id) === id);
+        const name = getAccountPersonName(account?.nombre);
+        return name ? `Responsable asignado: ${name}` : 'Responsable asignado';
+    }
+);
+
 const getTimelineIcon = (entry) => {
     const text = `${entry?.accion || ''} ${entry?.comentario || ''} ${entry?.detalle || ''}`.toLowerCase();
     if (text.includes('imagen') || text.includes('archivo')) return 'bi-image';
@@ -95,9 +115,8 @@ const DetallePedido = () => {
     const [approvalModalOpen, setApprovalModalOpen] = useState(false);
     const [exocadLink, setExocadLink] = useState('');
     const [approvalNote, setApprovalNote] = useState('');
-    const [adjustComment, setAdjustComment] = useState('');
-    const [adjustPopoverOpen, setAdjustPopoverOpen] = useState(false);
     const [rollbackModalOpen, setRollbackModalOpen] = useState(false);
+    const [repeatModalOpen, setRepeatModalOpen] = useState(false);
     const [rollbackState, setRollbackState] = useState('');
     const [rollbackReason, setRollbackReason] = useState('');
     const [forceModalOpen, setForceModalOpen] = useState(false);
@@ -112,9 +131,11 @@ const DetallePedido = () => {
     const [responsableId, setResponsableId] = useState('');
     const [deliveryDate, setDeliveryDate] = useState('');
     const [editingDelivery, setEditingDelivery] = useState(false);
-    const adjustPopoverRef = useRef(null);
-    const adjustButtonRef = useRef(null);
-    const adjustTextareaRef = useRef(null);
+    const [viewerModalOpen, setViewerModalOpen] = useState(false);
+    const [approvalFile, setApprovalFile] = useState(null);
+    const [uploadMode, setUploadMode] = useState('file');
+    const [isDraggingApproval, setIsDraggingApproval] = useState(false);
+    const approvalFileInputRef = useRef(null);
     const caseFileInputRef = useRef(null);
     const stepperScrollRef = useRef(null);
     const activeStepRef = useRef(null);
@@ -146,7 +167,7 @@ const DetallePedido = () => {
 
     useEffect(() => {
         if (pedido?.responsable_id !== undefined) {
-            setResponsableId(pedido.responsable_id || '');
+            setResponsableId(pedido.responsable_id ? String(pedido.responsable_id) : '');
         }
     }, [pedido?.responsable_id]);
 
@@ -190,35 +211,6 @@ const DetallePedido = () => {
         }
     }, [pedido?.estado, pedido?.id]);
 
-    useEffect(() => {
-        if (!adjustPopoverOpen) return;
-        const handleOutsideClick = (event) => {
-            if (!adjustPopoverRef.current?.contains(event.target)) {
-                setAdjustPopoverOpen(false);
-            }
-        };
-        const handleEscape = (event) => {
-            if (event.key === 'Escape') {
-                setAdjustPopoverOpen(false);
-                adjustButtonRef.current?.focus();
-            }
-        };
-
-        document.addEventListener('mousedown', handleOutsideClick);
-        document.addEventListener('keydown', handleEscape);
-        return () => {
-            document.removeEventListener('mousedown', handleOutsideClick);
-            document.removeEventListener('keydown', handleEscape);
-        };
-    }, [adjustPopoverOpen]);
-
-    useEffect(() => {
-        if (adjustPopoverOpen) {
-            window.setTimeout(() => {
-                adjustTextareaRef.current?.focus();
-            }, 0);
-        }
-    }, [adjustPopoverOpen]);
 
     const changeStatus = async (newStatus, options = {}) => {
         try {
@@ -257,33 +249,44 @@ const DetallePedido = () => {
         return { label: `En ${diffDays} dias`, tone: 'info' };
     };
 
-    const submitApprovalLink = async () => {
-        if (!exocadLink.trim()) {
-            alert('Ingresa el link de Exocad');
+    const submitApprovalDesign = async () => {
+        if (uploadMode === 'file' && !approvalFile) {
+            alert('Por favor selecciona o arrastra el archivo HTML exportado desde Exocad');
             return;
         }
-        const payload = {
-            link_exocad: exocadLink.trim(),
-            comentario: approvalNote.trim()
-        };
-        if (pedido?.estado === 'esperando_aprobacion') {
-            try {
-                await createOrderApprovalMutation.mutateAsync({
-                    orderId: id,
-                    payload
-                });
-            } catch (err) {
-                alert(err.message);
-                return;
-            }
-        } else {
-            await changeStatus('esperando_aprobacion', {
-                ...payload
-            });
+        if (uploadMode === 'link' && !exocadLink.trim()) {
+            alert('Por favor ingresa el enlace web de Exocad Viewer');
+            return;
         }
-        setApprovalModalOpen(false);
-        setExocadLink('');
-        setApprovalNote('');
+
+        try {
+            let payload;
+            if (uploadMode === 'file' && approvalFile) {
+                const formData = new FormData();
+                formData.append('file', approvalFile);
+                if (approvalNote.trim()) {
+                    formData.append('comentario', approvalNote.trim());
+                }
+                payload = formData;
+            } else {
+                payload = {
+                    link_exocad: exocadLink.trim(),
+                    comentario: approvalNote.trim()
+                };
+            }
+
+            await createOrderApprovalMutation.mutateAsync({
+                orderId: id,
+                payload
+            });
+
+            setApprovalModalOpen(false);
+            setApprovalFile(null);
+            setExocadLink('');
+            setApprovalNote('');
+        } catch (err) {
+            alert(err.message || 'Error al enviar diseño a aprobación');
+        }
     };
 
     const handleFilesUpload = async (filesList) => {
@@ -356,14 +359,6 @@ const DetallePedido = () => {
             alert(err.message);
             return false;
         }
-    };
-
-    const submitAdjustmentRequest = async () => {
-        const note = adjustComment.trim() || 'Cliente solicitó una reunión Meet para revisar ajustes del diseño.';
-        const ok = await updateApproval('ajuste_solicitado', note, { request_meet: true });
-        if (!ok) return;
-        setAdjustComment('');
-        setAdjustPopoverOpen(false);
     };
 
     const submitMeetLink = async () => {
@@ -468,6 +463,31 @@ const DetallePedido = () => {
     const intakeLabel = intakeMode ? (ORDER_INTAKE_LABELS[intakeMode] || intakeMode) : null;
     const intakeIcon = ORDER_INTAKE_MODES.find((mode) => mode.id === intakeMode)?.icon || 'bi-geo-alt';
     const rollbackOptions = ORDER_STATUS_FLOW.slice(0, Math.max(currentIdx, 0));
+    const currentResponsibleId = responsableId == null || responsableId === '' ? '' : String(responsableId);
+    const rosterResponsible = responsables.find((responsable) => String(responsable.id) === currentResponsibleId);
+    const currentResponsibleName = getAccountPersonName(pedido.responsable_nombre)
+        || getAccountPersonName(rosterResponsible?.nombre);
+    const namedResponsibles = responsables
+        .map((responsable) => ({ responsable, nombre: getAccountPersonName(responsable.nombre) }))
+        .filter(({ nombre }) => nombre);
+    const hasNamedCurrentResponsible = namedResponsibles.some(({ responsable }) => String(responsable.id) === currentResponsibleId);
+    const responsibleOptions = [
+        { value: '', label: 'Sin asignar', icon: 'bi-person-dash' },
+        ...(currentResponsibleId && !hasNamedCurrentResponsible
+            ? [{
+                value: currentResponsibleId,
+                label: currentResponsibleName || 'Responsable asignado (nombre no disponible)',
+                icon: 'bi-person'
+            }]
+            : []),
+        ...namedResponsibles.map(({ responsable, nombre }) => ({
+            value: String(responsable.id),
+            label: String(responsable.id) === currentResponsibleId && currentResponsibleName ? currentResponsibleName : nombre,
+            icon: 'bi-person'
+        }))
+    ];
+    const responsibleDisplayName = currentResponsibleName
+        || (currentResponsibleId ? 'Responsable asignado (nombre no disponible)' : 'Sin asignar');
     const timelineSorted = [...(pedido.timeline || [])].sort((a, b) => {
         const timeA = a?.created_at ? new Date(a.created_at).getTime() : 0;
         const timeB = b?.created_at ? new Date(b.created_at).getTime() : 0;
@@ -478,24 +498,40 @@ const DetallePedido = () => {
         const idB = Number(b?.id) || 0;
         return idB - idA;
     });
+    const repeatReason = String(pedido.repeat_reason || '').trim();
+    const repeatReasonAlreadyInTimeline = repeatReason && timelineSorted.some((entry) =>
+        [entry?.accion, entry?.detalle, entry?.comentario]
+            .some((value) => String(value || '').toLocaleLowerCase().includes(repeatReason.toLocaleLowerCase()))
+    );
+    const hasRepeatHistory = Boolean(pedido.repeat_kind || (pedido.relatedOrders || []).length);
 
     return (
         <div className="animate-fade-in pedido-detail">
             <div className="page-header pedido-detail-header">
                 <button
                     type="button"
-                    className="page-back-btn desktop-only"
+                    className="pedido-back-button"
                     onClick={() => navigate('/pedidos')}
                     title="Volver a Pedidos"
                     aria-label="Volver a pedidos"
                 >
-                    <i className="bi bi-arrow-left" aria-hidden="true"></i>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                        focusable="false" style={{ flexShrink: 0 }}>
+                        <path d="M19 12H5m7-7-7 7 7 7" />
+                    </svg>
                     <span>Volver a Pedidos</span>
                 </button>
 
                 {isLab ? (
                     <div className="pedido-actions">
-                        {rollbackOptions.length > 0 && (
+                        {canRepeatOrder(user, pedido) && (
+                            <button type="button" className="btn btn-secondary" onClick={() => setRepeatModalOpen(true)}>
+                                <i className="bi bi-arrow-repeat" aria-hidden="true" />
+                                <span>Repetir trabajo</span>
+                            </button>
+                        )}
+                        {pedido.estado !== 'enviado' && rollbackOptions.length > 0 && (
                             <button
                                 type="button"
                                 className="btn btn-secondary pedido-action-icon-btn"
@@ -566,6 +602,8 @@ const DetallePedido = () => {
                 ) : null}
             </div>
 
+            {repeatModalOpen && canRepeatOrder(user, pedido) && <OrderRepeatModal order={pedido}
+                onClose={() => setRepeatModalOpen(false)} onCreated={child => { setRepeatModalOpen(false); navigate(`/pedidos/${child.id}`); }} />}
             <div className="card pedido-detail-flow" role="region" aria-label="Seguimiento del pedido">
                 <div className="pedido-stepper-header">
                     <span className="order-wizard-confirm-label">
@@ -841,18 +879,11 @@ const DetallePedido = () => {
                             <div className="pedido-detail-field-actions">
                                 <CustomSelect
                                     size="sm"
-                                    value={responsableId}
+                                    value={currentResponsibleId}
                                     onChange={e => setResponsableId(e.target.value)}
                                     aria-label="Asignar responsable"
                                     placeholder="Sin asignar"
-                                    options={[
-                                        { value: '', label: 'Sin asignar', icon: 'bi-person-dash' },
-                                        ...responsables.map(r => ({
-                                            value: String(r.id),
-                                            label: r.nombre,
-                                            icon: 'bi-person'
-                                        }))
-                                    ]}
+                                    options={responsibleOptions}
                                 />
                                 <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
                                     <i className="bi bi-check2"></i>
@@ -861,10 +892,10 @@ const DetallePedido = () => {
                             </div>
                         ) : (
                             <strong className="pedido-detail-responsable-name">
-                                {pedido.responsable_nombre || 'Sin asignar'}
+                                {responsibleDisplayName}
                             </strong>
                         )}
-                        {observationNotes ? (
+                        {observationNotes && !pedido.repeat_kind ? (
                             <div className="pedido-detail-notes">
                                 <i className="bi bi-chat-left-text" aria-hidden="true"></i>
                                 <span>{observationNotes}</span>
@@ -903,17 +934,16 @@ const DetallePedido = () => {
                             {approvalLink ? (
                                 <div className="approval-review">
                                     <div className="approval-actions-single-row">
-                                        <a
-                                            href={approvalLink}
-                                            target="_blank"
-                                            rel="noreferrer"
+                                        <button
+                                            type="button"
                                             className="btn btn-primary approval-action-main-btn"
-                                            aria-label="Abrir diseño 3D en una nueva pestaña"
+                                            onClick={() => setViewerModalOpen(true)}
+                                            aria-label="Abrir visor 3D interactivo en AFINIX Lab"
                                         >
-                                            <i className="bi bi-box-arrow-up-right"></i>
+                                            <i className="bi bi-box"></i>
                                             <span>Ver diseño 3D</span>
-                                        </a>
-                                        {isLab && (
+                                        </button>
+                                        {isLab && pedido.estado !== 'enviado' && (
                                             <>
                                                 <button
                                                     type="button"
@@ -957,79 +987,21 @@ const DetallePedido = () => {
                                             ) : null}
                                         </div>
                                     )}
-                                    {isClient && isApproval && (
-                                        <div className="approval-actions">
-                                            <div className="approval-client-guide">
-                                                <i className="bi bi-info-circle"></i>
-                                                <span>Revisa el diseño 3D. Si está bien, apruébalo. Si necesitas cambios, pide un Meet.</span>
-                                            </div>
-                                            <div className="approval-actions-row">
-                                                <button
-                                                    className="btn btn-accent"
-                                                    onClick={() => updateApproval('aprobado')}
-                                                    disabled={updating}
-                                                >
-                                                    <i className="bi bi-check-lg"></i> {updating ? 'Guardando...' : 'Aprobar diseño'}
-                                                </button>
-                                                <div className="approval-popover-wrap" ref={adjustPopoverRef}>
-                                                    <button
-                                                        ref={adjustButtonRef}
-                                                        className="btn btn-secondary"
-                                                        onClick={() => setAdjustPopoverOpen(prev => !prev)}
-                                                        disabled={updating || (hasMeetRequest && !approvalMeetUrl)}
-                                                    >
-                                                        <i className="bi bi-camera-video"></i> {hasMeetRequest && !approvalMeetUrl ? 'Meet solicitado' : 'Pedir ajuste (Meet)'}
-                                                    </button>
-                                                    {adjustPopoverOpen && (
-                                                        <div className="approval-popover animate-fade-in" role="dialog" aria-label="Pedir Meet para ajustes">
-                                                            <label className="form-label" style={{ marginBottom: 'var(--space-2)' }}>Nota para el laboratorio (opcional)</label>
-                                                            <textarea
-                                                                ref={adjustTextareaRef}
-                                                                className="form-textarea approval-textarea"
-                                                                placeholder="Ej.: ajustar contacto o forma del canino"
-                                                                value={adjustComment}
-                                                                onChange={e => setAdjustComment(e.target.value)}
-                                                            />
-                                                            <div className="approval-popover-actions">
-                                                                <button
-                                                                    className="btn btn-ghost btn-sm"
-                                                                    onClick={() => {
-                                                                        setAdjustPopoverOpen(false);
-                                                                        setAdjustComment('');
-                                                                    }}
-                                                                    disabled={updating}
-                                                                >
-                                                                    Cancelar
-                                                                </button>
-                                                                <button
-                                                                    className="btn btn-secondary btn-sm"
-                                                                    onClick={submitAdjustmentRequest}
-                                                                    disabled={updating}
-                                                                >
-                                                                    {updating ? 'Enviando...' : 'Solicitar Meet'}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             ) : (
                                 <div className="approval-review-empty">
                                     <div className="approval-empty-copy">
-                                        <i className="bi bi-link-45deg" aria-hidden="true"></i>
-                                        <span>Pendiente de link Exocad</span>
+                                        <i className="bi bi-box" aria-hidden="true"></i>
+                                        <span>Pendiente de diseño 3D</span>
                                     </div>
                                     {isLab && ['pendiente', 'en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
                                         <button
                                             type="button"
                                             className="btn btn-primary btn-sm"
                                             onClick={() => setApprovalModalOpen(true)}
-                                            aria-label="Subir link interactivo de Exocad"
+                                            aria-label="Subir diseño 3D interactivo"
                                         >
-                                            <i className="bi bi-upload"></i> Subir link
+                                            <i className="bi bi-cloud-arrow-up"></i> Subir diseño 3D
                                         </button>
                                     )}
                                 </div>
@@ -1173,15 +1145,20 @@ const DetallePedido = () => {
 
                     <div className="card pedido-detail-history">
                         <div className="card-header"><h3 className="card-title">Historial</h3></div>
-                        {timelineSorted.length === 0 ? (
+                        {timelineSorted.length === 0 && !hasRepeatHistory ? (
                             <div className="empty-state timeline-empty">
                                 <p className="empty-state-text">Sin actividad registrada</p>
                             </div>
                         ) : (
                             <div className="timeline-list">
+                                <OrderRepeatLinks
+                                    order={pedido}
+                                    canDownloadEvidence={user?.tipo === 'admin'}
+                                    hideReason={Boolean(repeatReasonAlreadyInTimeline)}
+                                />
                                 {timelineSorted.map((t, i) => {
-                                    const accion = t.accion || (t.estado_nuevo ? `Cambio a ${statusLabel(t.estado_nuevo)}` : 'Actualización');
-                                    const detalle = t.detalle || t.comentario;
+                                    const accion = resolveTimelineResponsible(t.accion || (t.estado_nuevo ? `Cambio a ${statusLabel(t.estado_nuevo)}` : 'Actualización'), responsables);
+                                    const detalle = resolveTimelineResponsible(t.detalle || t.comentario, responsables);
                                     const isLatest = i === 0;
                                     const timelineIcon = getTimelineIcon(t);
                                     return (
@@ -1212,45 +1189,156 @@ const DetallePedido = () => {
 
             <Modal
                 open={approvalModalOpen}
-                onClose={() => setApprovalModalOpen(false)}
-                title="Enviar a Aprobación"
+                onClose={() => {
+                    if (updating) return;
+                    setApprovalModalOpen(false);
+                }}
+                title={approvalLink ? "Subir Nueva Versión del Diseño" : "Enviar a Aprobación"}
                 kicker="CAD / CAM • Diseño Digital"
-                subtitle="Compartir visor 3D Exocad para validación clínica"
-                icon="bi-send"
+                subtitle="Carga el visor 3D interactivo para revisión y aprobación clínica"
+                icon="bi-box"
                 footer={
                     <>
-                        <button className="btn btn-secondary" onClick={() => setApprovalModalOpen(false)}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={submitApprovalLink} disabled={updating}>
-                            <i className="bi bi-send"></i> Enviar
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => setApprovalModalOpen(false)}
+                            disabled={updating}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={submitApprovalDesign}
+                            disabled={updating || (uploadMode === 'file' ? !approvalFile : !exocadLink.trim())}
+                        >
+                            <i className="bi bi-send"></i> {updating ? 'Subiendo...' : 'Publicar Diseño 3D'}
                         </button>
                     </>
                 }
             >
-                <div className="form-group">
-                    <label className="form-label">Link Exocad Viewer *</label>
-                    <div className="form-input-box has-lead">
-                        <i className="bi bi-link-45deg form-input-lead" aria-hidden="true" />
-                        <input
-                            className="form-input"
-                            type="url"
-                            placeholder="https://viewer.exocad.com/..."
-                            value={exocadLink}
-                            onChange={e => setExocadLink(e.target.value)}
-                            autoFocus
-                        />
-                    </div>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                    <button
+                        type="button"
+                        className={`btn btn-sm ${uploadMode === 'file' ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setUploadMode('file')}
+                    >
+                        <i className="bi bi-filetype-html"></i> Subir Archivo HTML (Recomendado)
+                    </button>
+                    <button
+                        type="button"
+                        className={`btn btn-sm ${uploadMode === 'link' ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setUploadMode('link')}
+                    >
+                        <i className="bi bi-link-45deg"></i> Enlace Web Externo
+                    </button>
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Nota adicional (opcional)</label>
+
+                {uploadMode === 'file' ? (
+                    <div className="form-group">
+                        <label className="form-label">Archivo HTML exportado de Exocad *</label>
+                        <input
+                            ref={approvalFileInputRef}
+                            type="file"
+                            accept=".html,.htm"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                    setApprovalFile(e.target.files[0]);
+                                }
+                            }}
+                        />
+                        {approvalFile ? (
+                            <div className="order-design-file-card">
+                                <div className="order-design-file-info">
+                                    <i className="bi bi-filetype-html" style={{ fontSize: '1.75rem', color: '#0284c7' }}></i>
+                                    <div>
+                                        <div className="order-design-file-name">{approvalFile.name}</div>
+                                        <div className="order-design-file-size">{formatFileSize(approvalFile.size)}</div>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="btn-icon"
+                                    onClick={() => setApprovalFile(null)}
+                                    title="Quitar archivo"
+                                >
+                                    <i className="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        ) : (
+                            <div
+                                className={`order-design-upload-dropzone ${isDraggingApproval ? 'is-active' : ''}`}
+                                onClick={() => approvalFileInputRef.current?.click()}
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    setIsDraggingApproval(true);
+                                }}
+                                onDragLeave={() => setIsDraggingApproval(false)}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    setIsDraggingApproval(false);
+                                    if (e.dataTransfer.files?.[0]) {
+                                        setApprovalFile(e.dataTransfer.files[0]);
+                                    }
+                                }}
+                            >
+                                <i className="bi bi-cloud-arrow-up order-design-upload-icon"></i>
+                                <div>
+                                    <strong>Arrastra aquí el archivo HTML de Exocad</strong>
+                                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                        o haz clic para explorar en tu equipo (hasta 50 MB)
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="form-group">
+                        <label className="form-label">Link Exocad Viewer *</label>
+                        <div className="form-input-box has-lead">
+                            <i className="bi bi-link-45deg form-input-lead" aria-hidden="true" />
+                            <input
+                                className="form-input"
+                                type="url"
+                                placeholder="https://viewer.exocad.com/..."
+                                value={exocadLink}
+                                onChange={e => setExocadLink(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label className="form-label">Nota o indicación clínica (opcional)</label>
                     <textarea
                         className="form-textarea"
                         rows={3}
-                        placeholder="Agrega una indicación extra solo si es necesario"
+                        placeholder="Ej.: Se realizó alivio cervical y ajuste de grosor oclusal a 1.2mm"
                         value={approvalNote}
                         onChange={e => setApprovalNote(e.target.value)}
                     />
                 </div>
             </Modal>
+
+            <OrderDesignViewerModal
+                open={viewerModalOpen}
+                onClose={() => setViewerModalOpen(false)}
+                order={pedido}
+                approval={currentApproval}
+                isClient={isClient}
+                isLab={isLab}
+                onApprove={async () => {
+                    const ok = await updateApproval('aprobado');
+                    if (ok) setViewerModalOpen(false);
+                }}
+                onReject={async (comment) => {
+                    const ok = await updateApproval('ajuste_solicitado', comment);
+                    if (ok) setViewerModalOpen(false);
+                }}
+                updating={updating}
+                onOpenUploadModal={() => setApprovalModalOpen(true)}
+            />
 
             <Modal
                 open={meetModalOpen}

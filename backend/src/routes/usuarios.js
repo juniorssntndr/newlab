@@ -1,16 +1,36 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { authenticateToken } from '../middleware/auth.js';
+import { ensureClinicEstablishment } from '../modules/crm/application/services/clinicCrmIntegration.js';
 
 const router = Router();
 router.use(authenticateToken);
 
 const ensureCanManageUsers = (req, res, next) => {
-    if (req.user.tipo !== 'admin' && req.user.tipo !== 'visitador') {
+    const isAllowed = req.user.tipo === 'admin'
+        || req.user.tipo === 'operador'
+        || req.user.tipo === 'visitador'
+        || (req.user.permisos_modulos && (
+            Array.isArray(req.user.permisos_modulos)
+                ? req.user.permisos_modulos.includes('usuarios')
+                : Boolean(req.user.permisos_modulos.usuarios)
+        ));
+    if (!isAllowed) {
         return res.status(403).json({ error: 'No autorizado para gestionar usuarios' });
     }
     next();
 };
+
+// GET /api/usuarios/pendientes-count
+router.get('/pendientes-count', ensureCanManageUsers, async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const result = await pool.query(
+            "SELECT COUNT(*)::int as count FROM nl_usuarios WHERE tipo = 'cliente' AND estado = 'pendiente'"
+        );
+        res.json({ count: result.rows[0]?.count || 0 });
+    } catch (err) { next(err); }
+});
 
 const getRoleIdByTipo = async (pool, tipo) => {
     if (tipo === 'admin') {
@@ -135,7 +155,14 @@ router.post('/:id/activar-cliente', ensureCanManageUsers, async (req, res, next)
         await pool.query("UPDATE nl_usuarios SET estado = 'activo', clinica_id = $2 WHERE id = $1", [target.id, finalClinicaId]);
 
         if (finalClinicaId) {
-            await pool.query("UPDATE nl_clinicas SET estado = 'activo' WHERE id = $1", [finalClinicaId]);
+            const clinicRes = await pool.query("UPDATE nl_clinicas SET estado = 'activo' WHERE id = $1 RETURNING *", [finalClinicaId]);
+            if (clinicRes.rows.length > 0) {
+                try {
+                    await ensureClinicEstablishment(pool, clinicRes.rows[0], { tipo: 'clinica' }, req.user?.id);
+                } catch (crmErr) {
+                    console.error('Error sincronizando establecimiento CRM en activar-cliente:', crmErr.message);
+                }
+            }
         }
 
         // Si se vinculó a otra clínica existente, limpiamos la clínica pendiente huérfana creada durante el registro

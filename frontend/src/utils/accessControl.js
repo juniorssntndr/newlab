@@ -15,8 +15,8 @@ export const DEFAULT_ROLE_MODULES = {
     admin: ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'marketing', 'catalogo', 'almacen', 'usuarios', 'cuenta'],
     socio: ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'marketing', 'catalogo', 'cuenta'],
     tecnico: ['pedidos', 'catalogo', 'almacen', 'calendario', 'cuenta'],
-    operador: ['caja', 'pedidos', 'calendario', 'crm', 'catalogo', 'cuenta'],
-    visitador: ['crm', 'marketing', 'calendario', 'cuenta'],
+    operador: ['caja', 'pedidos', 'calendario', 'crm', 'catalogo', 'usuarios', 'cuenta'],
+    visitador: ['pedidos', 'crm', 'marketing', 'calendario', 'usuarios', 'cuenta'],
     cliente: ['pedidos_cliente', 'catalogo_cliente', 'cuenta'],
 };
 

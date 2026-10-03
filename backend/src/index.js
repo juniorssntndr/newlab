@@ -11,6 +11,9 @@ import { getAllowedOrigins, getPort, getRateLimitConfig, getSentryConfig, isProd
 import { logger } from './lib/logger.js';
 import { createCompositionRoot } from './bootstrap/compositionRoot.js';
 import { registerRoutes } from './bootstrap/registerRoutes.js';
+import { syncMissingClinicEstablishments } from './modules/crm/application/services/clinicCrmIntegration.js';
+import viewerRoutes from './routes/viewer.js';
+import { sanitizeRequestPath } from './lib/sanitizeRequestPath.js';
 
 const app = express();
 
@@ -30,7 +33,7 @@ app.use((req, res, next) => {
     logger.info('request_received', {
         request_id: requestId,
         method: req.method,
-        path: req.url,
+        path: sanitizeRequestPath(req.originalUrl || req.url),
         user_id: req.user?.id || null,
         ip: req.ip
     });
@@ -65,6 +68,9 @@ app.use(rateLimit({
 
 app.use(express.json());
 
+// Coolify routes viewer.afinixlab.com to this isolated path; never expose it on the authenticated frontend origin.
+app.use('/viewer', viewerRoutes);
+
 // Make pool available to routes
 const compositionRoot = createCompositionRoot();
 app.locals.pool = compositionRoot.pool;
@@ -77,7 +83,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', (req, res, next) => {
+    if (/\.html?$/i.test(req.path)) return res.status(404).end();
+    res.removeHeader('Content-Security-Policy');
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+}, express.static(path.join(__dirname, '../uploads')));
 
 // Health check
 app.get('/', (req, res) => res.json({ status: 'API Online', version: '1.0.0' }));
@@ -90,7 +102,7 @@ app.use((err, req, res, next) => {
             tags: { request_id: req.requestId || 'n/a' },
             extra: {
                 method: req.method,
-                path: req.url,
+                path: sanitizeRequestPath(req.originalUrl || req.url),
                 user_id: req.user?.id || null
             }
         });
@@ -98,7 +110,7 @@ app.use((err, req, res, next) => {
     logger.error('request_failed', {
         request_id: req.requestId || null,
         method: req.method,
-        path: req.url,
+        path: sanitizeRequestPath(req.originalUrl || req.url),
         user_id: req.user?.id || null,
         message: err.message
     });
@@ -131,4 +143,12 @@ app.listen(PORT, () => {
     } catch (workerErr) {
         logger.error('billing_passive_worker_startup_error', { error: workerErr.message });
     }
+
+    syncMissingClinicEstablishments(app.locals.pool).then((count) => {
+        if (count > 0) {
+            logger.info('crm_synced_missing_establishments', { count });
+        }
+    }).catch((err) => {
+        logger.error('failed_to_sync_missing_establishments', { error: err.message });
+    });
 });
