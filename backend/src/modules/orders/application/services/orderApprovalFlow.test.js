@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { makeOrderService } from './orderService.js';
 
 const makeHarness = ({ status = 'esperando_aprobacion' } = {}) => {
-    const calls = { statusUpdates: [], timeline: [], notifications: [] };
+    const calls = { statusUpdates: [], timeline: [], notifications: [], notificationsRead: [] };
     const order = { id: 42, codigo: 'AF-00042', clinica_id: 7, estado: status };
     const orderRepository = {
         getOrderBaseById: async () => order,
@@ -15,6 +15,7 @@ const makeHarness = ({ status = 'esperando_aprobacion' } = {}) => {
         createOrderApprovalLink: async ({ link_exocad }) => ({ approval: { id: 10, link_exocad } }),
         getActiveClinicUsers: async () => [{ id: 11 }],
         addNotification: async (notification) => calls.notifications.push(notification),
+        markOrderNotificationsRead: async (payload) => calls.notificationsRead.push(payload),
         addTimelineEntry: async (entry) => calls.timeline.push(entry),
         getActiveLabUsers: async () => [{ id: 2 }]
     };
@@ -37,6 +38,7 @@ test('client adjustment request returns a pending approval order to design', asy
     assert.equal(calls.timeline.at(-1).previousStatus, 'esperando_aprobacion');
     assert.equal(calls.timeline.at(-1).nextStatus, 'en_diseno');
     assert.equal(calls.notifications.at(-1).type, 'ajuste_solicitado');
+    assert.deepEqual(calls.notificationsRead, [{ orderId: 42, types: ['aprobacion'] }]);
 });
 
 test('approval response does not change the order workflow status', async () => {
@@ -52,6 +54,7 @@ test('approval response does not change the order workflow status', async () => 
     assert.deepEqual(calls.statusUpdates, []);
     assert.equal(calls.timeline.at(-1).previousStatus, 'esperando_aprobacion');
     assert.equal(calls.timeline.at(-1).nextStatus, 'esperando_aprobacion');
+    assert.deepEqual(calls.notificationsRead, [{ orderId: 42, types: ['aprobacion'] }]);
 });
 
 test('publishing a replacement approval from design returns the order to client review', async () => {

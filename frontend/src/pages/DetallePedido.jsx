@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../state/AuthContext.jsx';
+import { useNotifications } from '../state/NotificationContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal.jsx';
 import { formatDentalSelection, sortTeethByArchOrder, getToothRole } from '../utils/odontograma.js';
@@ -111,6 +112,7 @@ const getTimelineIcon = (entry) => {
 const DetallePedido = () => {
     const { id } = useParams();
     const { getHeaders, user } = useAuth();
+    const { notifications = [], markAsRead } = useNotifications() || {};
     const navigate = useNavigate();
     const [approvalModalOpen, setApprovalModalOpen] = useState(false);
     const [exocadLink, setExocadLink] = useState('');
@@ -210,6 +212,20 @@ const DetallePedido = () => {
             };
         }
     }, [pedido?.estado, pedido?.id]);
+
+    // Conciliar y marcar como leídas las notificaciones asociadas a este pedido al abrirlo
+    useEffect(() => {
+        if (!id || !markAsRead || !Array.isArray(notifications) || notifications.length === 0) return;
+
+        const targetPath = `/pedidos/${id}`;
+        const unreadMatches = notifications.filter(
+            (n) => !n.leida && (n.link === targetPath || n.link === `/pedidos/${id}/`)
+        );
+
+        unreadMatches.forEach((n) => {
+            markAsRead(n.id);
+        });
+    }, [id, notifications, markAsRead]);
 
 
     const changeStatus = async (newStatus, options = {}) => {

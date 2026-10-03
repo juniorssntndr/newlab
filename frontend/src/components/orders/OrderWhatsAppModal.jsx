@@ -48,12 +48,16 @@ export const OrderWhatsAppModal = ({
         });
     }, [pedido?.fecha_entrega]);
 
-    // Enlace oficial 3D (prioridad 1: link de Exocad/3D cargado; prioridad 2: seguimiento)
+    // Enlace oficial 3D (si es link externo http(s) ej. Exocad se usa directo; si es visor HTML interno o archivo privado, se usa el link seguro de seguimiento del portal)
     const currentApproval = (pedido?.aprobaciones || [])[0];
-    const link3DReal = approvalLink || currentApproval?.link_exocad || currentApproval?.link_visor || pedido?.aprobacion?.link_exocad || '';
+    const candidateLink = approvalLink || currentApproval?.link_exocad || currentApproval?.link_visor || pedido?.aprobacion?.link_exocad || '';
+    const isDirectExternalWebLink = typeof candidateLink === 'string' &&
+        !candidateLink.startsWith('private-viewer://') &&
+        /^https?:\/\//i.test(candidateLink);
+
     const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://afinixlab.com';
     const linkSeguimiento = `${appOrigin}/pedidos/${pedido?.id}`;
-    const linkParaAprobacion = link3DReal || linkSeguimiento;
+    const linkParaAprobacion = isDirectExternalWebLink ? candidateLink : linkSeguimiento;
 
     // Detectar entorno móvil vs escritorio
     const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -74,7 +78,7 @@ export const OrderWhatsAppModal = ({
         const phoneFormatted = digits.startsWith('51') && digits.length === 11 ? digits.slice(2) : digits;
         setTelefono(phoneFormatted);
 
-        if (pedido?.estado === 'esperando_aprobacion' || link3DReal) {
+        if (pedido?.estado === 'esperando_aprobacion' || candidateLink) {
             setTipoPlantilla('aprobacion');
         } else if (pedido?.estado === 'terminado' || pedido?.estado === 'enviado') {
             setTipoPlantilla('terminado');
@@ -84,7 +88,7 @@ export const OrderWhatsAppModal = ({
             setTipoPlantilla('aprobacion');
         }
         setCopiado(false);
-    }, [isModalOpen, pedido, link3DReal]);
+    }, [isModalOpen, pedido, candidateLink]);
 
     // Generar el mensaje conciso, cálido y directo (estándar AFINIX)
     useEffect(() => {

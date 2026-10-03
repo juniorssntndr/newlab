@@ -666,6 +666,14 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             );
         }
 
+        // Reconcile client pending approval notifications for this order
+        if (typeof orderRepository.markOrderNotificationsRead === 'function') {
+            await orderRepository.markOrderNotificationsRead({
+                orderId,
+                types: ['aprobacion']
+            });
+        }
+
         const nextStatus = estado === 'ajuste_solicitado' && order.estado === 'esperando_aprobacion'
             ? 'en_diseno'
             : order.estado;

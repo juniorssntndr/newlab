@@ -597,5 +597,14 @@ export const makeOrderPgRepository = ({ pool }) => ({
             [clinicId]
         );
         return result.rows;
+    },
+    markOrderNotificationsRead: async ({ orderId, types = ['aprobacion'] }) => {
+        const targetLink = `/pedidos/${orderId}`;
+        await pool.query(
+            `UPDATE nl_notificaciones
+             SET leida = true
+             WHERE link = $1 AND tipo = ANY($2::text[]) AND leida = false`,
+            [targetLink, types]
+        );
     }
 });

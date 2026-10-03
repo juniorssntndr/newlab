@@ -10,6 +10,10 @@ export const invalidateAfterApproveOrder = async (queryClient, orderId) => {
         queryClient.invalidateQueries({
             queryKey: [...financeKeys.all, 'kpis'],
             refetchType: 'active'
+        }),
+        queryClient.invalidateQueries({
+            queryKey: ['notifications'],
+            refetchType: 'active'
         })
     ];
 
