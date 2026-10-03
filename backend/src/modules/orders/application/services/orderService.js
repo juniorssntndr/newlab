@@ -33,7 +33,13 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             sendPushNotificationToMany({
                 pool,
                 userIds: admins.map((a) => a.id),
-                payload: { title, body: message, url: link }
+                payload: {
+                title,
+                body: message,
+                url: link,
+                icon: '/icon-192x192.png',
+                badge: '/icon-32x32.png'
+            }
             }).catch(() => {});
         }
     };
@@ -53,7 +59,13 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             sendPushNotificationToMany({
                 pool,
                 userIds: users.map((u) => u.id),
-                payload: { title, body: message, url: link }
+                payload: {
+                title,
+                body: message,
+                url: link,
+                icon: '/icon-192x192.png',
+                badge: '/icon-32x32.png'
+            }
             }).catch(() => {});
         }
     };
@@ -641,15 +653,15 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
         if (estado === 'aprobado') {
             await notifyLabAdmins(
                 'aprobacion_aprobada',
-                'Diseño aprobado',
-                `Cliente aprobó el diseño de ${result.pedido.codigo}`,
+                '✅ Diseño Aprobado',
+                `El Dr(a). aprobó el diseño 3D del pedido ${result.pedido.codigo}`,
                 `/pedidos/${result.pedido.id}`
             );
         } else if (estado === 'ajuste_solicitado') {
             await notifyLabAdmins(
                 'ajuste_solicitado',
-                'Ajustes solicitados',
-                `Cliente solicitó ajustes para ${result.pedido.codigo}`,
+                '⚠️ Ajustes Solicitados',
+                `El Dr(a). solicitó ajustes en el diseño del pedido ${result.pedido.codigo}`,
                 `/pedidos/${result.pedido.id}`
             );
         }

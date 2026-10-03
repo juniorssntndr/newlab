@@ -587,7 +587,7 @@ export const makeOrderPgRepository = ({ pool }) => ({
     },
     getActiveLabUsers: async () => {
         const result = await pool.query(
-            "SELECT id FROM nl_usuarios WHERE tipo IN ('admin','tecnico') AND estado='activo'"
+            "SELECT id FROM nl_usuarios WHERE tipo IN ('admin','tecnico','operador','socio') AND estado='activo'"
         );
         return result.rows;
     },
