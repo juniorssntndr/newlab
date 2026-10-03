@@ -417,7 +417,7 @@ const Almacen = () => {
             </div>
 
             {/* Selector de Pestañas / Tabs */}
-            <div className="section-tabs dashboard-view-tabs almacen-section-tabs">
+            <div className="section-tabs dashboard-view-switcher almacen-section-tabs" role="group" aria-label="Secciones de almacén">
                 <button
                     type="button"
                     className={`btn section-tab dashboard-view-tab ${activeTab === 'inventario' ? 'btn-primary' : 'btn-ghost'}`}
