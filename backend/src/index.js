@@ -17,6 +17,9 @@ import { sanitizeRequestPath } from './lib/sanitizeRequestPath.js';
 
 const app = express();
 
+// Trust reverse proxy (Traefik in Coolify) so req.hostname and IPs are correctly derived
+app.set('trust proxy', true);
+
 const sentryConfig = getSentryConfig();
 if (sentryConfig.dsn) {
     Sentry.init({

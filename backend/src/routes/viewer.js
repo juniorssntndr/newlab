@@ -21,7 +21,9 @@ const viewerRoutes = Router();
 const loadViewer = async (req, res) => {
     try {
         const configuredHost = new URL(getViewerConfig().origin).hostname;
-        if (process.env.NODE_ENV === 'production' && req.hostname !== configuredHost) return false;
+        const incomingHost = req.get('x-forwarded-host') || req.hostname || '';
+        const normalizedHost = incomingHost.split(':')[0].trim();
+        if (process.env.NODE_ENV === 'production' && normalizedHost !== configuredHost && req.hostname !== configuredHost) return false;
         const claim = verifyViewerCapability(req.params.token);
         if (claim.typ !== 'order-viewer' || !claim.orderId || !claim.approvalId || !claim.objectKey) return res.status(403).send('Forbidden');
         const bytes = String(claim.objectKey).startsWith('private-viewer://') ? await readOrderApprovalHtml(claim.objectKey) : await readLegacy(claim.objectKey);
