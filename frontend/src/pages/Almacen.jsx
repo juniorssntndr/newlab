@@ -6,25 +6,27 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import { API_URL } from '../config.js';
 import ProveedorModal from '../modules/almacen/components/ProveedorModal.jsx';
 import ProveedorMaterialesModal from '../modules/almacen/components/ProveedorMaterialesModal.jsx';
+import MaterialMovimientoModal from '../modules/almacen/components/MaterialMovimientoModal.jsx';
+import MaterialKardexModal from '../modules/almacen/components/MaterialKardexModal.jsx';
 import CustomSelect from '../components/CustomSelect.jsx';
 import toast from 'react-hot-toast';
 
 const materialTemplates = {
     digital: [
-        { nombre: 'Digital - Disco Zirconia Multicapa', categoria: 'disco', color: 'A2', unidad: 'disco', stock_minimo: 5 },
-        { nombre: 'Digital - Bloque PMMA CAD/CAM', categoria: 'bloque', color: 'A2', unidad: 'bloque', stock_minimo: 8 },
-        { nombre: 'Digital - Resina Modelos 3D', categoria: 'resina', color: 'beige', unidad: 'litro', stock_minimo: 4 },
-        { nombre: 'Digital - Resina Guía Quirúrgica', categoria: 'resina', color: 'transparente', unidad: 'litro', stock_minimo: 3 },
-        { nombre: 'Digital - Fresa Carburo', categoria: 'fresa', color: '', unidad: 'unidad', stock_minimo: 20 },
-        { nombre: 'Digital - Film FEP Impresora', categoria: 'consumible', color: 'transparente', unidad: 'unidad', stock_minimo: 3 }
+        { nombre: 'Digital - Disco Zirconia Multicapa', categoria: 'disco', color: 'A2', unidad: 'disco', stock_minimo: 5, tipo_control: 'multiuso' },
+        { nombre: 'Digital - Bloque PMMA CAD/CAM', categoria: 'bloque', color: 'A2', unidad: 'bloque', stock_minimo: 8, tipo_control: 'unitario' },
+        { nombre: 'Digital - Resina Modelos 3D', categoria: 'resina', color: 'beige', unidad: 'litro', stock_minimo: 4, tipo_control: 'multiuso' },
+        { nombre: 'Digital - Resina Guía Quirúrgica', categoria: 'resina', color: 'transparente', unidad: 'litro', stock_minimo: 3, tipo_control: 'multiuso' },
+        { nombre: 'Digital - Fresa Carburo', categoria: 'fresa', color: '', unidad: 'unidad', stock_minimo: 20, tipo_control: 'unitario' },
+        { nombre: 'Digital - Film FEP Impresora', categoria: 'consumible', color: 'transparente', unidad: 'unidad', stock_minimo: 3, tipo_control: 'unitario' }
     ],
     analogico: [
-        { nombre: 'Analogico - Aleación Cr-Co', unidad: 'kg', stock_minimo: 8 },
-        { nombre: 'Analogico - Yeso Tipo IV', unidad: 'kg', stock_minimo: 20 },
-        { nombre: 'Analogico - Revestimiento Fosfático', unidad: 'kg', stock_minimo: 10 },
-        { nombre: 'Analogico - Acrílico Termocurable', unidad: 'kg', stock_minimo: 6 },
-        { nombre: 'Analogico - Cerámica Feldespática', unidad: 'kit', stock_minimo: 4 },
-        { nombre: 'Analogico - Arenado Óxido Aluminio 50um', unidad: 'kg', stock_minimo: 12 }
+        { nombre: 'Analogico - Aleación Cr-Co', unidad: 'kg', stock_minimo: 8, tipo_control: 'unitario' },
+        { nombre: 'Analogico - Yeso Tipo IV', unidad: 'kg', stock_minimo: 20, tipo_control: 'unitario' },
+        { nombre: 'Analogico - Revestimiento Fosfático', unidad: 'kg', stock_minimo: 10, tipo_control: 'unitario' },
+        { nombre: 'Analogico - Acrílico Termocurable', unidad: 'kg', stock_minimo: 6, tipo_control: 'unitario' },
+        { nombre: 'Analogico - Cerámica Feldespática', unidad: 'kit', stock_minimo: 4, tipo_control: 'unitario' },
+        { nombre: 'Analogico - Arenado Óxido Aluminio 50um', unidad: 'kg', stock_minimo: 12, tipo_control: 'unitario' }
     ]
 };
 
@@ -78,6 +80,8 @@ const Almacen = () => {
         color: '',
         unidad: 'unidad',
         stock_actual: 0,
+        stock_en_uso: 0,
+        tipo_control: 'multiuso',
         stock_minimo: 5,
         alerta_bajo_stock: true,
         notas: ''
@@ -85,6 +89,14 @@ const Almacen = () => {
     const [search, setSearch] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('');
     const [materialView, setMaterialView] = useState('activos');
+
+    // --- ESTADOS: MOVIMIENTOS Y KÁRDEX ---
+    const [movimientoModalOpen, setMovimientoModalOpen] = useState(false);
+    const [selectedMaterialMovimiento, setSelectedMaterialMovimiento] = useState(null);
+    const [initialTipoMovimiento, setInitialTipoMovimiento] = useState('ingreso');
+
+    const [kardexModalOpen, setKardexModalOpen] = useState(false);
+    const [selectedMaterialKardex, setSelectedMaterialKardex] = useState(null);
 
     // --- ESTADOS: PROVEEDORES ---
     const [proveedores, setProveedores] = useState([]);
@@ -145,6 +157,8 @@ const Almacen = () => {
             color: '',
             unidad: 'unidad',
             stock_actual: 0,
+            stock_en_uso: 0,
+            tipo_control: 'multiuso',
             stock_minimo: 5,
             alerta_bajo_stock: true,
             notas: ''
@@ -160,12 +174,26 @@ const Almacen = () => {
             categoria: m.categoria || 'consumible',
             color: m.color || '',
             stock_actual: m.stock_actual,
+            stock_en_uso: m.stock_en_uso || 0,
+            tipo_control: m.tipo_control || (['disco', 'resina', 'liquido'].includes((m.categoria || '').toLowerCase()) ? 'multiuso' : 'unitario'),
             stock_minimo: m.stock_minimo,
             unidad: m.unidad,
             alerta_bajo_stock: m.alerta_bajo_stock !== false,
             notas: m.notas || ''
         });
         setModalOpen(true);
+    };
+
+    // Helpers para movimientos y kardex
+    const openMovimiento = (material, tipo = 'ingreso') => {
+        setSelectedMaterialMovimiento(material);
+        setInitialTipoMovimiento(tipo);
+        setMovimientoModalOpen(true);
+    };
+
+    const openKardex = (material) => {
+        setSelectedMaterialKardex(material);
+        setKardexModalOpen(true);
     };
 
     useEffect(() => {
@@ -180,6 +208,8 @@ const Almacen = () => {
             color: '',
             unidad: 'unidad',
             stock_actual: 0,
+            stock_en_uso: 0,
+            tipo_control: 'multiuso',
             stock_minimo: 5,
             alerta_bajo_stock: true,
             notas: ''
@@ -194,7 +224,8 @@ const Almacen = () => {
             categoria: tpl.categoria,
             color: tpl.color,
             unidad: tpl.unidad,
-            stock_minimo: tpl.stock_minimo
+            stock_minimo: tpl.stock_minimo,
+            tipo_control: tpl.tipo_control || prev.tipo_control
         }));
     };
 
@@ -204,7 +235,7 @@ const Almacen = () => {
 
         try {
             if (!form.nombre.trim()) {
-                alert('Ingresa un nombre de material');
+                toast.error('Ingresa un nombre de material');
                 return;
             }
             const res = await fetch(url, {
@@ -216,6 +247,8 @@ const Almacen = () => {
                     categoria: form.categoria,
                     color: form.color || null,
                     stock_actual: Number(form.stock_actual) || 0,
+                    stock_en_uso: Number(form.stock_en_uso) || 0,
+                    tipo_control: form.tipo_control || 'unitario',
                     stock_minimo: Number(form.stock_minimo) || 0,
                     unidad: form.unidad,
                     alerta_bajo_stock: !!form.alerta_bajo_stock,
@@ -224,6 +257,7 @@ const Almacen = () => {
             });
             if (res.ok) {
                 const saved = await res.json();
+                toast.success(editing ? 'Material actualizado' : 'Material registrado');
                 setModalOpen(false);
                 fetchMateriales();
 
@@ -233,10 +267,11 @@ const Almacen = () => {
                     navigate(`/productos?materialCreated=${saved.id}`);
                 }
             } else {
-                alert('Error al guardar material');
+                toast.error('Error al guardar material');
             }
         } catch (error) {
             console.error(error);
+            toast.error('Error de red al guardar material');
         }
     };
 
@@ -400,9 +435,25 @@ const Almacen = () => {
                     <p>Gestión de materiales de laboratorio, existencias y catálogo de proveedores</p>
                 </div>
                 {activeTab === 'inventario' ? (
-                    <button className="btn btn-primary" onClick={openNew}>
-                        <i className="bi bi-plus-lg"></i> Nuevo Material
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                const primerMaterial = activeMaterials[0] || materiales[0];
+                                if (primerMaterial) {
+                                    openMovimiento(primerMaterial, 'ingreso');
+                                } else {
+                                    openNew();
+                                }
+                            }}
+                            title="Registrar compra o ingreso de material a almacén"
+                        >
+                            <i className="bi bi-box-arrow-in-down text-success"></i> + Ingreso / Compra
+                        </button>
+                        <button className="btn btn-primary" onClick={openNew}>
+                            <i className="bi bi-plus-lg"></i> Nuevo Material
+                        </button>
+                    </div>
                 ) : (
                     <button
                         className="btn btn-primary"
@@ -494,23 +545,25 @@ const Almacen = () => {
                         </div>
                         <div className="card kpi-card almacen-kpi-card">
                             <div className="almacen-kpi-row">
-                                <div className="kpi-icon" style={{ background: 'rgba(var(--color-primary-rgb), 0.12)', color: 'var(--color-primary)' }}>
+                                <div className="kpi-icon" style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--color-success, #10b981)' }}>
                                     <i className="bi bi-archive" aria-hidden="true"></i>
                                 </div>
                                 <div className="almacen-kpi-copy">
-                                    <div className="kpi-label">Stock total</div>
-                                    <div className="kpi-value">{totalStock.toFixed(2)}</div>
+                                    <div className="kpi-label">Stock en Almacén</div>
+                                    <div className="kpi-value">{totalStock.toFixed(1)}</div>
                                 </div>
                             </div>
                         </div>
                         <div className="card kpi-card almacen-kpi-card">
                             <div className="almacen-kpi-row">
-                                <div className="kpi-icon" style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--color-info)' }}>
-                                    <i className="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                                <div className="kpi-icon" style={{ background: 'rgba(2,132,199,0.12)', color: '#0284c7' }}>
+                                    <i className="bi bi-gear-wide-connected" aria-hidden="true"></i>
                                 </div>
                                 <div className="almacen-kpi-copy">
-                                    <div className="kpi-label">Inactivos</div>
-                                    <div className="kpi-value">{totalInactive}</div>
+                                    <div className="kpi-label">En Taller / Máquinas</div>
+                                    <div className="kpi-value">
+                                        {activeMaterials.reduce((acc, m) => acc + (parseFloat(m.stock_en_uso) || 0), 0).toFixed(1)}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -588,27 +641,34 @@ const Almacen = () => {
                                         <th>Flujo</th>
                                         <th>Categoría</th>
                                         <th>Color</th>
-                                        <th>Stock actual</th>
+                                        <th>En Almacén</th>
+                                        <th>En Taller</th>
                                         <th>Mínimo</th>
-                                        <th>Unidad</th>
+                                        <th>Tipo Control</th>
                                         <th>Estado</th>
-                                        <th></th>
+                                        <th style={{ textAlign: 'center' }}>Acciones y Flujo</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {loading ? (
-                                        <tr><td colSpan="9" className="text-center">Cargando...</td></tr>
+                                        <tr><td colSpan="10" className="text-center">Cargando...</td></tr>
                                     ) : filteredMateriales.length === 0 ? (
-                                        <tr><td colSpan="9" className="text-center">No hay materiales registrados</td></tr>
+                                        <tr><td colSpan="10" className="text-center">No hay materiales registrados</td></tr>
                                     ) : (
                                         filteredMateriales.map(m => {
                                             const lowStock = m.alerta_bajo_stock !== false && parseFloat(m.stock_actual) < parseFloat(m.stock_minimo);
                                             const maxValue = parseFloat(m.stock_minimo) || 0;
                                             const percent = maxValue > 0 ? Math.min((parseFloat(m.stock_actual) / maxValue) * 100, 100) : 100;
+                                            const isMultiuso = m.tipo_control === 'multiuso' || ['disco', 'resina', 'liquido'].includes((m.categoria || '').toLowerCase());
+                                            const stockEnUso = parseFloat(m.stock_en_uso) || 0;
+
                                             return (
                                                 <tr key={m.id} className={`${lowStock ? 'inventory-row-low' : ''} ${m.activo === false ? 'inventory-row-inactive' : ''}`.trim()}>
                                                     <td>
                                                         <div className="inventory-name">{m.nombre}</div>
+                                                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
+                                                            {m.unidad}
+                                                        </div>
                                                     </td>
                                                     <td><span className="unit-pill">{m.flujo || '-'}</span></td>
                                                     <td>{m.categoria || '-'}</td>
@@ -621,8 +681,23 @@ const Almacen = () => {
                                                             <span className={`stock-bar-fill ${lowStock ? 'is-low' : ''}`} style={{ width: `${percent}%` }}></span>
                                                         </div>
                                                     </td>
+                                                    <td>
+                                                        {isMultiuso ? (
+                                                            <div style={{ fontWeight: 700, color: stockEnUso > 0 ? '#0284c7' : 'var(--color-text-secondary)' }}>
+                                                                {stockEnUso} <span style={{ fontSize: '0.72rem', fontWeight: 500 }}>{m.unidad}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Directo</span>
+                                                        )}
+                                                    </td>
                                                     <td>{m.stock_minimo}</td>
-                                                    <td><span className="unit-pill">{m.unidad}</span></td>
+                                                    <td>
+                                                        {isMultiuso ? (
+                                                            <span className="badge badge-primary" style={{ fontSize: '0.72rem' }}>Multiuso</span>
+                                                        ) : (
+                                                            <span className="badge" style={{ fontSize: '0.72rem' }}>Unitario</span>
+                                                        )}
+                                                    </td>
                                                     <td>
                                                         {m.activo === false ? (
                                                             <span className="badge badge-inactive">Inactivo</span>
@@ -633,7 +708,79 @@ const Almacen = () => {
                                                         )}
                                                     </td>
                                                     <td>
-                                                        <div className="table-actions">
+                                                        <div className="table-actions" style={{ justifyContent: 'center', gap: '0.3rem' }}>
+                                                            {/* Acciones de Flujo de Stock */}
+                                                            {isMultiuso ? (
+                                                                <>
+                                                                    <button
+                                                                        className="btn btn-sm"
+                                                                        style={{
+                                                                            fontSize: '0.72rem',
+                                                                            padding: '0.2rem 0.5rem',
+                                                                            background: 'rgba(2, 132, 199, 0.1)',
+                                                                            color: '#0284c7',
+                                                                            border: '1px solid rgba(2, 132, 199, 0.25)',
+                                                                            fontWeight: 600
+                                                                        }}
+                                                                        onClick={() => openMovimiento(m, 'apertura_taller')}
+                                                                        title="Abrir a Taller / Montar en Máquina (Almacén -1, Taller +1)"
+                                                                        disabled={parseFloat(m.stock_actual) < 1}
+                                                                    >
+                                                                        ⚙️ Abrir
+                                                                    </button>
+                                                                    <button
+                                                                        className="btn btn-sm"
+                                                                        style={{
+                                                                            fontSize: '0.72rem',
+                                                                            padding: '0.2rem 0.5rem',
+                                                                            background: 'rgba(239, 68, 68, 0.08)',
+                                                                            color: '#ef4444',
+                                                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                                            fontWeight: 600
+                                                                        }}
+                                                                        onClick={() => openMovimiento(m, 'agotado_taller')}
+                                                                        title="Marcar Agotado / Descarte de Taller (Taller -1)"
+                                                                        disabled={stockEnUso < 1}
+                                                                    >
+                                                                        🗑️ Agotar
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <button
+                                                                    className="btn btn-sm"
+                                                                    style={{
+                                                                        fontSize: '0.72rem',
+                                                                        padding: '0.2rem 0.5rem',
+                                                                        background: 'rgba(245, 158, 11, 0.1)',
+                                                                        color: '#d97706',
+                                                                        border: '1px solid rgba(245, 158, 11, 0.25)',
+                                                                        fontWeight: 600
+                                                                    }}
+                                                                    onClick={() => openMovimiento(m, 'consumo_unitario')}
+                                                                    title="Registrar consumo técnico de bloque o fresa (-1 almacén)"
+                                                                    disabled={parseFloat(m.stock_actual) < 1}
+                                                                >
+                                                                    🦷 Consumir
+                                                                </button>
+                                                            )}
+
+                                                            <button
+                                                                className="btn btn-ghost btn-sm btn-icon"
+                                                                onClick={() => openMovimiento(m, 'ingreso')}
+                                                                title="Ingreso / Compra de stock"
+                                                                style={{ color: 'var(--color-success, #10b981)' }}
+                                                            >
+                                                                <i className="bi bi-plus-circle-fill"></i>
+                                                            </button>
+
+                                                            <button
+                                                                className="btn btn-ghost btn-sm btn-icon"
+                                                                onClick={() => openKardex(m)}
+                                                                title="Ver Kárdex / Historial de trazabilidad"
+                                                            >
+                                                                <i className="bi bi-journal-text"></i>
+                                                            </button>
+
                                                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(m)} title="Editar material" aria-label={`Editar ${m.nombre}`}>
                                                                 <i className="bi bi-pencil"></i>
                                                             </button>
@@ -678,10 +825,18 @@ const Almacen = () => {
                             ) : (
                                 filteredMateriales.map(m => {
                                     const lowStock = m.alerta_bajo_stock !== false && parseFloat(m.stock_actual) < parseFloat(m.stock_minimo);
+                                    const isMultiuso = m.tipo_control === 'multiuso' || ['disco', 'resina', 'liquido'].includes((m.categoria || '').toLowerCase());
+                                    const stockEnUso = parseFloat(m.stock_en_uso) || 0;
+
                                     return (
                                         <div key={m.id} className="mobile-card">
                                             <div className="mobile-card-head">
-                                                <div className="mobile-card-title">{m.nombre}</div>
+                                                <div>
+                                                    <div className="mobile-card-title">{m.nombre}</div>
+                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                                        {isMultiuso ? 'Multiuso (Discos/Resina)' : 'Unitario (1 a 1)'} • {m.unidad}
+                                                    </div>
+                                                </div>
                                                 {m.activo === false ? (
                                                     <span className="badge badge-inactive">Inactivo</span>
                                                 ) : lowStock ? (
@@ -691,26 +846,65 @@ const Almacen = () => {
                                                 )}
                                             </div>
                                             <div className="mobile-card-grid">
-                                                <div className="mobile-field"><span className="mobile-field-label">Flujo</span><span className="mobile-field-value">{m.flujo || '-'}</span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Categoría</span><span className="mobile-field-value">{m.categoria || '-'}</span></div>
+                                                <div className="mobile-field"><span className="mobile-field-label">En Almacén</span><span className="mobile-field-value" style={{ fontWeight: 700 }}>{m.stock_actual}</span></div>
+                                                <div className="mobile-field"><span className="mobile-field-label">En Taller</span><span className="mobile-field-value" style={{ fontWeight: 700, color: '#0284c7' }}>{isMultiuso ? stockEnUso : '—'}</span></div>
+                                                <div className="mobile-field"><span className="mobile-field-label">Mínimo</span><span className="mobile-field-value">{m.stock_minimo}</span></div>
                                                 <div className="mobile-field"><span className="mobile-field-label">Color</span><span className="mobile-field-value">{m.color || '-'}</span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Stock actual</span><span className="mobile-field-value">{m.stock_actual}</span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Stock minimo</span><span className="mobile-field-value">{m.stock_minimo}</span></div>
-                                                <div className="mobile-field"><span className="mobile-field-label">Unidad</span><span className="mobile-field-value">{m.unidad}</span></div>
                                             </div>
-                                            <div className="mobile-card-actions">
-                                                <button className="btn btn-ghost btn-sm" onClick={() => openEdit(m)}>
-                                                    Editar <i className="bi bi-pencil"></i>
-                                                </button>
-                                                {m.activo === false ? (
-                                                    <button className="btn btn-ghost btn-sm" onClick={() => restoreMaterial(m)} disabled={restoringId === m.id}>
-                                                        Restaurar <i className="bi bi-arrow-counterclockwise"></i>
+                                            <div className="mobile-card-actions" style={{ flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'space-between' }}>
+                                                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                                    {isMultiuso ? (
+                                                        <>
+                                                            <button
+                                                                className="btn btn-sm btn-secondary"
+                                                                onClick={() => openMovimiento(m, 'apertura_taller')}
+                                                                disabled={parseFloat(m.stock_actual) < 1}
+                                                                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                                                            >
+                                                                ⚙️ Abrir
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-sm btn-ghost"
+                                                                onClick={() => openMovimiento(m, 'agotado_taller')}
+                                                                disabled={stockEnUso < 1}
+                                                                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', color: '#ef4444' }}
+                                                            >
+                                                                🗑️ Agotar
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <button
+                                                            className="btn btn-sm btn-secondary"
+                                                            onClick={() => openMovimiento(m, 'consumo_unitario')}
+                                                            disabled={parseFloat(m.stock_actual) < 1}
+                                                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                                                        >
+                                                            🦷 Consumir
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        className="btn btn-ghost btn-sm"
+                                                        onClick={() => openKardex(m)}
+                                                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                                                    >
+                                                        <i className="bi bi-journal-text"></i> Kárdex
                                                     </button>
-                                                ) : (
-                                                    <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDeleteMaterial(m)} disabled={deletingId === m.id}>
-                                                        Eliminar <i className="bi bi-trash"></i>
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(m)}>
+                                                        <i className="bi bi-pencil"></i>
                                                     </button>
-                                                )}
+                                                    {m.activo === false ? (
+                                                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => restoreMaterial(m)} disabled={restoringId === m.id}>
+                                                            <i className="bi bi-arrow-counterclockwise"></i>
+                                                        </button>
+                                                    ) : (
+                                                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setConfirmDeleteMaterial(m)} disabled={deletingId === m.id}>
+                                                            <i className="bi bi-trash"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -1201,6 +1395,34 @@ const Almacen = () => {
                         </div>
                     </div>
 
+                    <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Tipo de Control de Stock</label>
+                            <CustomSelect
+                                value={form.tipo_control || 'multiuso'}
+                                onChange={e => setForm({ ...form, tipo_control: e.target.value })}
+                                options={[
+                                    { value: 'multiuso', label: 'Multiuso (Discos CAD/CAM, Resinas 3D, Líquidos)' },
+                                    { value: 'unitario', label: 'Unitario 1 a 1 (Bloques Cerámica, Fresas, Consumibles)' }
+                                ]}
+                            />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Stock en Uso (Taller / Máquinas)</label>
+                            <div className="form-input-box has-lead">
+                                <i className="bi bi-gear-wide-connected input-icon-lead"></i>
+                                <input
+                                    className="form-input"
+                                    type="number"
+                                    step="0.01"
+                                    value={form.stock_en_uso}
+                                    onChange={e => setForm({ ...form, stock_en_uso: e.target.value })}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-3" style={{ gap: '0.85rem' }}>
                         <div className="form-group" style={{ margin: 0 }}>
                             <label className="form-label">Color / Tonalidad</label>
@@ -1215,9 +1437,9 @@ const Almacen = () => {
                             </div>
                         </div>
                         <div className="form-group" style={{ margin: 0 }}>
-                            <label className="form-label">Stock Actual</label>
+                            <label className="form-label">Stock Almacén (Sellado)</label>
                             <div className="form-input-box has-lead">
-                                <i className="bi bi-stack input-icon-lead"></i>
+                                <i className="bi bi-box-seam input-icon-lead"></i>
                                 <input
                                     className="form-input"
                                     type="number"
@@ -1272,6 +1494,31 @@ const Almacen = () => {
                     </div>
                 </div>
             </Modal>
+
+            {/* MODAL: MOVIMIENTO DE STOCK (INGRESO / ABRIR A TALLER / CONSUMO / AGOTAR / MERMA) */}
+            <MaterialMovimientoModal
+                isOpen={movimientoModalOpen}
+                onClose={() => {
+                    setMovimientoModalOpen(false);
+                    setSelectedMaterialMovimiento(null);
+                }}
+                material={selectedMaterialMovimiento}
+                proveedores={proveedores.filter(p => p.activo !== false)}
+                initialTipo={initialTipoMovimiento}
+                onSuccess={() => {
+                    fetchMateriales();
+                }}
+            />
+
+            {/* MODAL: KÁRDEX / TRAZABILIDAD */}
+            <MaterialKardexModal
+                isOpen={kardexModalOpen}
+                onClose={() => {
+                    setKardexModalOpen(false);
+                    setSelectedMaterialKardex(null);
+                }}
+                material={selectedMaterialKardex}
+            />
 
             {/* MODAL: PROVEEDOR (NUEVO / EDITAR) */}
             <ProveedorModal
