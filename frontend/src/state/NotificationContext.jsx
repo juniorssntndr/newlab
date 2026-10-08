@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext.jsx';
 import { apiClient } from '../services/http/apiClient.js';
@@ -132,6 +132,8 @@ export const NotificationProvider = ({ children }) => {
             title: item.titulo,
             message: item.mensaje,
             link: item.link,
+            tipo: item.tipo,
+            data: item.data,
             createdAt: item.created_at,
             read: item.leida
         }));
@@ -367,38 +369,63 @@ export const NotificationProvider = ({ children }) => {
         clearToastTimeouts();
     }, []);
 
-    const markAsRead = async (id) => {
+    const markAsRead = useCallback(async (id) => {
         try {
             await markAsReadMutation.mutateAsync(id);
         } catch (e) {
             // silent
         }
-    };
+    }, [markAsReadMutation]);
 
-    const markAllRead = async () => {
+    const markAllRead = useCallback(async () => {
         try {
             await markAllReadMutation.mutateAsync();
         } catch (e) {
             // silent
         }
-    };
+    }, [markAllReadMutation]);
+
+    const contextValue = useMemo(() => ({
+        notifications,
+        unreadCount,
+        panelOpen,
+        setPanelOpen,
+        toasts,
+        dismissToast,
+        markAsRead,
+        markAllRead,
+        fetchNotifications,
+        pushSupported: isPushSupported(),
+        pushPermission,
+        isPushSubscribed,
+        isPushLoading,
+        enablePushNotifications,
+        disablePushNotifications,
+        testPush,
+        selectedSound: 'afinix',
+        changeSound,
+        playNotificationTone
+    }), [
+        notifications,
+        unreadCount,
+        panelOpen,
+        toasts,
+        dismissToast,
+        markAsRead,
+        markAllRead,
+        fetchNotifications,
+        pushPermission,
+        isPushSubscribed,
+        isPushLoading,
+        enablePushNotifications,
+        disablePushNotifications,
+        testPush,
+        changeSound,
+        playNotificationTone
+    ]);
 
     return (
-        <NotificationContext.Provider value={{
-            notifications, unreadCount, panelOpen, setPanelOpen,
-            toasts, dismissToast,
-            markAsRead, markAllRead, fetchNotifications,
-            pushSupported: isPushSupported(),
-            pushPermission,
-            isPushSubscribed,
-            isPushLoading,
-            enablePushNotifications,
-            disablePushNotifications,
-            testPush,
-            selectedSound: 'afinix',
-            changeSound,
-            playNotificationTone
-        }}>
+        <NotificationContext.Provider value={contextValue}>
             {children}
         </NotificationContext.Provider>
     );

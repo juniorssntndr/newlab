@@ -61,15 +61,43 @@ export default function Marketing() {
         origen: 'manual'
     });
 
+    // --- ESTADOS: KIT DE BIENVENIDA (WHATSAPP ONBOARDING) ---
+    const [kitDocNombre, setKitDocNombre] = useState('');
+    const [kitDocTelefono, setKitDocTelefono] = useState('');
+    const [kitClinicaNombre, setKitClinicaNombre] = useState('');
+    const [kitCuponSeleccionado, setKitCuponSeleccionado] = useState('');
+    const [kitCustomCupon, setKitCustomCupon] = useState('AFX-BIENVENIDA');
+    const [kitMensajeTipo, setKitMensajeTipo] = useState('bienvenida'); // 'bienvenida' | 'reactivacion' | 'visita'
+
+    // --- ESTADOS: CAMPAÑAS VISUALES & PUSH BROADCAST ---
+    const [campanas, setCampanas] = useState([]);
+    const [loadingCampanas, setLoadingCampanas] = useState(false);
+    const [showCampanaModal, setShowCampanaModal] = useState(false);
+    const [sendingCampana, setSendingCampana] = useState(false);
+    const [campanaForm, setCampanaForm] = useState({
+        titulo: '',
+        mensaje: '',
+        imagen_url: '',
+        tipo_audiencia: 'todos', // 'todos' | 'inactivos' | 'clinicas_especificas'
+        segmento_ids: [],
+        beneficio_tipo: 'cupon', // 'cupon' | 'capacitacion' | 'comunicado'
+        cupon_id: '',
+        codigo_descuento: '',
+        link_destino: '/pedidos/nuevo',
+        mostrar_toast_in_app: true,
+        enviar_push_web: true
+    });
+
     const loadData = async () => {
         try {
             setLoading(true);
-            const [metricasRes, cuponesRes, girosRes, clinicasRes, premiosRes] = await Promise.all([
+            const [metricasRes, cuponesRes, girosRes, clinicasRes, premiosRes, campanasRes] = await Promise.all([
                 apiClient.get('/api/marketing/metricas', { headers: getHeaders() }).catch(() => ({ data: { data: null } })),
                 apiClient.get('/api/marketing/cupones', { headers: getHeaders() }).catch(() => ({ data: { data: [] } })),
                 apiClient.get('/api/marketing/ruleta/historial', { headers: getHeaders() }).catch(() => ({ data: { data: [] } })),
                 apiClient.get('/api/clinicas', { headers: getHeaders() }).catch(() => []),
-                apiClient.get('/api/marketing/ruleta/premios/admin', { headers: getHeaders() }).catch(() => ({ data: [] }))
+                apiClient.get('/api/marketing/ruleta/premios/admin', { headers: getHeaders() }).catch(() => ({ data: [] })),
+                apiClient.get('/api/marketing/campanas', { headers: getHeaders() }).catch(() => ({ data: { data: [] } }))
             ]);
 
             const mData = metricasRes?.data !== undefined ? metricasRes.data : metricasRes;
@@ -87,10 +115,60 @@ export default function Marketing() {
             const pData = premiosRes?.data !== undefined ? premiosRes.data : premiosRes;
             setSectoresRuleta(Array.isArray(pData) ? pData : []);
             setTotalPesoActivo(premiosRes?.totalPesoActivo || 0);
+
+            const cmpData = campanasRes?.data !== undefined ? campanasRes.data : campanasRes;
+            setCampanas(Array.isArray(cmpData) ? cmpData : []);
         } catch (err) {
             toast.error('Error al sincronizar datos de marketing');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateCampana = async (e) => {
+        e.preventDefault();
+        if (!campanaForm.titulo.trim() || !campanaForm.mensaje.trim()) {
+            toast.error('Título y mensaje son requeridos');
+            return;
+        }
+
+        setSendingCampana(true);
+        try {
+            const res = await apiClient.post('/api/marketing/campanas', campanaForm, {
+                headers: getHeaders()
+            });
+            toast.success(`¡Campaña lanzada! Notificaciones enviadas a ${res.data?.destinatarios_alcanzados ?? 0} usuarios`);
+            setShowCampanaModal(false);
+            setCampanaForm({
+                titulo: '',
+                mensaje: '',
+                imagen_url: '',
+                tipo_audiencia: 'todos',
+                segmento_ids: [],
+                beneficio_tipo: 'cupon',
+                cupon_id: '',
+                codigo_descuento: '',
+                link_destino: '/pedidos/nuevo',
+                mostrar_toast_in_app: true,
+                enviar_push_web: true
+            });
+            loadData();
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Error al disparar campaña');
+        } finally {
+            setSendingCampana(false);
+        }
+    };
+
+    const handleToggleCampana = async (id) => {
+        try {
+            await apiClient.patch(`/api/marketing/campanas/${id}/toggle`, {}, {
+                headers: getHeaders()
+            });
+            toast.success('Estado de campaña actualizado');
+            loadData();
+        } catch {
+            toast.error('Error al cambiar estado de campaña');
         }
     };
 
@@ -402,6 +480,24 @@ export default function Marketing() {
                 </button>
                 <button
                     type="button"
+                    className={`btn section-tab dashboard-view-tab ${activeTab === 'bienvenida' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setActiveTab('bienvenida')}
+                    aria-pressed={activeTab === 'bienvenida'}
+                >
+                    <i className="bi bi-whatsapp" aria-hidden="true"></i>
+                    Kit de Bienvenida (WhatsApp)
+                </button>
+                <button
+                    type="button"
+                    className={`btn section-tab dashboard-view-tab ${activeTab === 'campanas' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setActiveTab('campanas')}
+                    aria-pressed={activeTab === 'campanas'}
+                >
+                    <i className="bi bi-broadcast" aria-hidden="true"></i>
+                    Campañas Push & Visuales ({campanas.length})
+                </button>
+                <button
+                    type="button"
                     className={`btn section-tab dashboard-view-tab ${activeTab === 'ruleta' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setActiveTab('ruleta')}
                     aria-pressed={activeTab === 'ruleta'}
@@ -571,6 +667,409 @@ export default function Marketing() {
                                                         </button>
                                                     )}
                                                 </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'bienvenida' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                    {/* Generador de Invitación y Link */}
+                    <div className="card dashboard-ops-panel" style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                            <span style={{
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '10px',
+                                background: 'rgba(37, 211, 102, 0.15)',
+                                color: '#16a34a',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '1.3rem'
+                            }}>
+                                <i className="bi bi-whatsapp"></i>
+                            </span>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
+                                    Kit de Bienvenida & Enlace Express
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                    Crea invitaciones personalizadas con cupón de regalo para doctores analógicos.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Nombre del Doctor(a)
+                            </label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Ej. Dr. Carlos Mendoza"
+                                value={kitDocNombre}
+                                onChange={(e) => setKitDocNombre(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                WhatsApp del Doctor (para enviar)
+                            </label>
+                            <input
+                                type="tel"
+                                className="form-input"
+                                placeholder="Ej. 958123456"
+                                value={kitDocTelefono}
+                                onChange={(e) => setKitDocTelefono(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Nombre de la Clínica o Consultorio
+                            </label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Ej. Clínica Dental Sonrisas"
+                                value={kitClinicaNombre}
+                                onChange={(e) => setKitClinicaNombre(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Cupón de Beneficio Asignado
+                            </label>
+                            <CustomSelect
+                                options={[
+                                    { value: '', label: 'Personalizado (escribir código)' },
+                                    ...cupones.filter(c => c.activo).map(c => ({
+                                        value: c.codigo,
+                                        label: `${c.codigo} (${c.tipo === 'porcentaje' ? `${c.valor}% DCTO` : `S/. ${c.valor} Soles`})`
+                                    }))
+                                ]}
+                                value={kitCuponSeleccionado}
+                                onChange={(_, val) => {
+                                    setKitCuponSeleccionado(val);
+                                    if (val) setKitCustomCupon(val);
+                                }}
+                                placeholder="Seleccionar cupón de la lista..."
+                            />
+                        </div>
+
+                        {!kitCuponSeleccionado && (
+                            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                    Código del Cupón de Regalo
+                                </label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Ej. AFX-BIENVENIDA50"
+                                    value={kitCustomCupon}
+                                    onChange={(e) => setKitCustomCupon(e.target.value.toUpperCase())}
+                                />
+                            </div>
+                        )}
+
+                        <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Enfoque del Mensaje
+                            </label>
+                            <div className="segmented-control" style={{ width: '100%' }}>
+                                <button
+                                    type="button"
+                                    className={`segmented-control__btn ${kitMensajeTipo === 'bienvenida' ? 'is-active' : ''}`}
+                                    onClick={() => setKitMensajeTipo('bienvenida')}
+                                >
+                                    Bienvenida
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`segmented-control__btn ${kitMensajeTipo === 'visita' ? 'is-active' : ''}`}
+                                    onClick={() => setKitMensajeTipo('visita')}
+                                >
+                                    Visita Comercial
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`segmented-control__btn ${kitMensajeTipo === 'reactivacion' ? 'is-active' : ''}`}
+                                    onClick={() => setKitMensajeTipo('reactivacion')}
+                                >
+                                    Reactivación
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ flex: 1 }}
+                                onClick={() => {
+                                    const params = new URLSearchParams();
+                                    if (kitDocNombre) params.append('doc', kitDocNombre);
+                                    if (kitDocTelefono) params.append('tel', kitDocTelefono);
+                                    if (kitClinicaNombre) params.append('clinica', kitClinicaNombre);
+                                    const code = kitCuponSeleccionado || kitCustomCupon;
+                                    if (code) params.append('promo', code);
+                                    const fullUrl = `${window.location.origin}/registro?${params.toString()}`;
+                                    navigator.clipboard.writeText(fullUrl);
+                                    toast.success('Enlace de registro copiado al portapapeles');
+                                }}
+                            >
+                                <i className="bi bi-link-45deg"></i> Copiar Link
+                            </button>
+
+                            <a
+                                href={(() => {
+                                    const params = new URLSearchParams();
+                                    if (kitDocNombre) params.append('doc', kitDocNombre);
+                                    if (kitDocTelefono) params.append('tel', kitDocTelefono);
+                                    if (kitClinicaNombre) params.append('clinica', kitClinicaNombre);
+                                    const code = kitCuponSeleccionado || kitCustomCupon;
+                                    if (code) params.append('promo', code);
+                                    const fullUrl = `${window.location.origin}/registro?${params.toString()}`;
+
+                                    const docGreeting = kitDocNombre ? `Estimado/a ${kitDocNombre}` : 'Estimado/a Doctor/a';
+                                    let txt = '';
+                                    if (kitMensajeTipo === 'bienvenida') {
+                                        txt = `¡Hola ${docGreeting}! Le escribe el equipo de AFINIX Dental Lab. Para facilitarle el envío y seguimiento de sus casos sin recetas de papel, le habilitamos su acceso al portal digital con un beneficio exclusivo de bienvenida: cupón *${code || 'AFX-BIENVENIDA'}* para su primer trabajo técnico.\n\nActive su cuenta aquí en 30 segundos:\n${fullUrl}\n\n¡Cualquier consulta estamos a su servicio en Arequipa!`;
+                                    } else if (kitMensajeTipo === 'visita') {
+                                        txt = `¡Hola ${docGreeting}! Fue un gusto visitarlo en su consultorio. Como conversamos, le comparto su acceso al sistema de AFINIX Dental Lab con el código especial *${code || 'AFX-VISITA'}* otorgado en nuestra visita.\n\nPuede ingresar y subir su caso digital aquí:\n${fullUrl}`;
+                                    } else {
+                                        txt = `¡Hola ${docGreeting}! En AFINIX Dental Lab queremos acompañarlo en sus próximos casos de rehabilitación y estética. Le obsequiamos el cupón *${code || 'AFX-VUELVE'}* para su próxima orden clínica.\n\nIngrese directamente a su portal aquí:\n${fullUrl}`;
+                                    }
+
+                                    const cleanTel = (kitDocTelefono || '').replace(/\D/g, '');
+                                    const phonePrefix = cleanTel.startsWith('51') ? cleanTel : cleanTel.length === 9 ? `51${cleanTel}` : '';
+                                    return phonePrefix
+                                        ? `https://wa.me/${phonePrefix}?text=${encodeURIComponent(txt)}`
+                                        : `https://wa.me/?text=${encodeURIComponent(txt)}`;
+                                })()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-success"
+                                style={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 600, backgroundColor: '#16a34a', borderColor: '#16a34a', color: '#fff' }}
+                            >
+                                <i className="bi bi-whatsapp"></i> Enviar por WhatsApp
+                            </a>
+                        </div>
+                    </div>
+
+                    {/* Previsualización del Mensaje en Móvil */}
+                    <div className="card dashboard-ops-panel" style={{ padding: '1.5rem', background: 'var(--color-bg-alt)' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
+                            Vista Previa de la Experiencia del Doctor
+                        </div>
+
+                        {/* Simulación Chat WhatsApp */}
+                        <div style={{
+                            background: '#efeae2',
+                            borderRadius: '14px',
+                            padding: '1rem',
+                            border: '1px solid #cbd5e1',
+                            marginBottom: '1rem',
+                            fontSize: '0.86rem',
+                            color: '#111827'
+                        }}>
+                            <div style={{
+                                background: '#ffffff',
+                                padding: '0.85rem',
+                                borderRadius: '10px 10px 10px 2px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                maxWidth: '92%',
+                                lineHeight: 1.5
+                            }}>
+                                <p style={{ margin: '0 0 0.5rem' }}>
+                                    ¡Hola {kitDocNombre || 'Estimado/a Doctor/a'}! Le escribe el equipo de <strong>AFINIX Dental Lab</strong>.
+                                </p>
+                                <p style={{ margin: '0 0 0.5rem' }}>
+                                    Para facilitarle el envío y seguimiento de sus casos sin recetas de papel, le habilitamos su acceso al portal digital con un beneficio exclusivo: cupón <strong style={{ color: '#0284c7' }}>{kitCuponSeleccionado || kitCustomCupon || 'AFX-BIENVENIDA'}</strong> para su primer trabajo técnico.
+                                </p>
+                                <div style={{
+                                    background: 'rgba(2, 132, 199, 0.08)',
+                                    padding: '0.5rem 0.75rem',
+                                    borderRadius: '6px',
+                                    borderLeft: '3px solid #0284c7',
+                                    fontSize: '0.8rem',
+                                    wordBreak: 'break-all'
+                                }}>
+                                    🔗 {window.location.origin}/registro?promo={kitCuponSeleccionado || kitCustomCupon || 'AFX-BIENVENIDA'}&doc={encodeURIComponent(kitDocNombre || 'Doctor')}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Explicación de lo que pasa al hacer clic */}
+                        <div style={{
+                            background: '#ffffff',
+                            padding: '1rem',
+                            borderRadius: '10px',
+                            border: '1px solid var(--color-border)',
+                            fontSize: '0.82rem',
+                            color: 'var(--color-text-secondary)',
+                            lineHeight: 1.6
+                        }}>
+                            <strong style={{ color: 'var(--color-text)', display: 'block', marginBottom: '0.25rem' }}>
+                                ¿Qué verá el doctor al abrir el enlace?
+                            </strong>
+                            <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                                <li><strong>Pre-llenado de datos:</strong> Su nombre y teléfono ya aparecerán escritos, reduciendo la fricción a solo elegir contraseña.</li>
+                                <li><strong>Incentivo visible:</strong> Una insignia destacada confirmará que su cupón <strong>{kitCuponSeleccionado || kitCustomCupon || 'AFX-BIENVENIDA'}</strong> está listo para ser canjeado.</li>
+                                <li><strong>Cero mensajes perdidos:</strong> Su cuenta quedará conectada al sistema para pedidos y aprobaciones 3D.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'campanas' && (
+                <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <i className="bi bi-broadcast text-primary" aria-hidden="true"></i>
+                                Campañas Push Masivas & Banners Visuales In-App
+                            </h3>
+                            <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
+                                Envía anuncios visuales al navegador/celular y muestra notificaciones emergentes de temporada (Halloween, capacitaciones, reactivación).
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={() => setShowCampanaModal(true)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+                        >
+                            <i className="bi bi-send-fill" aria-hidden="true"></i>
+                            Nueva Campaña Masiva
+                        </button>
+                    </div>
+
+                    {loadingCampanas ? (
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>
+                            <div className="spinner" role="status"></div>
+                            <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)' }}>Cargando campañas...</p>
+                        </div>
+                    ) : campanas.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-secondary)' }}>
+                            <i className="bi bi-megaphone" aria-hidden="true" style={{ fontSize: '2.5rem', opacity: 0.5 }}></i>
+                            <p style={{ marginTop: '0.5rem' }}>No hay campañas registradas todavía.</p>
+                            <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => setShowCampanaModal(true)}
+                            >
+                                Lanzar Primera Campaña Push
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="data-table-wrapper marketing-table-wrap">
+                            <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
+                                <thead>
+                                    <tr>
+                                        <th>Campaña & Imagen</th>
+                                        <th>Mensaje</th>
+                                        <th>Audiencia</th>
+                                        <th>Beneficio / Destino</th>
+                                        <th>Impacto</th>
+                                        <th>Estado</th>
+                                        <th style={{ textAlign: 'right' }}>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {campanas.map((cmp) => (
+                                        <tr key={cmp.id}>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                    {cmp.imagen_url ? (
+                                                        <img
+                                                            src={cmp.imagen_url}
+                                                            alt={cmp.titulo}
+                                                            style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }}
+                                                        />
+                                                    ) : (
+                                                        <div style={{
+                                                            width: '40px',
+                                                            height: '40px',
+                                                            borderRadius: '8px',
+                                                            background: 'var(--color-primary-light)',
+                                                            color: 'var(--color-primary)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: '1.1rem'
+                                                        }}>
+                                                            <i className="bi bi-image" aria-hidden="true"></i>
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <strong>{cmp.titulo}</strong>
+                                                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
+                                                            {new Date(cmp.created_at).toLocaleDateString('es-PE')}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <p style={{ margin: 0, maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {cmp.mensaje}
+                                                </p>
+                                            </td>
+                                            <td>
+                                                <span className="badge" style={{
+                                                    background: cmp.tipo_audiencia === 'inactivos' ? 'var(--color-warning-bg)' : 'var(--color-primary-light)',
+                                                    color: cmp.tipo_audiencia === 'inactivos' ? 'var(--color-warning)' : 'var(--color-primary)',
+                                                    fontWeight: 600
+                                                }}>
+                                                    {cmp.tipo_audiencia === 'todos' ? 'Todos los clientes' : cmp.tipo_audiencia === 'inactivos' ? 'Clientes inactivos (+30d)' : 'Segmentado'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {cmp.codigo_descuento ? (
+                                                    <code style={{ background: 'var(--color-bg-alt)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
+                                                        {cmp.codigo_descuento}
+                                                    </code>
+                                                ) : (
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                                        {cmp.link_destino || 'General'}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <div style={{ fontSize: '0.82rem' }}>
+                                                    <strong>{cmp.total_enviados}</strong> enviados
+                                                </div>
+                                                <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
+                                                    {cmp.total_clics} clics
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${cmp.activo ? 'badge-success' : 'badge-inactive'}`} style={{
+                                                    background: cmp.activo ? 'var(--color-success-bg)' : 'var(--color-bg-alt)',
+                                                    color: cmp.activo ? 'var(--color-success)' : 'var(--color-text-secondary)'
+                                                }}>
+                                                    {cmp.activo ? 'Activa' : 'Pausada'}
+                                                </span>
+                                            </td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-ghost"
+                                                    onClick={() => handleToggleCampana(cmp.id)}
+                                                    title={cmp.activo ? 'Pausar campaña' : 'Activar campaña'}
+                                                >
+                                                    <i className={`bi ${cmp.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -1535,6 +2034,168 @@ export default function Marketing() {
                             style={{ fontWeight: 600 }}
                         >
                             {savingSector ? 'Guardando...' : editingSector ? 'Actualizar Sector' : 'Crear Sector'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* MODAL CREAR CAMPAÑA MASIVA & PUSH BROADCAST */}
+            <Modal
+                className="marketing-modal"
+                bodyClassName="marketing-modal-body"
+                open={showCampanaModal}
+                onClose={() => setShowCampanaModal(false)}
+                title="Lanzar Campaña Masiva & Notificación Visual"
+                subtitle="Envía avisos con banner al navegador/celular y muestra notificación in-app en el portal del doctor"
+                icon="bi-broadcast"
+                size="lg"
+            >
+                <form onSubmit={handleCreateCampana}>
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Título de la Campaña <span style={{ color: 'var(--color-error)' }}>*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Ej. 🔥 ¡Semana del Odontólogo! 20% en Zirconia Monolítica"
+                            value={campanaForm.titulo}
+                            onChange={(e) => setCampanaForm((prev) => ({ ...prev, titulo: e.target.value }))}
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                            Mensaje Promocional o Comunicado <span style={{ color: 'var(--color-error)' }}>*</span>
+                        </label>
+                        <textarea
+                            className="form-input"
+                            rows={3}
+                            placeholder="Ej. Doctor(a), este mes celebramos su labor con un beneficio exclusivo. Utilice el código adjunto en su próximo trabajo técnico o inscríbase a nuestro taller presencial."
+                            value={campanaForm.mensaje}
+                            onChange={(e) => setCampanaForm((prev) => ({ ...prev, mensaje: e.target.value }))}
+                            required
+                        />
+                    </div>
+
+                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                URL de Imagen / Banner Promocional
+                            </label>
+                            <input
+                                type="url"
+                                className="form-input"
+                                placeholder="https://ejemplo.com/banner-halloween.jpg"
+                                value={campanaForm.imagen_url}
+                                onChange={(e) => setCampanaForm((prev) => ({ ...prev, imagen_url: e.target.value }))}
+                            />
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
+                                Se mostrará en la notificación push y en el toast del portal.
+                            </span>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Audiencia Objetivo
+                            </label>
+                            <CustomSelect
+                                options={[
+                                    { value: 'todos', label: 'Todos los doctores y clientes' },
+                                    { value: 'inactivos', label: 'Doctores inactivos (+30 días sin pedidos)' },
+                                    { value: 'clinicas_especificas', label: 'Clínicas seleccionadas' }
+                                ]}
+                                value={campanaForm.tipo_audiencia}
+                                onChange={(_, val) => setCampanaForm((prev) => ({ ...prev, tipo_audiencia: val }))}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Código de Cupón de Descuento (Opcional)
+                            </label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Ej. AFX-HALLOWEEN20"
+                                value={campanaForm.codigo_descuento}
+                                onChange={(e) => setCampanaForm((prev) => ({ ...prev, codigo_descuento: e.target.value.toUpperCase() }))}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Enlace de Destino al Clic
+                            </label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="/pedidos/nuevo o enlace a WhatsApp"
+                                value={campanaForm.link_destino}
+                                onChange={(e) => setCampanaForm((prev) => ({ ...prev, link_destino: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{
+                        background: 'var(--color-bg-alt)',
+                        padding: '0.85rem 1rem',
+                        borderRadius: '10px',
+                        marginBottom: '1.25rem',
+                        border: '1px solid var(--color-border)'
+                    }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            Canales de Disparo Activos:
+                        </div>
+                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.84rem', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={campanaForm.mostrar_toast_in_app}
+                                    onChange={(e) => setCampanaForm((prev) => ({ ...prev, mostrar_toast_in_app: e.target.checked }))}
+                                />
+                                <span>Toast Emergente Visual In-App</span>
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.84rem', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={campanaForm.enviar_push_web}
+                                    onChange={(e) => setCampanaForm((prev) => ({ ...prev, enviar_push_web: e.target.checked }))}
+                                />
+                                <span>Web Push al Celular / Navegador</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => setShowCampanaModal(false)}
+                            disabled={sendingCampana}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={sendingCampana}
+                            style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                        >
+                            {sendingCampana ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm" role="status"></span>
+                                    Disparando Campaña...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="bi bi-send-fill"></i>
+                                    Lanzar y Notificar a Doctores
+                                </>
+                            )}
                         </button>
                     </div>
                 </form>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import AfinixLogo from '../components/AfinixLogo.jsx';
 import LandingThemeToggle from '../components/afinix/LandingThemeToggle.jsx';
 import CustomSelect from '../components/CustomSelect.jsx';
@@ -40,14 +40,19 @@ const DISTRITO_OPTIONS = AREQUIPA_DISTRITOS.map((d) => ({
 
 export const RegistroCliente = () => {
     const { theme, toggle } = useLandingTheme();
+    const [searchParams] = useSearchParams();
+
+    // Parámetros de Campaña / Kit de Bienvenida
+    const promoCode = searchParams.get('promo') || searchParams.get('cupon') || '';
+    const campanaParam = searchParams.get('campana') || searchParams.get('utm_campaign') || '';
 
     const [step, setStep] = useState(1);
     const [form, setForm] = useState({
-        nombre: '',
-        email: '',
+        nombre: searchParams.get('doc') || searchParams.get('nombre') || '',
+        email: searchParams.get('email') || '',
         password: '',
-        telefono: '',
-        clinica_nombre: '',
+        telefono: searchParams.get('tel') || searchParams.get('telefono') || '',
+        clinica_nombre: searchParams.get('clinica') || '',
         distrito: 'Arequipa (Cercado)',
         direccion: ''
     });
@@ -196,6 +201,42 @@ export const RegistroCliente = () => {
                                 ? 'Solicitud enviada con éxito'
                                 : `Paso ${step} de 2: ${step === 1 ? 'Datos de tu cuenta' : 'Datos del consultorio'}`}
                         </p>
+
+                        {!submitted && promoCode && (
+                            <div style={{
+                                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)',
+                                border: '1px dashed var(--color-primary, #0284c7)',
+                                borderRadius: '12px',
+                                padding: '0.65rem 0.9rem',
+                                marginBottom: '1.25rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.6rem'
+                            }}>
+                                <span style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '50%',
+                                    background: 'var(--color-primary, #0284c7)',
+                                    color: '#ffffff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '1rem',
+                                    flexShrink: 0
+                                }}>
+                                    🎁
+                                </span>
+                                <div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary, #0284c7)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        Beneficio de Bienvenida Activado
+                                    </div>
+                                    <div style={{ fontSize: '0.82rem', color: 'var(--login-heading)' }}>
+                                        Tu cuenta recibirá el cupón <strong>{promoCode}</strong> para tu primer trabajo dental.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {submitted ? (
                             <div className="animate-fade-in" style={{ textAlign: 'center', padding: '1rem 0' }}>

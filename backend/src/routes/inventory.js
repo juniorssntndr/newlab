@@ -53,6 +53,56 @@ router.get('/', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// GET /api/inventory/movimientos - Global movements history with filters
+router.get('/movimientos', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        const { tipo, search, limit = 100, offset = 0 } = req.query;
+        const params = [];
+        let query = `
+            SELECT 
+                m.*,
+                mat.nombre AS material_nombre,
+                mat.color AS material_color,
+                mat.unidad AS material_unidad,
+                mat.categoria AS material_categoria,
+                u.nombre AS usuario_nombre,
+                p.razon_social AS proveedor_nombre,
+                p.nombre_comercial AS proveedor_nombre_comercial
+            FROM nl_material_movimientos m
+            JOIN nl_materiales mat ON mat.id = m.material_id
+            LEFT JOIN nl_usuarios u ON u.id = m.usuario_id
+            LEFT JOIN nl_proveedores p ON p.id = m.proveedor_id
+            WHERE 1=1
+        `;
+
+        if (tipo === 'ingresos') {
+            query += ` AND m.tipo = 'ingreso'`;
+        } else if (tipo === 'egresos') {
+            query += ` AND m.tipo IN ('apertura_taller', 'consumo_unitario', 'agotado_taller', 'merma_taller')`;
+        } else if (tipo && tipo !== 'todos') {
+            params.push(tipo);
+            query += ` AND m.tipo = $${params.length}`;
+        }
+
+        if (search && search.trim()) {
+            params.push(`%${search.trim().toLowerCase()}%`);
+            query += ` AND (
+                LOWER(mat.nombre) LIKE $${params.length} OR 
+                LOWER(COALESCE(p.razon_social, '')) LIKE $${params.length} OR 
+                LOWER(COALESCE(m.referencia, '')) LIKE $${params.length} OR 
+                LOWER(COALESCE(m.notas, '')) LIKE $${params.length}
+            )`;
+        }
+
+        query += ` ORDER BY m.created_at DESC, m.id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(parseInt(limit, 10), parseInt(offset, 10));
+
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (err) { next(err); }
+});
+
 // GET /api/inventory/:id/kardex - List movements for a specific material
 router.get('/:id/kardex', async (req, res, next) => {
     try {
@@ -294,10 +344,48 @@ router.put('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
-// DELETE /api/inventory/:id - Soft delete material
+// DELETE /api/inventory/:id - Delete material (soft delete or permanent hard delete)
 router.delete('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
+        const { hard } = req.query;
+
+        if (hard === 'true' || hard === '1') {
+            // Verificar si el material tiene productos asociados
+            const prodCheck = await pool.query(
+                'SELECT COUNT(*) FROM nl_productos WHERE material_id = $1',
+                [req.params.id]
+            );
+            if (parseInt(prodCheck.rows[0].count, 10) > 0) {
+                return res.status(400).json({
+                    error: `No se puede eliminar definitivamente: este material está vinculado a ${prodCheck.rows[0].count} producto(s) del catálogo. Desvincúlalo primero o desactívalo.`
+                });
+            }
+
+            // Verificar si tiene movimientos registrados en el kardex
+            const movCheck = await pool.query(
+                'SELECT COUNT(*) FROM nl_material_movimientos WHERE material_id = $1',
+                [req.params.id]
+            );
+            if (parseInt(movCheck.rows[0].count, 10) > 0) {
+                return res.status(400).json({
+                    error: `No se puede eliminar definitivamente: este material registra ${movCheck.rows[0].count} movimiento(s) de trazabilidad en el kárdex. Para conservar la contabilidad, desactívalo en su lugar.`
+                });
+            }
+
+            // Limpiar relaciones de proveedores antes de borrar el material
+            await pool.query('DELETE FROM nl_proveedor_materiales WHERE material_id = $1', [req.params.id]);
+
+            const deleteRes = await pool.query(
+                'DELETE FROM nl_materiales WHERE id = $1 RETURNING *',
+                [req.params.id]
+            );
+
+            if (deleteRes.rows.length === 0) return res.status(404).json({ error: 'Material no encontrado' });
+            return res.json({ success: true, deleted: true, material: deleteRes.rows[0] });
+        }
+
+        // Soft delete ordinario (desactivación)
         const result = await pool.query(
             `UPDATE nl_materiales
              SET activo = false

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { authenticateToken, requireRole, forbidRole } from '../middleware/auth.js';
+import { sendPushNotificationToMany } from '../modules/notifications/pushNotificationService.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -627,6 +628,224 @@ router.get('/ruleta/historial', forbidRole('cliente'), async (req, res) => {
         res.json({ ok: true, data: result.rows });
     } catch (err) {
         res.status(500).json({ error: 'Error al cargar historial de giros', details: err.message });
+    }
+});
+
+// =========================================================================
+// 6. CAMPAÑAS DE MARKETING VISUALES & PUSH BROADCAST
+// =========================================================================
+
+// Listar todas las campañas
+router.get('/campanas', forbidRole('cliente'), async (req, res) => {
+    const pool = getPool(req);
+    try {
+        const result = await pool.query(`
+            SELECT 
+                c.*,
+                u.nombre AS creador_nombre,
+                d.codigo AS cupon_codigo,
+                d.valor AS cupon_valor,
+                d.tipo AS cupon_tipo
+            FROM nl_campanas_marketing c
+            LEFT JOIN nl_usuarios u ON c.creado_por = u.id
+            LEFT JOIN nl_descuentos d ON c.cupon_id = d.id
+            ORDER BY c.created_at DESC
+        `);
+        res.json({ ok: true, data: result.rows });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al listar campañas', details: err.message });
+    }
+});
+
+// Obtener campañas activas in-app para el cliente autenticado
+router.get('/campanas/activas-in-app', async (req, res) => {
+    const pool = getPool(req);
+    try {
+        const result = await pool.query(`
+            SELECT 
+                id, titulo, mensaje, imagen_url, beneficio_tipo, 
+                codigo_descuento, link_destino, created_at
+            FROM nl_campanas_marketing
+            WHERE activo = TRUE AND mostrar_toast_in_app = TRUE
+            ORDER BY created_at DESC
+            LIMIT 1
+        `);
+        res.json({ ok: true, campana: result.rows[0] || null });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al obtener campañas activas', details: err.message });
+    }
+});
+
+// Crear y disparar nueva campaña (In-App + Web Push + Notificación de sistema)
+router.post('/campanas', forbidRole('cliente'), async (req, res) => {
+    const pool = getPool(req);
+    const {
+        titulo,
+        mensaje,
+        imagen_url,
+        tipo_audiencia, // 'todos' | 'inactivos' | 'clinicas_especificas'
+        segmento_ids,
+        beneficio_tipo,
+        cupon_id,
+        codigo_descuento,
+        link_destino,
+        mostrar_toast_in_app = true,
+        enviar_push_web = true
+    } = req.body;
+
+    if (!titulo || !mensaje) {
+        return res.status(400).json({ error: 'Título y mensaje son requeridos' });
+    }
+
+    try {
+        // 1. Guardar campaña
+        const campanaRes = await pool.query(`
+            INSERT INTO nl_campanas_marketing (
+                titulo, mensaje, imagen_url, tipo_audiencia, segmento_ids,
+                beneficio_tipo, cupon_id, codigo_descuento, link_destino,
+                mostrar_toast_in_app, enviar_push_web, creado_por
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING *
+        `, [
+            titulo.trim(),
+            mensaje.trim(),
+            imagen_url ? imagen_url.trim() : null,
+            tipo_audiencia || 'todos',
+            JSON.stringify(segmento_ids || []),
+            beneficio_tipo || 'cupon',
+            cupon_id ? Number(cupon_id) : null,
+            codigo_descuento ? String(codigo_descuento).trim().toUpperCase() : null,
+            link_destino ? link_destino.trim() : '/pedidos/nuevo',
+            Boolean(mostrar_toast_in_app),
+            Boolean(enviar_push_web),
+            req.user?.id || null
+        ]);
+
+        const campana = campanaRes.rows[0];
+
+        // 2. Determinar usuarios destinatarios
+        let usersQuery = `
+            SELECT u.id, u.nombre, u.clinica_id 
+            FROM nl_usuarios u 
+            WHERE u.tipo = 'cliente' AND u.estado = 'activo'
+        `;
+        const queryParams = [];
+
+        if (tipo_audiencia === 'clinicas_especificas' && Array.isArray(segmento_ids) && segmento_ids.length > 0) {
+            usersQuery += ` AND u.clinica_id = ANY($1::int[])`;
+            queryParams.push(segmento_ids);
+        } else if (tipo_audiencia === 'inactivos') {
+            usersQuery += ` AND (
+                u.clinica_id NOT IN (
+                    SELECT DISTINCT clinica_id FROM nl_pedidos 
+                    WHERE fecha >= NOW() - INTERVAL '30 days' AND clinica_id IS NOT NULL
+                )
+            )`;
+        }
+
+        const targetUsers = await pool.query(usersQuery, queryParams);
+        const userIds = targetUsers.rows.map(u => u.id);
+
+        // 3. Crear notificación in-app en nl_notificaciones para cada usuario objetivo
+        if (userIds.length > 0) {
+            const notifValues = [];
+            const notifParams = [];
+            let pIdx = 1;
+
+            const notifData = JSON.stringify({
+                campana_id: campana.id,
+                imagen_url: campana.imagen_url,
+                codigo_descuento: campana.codigo_descuento,
+                beneficio_tipo: campana.beneficio_tipo
+            });
+
+            for (const uid of userIds) {
+                notifParams.push(uid, 'campana_marketing', campana.titulo, campana.mensaje, campana.link_destino || '/pedidos/nuevo', notifData);
+                notifValues.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5})`);
+                pIdx += 6;
+            }
+
+            if (notifValues.length > 0) {
+                await pool.query(`
+                    INSERT INTO nl_notificaciones (usuario_id, tipo, titulo, mensaje, link, data)
+                    VALUES ${notifValues.join(', ')}
+                `, notifParams);
+            }
+
+            // 4. Disparar Web Push si está marcado
+            if (enviar_push_web) {
+                try {
+                    await sendPushNotificationToMany({
+                        pool,
+                        userIds,
+                        payload: {
+                            title: campana.titulo,
+                            body: campana.mensaje,
+                            icon: '/icon-192x192.png',
+                            image: campana.imagen_url || undefined,
+                            badge: '/icon-32x32.png',
+                            url: campana.link_destino || '/pedidos/nuevo',
+                            data: {
+                                campana_id: campana.id,
+                                codigo_descuento: campana.codigo_descuento
+                            }
+                        }
+                    });
+                } catch (pushErr) {
+                    console.error('[Marketing] Error disparando Web Push masivo:', pushErr.message);
+                }
+            }
+
+            // Actualizar total_enviados
+            await pool.query(`
+                UPDATE nl_campanas_marketing 
+                SET total_enviados = $1 
+                WHERE id = $2
+            `, [userIds.length, campana.id]);
+        }
+
+        res.status(201).json({
+            ok: true,
+            data: campana,
+            destinatarios_alcanzados: userIds.length
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al crear y disparar campaña', details: err.message });
+    }
+});
+
+// Activar o pausar campaña
+router.patch('/campanas/:id/toggle', forbidRole('cliente'), async (req, res) => {
+    const pool = getPool(req);
+    try {
+        const result = await pool.query(`
+            UPDATE nl_campanas_marketing 
+            SET activo = NOT activo, updated_at = NOW() 
+            WHERE id = $1 
+            RETURNING id, activo
+        `, [req.params.id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Campaña no encontrada' });
+        }
+        res.json({ ok: true, data: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al alternar estado de campaña', details: err.message });
+    }
+});
+
+// Registrar clic en campaña
+router.post('/campanas/:id/click', async (req, res) => {
+    const pool = getPool(req);
+    try {
+        await pool.query(`
+            UPDATE nl_campanas_marketing 
+            SET total_clics = total_clics + 1 
+            WHERE id = $1
+        `, [req.params.id]);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al registrar clic', details: err.message });
     }
 });
 

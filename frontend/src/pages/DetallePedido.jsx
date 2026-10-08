@@ -214,15 +214,19 @@ const DetallePedido = () => {
     }, [pedido?.estado, pedido?.id]);
 
     // Conciliar y marcar como leídas las notificaciones asociadas a este pedido al abrirlo
+    const markedNotifIdsRef = useRef(new Set());
     useEffect(() => {
         if (!id || !markAsRead || !Array.isArray(notifications) || notifications.length === 0) return;
 
         const targetPath = `/pedidos/${id}`;
         const unreadMatches = notifications.filter(
-            (n) => !n.leida && (n.link === targetPath || n.link === `/pedidos/${id}/`)
+            (n) => !n.leida && !markedNotifIdsRef.current.has(n.id) && (n.link === targetPath || n.link === `/pedidos/${id}/`)
         );
 
+        if (unreadMatches.length === 0) return;
+
         unreadMatches.forEach((n) => {
+            markedNotifIdsRef.current.add(n.id);
             markAsRead(n.id);
         });
     }, [id, notifications, markAsRead]);
