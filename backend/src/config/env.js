@@ -62,6 +62,10 @@ export const getViewerConfig = () => ({
     retentionDays: Math.max(parseInt(process.env.PRIVATE_VIEWER_RETENTION_DAYS || '60', 10) || 60, 1)
 });
 
+export const getUploadsConfig = () => ({
+    storageDir: process.env.UPLOADS_STORAGE_DIR || ''
+});
+
 export const getGoogleCalendarConfig = () => ({
     clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '',

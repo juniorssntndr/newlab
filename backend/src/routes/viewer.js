@@ -7,7 +7,7 @@ import { readOrderApprovalHtml } from '../services/storage.js';
 import { verifyViewerCapability } from '../modules/orders/application/services/orderViewerService.js';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
-const legacyRoot = path.resolve(directory, '../../uploads');
+const legacyRoot = process.env.UPLOADS_STORAGE_DIR || path.resolve(directory, '../../uploads');
 const readLegacy = async (key) => {
     if (!String(key).startsWith('legacy-viewer://pedidos/')) return null;
     const relative = key.slice('legacy-viewer://'.length);
@@ -21,7 +21,8 @@ const findLocalFallbackApprovalHtml = async (orderId) => {
     const safeOrderId = String(orderId || '').replace(/[^a-zA-Z0-9_-]/g, '-');
     if (!safeOrderId) return null;
     // 1. Probar en private-viewers/orders/<safeOrderId>/
-    const privateRoot = path.resolve(directory, '../../private-viewers', 'orders', safeOrderId);
+    const viewerStorageRoot = getViewerConfig().storageDir || path.resolve(directory, '../../private-viewers');
+    const privateRoot = path.resolve(viewerStorageRoot, 'orders', safeOrderId);
     try {
         const files = await fs.readdir(privateRoot);
         const htmlFiles = files.filter(f => /\.html?$/i.test(f)).sort().reverse();

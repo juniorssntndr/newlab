@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { notificationData } from '../state/notificationCampaign.js';
+import { resolveImageUrl } from '../utils/resolveImageUrl.js';
 import '../styles/marketing.css';
 
 function useCountdown(targetDateStr) {
@@ -77,7 +78,7 @@ export default function CampaignNotificationPreview({ notification, onClose, onN
 
     const couponCode = data.codigo_descuento || null;
     const isTest = Boolean(data.prueba_campana);
-    const flyerImage = data.imagen_url || '/images/promo-popup-bg.png';
+    const flyerImage = resolveImageUrl(data.imagen_url) || '/images/promo-popup-bg.png';
 
     const handleActionClick = () => {
         const link = notification?.link || '/pedidos/nuevo';

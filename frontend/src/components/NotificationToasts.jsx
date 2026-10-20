@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import CampaignNotificationPreview from './CampaignNotificationPreview.jsx';
 import { notificationData } from '../state/notificationCampaign.js';
+import { resolveImageUrl } from '../utils/resolveImageUrl.js';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../state/NotificationContext.jsx';
 
@@ -87,7 +88,7 @@ const NotificationToasts = () => {
             {toasts.map((toast) => {
                 const toastData = notificationData(toast.data);
                 const isMarketing = toast.tipo === 'campana_marketing' || Boolean(toastData.campana_id);
-                const imageUrl = toastData.imagen_url;
+                const imageUrl = resolveImageUrl(toastData.imagen_url);
                 const couponCode = toastData.codigo_descuento;
 
                 return (

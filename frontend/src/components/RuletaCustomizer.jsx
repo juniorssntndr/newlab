@@ -392,7 +392,7 @@ export default function RuletaCustomizer({
         }
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.src = url;
+        img.src = resolveImageUrl(url);
         img.onload = () => {
             loadedImagesRef.current.set(url, img);
             drawPreviewWheel(previewAngleRef.current);
@@ -1160,7 +1160,7 @@ export default function RuletaCustomizer({
                                                 background: '#000',
                                                 flexShrink: 0
                                             }}>
-                                                <img src={sectorForm.imagen_url} alt="Premio" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                <img src={resolveImageUrl(sectorForm.imagen_url)} alt="Premio" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                             </div>
                                         ) : (
                                             <div style={{

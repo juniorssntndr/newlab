@@ -488,7 +488,7 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
                     <span className="campaign-preview-label">Vista previa del pop-up en el portal</span>
                     <div className="campaign-flyer-card" style={{ width: '100%', maxWidth: '380px' }}>
                         <img
-                            src={form.imagen_url || '/images/promo-popup-bg.png'}
+                            src={resolveImageUrl(form.imagen_url) || '/images/promo-popup-bg.png'}
                             alt="Vista previa de campaña"
                             className="campaign-flyer-bg-img"
                         />

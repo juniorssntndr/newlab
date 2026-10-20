@@ -86,13 +86,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const uploadsDirectory = process.env.UPLOADS_STORAGE_DIR || path.join(__dirname, '../uploads');
 app.use('/uploads', (req, res, next) => {
     if (/\.html?$/i.test(req.path)) return res.status(404).end();
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('X-Frame-Options');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
-}, express.static(path.join(__dirname, '../uploads')));
+}, express.static(uploadsDirectory));
 
 // Health check
 app.get('/', (req, res) => res.json({ status: 'API Online', version: '1.0.0' }));

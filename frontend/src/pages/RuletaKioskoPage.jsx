@@ -236,7 +236,7 @@ export default function RuletaKioskoPage() {
         }
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.src = url;
+        img.src = resolveImageUrl(url);
         img.onload = () => {
             loadedSectorImagesRef.current.set(url, img);
             drawWheel(currentAngleRef.current);

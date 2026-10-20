@@ -7,7 +7,7 @@ import { getSupabaseStorageConfig, getViewerConfig } from '../config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsDir = path.resolve(__dirname, '../../uploads');
+const uploadsDir = process.env.UPLOADS_STORAGE_DIR || path.resolve(__dirname, '../../uploads');
 
 // Marketing uploads never incorporate a caller-controlled filename or directory.
 export const uploadMarketingImage = async (file) => {

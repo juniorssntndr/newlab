@@ -818,7 +818,7 @@ export default function Marketing() {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                     {cmp.imagen_url ? (
                                                         <img
-                                                            src={cmp.imagen_url}
+                                                            src={resolveImageUrl(cmp.imagen_url)}
                                                             alt={cmp.titulo}
                                                             style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }}
                                                         />
