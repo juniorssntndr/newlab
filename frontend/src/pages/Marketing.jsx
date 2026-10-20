@@ -1,3 +1,4 @@
+import { resolveImageUrl } from '../utils/resolveImageUrl.js';
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';

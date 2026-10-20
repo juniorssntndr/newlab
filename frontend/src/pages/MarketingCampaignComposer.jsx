@@ -1,3 +1,4 @@
+import { resolveImageUrl } from '../utils/resolveImageUrl.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { apiClient } from '../services/http/apiClient.js';
 import { useAuth } from '../state/AuthContext.jsx';

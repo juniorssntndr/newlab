@@ -1,3 +1,4 @@
+import { resolveImageUrl } from '../utils/resolveImageUrl.js';
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { apiClient } from '../services/http/apiClient.js';

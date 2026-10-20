@@ -1,3 +1,4 @@
+import { resolveImageUrl } from '../utils/resolveImageUrl.js';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
