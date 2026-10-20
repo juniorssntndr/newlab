@@ -6,7 +6,7 @@ import { ensureClinicEstablishment, validateAndPersistClinicContact, withClinicT
 
 const router = Router();
 router.use(authenticateToken);
-router.use(forbidRole('visitador'));
+router.use(forbidRole('cliente'));
 
 // GET /api/clinicas
 router.get('/', async (req, res, next) => {

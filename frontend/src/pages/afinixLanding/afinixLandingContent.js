@@ -4,6 +4,29 @@ const IMG = '/images/afinix-landing';
 
 export const heroSlides = [
     {
+        kickerIcon: 'bi-geo-alt',
+        kicker: 'Laboratorio dental digital en Arequipa',
+        kickerMobile: 'Laboratorio dental digital',
+        titleBefore: 'Tu laboratorio dental de confianza. ',
+        titleBeforeMobile: 'Tu laboratorio de confianza. ',
+        titleHighlight: 'Compromiso en cada caso.',
+        titleHighlightMobile: 'Compromiso en cada caso.',
+        titleAfter: '',
+        copy: 'En AFINIX Dental Lab unimos tecnología CAD/CAM, precisión y atención cercana para facilitar tu trabajo clínico.',
+        copyMobile: 'En AFINIX Dental Lab unimos tecnología CAD/CAM, precisión y atención cercana para facilitar tu trabajo clínico.',
+        ctaMain: 'Hablemos de tu caso',
+        ctaMainHref: whatsappHref(),
+        ctaSecondary: 'Conoce nuestros servicios',
+        ctaSecondaryHref: '/#servicios',
+        image: `${IMG}/hero-cadcam.jpg`,
+        alt: 'Fresado CAD/CAM de alta precisión en AFINIX Dental Lab Arequipa',
+        floatCards: [
+            { icon: 'bi-shield-check', label: 'CALIDAD', value: 'En cada detalle' },
+            { icon: 'bi-clock-history', label: 'PUNTUALIDAD', value: 'Entregas coordinadas' },
+            { icon: 'bi-chat-dots', label: 'ATENCIÓN CERCANA', value: 'En cada caso' },
+        ],
+    },
+    {
         kickerIcon: 'bi-gift',
         kicker: 'Pruebe nuestro flujo digital',
         kickerMobile: '50% OFF primer caso',

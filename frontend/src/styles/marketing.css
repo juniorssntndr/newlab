@@ -5,6 +5,11 @@
 .marketing-page .marketing-tabs { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; margin-bottom: var(--space-6); }
 .marketing-page .marketing-tabs > .btn { flex-shrink: 0; white-space: nowrap; }
 .marketing-page .marketing-subtabs { min-width: 0; margin-bottom: 0; }
+.marketing-load-error { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-4); color: var(--color-error); background: var(--color-error-bg); border-radius: 10px; }
+.marketing-clinic-picker { margin-bottom: var(--space-4); }
+.marketing-selected-clinics { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.marketing-form-note { display: block; color: var(--color-error); font-size: 0.8rem; margin-top: var(--space-2); }
+.marketing-recipient-preview { font-weight: 600; margin: 0 0 var(--space-4); color: var(--color-text-secondary); }
 .marketing-table-wrap { max-width: 100%; overflow-x: auto; }
 .marketing-page .data-table { font-size: 0.875rem; }
 .marketing-page .marketing-danger-action { color: var(--color-error); }
@@ -22,8 +27,1096 @@
   .marketing-page .dashboard-kpi-main-value { font-size: 1.35rem; }
   .marketing-page .dashboard-kpi-row { flex-wrap: wrap; gap: var(--space-2); }
   .marketing-modal .marketing-form-grid { grid-template-columns: minmax(0, 1fr) !important; }
-  .marketing-page .btn, .marketing-modal .btn { min-height: 40px; }
+  .marketing-page .btn, .marketing-modal .btn { min-height: 44px; }
   .marketing-page .data-table { min-width: 740px; }
 }
 
 .marketing-prize-dot { width: 0.65rem; height: 0.65rem; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--color-border); }
+.marketing-page .marketing-invitation-coupon-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
+.marketing-page .marketing-invitation-coupon-heading .form-label { margin: 0; }
+.marketing-page .marketing-invitation-coupon-heading .btn { min-height: 44px; }
+.marketing-modal .marketing-coupon-fields { min-width: 0; padding: 0; margin: 0; border: 0; }
+.marketing-modal .marketing-invitation-note { color: var(--color-text-secondary); font-size: 0.85rem; line-height: 1.5; }
+
+.marketing-page .marketing-invitation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+.marketing-page .marketing-invitation-form, .marketing-page .marketing-invitation-preview { padding: var(--space-6); }
+.marketing-page .marketing-invitation header { margin-bottom: var(--space-5); }
+.marketing-page .marketing-invitation h3 { margin: 0 0 var(--space-2); font-size: 1.05rem; }
+.marketing-page .marketing-invitation header p, .marketing-page .marketing-invitation-note { color: var(--color-text-secondary); font-size: 0.85rem; line-height: 1.5; }
+.marketing-page .marketing-invitation header p { margin: 0; }
+.marketing-page .marketing-invitation .form-group { margin-bottom: var(--space-4); }
+.marketing-page .marketing-invitation .form-group:last-child { margin-bottom: 0; }
+.marketing-page .marketing-invitation-location { margin-bottom: var(--space-4); }
+.marketing-page .marketing-invitation-location summary { cursor: pointer; color: var(--color-text-secondary); font-weight: 600; min-height: 44px; padding: var(--space-3) 0; }
+.marketing-page .marketing-invitation-location summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.marketing-page .marketing-invitation-note { display: block; margin: var(--space-2) 0 0; }
+.marketing-page .marketing-invitation-message { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; font-size: 0.9rem; padding: var(--space-5); border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-text); background: var(--color-bg-alt); }
+.marketing-page .marketing-invitation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-4); }
+.marketing-page .marketing-invitation-actions .btn { min-height: 44px; }
+.marketing-page .marketing-invitation-whatsapp { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 44px; background: #15803d; border: 1px solid #15803d; color: #fff; text-decoration: none; font-weight: 600; }
+.marketing-page .marketing-invitation-whatsapp:not([aria-disabled="true"]):hover { background: #166534; border-color: #166534; color: #fff; }
+.marketing-page .marketing-invitation-whatsapp:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+.marketing-page .marketing-invitation-whatsapp[aria-disabled="true"] { background: #15803d; border-color: #15803d; color: #fff; }
+.marketing-page .marketing-invitation-actions [aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 900px) {
+  .marketing-page .marketing-invitation { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .marketing-page .marketing-invitation-form, .marketing-page .marketing-invitation-preview { padding: var(--space-4); }
+  .marketing-page .marketing-invitation-actions .btn { flex: 1 1 100%; justify-content: center; }
+}
+.campaign-composer { display: grid; gap: 20px; }
+.campaign-composer .marketing-inline-alert { padding: 14px 16px; border: 1px solid var(--color-error, #b91c1c); border-radius: 10px; background: var(--color-error-bg); color: var(--color-text); line-height: 1.5; overflow-wrap: anywhere; }
+.campaign-composer-modal { max-width: 1180px; width: 95vw; max-height: min(92vh, calc(100dvh - 32px)); }
+.campaign-composer-modal > .modal-header, .campaign-composer-modal > .modal-footer { flex-shrink: 0; }
+.campaign-composer-modal > .modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 16px; }
+.campaign-composer-modal > .modal-footer .campaign-actions { width: 100%; border: 0; padding: 0; }
+.campaign-readiness { padding: 14px 16px; border: 1px solid var(--color-warning); border-radius: 10px; background: var(--color-warning-bg); color: var(--color-text); font-size: .85rem; line-height: 1.5; }
+.campaign-readiness-heading { display: flex; align-items: baseline; gap: 8px; }
+.campaign-readiness p { margin: 8px 0 0; overflow-wrap: anywhere; }
+.campaign-readiness details { margin-top: 8px; }
+.campaign-readiness summary { cursor: pointer; min-height: 32px; display: list-item; align-content: center; }
+.campaign-readiness summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.campaign-readiness .btn { margin-top: 12px; min-height: 44px; }
+.campaign-readiness-error { border-color: var(--color-error); background: var(--color-error-bg); }
+.campaign-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: row; gap: 12px; border-bottom: 1px solid var(--color-border); padding-bottom: 16px; }
+.campaign-steps li { flex: 1; display: flex; align-items: center; gap: 8px; color: var(--color-text-secondary); font-size: .85rem; }
+.campaign-steps li span { border: 1px solid var(--color-border); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; flex-shrink: 0; }
+.campaign-steps li[aria-current="step"] { color: var(--color-primary); font-weight: 700; }
+.campaign-steps li[aria-current="step"] span { background: var(--color-primary); color: white; }
+.campaign-workspace { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, 380px); gap: 24px; align-items: start; width: 100%; min-width: 0; }
+.campaign-fields { border: 0; padding: 0; min-width: 0; width: 100%; max-width: 100%; margin: 0; display: grid; gap: 14px; }
+.campaign-fields > * { min-width: 0; max-width: 100%; }
+.campaign-fields label:not(.campaign-check),
+.campaign-fields .form-group { display: grid; gap: 6px; font-size: .85rem; font-weight: 600; min-width: 0; width: 100%; max-width: 100%; margin: 0; }
+.campaign-fields .form-group .form-label { margin: 0; font-size: .85rem; font-weight: 600; }
+.campaign-fields small, .campaign-fields .marketing-form-note { color: var(--color-text-secondary); font-size: .78rem; line-height: 1.5; font-weight: 400; }
+.campaign-fields .form-input { width: 100%; min-width: 0; font: inherit; font-weight: 400; }
+.campaign-fields textarea.form-input { min-height: 90px; resize: vertical; line-height: 1.5; }
+.campaign-fields input[type="date"] { min-height: 44px; color-scheme: light; }
+[data-theme="dark"] .campaign-fields input[type="date"] { color-scheme: dark; }
+.campaign-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; width: 100%; max-width: 100%; }
+.campaign-pair > * { min-width: 0; max-width: 100%; }
+
+.campaign-coupon-picker-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+.campaign-coupon-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    width: 100%;
+}
+
+.campaign-coupon-picker-label {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.campaign-fields .afinix-select-wrap,
+.marketing-modal .afinix-select-wrap {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.campaign-fields .afinix-select-trigger,
+.marketing-modal .afinix-select-trigger {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.campaign-fields .afinix-select-label-wrap,
+.marketing-modal .afinix-select-label-wrap {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.campaign-fields .afinix-select-label-text,
+.marketing-modal .afinix-select-label-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.campaign-check { display: flex; align-items: flex-start; gap: 10px; font-size: .86rem; line-height: 1.5; cursor: pointer; }
+.campaign-check input { margin-top: 4px; accent-color: var(--color-primary); }
+.campaign-upload, .campaign-benefit, .campaign-audience-summary, .campaign-status { border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-bg-alt); padding: 16px; display: grid; gap: 12px; }
+.campaign-upload-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.campaign-upload-actions .btn { min-height: 44px; }
+.campaign-upload-filename { font-size: .8rem; font-weight: 400; overflow-wrap: anywhere; color: var(--color-text-secondary); }
+.campaign-upload button { justify-self: start; }
+
+.campaign-flyer-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-bg-alt, #f8fafc);
+}
+
+.campaign-flyer-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.campaign-flyer-picker-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.campaign-flyer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    line-height: 1.2;
+}
+
+.campaign-flyer-badge.is-default {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
+    border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.campaign-flyer-badge.is-custom {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.campaign-flyer-picker-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.campaign-flyer-picker-bar .btn {
+    min-height: 32px;
+    padding: 4px 12px;
+    font-size: 0.82rem;
+}
+
+.campaign-flyer-picker-hint {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+.campaign-benefit details summary { cursor: pointer; font-size: .85rem; padding: 6px 0; }
+.campaign-benefit details label { margin-top: 12px; }
+.campaign-preview { overflow: hidden; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface, var(--color-bg)); min-width: 0; width: 100%; max-width: 380px; position: sticky; top: 0; justify-self: end; }
+.campaign-preview-label { display: block; padding: 12px 16px; color: var(--color-text-secondary); font-size: .75rem; border-bottom: 1px solid var(--color-border); }
+.campaign-preview img { width: 100%; height: auto; display: block; object-fit: contain; }
+.campaign-image-placeholder { min-height: 130px; display: grid; gap: 8px; align-content: center; justify-items: center; background: var(--color-bg-alt); color: var(--color-text-secondary); }
+.campaign-preview-copy { padding: 20px; display: grid; gap: 14px; overflow-wrap: anywhere; }
+.campaign-preview-copy strong { font-size: 1.1rem; }
+.campaign-preview-copy p { margin: 0; line-height: 1.6; white-space: pre-wrap; font-size: .9rem; }
+.campaign-preview-benefit { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; background: var(--color-primary-light); color: var(--color-primary); }
+.campaign-preview-benefit small { display: block; padding-top: 4px; }
+.campaign-preview-action { font-weight: 600; color: var(--color-primary); font-size: .85rem; }
+.campaign-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--color-border); padding-top: 16px; }
+.campaign-actions button { min-height: 44px; }
+
+/* Tarjetas y jerarquía para Paso 2 (Destinatarios) y Paso 3 (Revisión) */
+.campaign-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.campaign-audience-card {
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-bg-alt, #f8fafc);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.campaign-audience-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.campaign-metric-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--color-surface, #ffffff);
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border-light, #e2e8f0);
+}
+
+.campaign-metric-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.campaign-metric-icon.is-primary {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
+}
+
+.campaign-metric-icon.is-success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+}
+
+.campaign-metric-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.campaign-metric-val {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--color-text);
+    line-height: 1.2;
+}
+
+.campaign-metric-lbl {
+    font-size: 0.76rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.campaign-audience-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.campaign-clinics-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.campaign-clinic-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 8px;
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.campaign-clinic-tag:hover {
+    border-color: var(--color-error, #ef4444);
+    color: var(--color-error, #ef4444);
+    background: var(--color-error-bg, rgba(239, 68, 68, 0.08));
+}
+
+.campaign-channels-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 480px) {
+    .campaign-channels-group {
+        grid-template-columns: 1fr;
+    }
+}
+
+.campaign-channel-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface, #ffffff);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.campaign-channel-card:hover {
+    border-color: var(--color-primary);
+}
+
+.campaign-channel-card.is-active {
+    border-color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.04);
+}
+
+.campaign-channel-check {
+    margin-top: 3px;
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.campaign-channel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.campaign-channel-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.campaign-channel-desc {
+    font-size: 0.76rem;
+    color: var(--color-text-secondary);
+    line-height: 1.35;
+}
+
+/* Tarjeta y lista de Revisión Final (Paso 3) */
+.campaign-review-grid {
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-surface, #ffffff);
+    padding: 4px 16px;
+    display: grid;
+}
+
+.campaign-review-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--color-border-light, #f1f5f9);
+    gap: 16px;
+}
+
+.campaign-review-row:last-child {
+    border-bottom: none;
+}
+
+.campaign-review-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    min-width: 100px;
+}
+
+.campaign-review-value {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--color-text);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.campaign-test-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px dashed var(--color-border);
+    background: var(--color-bg-alt, #f8fafc);
+    gap: 14px;
+}
+
+.campaign-test-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.campaign-test-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.campaign-test-desc {
+    font-size: 0.76rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.campaign-auth-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(14, 165, 233, 0.05);
+    border: 1px solid rgba(14, 165, 233, 0.25);
+    cursor: pointer;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.campaign-auth-card input {
+    accent-color: var(--color-primary);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.campaign-status h3, .campaign-status p, .campaign-status ul { margin: 0; line-height: 1.6; font-size: .88rem; }
+@media (max-width: 700px) {
+    .campaign-workspace { grid-template-columns: 1fr; }
+    .campaign-preview { width: min(100%, 380px); justify-self: center; }
+    .campaign-steps { gap: 6px; }
+    .campaign-steps li { font-size: .75rem; gap: 5px; }
+    .campaign-steps li span { width: 24px; height: 24px; }
+    .campaign-actions .btn-primary { flex: 1 1 100%; }
+    .campaign-pair { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) {
+    .campaign-composer-modal > .modal-header, .campaign-composer-modal > .modal-body { padding: var(--space-4); }
+    .campaign-composer-modal > .modal-footer { padding: var(--space-3) var(--space-4); }
+    .campaign-composer-modal .campaign-actions { gap: 8px; }
+}
+
+/* =========================================================================
+   LIGHTBOX PROMOCIONAL DE ALTA CONVERSIÓN (CAMPAÑAS DE MARKETING)
+   ========================================================================= */
+.campaign-promo-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    overflow-y: auto;
+    animation: campaignFadeIn 0.22s ease-out;
+}
+
+.campaign-promo-card {
+    position: relative;
+    width: 100%;
+    max-width: 470px;
+    background: var(--color-surface, #ffffff);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    animation: campaignSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    color: var(--color-text, #0f172a);
+    display: flex;
+    flex-direction: column;
+}
+
+[data-theme="dark"] .campaign-promo-card {
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.campaign-promo-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 20;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.campaign-promo-close-btn:hover {
+    background: rgba(15, 23, 42, 0.9);
+    transform: scale(1.08);
+}
+
+.campaign-promo-test-pill {
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-bottom: 1px solid #fde68a;
+    letter-spacing: 0.02em;
+}
+
+[data-theme="dark"] .campaign-promo-test-pill {
+    background: #78350f;
+    color: #fde68a;
+    border-bottom: 1px solid #92400e;
+}
+
+.campaign-countdown-banner {
+    background: linear-gradient(135deg, #090d16 0%, #172136 100%);
+    color: #ffffff;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.campaign-countdown-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #94a3b8;
+}
+
+.campaign-countdown-digits {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.countdown-box {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 3px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 34px;
+}
+
+.countdown-num {
+    font-size: 0.95rem;
+    font-weight: 800;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    line-height: 1;
+    color: #38bdf8;
+}
+
+.countdown-lbl {
+    font-size: 0.52rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.countdown-colon {
+    font-weight: 800;
+    color: #64748b;
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+.campaign-promo-hero-wrap {
+    width: 100%;
+    max-height: 290px;
+    overflow: hidden;
+    background: #0b1120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.campaign-promo-hero-img {
+    width: 100%;
+    height: auto;
+    max-height: 290px;
+    object-fit: cover;
+    display: block;
+}
+
+.campaign-promo-body {
+    padding: 22px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+}
+
+.campaign-promo-highlight-badge {
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+    color: #1d4ed8;
+    padding: 4px 14px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+[data-theme="dark"] .campaign-promo-highlight-badge {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    color: #93c5fd;
+    border-color: rgba(147, 197, 253, 0.3);
+}
+
+.campaign-promo-title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--color-text, #0f172a);
+}
+
+.campaign-promo-message {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--color-text-secondary, #64748b);
+    white-space: pre-wrap;
+}
+
+.campaign-promo-coupon-container {
+    width: 100%;
+    background: var(--color-bg-alt, #f8fafc);
+    border: 2px dashed var(--color-border, #cbd5e1);
+    border-radius: 12px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+[data-theme="dark"] .campaign-promo-coupon-container {
+    background: #1e293b;
+    border-color: #475569;
+}
+
+.campaign-promo-coupon-code {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.coupon-tag {
+    font-size: 0.65rem;
+    font-weight: 800;
+    background: var(--color-primary-light, #e0f2fe);
+    color: var(--color-primary, #0284c7);
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+
+[data-theme="dark"] .coupon-tag {
+    background: rgba(2, 132, 199, 0.25);
+    color: #38bdf8;
+}
+
+.coupon-code-text {
+    font-size: 1.05rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--color-text, #0f172a);
+}
+
+.campaign-promo-coupon-copy-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: var(--color-primary, #0284c7);
+    color: #ffffff;
+    border: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+    min-height: 32px;
+}
+
+.campaign-promo-coupon-copy-btn:hover {
+    background: #0369a1;
+}
+
+.campaign-promo-coupon-copy-btn.is-copied {
+    background: #16a34a;
+}
+
+.campaign-promo-conditions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    font-size: 0.76rem;
+    color: var(--color-text-secondary, #64748b);
+    margin-top: 2px;
+}
+
+.campaign-promo-conditions span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.campaign-promo-conditions i {
+    font-size: 0.74rem;
+    color: var(--color-primary, #0284c7);
+}
+
+.campaign-promo-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.campaign-promo-cta-btn {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+    color: #ffffff;
+    box-shadow: 0 10px 22px -5px rgba(2, 132, 199, 0.45);
+    border: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.campaign-promo-cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 26px -5px rgba(2, 132, 199, 0.6);
+}
+
+.campaign-promo-cta-btn:active {
+    transform: translateY(0);
+}
+
+.campaign-promo-cta-btn i {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.campaign-promo-dismiss-btn {
+    background: transparent;
+    border: 0;
+    color: var(--color-text-secondary, #64748b);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px;
+    transition: color 0.15s ease;
+}
+
+.campaign-promo-dismiss-btn:hover {
+    color: var(--color-text, #0f172a);
+    text-decoration: underline;
+}
+
+@keyframes campaignFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes campaignSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(22px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (max-width: 480px) {
+    .campaign-promo-card {
+        border-radius: 20px;
+        max-width: 100%;
+    }
+    .campaign-countdown-banner {
+        justify-content: center;
+        padding: 8px 12px;
+    }
+    .campaign-promo-body {
+        padding: 16px 18px 20px;
+    }
+    .campaign-promo-title {
+        font-size: 1.2rem;
+    }
+}
+
+/* =========================================================================
+   POP-UP TEMPLATE FLYER (AFINIX DENTAL LAB - OFERTA CON IMAGEN BASE)
+   ========================================================================= */
+.campaign-flyer-card {
+    container-type: inline-size;
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    aspect-ratio: 819 / 1024;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 25px 70px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    animation: campaignSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    background-color: #ffffff;
+    user-select: none;
+}
+
+[data-theme="dark"] .campaign-flyer-card {
+    box-shadow: 0 25px 70px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.campaign-flyer-bg-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    display: block;
+    pointer-events: none;
+}
+
+.campaign-flyer-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    z-index: 30;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 0;
+    color: #1e293b;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    font-size: 1.25rem;
+    line-height: 1;
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.campaign-flyer-close-btn:hover {
+    color: #0066ff;
+    transform: scale(1.15);
+}
+
+.campaign-flyer-test-pill {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    z-index: 30;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 2cqw;
+    font-weight: 700;
+    padding: 0.8cqw 2cqw;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    gap: 1cqw;
+    border: 1px solid #fde68a;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.campaign-flyer-interactive-zone {
+    position: absolute;
+    top: 61.2%;
+    left: 6.8%;
+    width: 53.8%;
+    bottom: 18.0%;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 1.2cqw;
+}
+
+.campaign-flyer-countdown {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.2cqw;
+    width: 100%;
+}
+
+.campaign-flyer-countdown-box {
+    background: #ffffff;
+    border: 1px solid rgba(2, 132, 199, 0.18);
+    border-radius: 2.6cqw;
+    padding: 1.8cqw 0.4cqw 1.5cqw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1cqw 2.4cqw rgba(0, 60, 180, 0.08);
+    min-width: 0;
+}
+
+.campaign-flyer-countdown-num {
+    font-size: 4.8cqw;
+    font-weight: 800;
+    font-family: var(--font-brand, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: #0b192c;
+    text-align: center;
+}
+
+.campaign-flyer-countdown-lbl {
+    font-size: 1.6cqw;
+    text-transform: uppercase;
+    font-weight: 800;
+    font-family: var(--font-brand, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    letter-spacing: 0.04em;
+    color: #1e293b;
+    margin-top: 0.5cqw;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.campaign-flyer-cta-btn {
+    width: 100%;
+    height: 8.2cqw;
+    border-radius: 9999px;
+    background: #0066ff;
+    color: #ffffff;
+    font-size: 2.55cqw;
+    font-weight: 800;
+    font-family: var(--font-brand, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border: 0;
+    cursor: pointer;
+    box-shadow: 0 1.2cqw 2.8cqw rgba(0, 102, 255, 0.38);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.2cqw;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    padding: 0 1.5cqw;
+}
+
+.campaign-flyer-cta-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 1.8cqw 3.6cqw rgba(0, 102, 255, 0.5);
+    filter: brightness(1.06);
+}
+
+.campaign-flyer-cta-btn:active {
+    transform: translateY(0);
+}
+
+.campaign-flyer-cta-btn i {
+    font-size: 2.8cqw;
+    line-height: 1;
+}
+
+.campaign-flyer-dismiss-link {
+    background: transparent;
+    border: 0;
+    color: #718096;
+    font-size: 2.2cqw;
+    font-weight: 500;
+    font-family: var(--font-brand, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    text-align: center;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.15s ease;
+}
+
+.campaign-flyer-dismiss-link:hover {
+    color: #1a202c;
+}
+
+/* =========================================================================
+   PERSONALIZADOR DE RULETA (INTERACTY STYLE) - RESPONSIVE LAYOUT
+   ========================================================================= */
+.ruleta-interacty-customizer {
+    display: grid;
+    grid-template-columns: minmax(320px, 1.25fr) minmax(280px, 0.95fr);
+    gap: 1.5rem;
+    align-items: start;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+    .ruleta-interacty-customizer {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+

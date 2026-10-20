@@ -3,7 +3,7 @@ import { authenticateToken, forbidRole, requireRole } from '../middleware/auth.j
 
 const router = Router();
 router.use(authenticateToken);
-router.use(forbidRole('visitador'));
+router.use(forbidRole('cliente', 'visitador'));
 
 const toNullableString = (value) => {
     if (value === undefined || value === null) return null;

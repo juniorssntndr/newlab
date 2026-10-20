@@ -49,7 +49,10 @@ export const makeFinancePgRepository = ({ pool }) => ({
         const params = [];
         let where = 'WHERE 1=1';
 
-        if (user?.tipo === 'cliente' && user?.clinica_id) {
+        if (user?.tipo === 'cliente') {
+            if (!user.clinica_id) {
+                return [];
+            }
             params.push(user.clinica_id);
             where += ` AND p.clinica_id = $${params.length}`;
         }
@@ -723,7 +726,23 @@ export const makeFinancePgRepository = ({ pool }) => ({
                 saldo: parseFloat(row.saldo || 0)
             }));
 
-            let remainingMonto = monto_total;
+            const totalDeuda = pendingOrders.reduce((acc, row) => acc + row.saldo, 0);
+            const totalDeudaRounded = Math.round(totalDeuda * 100) / 100;
+            const montoTotalRounded = Math.round(parseFloat(monto_total || 0) * 100) / 100;
+
+            if (montoTotalRounded <= 0) {
+                await client.query('ROLLBACK');
+                return { validationError: 'El monto total a pagar debe ser mayor a 0.' };
+            }
+
+            if (montoTotalRounded > totalDeudaRounded) {
+                await client.query('ROLLBACK');
+                return {
+                    validationError: `El monto ingresado (S/. ${montoTotalRounded.toFixed(2)}) supera la deuda pendiente total de la clínica (S/. ${totalDeudaRounded.toFixed(2)}). En AFINIX Dental Lab no se contemplan sobrepagos ni saldos a favor.`
+                };
+            }
+
+            let remainingMonto = montoTotalRounded;
             const pagosRegistrados = [];
 
             let sesionCajaId = null;
@@ -738,13 +757,16 @@ export const makeFinancePgRepository = ({ pool }) => ({
                 if (remainingMonto <= 0) break;
 
                 const montoAbonarOrder = Math.min(order.saldo, remainingMonto);
+                const montoAbonarRounded = Math.round(montoAbonarOrder * 100) / 100;
+                if (montoAbonarRounded <= 0) continue;
+
                 const pagoResult = await client.query(
                     `INSERT INTO nl_pagos (pedido_id, monto, metodo, tipo_fondo, cuenta_id, referencia, fecha_pago, notas, creado_por, sesion_caja_id)
                      VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_DATE), $8, $9, $10)
                      RETURNING *`,
                     [
                         order.id,
-                        montoAbonarOrder,
+                        montoAbonarRounded,
                         metodoPago,
                         tipoFondo,
                         cuentaResolution.cuentaId,
@@ -758,11 +780,11 @@ export const makeFinancePgRepository = ({ pool }) => ({
 
                 pagosRegistrados.push({
                     pedido_codigo: order.codigo,
-                    monto_abonado: montoAbonarOrder,
+                    monto_abonado: montoAbonarRounded,
                     pago: pagoResult.rows[0]
                 });
 
-                remainingMonto -= montoAbonarOrder;
+                remainingMonto = Math.max(0, Math.round((remainingMonto - montoAbonarRounded) * 100) / 100);
             }
 
             await client.query('COMMIT');
@@ -1245,6 +1267,17 @@ export const makeFinancePgRepository = ({ pool }) => ({
         }
     },
     reopenCashSession: async ({ sesionId, motivo, actorUserId }) => {
+        const activeCheck = await pool.query(
+            "SELECT id FROM nl_fin_sesiones_caja WHERE estado = 'abierta' LIMIT 1"
+        );
+        if (activeCheck.rows.length > 0) {
+            return {
+                ok: false,
+                status: 400,
+                error: `Ya existe una sesión de caja abierta (#${activeCheck.rows[0].id}). Debe cerrarse antes de reabrir otra.`
+            };
+        }
+
         const result = await pool.query(
             `UPDATE nl_fin_sesiones_caja
              SET estado = 'abierta',
@@ -1411,6 +1444,17 @@ export const makeFinancePgRepository = ({ pool }) => ({
 
             const fechaMov = fecha_pago || getLimaDateString(new Date());
             const totalNum = parseFloat(totalCobrado || 0);
+            const totalNumRounded = Math.round(totalNum * 100) / 100;
+
+            const sumOrderMontos = orderPayments.reduce((acc, it) => acc + parseFloat(it.monto || it.monto_abonado || 0), 0);
+            const sumRounded = Math.round(sumOrderMontos * 100) / 100;
+
+            if (Math.abs(sumRounded - totalNumRounded) > 0.01) {
+                await client.query('ROLLBACK');
+                return {
+                    validationError: `El total a cobrar (S/. ${totalNumRounded.toFixed(2)}) no coincide con la suma de los abonos asignados a los pedidos (S/. ${sumRounded.toFixed(2)}).`
+                };
+            }
 
             const compObj = comprobante || {};
             const compTipo = compObj.tipo_comprobante || (compObj.tipo === 'factura' ? '01' : (compObj.tipo === 'boleta' ? '03' : consolidatedInput.sustento_comprobante_tipo || '00'));
@@ -1461,7 +1505,7 @@ export const makeFinancePgRepository = ({ pool }) => ({
             const movimiento = movResult.rows[0];
 
             if (sustentoCompTipo === '00' && (!sustentoNumero || sustentoNumero.includes('000000'))) {
-                const nvNumero = `NV-${String(movimiento.id).padStart(6, '0')}`;
+                const nvNumero = `NV01-${String(movimiento.id).padStart(8, '0')}`;
                 await client.query(
                     `UPDATE nl_fin_movimientos SET sustento_numero = $1 WHERE id = $2`,
                     [nvNumero, movimiento.id]
@@ -1483,6 +1527,19 @@ export const makeFinancePgRepository = ({ pool }) => ({
 
                 const pedido = pedidoResult.rows[0];
                 let totalPedido = parseFloat(pedido.total || 0);
+
+                // Validar que el pago no supere el saldo pendiente
+                const pagosPreviosResult = await client.query('SELECT COALESCE(SUM(monto), 0) as pagado FROM nl_pagos WHERE pedido_id = $1', [orderId]);
+                const pagadoPrevio = parseFloat(pagosPreviosResult.rows[0]?.pagado || 0);
+                const totalPedidoConDescuento = descuentoNum > 0 ? Math.max(0, Math.round((totalPedido - descuentoNum) * 100) / 100) : totalPedido;
+                const saldoActual = Math.max(0, Math.round((totalPedidoConDescuento - pagadoPrevio) * 100) / 100);
+
+                if (montoNum > saldoActual + 0.01) {
+                    await client.query('ROLLBACK');
+                    return {
+                        validationError: `El monto a cobrar (S/. ${montoNum.toFixed(2)}) para el pedido ${pedido.codigo} supera su saldo pendiente (S/. ${saldoActual.toFixed(2)}). En AFINIX Dental Lab no se permiten sobrepagos.`
+                    };
+                }
 
                 if (descuentoNum > 0) {
                     const nuevoTotal = Math.max(0, Math.round((totalPedido - descuentoNum) * 100) / 100);
@@ -1573,6 +1630,7 @@ export const makeFinancePgRepository = ({ pool }) => ({
             LEFT JOIN (
                 SELECT cuenta_id, SUM(monto) as total_pagos 
                 FROM nl_pagos 
+                WHERE movimiento_id IS NULL
                 GROUP BY cuenta_id
             ) p ON p.cuenta_id = c.id
             LEFT JOIN (

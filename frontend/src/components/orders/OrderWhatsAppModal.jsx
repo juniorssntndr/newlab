@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '../Modal.jsx';
+import CustomSelect from '../CustomSelect.jsx';
+
+const WA_PLANTILLA_OPTIONS = [
+    { value: 'aprobacion', label: 'Diseño 3D listo para aprobación' },
+    { value: 'terminado', label: 'Trabajo terminado' },
+    { value: 'produccion', label: 'Caso en producción' }
+];
 
 /**
  * Normaliza número de teléfono para Perú (E.164 sin símbolos ni espacios).
@@ -169,17 +176,12 @@ export const OrderWhatsAppModal = ({
                         <i className="bi bi-chat-left-dots" style={{ marginRight: '0.35rem', color: 'var(--color-primary)' }} />
                         Tipo de notificación
                     </label>
-                    <select
-                        id="wa-modal-plantilla"
-                        className="form-select"
+                    <CustomSelect
+                        options={WA_PLANTILLA_OPTIONS}
                         value={tipoPlantilla}
-                        onChange={(e) => setTipoPlantilla(e.target.value)}
-                        style={{ height: '42px', minHeight: '42px', fontWeight: 600 }}
-                    >
-                        <option value="aprobacion">Diseño 3D listo para aprobación</option>
-                        <option value="terminado">Trabajo terminado</option>
-                        <option value="produccion">Caso en producción</option>
-                    </select>
+                        onChange={(val) => setTipoPlantilla(val)}
+                        placeholder="Tipo de notificación"
+                    />
                 </div>
 
                 {/* Número de teléfono con prefijo Perú */}

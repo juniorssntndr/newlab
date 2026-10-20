@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useCrmMutations } from '../queries/useCrmQueries.js';
+import CustomSelect from '../../../components/CustomSelect.jsx';
 import toast from 'react-hot-toast';
 
 const calculateCadenceDays = (salud, tieneReclamo) => {
@@ -134,21 +135,20 @@ export const VisitModal = ({ visit, establishment, onClose, onSaved }) => {
                         <div className="crm-form-row-2col">
                             <div className="crm-form-group" style={{ margin: 0 }}>
                                 <label className="crm-form-label">Estado de la Visita</label>
-                                <div className="form-input-box has-lead">
-                                    <i className="bi bi-flag input-icon-lead"></i>
-                                    <select
-                                        className="crm-form-control"
-                                        value={form.estado}
-                                        onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                                    >
-                                        <option value="programada">Programada</option>
-                                        <option value="en_curso">En curso</option>
-                                        <option value="completada">Completada</option>
-                                        <option value="sin_contacto">Sin contacto</option>
-                                        <option value="reprogramada">Reprogramada</option>
-                                        <option value="cancelada">Cancelada</option>
-                                    </select>
-                                </div>
+                                <CustomSelect
+                                    value={form.estado}
+                                    onChange={(val) => setForm({ ...form, estado: val })}
+                                    options={[
+                                        { value: 'programada', label: 'Programada' },
+                                        { value: 'en_curso', label: 'En curso' },
+                                        { value: 'completada', label: 'Completada' },
+                                        { value: 'sin_contacto', label: 'Sin contacto' },
+                                        { value: 'reprogramada', label: 'Reprogramada' },
+                                        { value: 'cancelada', label: 'Cancelada' },
+                                    ]}
+                                    placeholder="Seleccione estado"
+                                    portal={true}
+                                />
                             </div>
 
                             <div className="crm-form-group" style={{ margin: 0 }}>

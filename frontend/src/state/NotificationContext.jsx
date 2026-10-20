@@ -1,3 +1,4 @@
+import { shouldShowNotificationToast } from './notificationCampaign.js';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext.jsx';
@@ -45,6 +46,7 @@ export const NotificationProvider = ({ children }) => {
     const knownIdsRef = useRef(new Set());
     const hasLoadedRef = useRef(false);
     const audioUnlockedRef = useRef(false);
+    const pendingToneOnInteractionRef = useRef(false);
     const lastToneAtRef = useRef(0);
     const toastTimeoutsRef = useRef([]);
 
@@ -106,6 +108,9 @@ export const NotificationProvider = ({ children }) => {
             const playPromise = audio.play();
             if (playPromise !== undefined) {
                 playPromise.catch((err) => {
+                    if (err?.name === "NotAllowedError") {
+                        pendingToneOnInteractionRef.current = true;
+                    }
                     console.warn('[NotificationSound] MP3 play fallback to WAV:', err);
                     try {
                         const audioWav = new Audio('/sounds/afinix-notification.wav?v=3');
@@ -126,7 +131,7 @@ export const NotificationProvider = ({ children }) => {
     }, [playNotificationTone]);
 
     const pushToasts = useCallback((incoming) => {
-        const fresh = incoming.slice(0, 3).map((item, idx) => ({
+        const fresh = incoming.filter(item => shouldShowNotificationToast(item)).slice(0, 3).map((item, idx) => ({
             id: `${item.id}-${Date.now()}-${idx}`,
             notificationId: item.id,
             title: item.titulo,
@@ -230,6 +235,10 @@ export const NotificationProvider = ({ children }) => {
     useEffect(() => {
         const unlockAudio = () => {
             audioUnlockedRef.current = true;
+            if (pendingToneOnInteractionRef.current) {
+                pendingToneOnInteractionRef.current = false;
+                playNotificationTone();
+            }
         };
 
         window.addEventListener('pointerdown', unlockAudio, { passive: true });
@@ -260,13 +269,22 @@ export const NotificationProvider = ({ children }) => {
         if (!user || !notificationsQuery.isSuccess) return;
 
         if (hasLoadedRef.current) {
-            const newUnread = notifications.filter((item) => !item.leida && !knownIdsRef.current.has(item.id));
+            const newUnread = notifications.filter((item) => !item.leida && !knownIdsRef.current.has(item.id) && shouldShowNotificationToast(item));
             if (newUnread.length > 0) {
                 pushToasts(newUnread);
                 playNotificationTone();
             }
         } else {
             hasLoadedRef.current = true;
+            const freshRecentUnread = notifications.filter((item) => {
+                if (item.leida || !shouldShowNotificationToast(item)) return false;
+                const ageMs = Date.now() - new Date(item.created_at).getTime();
+                return !Number.isNaN(ageMs) && ageMs < 30 * 60 * 1000;
+            });
+            if (freshRecentUnread.length > 0) {
+                pushToasts(freshRecentUnread.slice(0, 3));
+                playNotificationTone();
+            }
         }
 
         knownIdsRef.current = new Set(notifications.map((item) => item.id));

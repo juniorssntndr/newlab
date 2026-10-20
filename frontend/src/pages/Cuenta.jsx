@@ -97,11 +97,15 @@ const Cuenta = () => {
 
     const savePassword = async () => {
         if (!passwordForm.actual || !passwordForm.nueva) {
-            setMessage({ type: 'error', text: 'Completa los campos de contrasena' });
+            setMessage({ type: 'error', text: 'Completa los campos de contraseña' });
+            return;
+        }
+        if (passwordForm.nueva.trim().length < 6) {
+            setMessage({ type: 'error', text: 'La nueva contraseña debe tener al menos 6 caracteres' });
             return;
         }
         if (passwordForm.nueva !== passwordForm.confirmar) {
-            setMessage({ type: 'error', text: 'La nueva contrasena no coincide' });
+            setMessage({ type: 'error', text: 'La nueva contraseña no coincide con la confirmación' });
             return;
         }
         setSavingPassword(true);
@@ -116,8 +120,8 @@ const Cuenta = () => {
                 })
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error al actualizar contrasena');
-            setMessage({ type: 'success', text: 'Contrasena actualizada' });
+            if (!res.ok) throw new Error(data.error || 'Error al actualizar contraseña');
+            setMessage({ type: 'success', text: 'Contraseña actualizada correctamente' });
             setPasswordForm({ actual: '', nueva: '', confirmar: '' });
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -146,26 +150,57 @@ const Cuenta = () => {
 
             <div className="cuenta-grid">
                 <div className="card">
-                    <div className="card-header"><h3 className="card-title">Perfil</h3></div>
+                    <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 className="card-title">Perfil</h3>
+                        {user?.tipo && (
+                            <span
+                                className={`badge-role badge-role-${user.tipo}`}
+                                style={{
+                                    fontSize: '0.75rem',
+                                    padding: '0.25rem 0.6rem',
+                                    borderRadius: '6px',
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}
+                            >
+                                <i className={
+                                    user.tipo === 'admin' ? 'bi bi-shield-shaded' :
+                                    user.tipo === 'socio' ? 'bi bi-briefcase-fill' :
+                                    user.tipo === 'tecnico' ? 'bi bi-gear-fill' :
+                                    user.tipo === 'operador' ? 'bi bi-wallet2' :
+                                    user.tipo === 'visitador' ? 'bi bi-geo-alt-fill' : 'bi bi-building-check'
+                                }></i>
+                                {
+                                    user.tipo === 'admin' ? 'Administrador' :
+                                    user.tipo === 'socio' ? 'Socio / Gerencia' :
+                                    user.tipo === 'tecnico' ? 'Protesista / Técnico' :
+                                    user.tipo === 'operador' ? 'Recepcionista / Caja' :
+                                    user.tipo === 'visitador' ? 'Visitador Comercial' : 'Cliente (Portal)'
+                                }
+                            </span>
+                        )}
+                    </div>
                     <div className="form-group">
-                        <label className="form-label">Nombre</label>
-                        <input className="form-input" value={form.nombre}
+                        <label className="form-label" htmlFor="cuenta-nombre">Nombre</label>
+                        <input id="cuenta-nombre" className="form-input" value={form.nombre}
                             onChange={e => setForm({ ...form, nombre: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Email</label>
-                        <input className="form-input" type="email" value={form.email}
+                        <label className="form-label" htmlFor="cuenta-email">Email</label>
+                        <input id="cuenta-email" className="form-input" type="email" value={form.email}
                             onChange={e => setForm({ ...form, email: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Telefono</label>
-                        <input className="form-input" value={form.telefono}
+                        <label className="form-label" htmlFor="cuenta-telefono">Teléfono</label>
+                        <input id="cuenta-telefono" className="form-input" value={form.telefono}
                             onChange={e => setForm({ ...form, telefono: e.target.value })} />
                     </div>
                     {showClinicName && (
                         <div className="form-group">
-                            <label className="form-label">Clinica</label>
-                            <input className="form-input" value={user?.clinica_nombre || ''} disabled />
+                            <label className="form-label" htmlFor="cuenta-clinica">Clínica</label>
+                            <input id="cuenta-clinica" className="form-input" value={user?.clinica_nombre || ''} disabled />
                         </div>
                     )}
                     {canEditClinicAddress && (
@@ -194,22 +229,22 @@ const Cuenta = () => {
                 <div className="card">
                     <div className="card-header"><h3 className="card-title">Seguridad</h3></div>
                     <div className="form-group">
-                        <label className="form-label">Contrasena actual</label>
-                        <input className="form-input" type="password" value={passwordForm.actual}
+                        <label className="form-label" htmlFor="cuenta-pwd-actual">Contraseña actual</label>
+                        <input id="cuenta-pwd-actual" className="form-input" type="password" autoComplete="current-password" value={passwordForm.actual}
                             onChange={e => setPasswordForm({ ...passwordForm, actual: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Nueva contrasena</label>
-                        <input className="form-input" type="password" value={passwordForm.nueva}
+                        <label className="form-label" htmlFor="cuenta-pwd-nueva">Nueva contraseña (mínimo 6 caracteres)</label>
+                        <input id="cuenta-pwd-nueva" className="form-input" type="password" autoComplete="new-password" value={passwordForm.nueva}
                             onChange={e => setPasswordForm({ ...passwordForm, nueva: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Confirmar nueva contrasena</label>
-                        <input className="form-input" type="password" value={passwordForm.confirmar}
+                        <label className="form-label" htmlFor="cuenta-pwd-confirmar">Confirmar nueva contraseña</label>
+                        <input id="cuenta-pwd-confirmar" className="form-input" type="password" autoComplete="new-password" value={passwordForm.confirmar}
                             onChange={e => setPasswordForm({ ...passwordForm, confirmar: e.target.value })} />
                     </div>
                     <button className="btn btn-accent" onClick={savePassword} disabled={savingPassword}>
-                        {savingPassword ? 'Actualizando...' : 'Actualizar contrasena'}
+                        {savingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
                     </button>
                 </div>
 

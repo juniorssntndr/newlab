@@ -1,12 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'url';
 import { getSupabaseStorageConfig, getViewerConfig } from '../config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.resolve(__dirname, '../../uploads');
+
+// Marketing uploads never incorporate a caller-controlled filename or directory.
+export const uploadMarketingImage = async (file) => {
+    const extension = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[file.mimetype];
+    if (!extension) throw new Error('Unsupported marketing image');
+    const name = `${crypto.randomUUID()}.${extension}`;
+    const client = getSupabaseClient();
+    if (client) {
+        const { bucket } = getSupabaseStorageConfig();
+        const key = `marketing/${name}`;
+        const { error } = await client.storage.from(bucket).upload(key, file.buffer, { contentType: file.mimetype, upsert: false });
+        if (error) throw new Error('No se pudo guardar la imagen de campaña.');
+        return client.storage.from(bucket).getPublicUrl(key).data.publicUrl;
+    }
+    const folder = path.join(uploadsDir, 'marketing');
+    await fs.mkdir(folder, { recursive: true });
+    await fs.writeFile(path.join(folder, name), file.buffer, { flag: 'wx' });
+    return `/uploads/marketing/${name}`;
+};
 
 const buildFileName = (originalName = 'file', prefix = 'file') => {
     const ext = path.extname(originalName).toLowerCase() || '.bin';
@@ -99,6 +119,46 @@ export const readOrderApprovalHtml = async (key) => {
     try { return await fs.readFile(target); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 };
 
+export const checkOrderApprovalFileExists = async (key, orderId) => {
+    if (!key) return false;
+    const strKey = String(key).trim();
+    if (/^https?:\/\//i.test(strKey) && !strKey.startsWith('http://localhost') && !strKey.startsWith('http://127.0.0.1')) {
+        return true;
+    }
+    const relative = safePrivateRelativePath(strKey);
+    if (relative) {
+        const root = getViewerConfig().storageDir || path.resolve(__dirname, '../../private-viewers');
+        const target = path.resolve(root, relative);
+        try {
+            await fs.access(target);
+            return true;
+        } catch {
+            if (process.env.NODE_ENV !== 'production' && orderId) {
+                const safeOrderId = String(orderId).replace(/[^a-zA-Z0-9_-]/g, '-');
+                const privateRoot = path.join(root, 'orders', safeOrderId);
+                try {
+                    const files = await fs.readdir(privateRoot);
+                    if (files.some(f => /\.html?$/i.test(f))) return true;
+                } catch {}
+            }
+            return false;
+        }
+    }
+    if (strKey.startsWith('legacy-viewer://') || /^\/uploads\/pedidos\/[A-Za-z0-9_-]+\/aprobaciones\//i.test(strKey)) {
+        const cleanPath = strKey.startsWith('legacy-viewer://')
+            ? strKey.slice('legacy-viewer://'.length)
+            : strKey.slice('/uploads/'.length);
+        const legacyTarget = path.resolve(uploadsDir, cleanPath);
+        try {
+            await fs.access(legacyTarget);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+    return false;
+};
+
 export const removeExpiredOrderApprovalHtml = async (now = Date.now()) => {
     const root = getViewerConfig().storageDir || path.resolve(__dirname, '../../private-viewers');
     const cutoff = now - getViewerConfig().retentionDays * 86400000;
@@ -113,3 +173,4 @@ export const removeExpiredOrderApprovalHtml = async (now = Date.now()) => {
     };
     await walk(root); return removed;
 };
+

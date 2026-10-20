@@ -376,40 +376,82 @@ export function HeroCarousel({ reduceMotion }) {
                                                     <span className="afinix-kicker-desktop">{slide.kicker}</span>
                                                     <span className="afinix-kicker-mobile">{slide.kickerMobile || slide.kicker}</span>
                                                 </motion.span>
-                                                {index === 0 ? (
-                                                    <motion.h1 className="afinix-hero-title" {...heroLineMotion(reduceMotion, isSlideVisible, 0.46)}>
-                                                        {slide.titleBefore}
-                                                        <span className="afinix-hero-accent">{slide.titleHighlight}</span>
-                                                        {slide.titleAfter}
-                                                    </motion.h1>
-                                                ) : (
-                                                    <motion.h2 className="afinix-hero-title" {...heroLineMotion(reduceMotion, isSlideVisible, 0.46)}>
-                                                        {slide.titleBefore}
-                                                        <span className="afinix-hero-accent">{slide.titleHighlight}</span>
-                                                        {slide.titleAfter}
-                                                    </motion.h2>
-                                                )}
+                                                {(() => {
+                                                    const titleBefore = slide.titleBeforeMobile ? (
+                                                        <>
+                                                            <span className="afinix-title-desktop">{slide.titleBefore}</span>
+                                                            <span className="afinix-title-mobile">{slide.titleBeforeMobile}</span>
+                                                        </>
+                                                    ) : slide.titleBefore;
+
+                                                    const titleHighlight = slide.titleHighlightMobile ? (
+                                                        <>
+                                                            <span className="afinix-title-desktop">{slide.titleHighlight}</span>
+                                                            <span className="afinix-title-mobile">{slide.titleHighlightMobile}</span>
+                                                        </>
+                                                    ) : slide.titleHighlight;
+
+                                                    const titleAfter = slide.titleAfterMobile ? (
+                                                        <>
+                                                            <span className="afinix-title-desktop">{slide.titleAfter}</span>
+                                                            <span className="afinix-title-mobile">{slide.titleAfterMobile}</span>
+                                                        </>
+                                                    ) : slide.titleAfter;
+
+                                                    const titleContent = (
+                                                        <>
+                                                            {titleBefore}
+                                                            <span className="afinix-hero-accent">{titleHighlight}</span>
+                                                            {titleAfter}
+                                                        </>
+                                                    );
+
+                                                    return index === 0 ? (
+                                                        <motion.h1 className="afinix-hero-title" {...heroLineMotion(reduceMotion, isSlideVisible, 0.46)}>
+                                                            {titleContent}
+                                                        </motion.h1>
+                                                    ) : (
+                                                        <motion.h2 className="afinix-hero-title" {...heroLineMotion(reduceMotion, isSlideVisible, 0.46)}>
+                                                            {titleContent}
+                                                        </motion.h2>
+                                                    );
+                                                })()}
                                                 <motion.p className="afinix-hero-lead" {...heroLineMotion(reduceMotion, isSlideVisible, 0.64)}>
                                                     {slide.copyMobile || slide.copy}
                                                 </motion.p>
                                             </div>
                                             <div className="afinix-hero-actions">
                                                 <motion.div {...heroButtonMotion(reduceMotion, isSlideVisible, 0.84)}>
-                                                    <a
-                                                        className="afinix-hero-btn afinix-hero-btn--primary"
-                                                        href={whatsappHref()}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                    >
-                                                        {slide.ctaMain}
-                                                        <i className="bi bi-arrow-right" aria-hidden="true"></i>
-                                                    </a>
+                                                    {(() => {
+                                                        const mainHref = slide.ctaMainHref || whatsappHref();
+                                                        const isMainExternal = mainHref.startsWith('http');
+                                                        return (
+                                                            <a
+                                                                className="afinix-hero-btn afinix-hero-btn--primary"
+                                                                href={mainHref}
+                                                                {...(isMainExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                                                            >
+                                                                {slide.ctaMain}
+                                                                <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                                                            </a>
+                                                        );
+                                                    })()}
                                                 </motion.div>
                                                 <motion.div {...heroButtonMotion(reduceMotion, isSlideVisible, 0.98)}>
-                                                    <a className="afinix-hero-btn afinix-hero-btn--ghost" href="/#servicios">
-                                                        {slide.ctaSecondary}
-                                                        <i className="bi bi-arrow-right" aria-hidden="true"></i>
-                                                    </a>
+                                                    {(() => {
+                                                        const secHref = slide.ctaSecondaryHref || '/#servicios';
+                                                        const isSecExternal = secHref.startsWith('http');
+                                                        return (
+                                                            <a
+                                                                className="afinix-hero-btn afinix-hero-btn--ghost"
+                                                                href={secHref}
+                                                                {...(isSecExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                                                            >
+                                                                {slide.ctaSecondary}
+                                                                <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                                                            </a>
+                                                        );
+                                                    })()}
                                                 </motion.div>
                                             </div>
                                         </motion.div>

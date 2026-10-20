@@ -17,6 +17,32 @@ const readLegacy = async (key) => {
     try { return await fs.readFile(target); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 };
 
+const findLocalFallbackApprovalHtml = async (orderId) => {
+    const safeOrderId = String(orderId || '').replace(/[^a-zA-Z0-9_-]/g, '-');
+    if (!safeOrderId) return null;
+    // 1. Probar en private-viewers/orders/<safeOrderId>/
+    const privateRoot = path.resolve(directory, '../../private-viewers', 'orders', safeOrderId);
+    try {
+        const files = await fs.readdir(privateRoot);
+        const htmlFiles = files.filter(f => /\.html?$/i.test(f)).sort().reverse();
+        if (htmlFiles.length > 0) {
+            return await fs.readFile(path.join(privateRoot, htmlFiles[0]));
+        }
+    } catch {}
+
+    // 2. Probar en uploads/pedidos/<safeOrderId>/aprobaciones/
+    const uploadsOrderDir = path.resolve(legacyRoot, 'pedidos', safeOrderId, 'aprobaciones');
+    try {
+        const files = await fs.readdir(uploadsOrderDir);
+        const htmlFiles = files.filter(f => /\.html?$/i.test(f)).sort().reverse();
+        if (htmlFiles.length > 0) {
+            return await fs.readFile(path.join(uploadsOrderDir, htmlFiles[0]));
+        }
+    } catch {}
+
+    return null;
+};
+
 const viewerRoutes = Router();
 const loadViewer = async (req, res) => {
     try {
@@ -26,7 +52,10 @@ const loadViewer = async (req, res) => {
         if (process.env.NODE_ENV === 'production' && normalizedHost !== configuredHost && req.hostname !== configuredHost) return false;
         const claim = verifyViewerCapability(req.params.token);
         if (claim.typ !== 'order-viewer' || !claim.orderId || !claim.approvalId || !claim.objectKey) return res.status(403).send('Forbidden');
-        const bytes = String(claim.objectKey).startsWith('private-viewer://') ? await readOrderApprovalHtml(claim.objectKey) : await readLegacy(claim.objectKey);
+        let bytes = String(claim.objectKey).startsWith('private-viewer://') ? await readOrderApprovalHtml(claim.objectKey) : await readLegacy(claim.objectKey);
+        if (!bytes && process.env.NODE_ENV !== 'production') {
+            bytes = await findLocalFallbackApprovalHtml(claim.orderId);
+        }
         if (!bytes) return null;
         return { claim, bytes };
     } catch { return false; }
@@ -41,7 +70,15 @@ const viewerHeaders = (res, frameAncestors) => {
 viewerRoutes.get('/session/:token', async (req, res) => {
     const loaded = await loadViewer(req, res);
     if (loaded === false) return res.status(403).send('Viewer session expired or invalid');
-    if (!loaded) return res.status(404).send('Viewer file not found');
+    if (!loaded) {
+        try {
+            const claim = verifyViewerCapability(req.params.token);
+            viewerHeaders(res, claim.parentOrigin);
+            return res.type('html').send(`<!doctype html><script>window.parent.postMessage({type:'afinix-viewer-error',detail:'file-not-found'},${JSON.stringify(claim.parentOrigin)});</script>`);
+        } catch {
+            return res.status(404).send('Viewer file not found');
+        }
+    }
     viewerHeaders(res, loaded.claim.parentOrigin);
     const documentUrl = `/viewer/document/${encodeURIComponent(req.params.token)}`;
     // The shell is trusted viewer-origin code. The Exocad payload remains byte-for-byte at /document.

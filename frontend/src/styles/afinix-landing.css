@@ -984,11 +984,13 @@
   line-height: 1;
 }
 
-.afinix-kicker-desktop {
+.afinix-kicker-desktop,
+.afinix-title-desktop {
   display: inline;
 }
 
-.afinix-kicker-mobile {
+.afinix-kicker-mobile,
+.afinix-title-mobile {
   display: none;
 }
 
@@ -1016,7 +1018,8 @@
   letter-spacing: -0.035em;
   line-height: 1.12;
   color: var(--afinix-heading-color);
-  font-size: clamp(2.05rem, 4.25vw, 3.85rem);
+  font-size: clamp(1.9rem, 3.4vw, 3.25rem);
+  text-wrap: balance;
 }
 
 .afinix-page[data-theme='light'] .afinix-hero h1.afinix-hero-title,
@@ -4981,11 +4984,13 @@
     white-space: normal;
   }
 
-  .afinix-kicker-desktop {
+  .afinix-kicker-desktop,
+  .afinix-title-desktop {
     display: none;
   }
 
-  .afinix-kicker-mobile {
+  .afinix-kicker-mobile,
+  .afinix-title-mobile {
     display: inline;
   }
 

@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useOrdersListQuery } from '../modules/orders/queries/useOrdersListQuery.js';
-import { isClientRole } from '../utils/accessControl.js';
+import { isClientRole, isTechnicianRole, isVisitorRole } from '../utils/accessControl.js';
 import { getOrderStatusLabel, ORDER_STATUS_FLOW } from '../utils/orderStatusLabels.js';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
+import CustomSelect from '../components/CustomSelect.jsx';
 import { sortTeethByArchOrder } from '../utils/odontograma.js';
 import { fetchVisibleCatalog } from '../modules/orders/catalog/visibleCatalogCache.js';
 
@@ -24,6 +25,8 @@ const Pedidos = () => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const isClient = isClientRole(user);
+    const isTechnician = isTechnicianRole(user);
+    const canCreateOrders = !isTechnician && !isVisitorRole(user);
     const estadoParam = searchParams.get('estado') || '';
     const filtroParam = searchParams.get('filtro') || '';
     const isSpecialState = estadoParam === 'retrasados' || estadoParam === 'entregas_hoy';
@@ -33,28 +36,14 @@ const Pedidos = () => {
     const [filtroEstado, setFiltroEstado] = useState(initialFiltroEstado);
     const [filtroOperativo, setFiltroOperativo] = useState(initialFiltroOperativo);
     const [search, setSearch] = useState('');
-    const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
-    const statusDropdownRef = useRef(null);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
 
     useEffect(() => {
-        if (!statusDropdownOpen) return;
-        const handleClickOutside = (e) => {
-            if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target)) {
-                setStatusDropdownOpen(false);
-            }
-        };
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') setStatusDropdownOpen(false);
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        document.addEventListener('touchstart', handleClickOutside);
-        document.addEventListener('keydown', handleEscape);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-            document.removeEventListener('touchstart', handleClickOutside);
-            document.removeEventListener('keydown', handleEscape);
-        };
-    }, [statusDropdownOpen]);
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search.trim());
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [search]);
 
     useEffect(() => {
         const currentEstado = searchParams.get('estado') || '';
@@ -93,13 +82,15 @@ const Pedidos = () => {
     const filters = useMemo(() => ({
         estado: filtroEstado,
         filtro: filtroOperativo,
-        search
-    }), [filtroEstado, filtroOperativo, search]);
+        search: debouncedSearch
+    }), [filtroEstado, filtroOperativo, debouncedSearch]);
 
     const {
         data: pedidos = [],
         isLoading,
-        isFetching
+        isFetching,
+        isError,
+        refetch
     } = useOrdersListQuery({ filters });
 
     const pendingApprovalQuery = useOrdersListQuery({
@@ -125,6 +116,15 @@ const Pedidos = () => {
         ];
     }, [isClient]);
 
+    const estadoOptions = useMemo(() => [
+        { value: '', label: 'Todas las fases', icon: 'bi-grid' },
+        ...estados.filter(Boolean).map((est) => ({
+            value: est,
+            label: getOrderStatusLabel(est, { forClient: isClient }),
+            dotColor: orderStatusColorMap[est] || 'var(--color-primary)'
+        }))
+    ], [estados, isClient]);
+
     const setEstadoFilter = (estado) => {
         setFiltroEstado(estado);
         setFiltroOperativo('');
@@ -147,6 +147,11 @@ const Pedidos = () => {
 
     const formatDateShort = (value) => {
         if (!value) return '—';
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+            const [y, m, d] = value.slice(0, 10).split('-').map(Number);
+            const date = new Date(y, m - 1, d);
+            return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+        }
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return value;
         return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
@@ -175,15 +180,17 @@ const Pedidos = () => {
                     </h1>
                     <p>{pageSubtitle}</p>
                 </div>
-                <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={goNewOrder}
-                    onMouseEnter={prefetchCatalog}
-                    onFocus={prefetchCatalog}
-                >
-                    <i className="bi bi-plus-lg" aria-hidden="true"></i> {isClient ? 'Pedir' : 'Nuevo Pedido'}
-                </button>
+                {canCreateOrders && (
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={goNewOrder}
+                        onMouseEnter={prefetchCatalog}
+                        onFocus={prefetchCatalog}
+                    >
+                        <i className="bi bi-plus-lg" aria-hidden="true"></i> {isClient ? 'Pedir' : 'Nuevo Pedido'}
+                    </button>
+                )}
             </div>
 
             {showApprovalCue ? (
@@ -217,6 +224,7 @@ const Pedidos = () => {
                         <i className="bi bi-search" aria-hidden="true"></i>
                         <input
                             className="form-input"
+                            aria-label="Buscar pedidos"
                             placeholder={isClient ? 'Buscar por código o paciente...' : 'Buscar por código, paciente o clínica...'}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -245,89 +253,29 @@ const Pedidos = () => {
                                     <span>Entregas hoy</span>
                                     {filtroOperativo === 'entregas_hoy' && <span className="pedidos-chip-clear">✕</span>}
                                 </button>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm pedidos-filter-chip${filtroOperativo === 'en_taller' ? ' is-active' : ''}`}
+                                    onClick={() => setOperativoFilter(filtroOperativo === 'en_taller' ? '' : 'en_taller')}
+                                >
+                                    <i className="bi bi-gear-wide-connected" aria-hidden="true"></i>
+                                    <span>En taller</span>
+                                    {filtroOperativo === 'en_taller' && <span className="pedidos-chip-clear">✕</span>}
+                                </button>
                             </>
                         )}
 
-                        <div className="pedidos-custom-select-wrap" ref={statusDropdownRef}>
-                            <button
-                                type="button"
-                                className={`btn btn-sm pedidos-custom-select-trigger${filtroEstado ? ' is-active' : ''}${statusDropdownOpen ? ' is-open' : ''}`}
-                                onClick={() => setStatusDropdownOpen((prev) => !prev)}
-                                aria-expanded={statusDropdownOpen}
-                                aria-haspopup="listbox"
-                            >
-                                {filtroEstado ? (
-                                    <>
-                                        <span
-                                            className="pedidos-filter-dot"
-                                            style={{ backgroundColor: orderStatusColorMap[filtroEstado] || 'var(--color-primary)' }}
-                                            aria-hidden="true"
-                                        />
-                                        <span className="pedidos-custom-select-text">
-                                            {getOrderStatusLabel(filtroEstado, { forClient: isClient })}
-                                        </span>
-                                        <span
-                                            className="pedidos-chip-clear"
-                                            role="button"
-                                            tabIndex={0}
-                                            title="Limpiar filtro de estado"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setEstadoFilter('');
-                                            }}
-                                        >
-                                            ✕
-                                        </span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="bi bi-funnel" aria-hidden="true"></i>
-                                        <span className="pedidos-custom-select-text">Fase del trabajo</span>
-                                        <i className={`bi bi-chevron-down pedidos-custom-select-chevron${statusDropdownOpen ? ' is-rotated' : ''}`} aria-hidden="true"></i>
-                                    </>
-                                )}
-                            </button>
-
-                            {statusDropdownOpen && (
-                                <div className="pedidos-custom-select-menu" role="listbox">
-                                    <button
-                                        type="button"
-                                        className={`pedidos-custom-select-item${!filtroEstado ? ' is-selected' : ''}`}
-                                        onClick={() => {
-                                            setEstadoFilter('');
-                                            setStatusDropdownOpen(false);
-                                        }}
-                                        role="option"
-                                        aria-selected={!filtroEstado}
-                                    >
-                                        <i className="bi bi-grid text-secondary" style={{ width: 14, textAlign: 'center' }}></i>
-                                        <span>Todas las fases</span>
-                                        {!filtroEstado && <i className="bi bi-check2 text-primary" style={{ marginLeft: 'auto', fontWeight: 800 }}></i>}
-                                    </button>
-                                    <div className="pedidos-custom-select-divider" />
-                                    {estados.filter(Boolean).map((est) => (
-                                        <button
-                                            key={est}
-                                            type="button"
-                                            className={`pedidos-custom-select-item${filtroEstado === est ? ' is-selected' : ''}`}
-                                            onClick={() => {
-                                                setEstadoFilter(est);
-                                                setStatusDropdownOpen(false);
-                                            }}
-                                            role="option"
-                                            aria-selected={filtroEstado === est}
-                                        >
-                                            <span
-                                                className="pedidos-filter-dot"
-                                                style={{ backgroundColor: orderStatusColorMap[est] || 'var(--color-primary)' }}
-                                                aria-hidden="true"
-                                            />
-                                            <span>{getOrderStatusLabel(est, { forClient: isClient })}</span>
-                                            {filtroEstado === est && <i className="bi bi-check2 text-primary" style={{ marginLeft: 'auto', fontWeight: 800 }}></i>}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                        <div className="pedidos-custom-select-wrap">
+                            <CustomSelect
+                                value={filtroEstado}
+                                onChange={(e, val) => setEstadoFilter(val || '')}
+                                options={estadoOptions}
+                                placeholder="Fase del trabajo"
+                                size="sm"
+                                variant="pill"
+                                className="pedidos-desktop-status-select"
+                                aria-label="Filtrar por fase del trabajo"
+                            />
                         </div>
                     </div>
 
@@ -372,6 +320,18 @@ const Pedidos = () => {
                                         <span>Entregas hoy</span>
                                         {filtroOperativo === 'entregas_hoy' && <span className="pedidos-chip-clear">✕</span>}
                                     </button>
+                                    <button
+                                        type="button"
+                                        className={`btn btn-sm pedidos-filter-chip${filtroOperativo === 'en_taller' ? ' is-active' : ''}`}
+                                        onClick={(e) => {
+                                            setOperativoFilter(filtroOperativo === 'en_taller' ? '' : 'en_taller');
+                                            e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                        }}
+                                    >
+                                        <i className="bi bi-gear-wide-connected" aria-hidden="true"></i>
+                                        <span>En taller</span>
+                                        {filtroOperativo === 'en_taller' && <span className="pedidos-chip-clear">✕</span>}
+                                    </button>
                                 </>
                             )}
 
@@ -406,6 +366,15 @@ const Pedidos = () => {
                             <div key={i} className="skeleton pedidos-skeleton-row" />
                         ))}
                     </div>
+                ) : isError ? (
+                    <div className="empty-state">
+                        <i className="bi bi-exclamation-triangle empty-state-icon text-danger" aria-hidden="true"></i>
+                        <h3 className="empty-state-title">Error al cargar pedidos</h3>
+                        <p className="empty-state-text">No se pudieron recuperar los pedidos en este momento.</p>
+                        <button type="button" className="btn btn-secondary" onClick={() => refetch()}>
+                            <i className="bi bi-arrow-clockwise" aria-hidden="true"></i> Reintentar
+                        </button>
+                    </div>
                 ) : pedidos.length === 0 ? (
                     <div className="empty-state">
                         <i className="bi bi-clipboard2 empty-state-icon" aria-hidden="true"></i>
@@ -421,7 +390,7 @@ const Pedidos = () => {
                                 ? 'Cuando el laboratorio envíe un diseño, aparecerá aquí.'
                                 : (isClient ? 'Pide tu primer trabajo desde el catálogo' : 'Crea tu primer pedido para comenzar')}
                         </p>
-                        {filtroEstado !== 'esperando_aprobacion' && !filtroOperativo && (
+                        {canCreateOrders && filtroEstado !== 'esperando_aprobacion' && !filtroOperativo && (
                             <button
                                 type="button"
                                 className="btn btn-primary"
@@ -455,6 +424,7 @@ const Pedidos = () => {
                                         type="button"
                                         className={`pedidos-order-card${needsReview ? ' is-attention' : ''}`}
                                         onClick={() => navigate(`/pedidos/${p.id}`)}
+                                        aria-label={`Pedido ${p.codigo}, paciente ${p.paciente_nombre || 'Sin paciente'}, fase ${getOrderStatusLabel(p.estado, { forClient: isClient })}${!isTechnician ? `, total S/. ${parseFloat(p.total ?? 0).toFixed(2)}` : ''}`}
                                     >
                                         <span className="pedidos-order-thumb" aria-hidden="true">
                                             {productName ? (
@@ -510,9 +480,11 @@ const Pedidos = () => {
                                             </span>
                                         </span>
                                         <span className="pedidos-order-aside">
-                                            <strong className="pedidos-order-total">
-                                                S/. {parseFloat(p.total ?? 0).toFixed(2)}
-                                            </strong>
+                                            {!isTechnician && (
+                                                <strong className="pedidos-order-total">
+                                                    S/. {parseFloat(p.total ?? 0).toFixed(2)}
+                                                </strong>
+                                            )}
                                             <span className="pedidos-order-cta">
                                                 {needsReview ? 'Revisar diseño' : 'Ver detalle'}
                                                 <i className="bi bi-chevron-right" aria-hidden="true"></i>

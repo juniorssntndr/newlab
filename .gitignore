@@ -21,3 +21,6 @@ scratch/
 !.agents/skills/playwright-skill/run.js
 .atl/
 backend/backups/
+
+backend/private-viewers/
+private-viewers/

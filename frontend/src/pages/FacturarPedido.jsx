@@ -116,8 +116,8 @@ export default function FacturarPedido() {
             tipoDoc: defaultTipoDoc,
             numDoc: defaultNum,
             rznSocial: primaryOrder.clinica_razon_social || primaryOrder.clinica_nombre || primaryOrder.razon_social || primaryOrder.paciente_nombre || '',
-            direccion: primaryOrder.clinica_direccion || primaryOrder.direccion || 'Lima, Peru',
-            ubigeo: primaryOrder.ubigeo || '150101'
+            direccion: primaryOrder.clinica_direccion || primaryOrder.direccion || 'Calle Piura 316, Mariano Melgar, Arequipa',
+            ubigeo: primaryOrder.ubigeo || '040126'
         });
 
         const initialFacturacionItems = pedidosList.flatMap((ped) => {
@@ -382,7 +382,7 @@ export default function FacturarPedido() {
                             address: {
                                 direccion: cliente.direccion,
                                 ubigeo: cliente.ubigeo,
-                                provincia: 'LIMA', departamento: 'LIMA', distrito: 'LIMA'
+                                provincia: 'AREQUIPA', departamento: 'AREQUIPA', distrito: 'MARIANO MELGAR'
                             }
                         } : {})
                     },
@@ -548,8 +548,8 @@ export default function FacturarPedido() {
             <div className="facturacion-sheet">
                 {/* Sheet Top Bar: Document Type Segmented Control */}
                 <div className="facturacion-sheet-topbar">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div className="segmented-control" role="group" aria-label="Tipo de comprobante" style={{ minWidth: '320px', display: 'flex' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', width: '100%' }}>
+                        <div className="segmented-control" role="group" aria-label="Tipo de comprobante" style={{ width: '100%', maxWidth: '360px', display: 'flex' }}>
                             <button
                                 type="button"
                                 className={`segmented-control__btn${tipoComprobante === '03' ? ' is-active' : ''}`}

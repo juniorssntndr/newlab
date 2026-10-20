@@ -17,7 +17,8 @@ const makeHarness = ({ status = 'esperando_aprobacion' } = {}) => {
         addNotification: async (notification) => calls.notifications.push(notification),
         markOrderNotificationsRead: async (payload) => calls.notificationsRead.push(payload),
         addTimelineEntry: async (entry) => calls.timeline.push(entry),
-        getActiveLabUsers: async () => [{ id: 2 }]
+        getActiveLabUsers: async () => [{ id: 2 }],
+        getDesignNotificationRecipients: async () => [{ id: 5, nombre: 'Diseñador CAD', tipo: 'tecnico' }, { id: 2, nombre: 'Admin', tipo: 'admin' }]
     };
 
     return { service: makeOrderService({ orderRepository }), order, calls };
@@ -87,3 +88,31 @@ test('an adjustment outside client review does not rewind another order state', 
     assert.equal(calls.timeline.at(-1).previousStatus, 'en_produccion');
     assert.equal(calls.timeline.at(-1).nextStatus, 'en_produccion');
 });
+
+test('client requesting 3D design notifies designer and admin and records timeline', async () => {
+    const { service, calls } = makeHarness({ status: 'en_diseno' });
+
+    const result = await service.requestDesign({
+        user: { id: 11, tipo: 'cliente', clinica_id: 7 },
+        orderId: 42
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(calls.notifications.length, 2);
+    assert.equal(calls.notifications[0].type, 'solicitud_diseno');
+    assert.match(calls.notifications[0].title, /Solicitud de diseño 3D/);
+    assert.equal(calls.timeline.at(-1).comment, 'Cliente solicitó el diseño 3D interactivo');
+});
+
+test('client requesting 3D design on an already sent order succeeds and notifies team', async () => {
+    const { service, calls } = makeHarness({ status: 'enviado' });
+
+    const result = await service.requestDesign({
+        user: { id: 11, tipo: 'cliente', clinica_id: 7 },
+        orderId: 42
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(calls.notifications.length, 2);
+});
+

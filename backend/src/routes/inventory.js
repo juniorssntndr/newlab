@@ -3,7 +3,7 @@ import { authenticateToken, forbidRole, requireRole } from '../middleware/auth.j
 
 const router = Router();
 router.use(authenticateToken);
-router.use(forbidRole('visitador'));
+router.use(forbidRole('cliente', 'visitador'));
 
 const toNullableString = (value) => {
     if (value === undefined || value === null) return null;
@@ -134,6 +134,7 @@ router.post('/:id/movimiento', requireRole('admin', 'tecnico'), async (req, res,
         const materialId = parseInt(req.params.id, 10);
         const { tipo, cantidad, motivo, referencia, proveedor_id, costo_unitario, notas, origen } = req.body;
         const cantNum = Number(cantidad);
+        const docReferencia = toNullableString(referencia || req.body.numero_comprobante);
 
         const validTipos = ['ingreso', 'apertura_taller', 'consumo_unitario', 'agotado_taller', 'merma_taller', 'ajuste'];
         if (!validTipos.includes(tipo)) {
@@ -207,10 +208,10 @@ router.post('/:id/movimiento', requireRole('admin', 'tecnico'), async (req, res,
 
             case 'ajuste':
                 if (req.body.nuevo_stock_almacen !== undefined) {
-                    nuevoStockActual = Math.max(0, Number(req.body.nuevo_stock_almacen));
+                    nuevoStockActual = Math.max(0, toNumber(req.body.nuevo_stock_almacen, stockActual));
                 }
                 if (req.body.nuevo_stock_en_uso !== undefined) {
-                    nuevoStockEnUso = Math.max(0, Number(req.body.nuevo_stock_en_uso));
+                    nuevoStockEnUso = Math.max(0, toNumber(req.body.nuevo_stock_en_uso, stockEnUso));
                 }
                 break;
         }
@@ -241,7 +242,7 @@ router.post('/:id/movimiento', requireRole('admin', 'tecnico'), async (req, res,
                 stockEnUso,
                 nuevoStockEnUso,
                 toNullableString(motivo) || tipo,
-                toNullableString(referencia),
+                docReferencia,
                 proveedor_id ? parseInt(proveedor_id, 10) : null,
                 costo_unitario !== undefined && costo_unitario !== null ? Number(costo_unitario) : null,
                 req.user?.id || null,

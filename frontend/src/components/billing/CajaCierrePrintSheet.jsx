@@ -196,7 +196,7 @@ export const CajaCierrePrintSheet = ({ session, empresa, movimientos = [] }) => 
                 {/* 2. Tarjetas Ejecutivas de Rendimiento Financiero (KPIs de Alto Impacto) */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                     gap: '12px',
                     marginBottom: '16px'
                 }}>
@@ -578,7 +578,7 @@ export const CajaCierrePrintSheet = ({ session, empresa, movimientos = [] }) => 
             {/* Metadatos de la Sesión */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                 gap: '10px',
                 padding: '10px 14px',
                 backgroundColor: '#f8fafc',

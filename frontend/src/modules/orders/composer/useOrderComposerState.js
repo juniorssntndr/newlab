@@ -63,6 +63,8 @@ const createDraftItem = (product, initialPatch = {}) => {
         categoria_tipo: product.categoria_tipo,
         precio_unitario: product.precio_base,
         material: product.material_nombre || product.material_default || '',
+        modo_odontograma: product.modo_odontograma || (product.admite_puente ? 'puente' : 'unitario'),
+        admite_puente: Boolean(product.admite_puente),
         color_vita: '',
         notas: '',
         es_puente: false,

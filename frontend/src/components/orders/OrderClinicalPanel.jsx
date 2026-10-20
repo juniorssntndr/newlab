@@ -1,4 +1,21 @@
 import React from 'react';
+import CustomSelect from '../CustomSelect.jsx';
+
+const VITA_OPTIONS = [
+    { value: '', label: 'Elegir tono VITA' },
+    { value: 'A1', label: 'A1' },
+    { value: 'A2', label: 'A2' },
+    { value: 'A3', label: 'A3' },
+    { value: 'A3.5', label: 'A3.5' },
+    { value: 'A4', label: 'A4' },
+    { value: 'B1', label: 'B1' },
+    { value: 'B2', label: 'B2' },
+    { value: 'B3', label: 'B3' },
+    { value: 'B4', label: 'B4' },
+    { value: 'C1', label: 'C1' },
+    { value: 'D2', label: 'D2' },
+    { value: 'BL1', label: 'BL1' }
+];
 
 export const OrderClinicalPanel = ({
     className = '',
@@ -27,28 +44,14 @@ export const OrderClinicalPanel = ({
                     </div>
                     <div className="order-composer-status-inline">
                         <span className="order-composer-vita-pill">VITA</span>
-                        <div className="order-composer-vita-select-wrap">
-                            <i className="bi bi-palette order-composer-status-icon"></i>
-                            <select
-                                className="form-input order-composer-vita-select"
+                        <div className="order-composer-vita-select-wrap" style={{ minWidth: '160px' }}>
+                            <CustomSelect
+                                options={VITA_OPTIONS}
                                 value={form?.color_vita || ''}
-                                onChange={(event) => onColorChange(event.target.value)}
-                                aria-label="Seleccionar tono VITA"
+                                onChange={(val) => onColorChange(val)}
+                                placeholder="Elegir tono VITA"
                                 disabled={disabled}
-                            >
-                                <option value="">Elegir tono VITA</option>
-                                <optgroup label="Tonos A">
-                                    <option value="A1">A1</option><option value="A2">A2</option>
-                                    <option value="A3">A3</option><option value="A3.5">A3.5</option><option value="A4">A4</option>
-                                </optgroup>
-                                <optgroup label="Tonos B">
-                                    <option value="B1">B1</option><option value="B2">B2</option>
-                                    <option value="B3">B3</option><option value="B4">B4</option>
-                                </optgroup>
-                                <optgroup label="Tonos C / D / Bleach">
-                                    <option value="C1">C1</option><option value="D2">D2</option><option value="BL1">BL1</option>
-                                </optgroup>
-                            </select>
+                            />
                         </div>
                     </div>
                 </div>

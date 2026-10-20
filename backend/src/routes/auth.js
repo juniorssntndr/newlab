@@ -1,14 +1,24 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { authenticateToken } from '../middleware/auth.js';
-import { getJwtSecret } from '../config/env.js';
+import { getJwtSecret, isProd } from '../config/env.js';
 import { validateBody } from '../middleware/validate.js';
 import { loginSchema, registerClientSchema } from '../validation/schemas.js';
 import { writeAuditEvent } from '../services/audit.js';
 import { sendPushNotificationToMany } from '../modules/notifications/pushNotificationService.js';
 
 const router = Router();
+
+export const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: isProd() ? 10 : 100, // Máximo 10 intentos en producción, 100 en desarrollo/tests
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados intentos de acceso fallidos. Por seguridad, intente nuevamente en 15 minutos.' }
+});
+
 
 export const resolveUserModules = (user) => {
     if (user.permisos_modulos) {
@@ -44,7 +54,8 @@ export const resolveUserModules = (user) => {
 };
 
 // POST /api/auth/login
-router.post('/login', validateBody(loginSchema), async (req, res, next) => {
+router.post('/login', authLimiter, validateBody(loginSchema), async (req, res, next) => {
+
     try {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
@@ -153,7 +164,8 @@ router.post('/login', validateBody(loginSchema), async (req, res, next) => {
 });
 
 // POST /api/auth/register-client
-router.post('/register-client', validateBody(registerClientSchema), async (req, res, next) => {
+router.post('/register-client', authLimiter, validateBody(registerClientSchema), async (req, res, next) => {
+
     try {
         const pool = req.app.locals.pool;
         const { nombre, email, password, telefono, clinica_nombre, ruc, dni, direccion, distrito } = req.body;
@@ -171,10 +183,12 @@ router.post('/register-client', validateBody(registerClientSchema), async (req, 
 
         let clinicaId = null;
         if (ruc) {
-            const existingClinic = await pool.query('SELECT id FROM nl_clinicas WHERE ruc = $1 LIMIT 1', [ruc]);
-            if (existingClinic.rows.length > 0) {
+            const existingClinic = await pool.query('SELECT id, estado FROM nl_clinicas WHERE ruc = $1 LIMIT 1', [ruc]);
+            if (existingClinic.rows.length > 0 && existingClinic.rows[0].estado === 'pendiente') {
                 clinicaId = existingClinic.rows[0].id;
             }
+            // Si la clínica ya está registrada y activa, se crea una solicitud pendiente independiente
+            // para que administración valide la identidad antes de vincularla, evitando secuestro de cuentas.
         }
 
         const fullDireccion = [direccion, distrito].filter(Boolean).join(', ');
@@ -340,7 +354,12 @@ router.patch('/me', authenticateToken, async (req, res, next) => {
         );
 
         res.json(refreshed.rows[0]);
-    } catch (err) { next(err); }
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(400).json({ error: 'El correo electrónico ya está registrado por otro usuario' });
+        }
+        next(err);
+    }
 });
 
 // PATCH /api/auth/password
@@ -350,6 +369,10 @@ router.patch('/password', authenticateToken, async (req, res, next) => {
         const { current_password, new_password } = req.body;
         if (!current_password || !new_password) {
             return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
+        }
+
+        if (typeof new_password !== 'string' || new_password.trim().length < 6) {
+            return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
         }
 
         const result = await pool.query('SELECT password_hash FROM nl_usuarios WHERE id = $1', [req.user.id]);

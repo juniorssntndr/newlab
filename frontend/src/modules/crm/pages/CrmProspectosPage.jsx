@@ -6,6 +6,7 @@ import ConversionModal from '../components/ConversionModal.jsx';
 import ImportModal from '../components/ImportModal.jsx';
 import EstablishmentModal from '../components/EstablishmentModal.jsx';
 import CrmActionMenu from '../components/CrmActionMenu.jsx';
+import CustomSelect from '../../../components/CustomSelect.jsx';
 import { useCrmEstablecimientosQuery, useCrmMutations } from '../queries/useCrmQueries.js';
 import { useAuth } from '../../../state/AuthContext.jsx';
 import { isAdminRole } from '../../../utils/accessControl.js';
@@ -71,6 +72,7 @@ export const CrmProspectosPage = () => {
 
     const { data, isLoading, refetch } = useCrmEstablecimientosQuery({
         etapa: etapaFilter || undefined,
+        excluir_etapa: etapaFilter ? undefined : 'convertido',
         search: search || undefined,
         page,
         limit: pageSize,
@@ -81,10 +83,7 @@ export const CrmProspectosPage = () => {
     const fromRecord = totalCount > 0 ? (page - 1) * pageSize + 1 : 0;
     const toRecord = Math.min(page * pageSize, totalCount);
 
-    // Filter out already converted if etapa filter is empty, or show matching prospects
-    const prospects = (data?.rows || []).filter((e) =>
-        etapaFilter ? e.etapa === etapaFilter : e.etapa !== 'convertido'
-    );
+    const prospects = data?.rows || [];
 
     return (
         <div className="animate-fade-in page-container">
@@ -492,19 +491,20 @@ export const CrmProspectosPage = () => {
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                             <span>Mostrar</span>
-                            <select
-                                className="crm-select"
-                                style={{ width: 'auto', padding: '0.2rem 0.5rem', height: '32px', fontSize: '0.8125rem' }}
-                                value={pageSize}
-                                onChange={(e) => {
-                                    setPageSize(Number(e.target.value));
-                                    setPage(1);
-                                }}
-                            >
-                                <option value={25}>25 por página</option>
-                                <option value={50}>50 por página</option>
-                                <option value={100}>100 por página</option>
-                            </select>
+                            <div style={{ minWidth: '150px' }}>
+                                <CustomSelect
+                                    value={pageSize}
+                                    onChange={(val) => {
+                                        setPageSize(Number(val));
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { value: 25, label: '25 por página' },
+                                        { value: 50, label: '50 por página' },
+                                        { value: 100, label: '100 por página' },
+                                    ]}
+                                />
+                            </div>
                             <span>
                                 Mostrando <strong>{fromRecord}</strong>–<strong>{toRecord}</strong> de <strong>{totalCount}</strong> prospectos
                             </span>

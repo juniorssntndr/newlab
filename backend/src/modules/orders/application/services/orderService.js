@@ -2,7 +2,7 @@ import { getIgvFactor } from '../../../../config/env.js';
 import { sendPushNotificationToMany } from '../../../notifications/pushNotificationService.js';
 import { makeOrderRepeatService } from './orderRepeatService.js';
 import { canManageOrderRepeats } from '../../domain/orderRepeat.js';
-import { uploadOrderApprovalHtml } from '../../../../services/storage.js';
+import { uploadOrderApprovalHtml, checkOrderApprovalFileExists } from '../../../../services/storage.js';
 import { makeOrderViewerService } from './orderViewerService.js';
 
 export const makeOrderService = ({ orderRepository, repeatRepository, pool }) => {
@@ -108,7 +108,7 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             }
         }
 
-        const [items, timeline, approvals, files, relatedOrders, repeatPhotos] = await Promise.all([
+        const [items, timeline, rawApprovals, files, relatedOrders, repeatPhotos] = await Promise.all([
             orderRepository.listOrderItems({ orderId }),
             orderRepository.listOrderTimeline({ orderId }),
             orderRepository.listOrderApprovals({ orderId }),
@@ -116,6 +116,14 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             repeatRepository.listRelated(orderId),
             canManageOrderRepeats(user) ? repeatRepository.listPhotos(orderId) : []
         ]);
+
+        const approvals = await Promise.all((rawApprovals || []).map(async (approval) => {
+            const archivoDisponible = await checkOrderApprovalFileExists(approval.link_exocad, orderId);
+            return {
+                ...approval,
+                archivo_disponible: archivoDisponible
+            };
+        }));
 
         return {
             ok: true,
@@ -131,14 +139,57 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             }
         };
     },
-    createOrder: async ({ actorUserId, body }) => {
-        const { clinica_id, paciente_nombre, fecha_entrega, items, discountCode, descuento_codigo } = body || {};
+    createOrder: async ({ user, actorUserId, body }) => {
+        let { clinica_id, paciente_nombre, fecha_entrega, items, discountCode, descuento_codigo } = body || {};
+
+        if (user?.tipo === 'cliente') {
+            if (!user.clinica_id) {
+                return {
+                    ok: false,
+                    type: 'FORBIDDEN',
+                    error: 'Usuario cliente sin clínica asociada'
+                };
+            }
+            clinica_id = user.clinica_id;
+        }
+
         if (!clinica_id || !paciente_nombre || !fecha_entrega) {
             return {
                 ok: false,
                 type: 'BAD_REQUEST',
                 error: 'Clínica, paciente y fecha de entrega son requeridos'
             };
+        }
+
+        // Single-Product Rule (mandated by AGENTS.md: Un Solo Producto por Orden)
+        if (!Array.isArray(items) || items.length === 0) {
+            return {
+                ok: false,
+                type: 'BAD_REQUEST',
+                error: 'El pedido debe incluir al menos un producto técnico'
+            };
+        }
+        const productIds = new Set(items.map(it => it.producto_id).filter(Boolean));
+        if (productIds.size > 1) {
+            return {
+                ok: false,
+                type: 'BAD_REQUEST',
+                error: 'Una orden técnica solo puede contener un único tipo de producto (Un Solo Producto por Orden)'
+            };
+        }
+
+        if (user?.tipo === 'cliente' && pool) {
+            const firstItem = items[0];
+            if (firstItem?.producto_id) {
+                const prodRes = await pool.query('SELECT id, precio_base FROM nl_productos WHERE id = $1', [firstItem.producto_id]);
+                if (prodRes.rows.length > 0) {
+                    const officialPrice = Number(prodRes.rows[0].precio_base) || 0;
+                    items = items.map(it => ({
+                        ...it,
+                        precio_unitario: officialPrice
+                    }));
+                }
+            }
         }
 
         const total = Array.isArray(items)
@@ -150,7 +201,7 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
         const effectiveDiscountCode = descuento_codigo || discountCode || null;
 
         const created = await orderRepository.createOrder({
-            orderInput: { ...body, descuento_codigo: effectiveDiscountCode },
+            orderInput: { ...body, clinica_id, items, descuento_codigo: effectiveDiscountCode },
             totals: { total, subtotal, igv },
             actorUserId
         });
@@ -620,8 +671,12 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             };
         }
 
-        if (order.estado === 'enviado') {
-            return { ok: false, type: 'BAD_REQUEST', error: 'El pedido ya fue enviado. Esta revisión no puede modificarse.' };
+        if (['terminado', 'enviado', 'anulado'].includes(order.estado)) {
+            return {
+                ok: false,
+                type: 'BAD_REQUEST',
+                error: 'El pedido ya fue finalizado o enviado. Esta revisión no puede modificarse.'
+            };
         }
 
         const result = await orderRepository.respondOrderApproval({
@@ -638,6 +693,14 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
                 ok: false,
                 type: 'NOT_FOUND',
                 error: 'Pedido no encontrado'
+            };
+        }
+
+        if (result.alreadyResponded) {
+            return {
+                ok: false,
+                type: 'BAD_REQUEST',
+                error: 'Esta revisión de diseño ya fue respondida previamente'
             };
         }
 
@@ -774,6 +837,75 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             ok: true,
             type: 'SUCCESS',
             data: result.approval
+        };
+    },
+    requestDesign: async ({ user, orderId }) => {
+        const order = await orderRepository.getOrderBaseById({ orderId });
+        if (!order) {
+            return {
+                ok: false,
+                type: 'NOT_FOUND',
+                error: 'Pedido no encontrado'
+            };
+        }
+
+        if (user?.tipo === 'cliente') {
+            const canAccess = !!user?.clinica_id && Number(user.clinica_id) === Number(order.clinica_id);
+            if (!canAccess) {
+                return {
+                    ok: false,
+                    type: 'FORBIDDEN',
+                    error: 'No autorizado'
+                };
+            }
+        }
+
+        const recipients = await orderRepository.getDesignNotificationRecipients({
+            responsibleId: order.responsable_id
+        });
+
+        const title = `📐 Solicitud de diseño 3D - ${order.codigo}`;
+        const patientName = order.paciente_nombre ? ` (Paciente: ${order.paciente_nombre})` : '';
+        const message = `El cliente solicitó el diseño 3D para el pedido ${order.codigo}${patientName}.`;
+        const link = `/pedidos/${orderId}`;
+
+        for (const recipient of recipients) {
+            await orderRepository.addNotification({
+                userId: recipient.id,
+                type: 'solicitud_diseno',
+                title,
+                message,
+                link
+            });
+        }
+
+        if (pool && recipients.length > 0) {
+            sendPushNotificationToMany({
+                pool,
+                userIds: recipients.map((r) => r.id),
+                payload: {
+                    title,
+                    body: message,
+                    url: link,
+                    icon: '/icon-192x192.png',
+                    badge: '/icon-32x32.png',
+                    tag: `design-request-${orderId}`
+                }
+            }).catch(() => {});
+        }
+
+        await orderRepository.addTimelineEntry({
+            orderId,
+            previousStatus: null,
+            nextStatus: null,
+            userId: user.id,
+            comment: `Cliente solicitó el diseño 3D interactivo`
+        });
+
+        return {
+            ok: true,
+            type: 'SUCCESS',
+            data: { message: 'Solicitud de diseño enviada al diseñador y administradores' }
         };
     }
     };

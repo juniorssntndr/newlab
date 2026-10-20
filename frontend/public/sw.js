@@ -29,6 +29,7 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: payload.body,
+        ...(payload.image ? { image: payload.image } : {}),
         icon: payload.icon || '/icon-192x192.png',
         badge: payload.badge || '/icon-32x32.png',
         data: {
@@ -36,7 +37,9 @@ self.addEventListener('push', (event) => {
         },
         vibrate: [200, 100, 200],
         tag: payload.tag || `afinix-${Date.now()}`,
-        renotify: true
+        renotify: true,
+        silent: false,
+        requireInteraction: true
     };
 
     event.waitUntil(

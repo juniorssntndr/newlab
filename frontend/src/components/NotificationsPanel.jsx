@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import CampaignNotificationPreview from './CampaignNotificationPreview.jsx';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNotifications } from '../state/NotificationContext.jsx';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,9 +23,11 @@ const NotificationsPanel = () => {
     } = useNotifications();
     const navigate = useNavigate();
     const panelRef = useRef(null);
+    const [campaign, setCampaign] = useState(null);
 
     useEffect(() => {
         const handlePointerDown = (event) => {
+            if (campaign) return;
             const target = event.target;
             if (!(target instanceof Node)) return;
             if (panelRef.current?.contains(target)) return;
@@ -42,10 +45,11 @@ const NotificationsPanel = () => {
             document.removeEventListener('mousedown', handlePointerDown);
             document.removeEventListener('keydown', handleKeyDown);
         };
-    }, [setPanelOpen]);
+    }, [setPanelOpen, campaign]);
 
     const handleClick = (notif) => {
         if (!notif.leida) markAsRead(notif.id);
+        if (['campana_marketing', 'prueba_campana'].includes(notif.tipo)) { setCampaign(notif); return; }
         if (notif.link) {
             navigate(notif.link);
             setPanelOpen(false);
@@ -61,6 +65,16 @@ const NotificationsPanel = () => {
             aria-modal="false"
             aria-label="Notificaciones"
         >
+            <CampaignNotificationPreview
+                notification={campaign}
+                onClose={() => setCampaign(null)}
+                onNavigate={(couponCode, customLink) => {
+                    const link = customLink || campaign?.link || '/pedidos/nuevo';
+                    setCampaign(null);
+                    if (link) navigate(link, { state: couponCode ? { cupon: couponCode } : {} });
+                    setPanelOpen(false);
+                }}
+            />
             <div className="notifications-header">
                 <h4 className="notifications-title">
                     Notificaciones

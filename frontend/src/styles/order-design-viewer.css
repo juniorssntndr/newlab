@@ -339,6 +339,13 @@
         padding-inline: 0.5rem;
         font-size: 0.8125rem;
     }
+
+    .order-design-viewer-decision-btns > span,
+    .order-design-viewer-decision-btns > button:only-child {
+        grid-column: 1 / -1;
+        justify-self: center;
+        text-align: center;
+    }
 }
 
 .order-design-viewer-btn-approve {

@@ -9,14 +9,19 @@ import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
 import CustomSelect from '../components/CustomSelect.jsx';
 
 const Productos = () => {
-    const { getHeaders } = useAuth();
+    const { getHeaders, user } = useAuth();
     const navigate = useNavigate();
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [materiales, setMateriales] = useState([]);
     const [filtroCategoria, setFiltroCategoria] = useState('all');
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(null);
+
+    const canManage = user?.tipo === 'admin' || user?.rol === 'admin';
+    const canManageCategories = user?.tipo === 'admin' || user?.tipo === 'tecnico' || user?.rol === 'admin' || user?.rol === 'tecnico';
 
     // Product Modal & Form
     const [modalOpen, setModalOpen] = useState(false);
@@ -68,23 +73,70 @@ const Productos = () => {
         }
     };
 
-    const fetchData = () => {
+    // Debounce search input (250ms)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const fetchProducts = async (searchTerm = '') => {
+        try {
+            const params = new URLSearchParams();
+            params.set('activo', 'true');
+            if (searchTerm) params.set('search', searchTerm);
+            const res = await fetch(`${API_URL}/productos?${params}`, { headers: getHeaders() });
+            if (!res.ok) throw new Error('Error al cargar productos');
+            const prods = await res.json();
+            setProductos(Array.isArray(prods) ? prods : []);
+            setFetchError(null);
+        } catch (err) {
+            console.error(err);
+            setFetchError('No se pudo conectar con el servidor.');
+        }
+    };
+
+    const loadInitialData = async () => {
+        setLoading(true);
+        setFetchError(null);
         const params = new URLSearchParams();
         params.set('activo', 'true');
-        if (search) params.set('search', search);
-        Promise.all([
-            fetch(`${API_URL}/productos?${params}`, { headers: getHeaders() }).then(r => r.json()),
-            fetch(`${API_URL}/categorias`, { headers: getHeaders() }).then(r => r.json()),
-            fetch(`${API_URL}/inventory`, { headers: getHeaders() }).then(r => r.json())
-        ]).then(([prods, cats, mats]) => {
+        if (debouncedSearch) params.set('search', debouncedSearch);
+
+        try {
+            const [prodsRes, catsRes, matsRes] = await Promise.all([
+                fetch(`${API_URL}/productos?${params}`, { headers: getHeaders() }),
+                fetch(`${API_URL}/categorias`, { headers: getHeaders() }),
+                fetch(`${API_URL}/inventory`, { headers: getHeaders() })
+            ]);
+            if (!prodsRes.ok) throw new Error('Error al cargar catálogo');
+            const prods = await prodsRes.json();
+            const cats = catsRes.ok ? await catsRes.json() : [];
+            const mats = matsRes.ok ? await matsRes.json() : [];
+
             setProductos(Array.isArray(prods) ? prods : []);
             setCategorias(Array.isArray(cats) ? cats : []);
             setMateriales(Array.isArray(mats) ? mats : []);
+        } catch (err) {
+            console.error(err);
+            setFetchError('No se pudo conectar con el servidor.');
+        } finally {
             setLoading(false);
-        }).catch(() => setLoading(false));
+        }
     };
 
-    useEffect(() => { fetchData(); }, [search]);
+    useEffect(() => {
+        loadInitialData();
+    }, []);
+
+    useEffect(() => {
+        if (!loading) {
+            fetchProducts(debouncedSearch);
+        }
+    }, [debouncedSearch]);
+
+    const fetchData = () => fetchProducts(debouncedSearch);
 
     const openNew = () => {
         setEditing(null);
@@ -437,25 +489,29 @@ const Productos = () => {
                     <p>Servicios y trabajos del laboratorio</p>
                 </div>
                 <div className="productos-header-actions">
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => {
-                            setCatModalOpen(true);
-                            setCatModalError('');
-                            setEditingCatId(null);
-                            setEditingCatName('');
-                            setNewCategoryName('');
-                        }}
-                    >
-                        <i className="bi bi-tags"></i>
-                        <span className="productos-btn-label-desktop">Gestionar Categorías</span>
-                        <span className="productos-btn-label-mobile">Categorías</span>
-                    </button>
-                    <button className="btn btn-primary" onClick={openNew}>
-                        <i className="bi bi-plus-lg"></i>
-                        <span>Nuevo Producto</span>
-                    </button>
+                    {canManageCategories && (
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                setCatModalOpen(true);
+                                setCatModalError('');
+                                setEditingCatId(null);
+                                setEditingCatName('');
+                                setNewCategoryName('');
+                            }}
+                        >
+                            <i className="bi bi-tags"></i>
+                            <span className="productos-btn-label-desktop">Gestionar Categorías</span>
+                            <span className="productos-btn-label-mobile">Categorías</span>
+                        </button>
+                    )}
+                    {canManage && (
+                        <button className="btn btn-primary" onClick={openNew}>
+                            <i className="bi bi-plus-lg"></i>
+                            <span>Nuevo Producto</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -506,6 +562,17 @@ const Productos = () => {
                 <div className="catalog-products-grid">
                     {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton catalog-product-skeleton" />)}
                 </div>
+            ) : fetchError ? (
+                <div className="card">
+                    <div className="empty-state" style={{ padding: '2.5rem 1.25rem' }}>
+                        <i className="bi bi-exclamation-triangle empty-state-icon" style={{ color: 'var(--color-danger, #ef4444)' }}></i>
+                        <h3 className="empty-state-title">Error al cargar el catálogo</h3>
+                        <p className="empty-state-text">{fetchError}</p>
+                        <button type="button" className="btn btn-secondary" onClick={loadInitialData} style={{ marginTop: '0.75rem' }}>
+                            <i className="bi bi-arrow-clockwise"></i> Reintentar conexión
+                        </button>
+                    </div>
+                </div>
             ) : productos.length === 0 ? (
                 <div className="card">
                     <div className="empty-state">
@@ -538,10 +605,10 @@ const Productos = () => {
                                     key={p.id}
                                     producto={p}
                                     className={p.visible ? '' : 'is-hidden'}
-                                    ctaLabel="Editar producto"
-                                    ctaIcon="bi-pencil"
+                                    ctaLabel={canManage ? 'Editar producto' : 'Ver detalle'}
+                                    ctaIcon={canManage ? 'bi-pencil' : 'bi-eye'}
                                     onOrder={() => openEdit(p)}
-                                    mediaOverlay={(
+                                    mediaOverlay={canManage ? (
                                         <div
                                             className="productos-card-visibility-chip"
                                             onClick={(e) => e.stopPropagation()}
@@ -559,7 +626,7 @@ const Productos = () => {
                                                 {p.visible ? 'Visible' : 'Oculto'}
                                             </span>
                                         </div>
-                                    )}
+                                    ) : null}
                                 />
                             ))}
                         </div>
@@ -576,7 +643,7 @@ const Productos = () => {
                 title={editing ? 'Editar Producto' : 'Nuevo Producto'}
                 subtitle="Configuración comercial, tiempo de fabricación y reglas técnicas"
                 footer={<>
-                    {editing && (
+                    {editing && canManage && (
                         <button
                             type="button"
                             className="btn btn-secondary productos-modal-delete-btn"
@@ -586,10 +653,14 @@ const Productos = () => {
                             <i className="bi bi-trash"></i> Eliminar
                         </button>
                     )}
-                    <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={saving || deleteConfirmOpen}>Cancelar</button>
-                    <button type="button" className="btn btn-primary" onClick={save} disabled={saving || deleteConfirmOpen}>
-                        <i className="bi bi-check-lg"></i> {saving ? 'Guardando...' : editing ? 'Guardar Cambios' : 'Crear Producto'}
+                    <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={saving || deleteConfirmOpen}>
+                        {canManage ? 'Cancelar' : 'Cerrar'}
                     </button>
+                    {canManage && (
+                        <button type="button" className="btn btn-primary" onClick={save} disabled={saving || deleteConfirmOpen}>
+                            <i className="bi bi-check-lg"></i> {saving ? 'Guardando...' : editing ? 'Guardar Cambios' : 'Crear Producto'}
+                        </button>
+                    )}
                 </>}
             >
                 {formError && (
@@ -627,19 +698,21 @@ const Productos = () => {
                         <div className="form-group" style={{ margin: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                                 <label className="form-label" style={{ marginBottom: 0 }}>Categoría</label>
-                                <button
-                                    type="button"
-                                    className="btn btn-ghost btn-xs"
-                                    style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', color: 'var(--color-primary)' }}
-                                    onClick={() => {
-                                        setShowInlineCat(!showInlineCat);
-                                        setInlineCatName('');
-                                        setInlineCatError('');
-                                    }}
-                                    disabled={saving}
-                                >
-                                    <i className="bi bi-plus-circle"></i> Nueva
-                                </button>
+                                {canManageCategories && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost btn-xs"
+                                        style={{ minHeight: '34px', display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem', padding: '0.25rem 0.55rem', color: 'var(--color-primary)' }}
+                                        onClick={() => {
+                                            setShowInlineCat(!showInlineCat);
+                                            setInlineCatName('');
+                                            setInlineCatError('');
+                                        }}
+                                        disabled={saving}
+                                    >
+                                        <i className="bi bi-plus-circle"></i> Nueva
+                                    </button>
+                                )}
                             </div>
                             {showInlineCat && (
                                 <div style={{
@@ -723,15 +796,17 @@ const Productos = () => {
                         <div className="form-group" style={{ margin: 0 }}>
                             <div className="productos-material-header" style={{ marginBottom: '0.35rem' }}>
                                 <label className="form-label productos-material-label" style={{ marginBottom: 0 }}>Material Asociado</label>
-                                <button
-                                    className="btn btn-ghost btn-xs"
-                                    type="button"
-                                    onClick={createMaterial}
-                                    disabled={saving}
-                                    style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', color: 'var(--color-primary)' }}
-                                >
-                                    <i className="bi bi-plus-circle"></i> Crear
-                                </button>
+                                {canManage && (
+                                    <button
+                                        className="btn btn-ghost btn-xs"
+                                        type="button"
+                                        onClick={createMaterial}
+                                        disabled={saving}
+                                        style={{ minHeight: '34px', display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem', padding: '0.25rem 0.55rem', color: 'var(--color-primary)' }}
+                                    >
+                                        <i className="bi bi-plus-circle"></i> Crear
+                                    </button>
+                                )}
                             </div>
                             <CustomSelect
                                 value={form.material_id}
@@ -800,23 +875,25 @@ const Productos = () => {
                                         <i className="bi bi-image"></i>
                                     </div>
                                 )}
-                                <div>
-                                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {form.image ? form.image.name : imagePreviewUrl ? 'Imagen actual del catálogo' : 'Sin imagen asignada'}
                                     </div>
                                     <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
-                                        Formatos recomendados: JPG o PNG
+                                        Formatos recomendados: JPG, PNG o WebP
                                     </div>
                                 </div>
                             </div>
-                            <button
-                                className="btn btn-secondary btn-sm"
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                style={{ flexShrink: 0 }}
-                            >
-                                <i className="bi bi-camera"></i> {imagePreviewUrl ? 'Cambiar' : 'Subir'}
-                            </button>
+                            {canManage && (
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    style={{ flexShrink: 0 }}
+                                >
+                                    <i className="bi bi-camera"></i> {imagePreviewUrl ? 'Cambiar' : 'Subir'}
+                                </button>
+                            )}
                         </div>
                     </div>
 

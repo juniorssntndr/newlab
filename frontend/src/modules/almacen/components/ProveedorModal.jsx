@@ -372,7 +372,7 @@ export const ProveedorModal = ({ isOpen, onClose, proveedor = null, onSaved }) =
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600 }}>Dirección / Sede</label>
                         <input

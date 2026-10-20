@@ -16,11 +16,15 @@ export const fetchOrdersList = async ({ filters, headers }) => {
         headers
     });
 
-    if (!Array.isArray(data)) {
-        return [];
-    }
+    const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.rows)
+            ? data.rows
+            : Array.isArray(data?.data)
+                ? data.data
+                : [];
 
-    return data.map(normalizeOrder);
+    return list.map(normalizeOrder);
 };
 
 export const fetchOrderDetail = async ({ orderId, headers }) => {
@@ -82,3 +86,9 @@ export const updateOrderDeliveryDate = ({ orderId, payload, headers }) => apiCli
     headers,
     body: payload
 });
+
+export const requestOrderDesign = ({ orderId, headers }) => apiClient(`/pedidos/${orderId}/solicitar-diseno`, {
+    method: 'POST',
+    headers
+});
+

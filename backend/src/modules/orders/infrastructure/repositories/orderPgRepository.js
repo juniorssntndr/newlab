@@ -51,21 +51,25 @@ export const makeOrderPgRepository = ({ pool }) => ({
                  LEFT JOIN nl_usuarios u ON p.responsable_id = u.id
                  WHERE 1=1`;
 
-        if (user?.tipo === 'cliente' && user?.clinica_id) {
+        if (user?.tipo === 'cliente') {
+            if (!user.clinica_id) {
+                return { rows: [], total: 0 };
+            }
             params.push(user.clinica_id);
+            query += ` AND p.clinica_id = $${params.length}`;
+        } else if (filters.clinica_id) {
+            params.push(filters.clinica_id);
             query += ` AND p.clinica_id = $${params.length}`;
         }
         if (filters.filtro === 'retrasados' || filters.estado === 'retrasados') {
-            query += ` AND p.fecha_entrega < CURRENT_DATE AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+            query += ` AND p.fecha_entrega < (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
         } else if (filters.filtro === 'entregas_hoy' || filters.estado === 'entregas_hoy') {
-            query += ` AND p.fecha_entrega = CURRENT_DATE AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+            query += ` AND p.fecha_entrega = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+        } else if (filters.filtro === 'en_taller' || filters.estado === 'en_taller') {
+            query += ` AND p.estado IN ('pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion')`;
         } else if (filters.estado) {
             params.push(filters.estado);
             query += ` AND p.estado = $${params.length}`;
-        }
-        if (filters.clinica_id) {
-            params.push(filters.clinica_id);
-            query += ` AND p.clinica_id = $${params.length}`;
         }
         if (filters.responsable_id) {
             params.push(filters.responsable_id);
@@ -110,21 +114,22 @@ export const makeOrderPgRepository = ({ pool }) => ({
                              LEFT JOIN nl_usuarios u ON p.responsable_id = u.id
                              WHERE 1=1`;
             const countParams = [];
-            if (user?.tipo === 'cliente' && user?.clinica_id) {
+            if (user?.tipo === 'cliente') {
                 countParams.push(user.clinica_id);
+                countQuery += ` AND p.clinica_id = $${countParams.length}`;
+            } else if (filters.clinica_id) {
+                countParams.push(filters.clinica_id);
                 countQuery += ` AND p.clinica_id = $${countParams.length}`;
             }
             if (filters.filtro === 'retrasados' || filters.estado === 'retrasados') {
-                countQuery += ` AND p.fecha_entrega < CURRENT_DATE AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+                countQuery += ` AND p.fecha_entrega < (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
             } else if (filters.filtro === 'entregas_hoy' || filters.estado === 'entregas_hoy') {
-                countQuery += ` AND p.fecha_entrega = CURRENT_DATE AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+                countQuery += ` AND p.fecha_entrega = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date AND p.estado NOT IN ('terminado', 'enviado', 'anulado')`;
+            } else if (filters.filtro === 'en_taller' || filters.estado === 'en_taller') {
+                countQuery += ` AND p.estado IN ('pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion')`;
             } else if (filters.estado) {
                 countParams.push(filters.estado);
                 countQuery += ` AND p.estado = $${countParams.length}`;
-            }
-            if (filters.clinica_id) {
-                countParams.push(filters.clinica_id);
-                countQuery += ` AND p.clinica_id = $${countParams.length}`;
             }
             if (filters.responsable_id) {
                 countParams.push(filters.responsable_id);
@@ -260,7 +265,18 @@ export const makeOrderPgRepository = ({ pool }) => ({
                     const hasUsesLeft = discountRow.limite_usos_total === null || discountRow.usos_actuales < discountRow.limite_usos_total;
                     const meetsMinAmount = !discountRow.monto_minimo_pedido || total >= Number(discountRow.monto_minimo_pedido);
 
-                    if (isValidDate && isClinicAllowed && hasUsesLeft && meetsMinAmount) {
+                    let clinicUsageAllowed = true;
+                    if (discountRow.limite_usos_por_doctor && clinica_id) {
+                        const usageCountRes = await client.query(
+                            `SELECT COUNT(*)::int AS count FROM nl_descuentos_usos WHERE descuento_id = $1 AND clinica_id = $2`,
+                            [discountRow.id, clinica_id]
+                        );
+                        if (Number(usageCountRes.rows[0]?.count || 0) >= Number(discountRow.limite_usos_por_doctor)) {
+                            clinicUsageAllowed = false;
+                        }
+                    }
+
+                    if (isValidDate && isClinicAllowed && hasUsesLeft && meetsMinAmount && clinicUsageAllowed) {
                         if (discountRow.tipo === 'porcentaje') {
                             let calc = (total * Number(discountRow.valor)) / 100;
                             if (discountRow.tope_descuento_maximo && calc > Number(discountRow.tope_descuento_maximo)) {
@@ -490,11 +506,20 @@ export const makeOrderPgRepository = ({ pool }) => ({
                  meet_requested_at=CASE WHEN $5 THEN NOW() ELSE meet_requested_at END,
                  meet_requested_by=CASE WHEN $5 THEN $6 ELSE meet_requested_by END,
                  meet_note=CASE WHEN $5 THEN $2 ELSE meet_note END
-             WHERE id=$3 AND pedido_id=$4 RETURNING *`,
+             WHERE id=$3 AND pedido_id=$4 AND estado='pendiente' RETURNING *`,
             [estado, comentarioCliente || null, approvalId, orderId, !!requestMeet, actorUserId || null]
         );
 
         if (result.rows.length === 0) {
+            const check = await pool.query('SELECT estado FROM nl_pedido_aprobaciones WHERE id=$1 AND pedido_id=$2', [approvalId, orderId]);
+            if (check.rows.length > 0) {
+                return {
+                    notFound: false,
+                    alreadyResponded: true,
+                    pedido: pedidoResult.rows[0],
+                    currentStatus: check.rows[0].estado
+                };
+            }
             return {
                 notFound: false,
                 approvalNotFound: true,
@@ -588,6 +613,19 @@ export const makeOrderPgRepository = ({ pool }) => ({
     getActiveLabUsers: async () => {
         const result = await pool.query(
             "SELECT id FROM nl_usuarios WHERE tipo IN ('admin','tecnico','operador','socio') AND estado='activo'"
+        );
+        return result.rows;
+    },
+    getDesignNotificationRecipients: async ({ responsibleId } = {}) => {
+        const result = await pool.query(
+            `SELECT DISTINCT id, nombre, email, tipo 
+             FROM nl_usuarios 
+             WHERE estado = 'activo' 
+               AND (
+                 tipo IN ('admin', 'tecnico') 
+                 OR ($1::int IS NOT NULL AND id = $1::int)
+               )`,
+            [responsibleId || null]
         );
         return result.rows;
     },

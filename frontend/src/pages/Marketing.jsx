@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';
 import { apiClient } from '../services/http/apiClient.js';
 import CustomSelect from '../components/CustomSelect.jsx';
 import Modal from '../components/Modal.jsx';
-import WheelOfFortune from '../components/WheelOfFortune.jsx';
+import { readMarketingData, marketingErrorMessage, settleMarketingResources, marketingClinicLabel } from './marketingData.js';
+import FormDatePicker from '../components/FormDatePicker.jsx';
+import MarketingInvitation from './MarketingInvitation.jsx';
+import MarketingCampaignComposer from './MarketingCampaignComposer.jsx';
+import RuletaCustomizer from '../components/RuletaCustomizer.jsx';
+import { eligibleInvitationCoupon } from './marketingInvitation.js';
 import '../styles/marketing.css';
 
 export default function Marketing() {
     const { getHeaders, user } = useAuth();
 
-    const [activeTab, setActiveTab] = useState('cupones'); // 'cupones' | 'ruleta' | 'fidelizacion'
+    const [activeTab, setActiveTab] = useState('cupones');
     const [metricas, setMetricas] = useState(null);
     const [cupones, setCupones] = useState([]);
     const [historialGiros, setHistorialGiros] = useState([]);
@@ -18,9 +23,11 @@ export default function Marketing() {
     const [totalPesoActivo, setTotalPesoActivo] = useState(0);
     const [clinicas, setClinicas] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingRuleta, setLoadingRuleta] = useState(false);
+    const [errors, setErrors] = useState({});
 
     // Sub-pestaña dentro de Ruleta
-    const [ruletaSubTab, setRuletaSubTab] = useState('girar'); // 'girar' | 'sectores' | 'historial'
+    const [ruletaSubTab, setRuletaSubTab] = useState('sectores'); // 'sectores' | 'historial'
 
     // Modal Crear/Editar Sector de Ruleta
     const [showSectorModal, setShowSectorModal] = useState(false);
@@ -46,6 +53,9 @@ export default function Marketing() {
     // Modal Crear Cupón
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [invitationCouponContext, setInvitationCouponContext] = useState(false);
+    const [couponSaveError, setCouponSaveError] = useState('');
+    const invitationCouponCallback = useRef(null);
     const [formData, setFormData] = useState({
         codigo: '',
         descripcion: '',
@@ -61,102 +71,79 @@ export default function Marketing() {
         origen: 'manual'
     });
 
-    // --- ESTADOS: KIT DE BIENVENIDA (WHATSAPP ONBOARDING) ---
-    const [kitDocNombre, setKitDocNombre] = useState('');
-    const [kitDocTelefono, setKitDocTelefono] = useState('');
-    const [kitClinicaNombre, setKitClinicaNombre] = useState('');
-    const [kitCuponSeleccionado, setKitCuponSeleccionado] = useState('');
-    const [kitCustomCupon, setKitCustomCupon] = useState('AFX-BIENVENIDA');
-    const [kitMensajeTipo, setKitMensajeTipo] = useState('bienvenida'); // 'bienvenida' | 'reactivacion' | 'visita'
+    const pendingKioskRefresh = useRef(false);
+    const loadDataRef = useRef(null);
 
     // --- ESTADOS: CAMPAÑAS VISUALES & PUSH BROADCAST ---
     const [campanas, setCampanas] = useState([]);
     const [loadingCampanas, setLoadingCampanas] = useState(false);
     const [showCampanaModal, setShowCampanaModal] = useState(false);
-    const [sendingCampana, setSendingCampana] = useState(false);
-    const [campanaForm, setCampanaForm] = useState({
-        titulo: '',
-        mensaje: '',
-        imagen_url: '',
-        tipo_audiencia: 'todos', // 'todos' | 'inactivos' | 'clinicas_especificas'
-        segmento_ids: [],
-        beneficio_tipo: 'cupon', // 'cupon' | 'capacitacion' | 'comunicado'
-        cupon_id: '',
-        codigo_descuento: '',
-        link_destino: '/pedidos/nuevo',
-        mostrar_toast_in_app: true,
-        enviar_push_web: true
+
+    // Modal de confirmación de eliminación segura (Cupones, Campañas)
+    const [deleteModal, setDeleteModal] = useState({
+        open: false,
+        type: '', // 'coupon' | 'campaign'
+        id: null,
+        title: '',
+        details: null,
+        loading: false
     });
-
-    const loadData = async () => {
+    const loadData = async (section = activeTab, refreshMetrics = true) => {
+        const headers = getHeaders();
+        const metricsRequest = refreshMetrics || section === 'cupones'
+            ? apiClient.get('/api/marketing/metricas', { headers }).catch(() => null)
+            : null;
+        if (section === 'cupones') setLoading(true);
+        if (section === 'campanas') setLoadingCampanas(true);
+        if (section === 'ruleta') setLoadingRuleta(true);
+        const resources = [];
+        const addResource = (key, path, onSuccess) => resources.push({
+            key, request: () => apiClient.get(path, { headers }), onSuccess
+        });
+        if (section === 'cupones' || section === 'bienvenida') {
+            addResource(section, '/api/marketing/cupones', (response) => setCupones(readMarketingData(response)));
+        }
+        if (section === 'campanas') {
+            addResource('campanas', '/api/marketing/campanas', (response) => setCampanas(readMarketingData(response)));
+        }
+        if (section === 'ruleta') {
+            addResource('historial', '/api/marketing/ruleta/historial', (response) => setHistorialGiros(readMarketingData(response)));
+            addResource('premios', '/api/marketing/ruleta/premios/admin', (response) => {
+                setSectoresRuleta(readMarketingData(response));
+                setTotalPesoActivo(response.totalPesoActivo || 0);
+            });
+        }
+        if (['campanas', 'ruleta', 'clinicas'].includes(section) && (section === 'clinicas' || clinicas.length === 0)) {
+            addResource('clinicas', '/api/marketing/campanas/clinicas', (response) => setClinicas(readMarketingData(response)));
+        }
+        setErrors((previous) => ({ ...previous, ...Object.fromEntries(resources.map(({ key }) => [key, null])) }));
         try {
-            setLoading(true);
-            const [metricasRes, cuponesRes, girosRes, clinicasRes, premiosRes, campanasRes] = await Promise.all([
-                apiClient.get('/api/marketing/metricas', { headers: getHeaders() }).catch(() => ({ data: { data: null } })),
-                apiClient.get('/api/marketing/cupones', { headers: getHeaders() }).catch(() => ({ data: { data: [] } })),
-                apiClient.get('/api/marketing/ruleta/historial', { headers: getHeaders() }).catch(() => ({ data: { data: [] } })),
-                apiClient.get('/api/clinicas', { headers: getHeaders() }).catch(() => []),
-                apiClient.get('/api/marketing/ruleta/premios/admin', { headers: getHeaders() }).catch(() => ({ data: [] })),
-                apiClient.get('/api/marketing/campanas', { headers: getHeaders() }).catch(() => ({ data: { data: [] } }))
-            ]);
-
-            const mData = metricasRes?.data !== undefined ? metricasRes.data : metricasRes;
-            setMetricas(mData || null);
-
-            const cData = cuponesRes?.data !== undefined ? cuponesRes.data : cuponesRes;
-            setCupones(Array.isArray(cData) ? cData : []);
-
-            const gData = girosRes?.data !== undefined ? girosRes.data : girosRes;
-            setHistorialGiros(Array.isArray(gData) ? gData : []);
-
-            const clData = Array.isArray(clinicasRes) ? clinicasRes : (clinicasRes?.data || []);
-            setClinicas(clData);
-
-            const pData = premiosRes?.data !== undefined ? premiosRes.data : premiosRes;
-            setSectoresRuleta(Array.isArray(pData) ? pData : []);
-            setTotalPesoActivo(premiosRes?.totalPesoActivo || 0);
-
-            const cmpData = campanasRes?.data !== undefined ? campanasRes.data : campanasRes;
-            setCampanas(Array.isArray(cmpData) ? cmpData : []);
-        } catch (err) {
-            toast.error('Error al sincronizar datos de marketing');
+            await settleMarketingResources(resources, (key, err) => {
+                const message = key === 'clinicas' ? 'No se pudieron cargar las clínicas.' : marketingErrorMessage(err, 'No se pudieron cargar los datos.');
+                setErrors((previous) => ({ ...previous, [key]: message }));
+            });
         } finally {
-            setLoading(false);
+            if (section === 'cupones') setLoading(false);
+            if (section === 'campanas') setLoadingCampanas(false);
+            if (section === 'ruleta') setLoadingRuleta(false);
+        }
+        if (metricsRequest) {
+            const response = await metricsRequest;
+            try { setMetricas(response ? readMarketingData(response) : null); }
+            catch { setMetricas(null); }
         }
     };
 
-    const handleCreateCampana = async (e) => {
-        e.preventDefault();
-        if (!campanaForm.titulo.trim() || !campanaForm.mensaje.trim()) {
-            toast.error('Título y mensaje son requeridos');
-            return;
-        }
-
-        setSendingCampana(true);
+    // Recarga silenciosa exclusiva para la ruleta sin desmontar el componente ni poner spinners
+    const refreshRuletaPremiosSilently = async () => {
         try {
-            const res = await apiClient.post('/api/marketing/campanas', campanaForm, {
-                headers: getHeaders()
-            });
-            toast.success(`¡Campaña lanzada! Notificaciones enviadas a ${res.data?.destinatarios_alcanzados ?? 0} usuarios`);
-            setShowCampanaModal(false);
-            setCampanaForm({
-                titulo: '',
-                mensaje: '',
-                imagen_url: '',
-                tipo_audiencia: 'todos',
-                segmento_ids: [],
-                beneficio_tipo: 'cupon',
-                cupon_id: '',
-                codigo_descuento: '',
-                link_destino: '/pedidos/nuevo',
-                mostrar_toast_in_app: true,
-                enviar_push_web: true
-            });
-            loadData();
-        } catch (err) {
-            toast.error(err.response?.data?.error || 'Error al disparar campaña');
-        } finally {
-            setSendingCampana(false);
+            const res = await apiClient.get('/api/marketing/ruleta/premios/admin', { headers: getHeaders() });
+            const list = readMarketingData(res);
+            setSectoresRuleta(list);
+            if (res?.totalPesoActivo !== undefined) setTotalPesoActivo(res.totalPesoActivo);
+            return list;
+        } catch {
+            return null;
         }
     };
 
@@ -166,14 +153,29 @@ export default function Marketing() {
                 headers: getHeaders()
             });
             toast.success('Estado de campaña actualizado');
-            loadData();
+            loadData('campanas');
         } catch {
             toast.error('Error al cambiar estado de campaña');
         }
     };
 
     useEffect(() => {
-        loadData();
+        loadData(activeTab, false);
+    }, [activeTab]);
+
+    loadDataRef.current = loadData;
+    useEffect(() => {
+        const refreshAfterKiosk = () => {
+            if (!pendingKioskRefresh.current || document.visibilityState !== 'visible') return;
+            pendingKioskRefresh.current = false;
+            loadDataRef.current('ruleta');
+        };
+        window.addEventListener('focus', refreshAfterKiosk);
+        document.addEventListener('visibilitychange', refreshAfterKiosk);
+        return () => {
+            window.removeEventListener('focus', refreshAfterKiosk);
+            document.removeEventListener('visibilitychange', refreshAfterKiosk);
+        };
     }, []);
 
     const handleGenerateCode = () => {
@@ -181,24 +183,61 @@ export default function Marketing() {
         setFormData((prev) => ({ ...prev, codigo: `AFX-${randomStr}` }));
     };
 
+    const closeCouponModal = () => {
+        if (creating) return;
+        invitationCouponCallback.current = null;
+        setShowCreateModal(false);
+        setInvitationCouponContext(false);
+        setCouponSaveError('');
+    };
+
+    const openInvitationCoupon = (onCreated) => {
+        setCouponSaveError('');
+        invitationCouponCallback.current = onCreated;
+        setInvitationCouponContext(true);
+        setFormData({ codigo: `AFX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`, descripcion: 'Bienvenida a AFINIX Dental Lab', tipo: 'monto_fijo', valor: '', tope_descuento_maximo: '', monto_minimo_pedido: '', limite_usos_total: '1', limite_usos_por_doctor: '1', fecha_fin: '', clinica_id: '', evento_nombre: '', origen: 'manual' });
+        setShowCreateModal(true);
+    };
+
     const handleCreateCoupon = async (e) => {
         e.preventDefault();
+        setCouponSaveError('');
         if (!formData.codigo.trim()) {
             toast.error('El código es obligatorio');
             return;
         }
-        if (!formData.valor || Number(formData.valor) <= 0) {
-            toast.error('El valor del descuento debe ser mayor a 0');
+        const value = Number(formData.valor);
+        if (!Number.isFinite(value) || value <= 0 || (formData.tipo === 'porcentaje' && value > 100)) {
+            toast.error('El descuento debe ser mayor a 0 y el porcentaje no puede superar 100');
+            return;
+        }
+        if ([formData.limite_usos_total, formData.limite_usos_por_doctor].some((limit) => !Number.isInteger(Number(limit)) || Number(limit) < 1)) {
+            toast.error('Los límites de uso deben ser números enteros mayores a 0');
+            return;
+        }
+        if (formData.fecha_fin && new Date(`${formData.fecha_fin}T23:59:59.999`).getTime() <= Date.now()) {
+            toast.error('Elige una fecha de vencimiento futura');
             return;
         }
 
         setCreating(true);
         try {
-            await apiClient.post('/api/marketing/cupones', formData, {
+            const response = await apiClient.post('/api/marketing/cupones', formData, {
                 headers: getHeaders()
             });
+            const savedCoupon = readMarketingData(response);
+            if (!savedCoupon?.id || !savedCoupon?.codigo) throw new Error('No se pudo confirmar el cupón guardado. Revisa la lista antes de volver a crearlo.');
+            setCupones((previous) => [savedCoupon, ...previous.filter((coupon) => coupon.id !== savedCoupon.id)]);
+            if (invitationCouponCallback.current) {
+                if (invitationCouponContext && eligibleInvitationCoupon(savedCoupon)) {
+                    setErrors((previous) => ({ ...previous, bienvenida: null }));
+                }
+                invitationCouponCallback.current(savedCoupon.codigo, savedCoupon);
+            }
+            invitationCouponCallback.current = null;
             toast.success('Cupón creado exitosamente');
             setShowCreateModal(false);
+            setInvitationCouponContext(false);
             setFormData({
                 codigo: '',
                 descripcion: '',
@@ -213,9 +252,10 @@ export default function Marketing() {
                 evento_nombre: '',
                 origen: 'manual'
             });
-            loadData();
+            loadData(activeTab);
         } catch (err) {
-            const msg = err.response?.data?.error || 'Error al crear el cupón';
+            const msg = marketingErrorMessage(err, 'Error al crear el cupón');
+            setCouponSaveError(msg);
             toast.error(msg);
         } finally {
             setCreating(false);
@@ -228,45 +268,86 @@ export default function Marketing() {
                 headers: getHeaders()
             });
             toast.success('Estado del cupón actualizado');
-            loadData();
+            loadData('cupones');
         } catch (err) {
-            toast.error('No se pudo actualizar el cupón');
+            toast.error(marketingErrorMessage(err, 'No se pudo actualizar el cupón'));
         }
     };
 
-    const handleDeleteCoupon = async (id) => {
-        if (!window.confirm('¿Seguro que deseas eliminar o desactivar este cupón?')) return;
+    const promptDeleteCoupon = (c) => {
+        setDeleteModal({
+            open: true,
+            type: 'coupon',
+            id: c.id,
+            title: c.codigo,
+            details: {
+                badge: c.tipo === 'porcentaje' ? `${c.valor}% OFF` : `S/. ${c.valor} OFF`,
+                subtitle: c.descripcion || 'Sin descripción adicional',
+                usos: `Límite: ${c.limite_usos_total} usos • Canjeados: ${c.total_usos || 0}`
+            },
+            loading: false
+        });
+    };
+
+    const promptDeleteCampana = (cmp) => {
+        setDeleteModal({
+            open: true,
+            type: 'campaign',
+            id: cmp.id,
+            title: cmp.titulo,
+            details: {
+                badge: cmp.canal === 'in_app' ? 'In-App Banner' : cmp.canal === 'push' ? 'Push Broadcast' : 'Multicanal',
+                subtitle: cmp.subtitulo || cmp.mensaje || 'Campaña de difusión',
+                usos: cmp.activo ? 'Estado actual: Activa' : 'Estado actual: Pausada'
+            },
+            loading: false
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.id || !deleteModal.type) return;
+        setDeleteModal((prev) => ({ ...prev, loading: true }));
         try {
-            const res = await apiClient.delete(`/api/marketing/cupones/${id}`, {
-                headers: getHeaders()
-            });
-            toast.success(res.data?.message || 'Cupón eliminado');
-            loadData();
+            if (deleteModal.type === 'coupon') {
+                const res = await apiClient.delete(`/api/marketing/cupones/${deleteModal.id}`, {
+                    headers: getHeaders()
+                });
+                toast.success(res?.message || 'Cupón eliminado correctamente');
+                loadData('cupones');
+            } else if (deleteModal.type === 'campaign') {
+                const res = await apiClient.delete(`/api/marketing/campanas/${deleteModal.id}`, {
+                    headers: getHeaders()
+                });
+                toast.success(res?.message || 'Campaña eliminada correctamente');
+                loadData('campanas');
+            }
+            setDeleteModal({ open: false, type: '', id: null, title: '', details: null, loading: false });
         } catch (err) {
-            toast.error('Error al eliminar cupón');
+            toast.error(marketingErrorMessage(err, `Error al eliminar ${deleteModal.type === 'coupon' ? 'el cupón' : 'la campaña'}`));
+            setDeleteModal((prev) => ({ ...prev, loading: false }));
         }
     };
 
     const copyToClipboard = (text) => {
-        navigator.clipboard.writeText(text);
-        toast.success(`Código ${text} copiado`);
+        navigator.clipboard.writeText(text).then(() => toast.success(`Código ${text} copiado`))
+            .catch(() => toast.error('No se pudo copiar el código.'));
     };
 
     const clinicOptions = [
         { value: '', label: 'Cualquier clínica / doctor (Uso Libre)' },
-        ...clinicas.map((c) => ({ value: String(c.id), label: `${c.nombre} (${c.ciudad || 'Arequipa'})` }))
+        ...clinicas.map((c) => ({ value: String(c.id), label: marketingClinicLabel(c) }))
     ];
 
     const typeOptions = [
-        { value: 'porcentaje', label: 'Porcentaje (% de descuento)' },
-        { value: 'monto_fijo', label: 'Monto Fijo en Soles (S/. descuento)' }
+        { value: 'porcentaje', label: 'Porcentaje (%)', icon: 'bi-percent' },
+        { value: 'monto_fijo', label: 'Monto Fijo (S/)', icon: 'bi-cash' }
     ];
 
     const prizeTypeOptions = [
-        { value: 'porcentaje', label: 'Descuento Porcentual (% OFF)' },
-        { value: 'monto_fijo', label: 'Descuento Fijo en Soles (S/. OFF)' },
-        { value: 'merch', label: 'Merchandising / Regalo Físico (Agenda, Taza, etc.)' },
-        { value: 'sin_premio', label: 'Sin Premio (Sigue intentando)' }
+        { value: 'porcentaje', label: 'Porcentaje (% OFF)', icon: 'bi-percent' },
+        { value: 'monto_fijo', label: 'Monto Fijo (S/ OFF)', icon: 'bi-cash' },
+        { value: 'merch', label: 'Merchandising / Regalo', icon: 'bi-gift' },
+        { value: 'sin_premio', label: 'Sin Premio', icon: 'bi-emoji-neutral' }
     ];
 
     const colorPresets = [
@@ -331,9 +412,9 @@ export default function Marketing() {
                 toast.success('Nuevo sector creado en la ruleta');
             }
             setShowSectorModal(false);
-            loadData();
+            loadData('ruleta');
         } catch (err) {
-            toast.error(err.response?.data?.error || 'Error al guardar sector');
+            toast.error(marketingErrorMessage(err, 'Error al guardar sector'));
         } finally {
             setSavingSector(false);
         }
@@ -345,7 +426,7 @@ export default function Marketing() {
                 headers: getHeaders()
             });
             toast.success('Estado del sector actualizado');
-            loadData();
+            loadData('ruleta');
         } catch {
             toast.error('Error al cambiar estado del sector');
         }
@@ -357,8 +438,8 @@ export default function Marketing() {
             const res = await apiClient.delete(`/api/marketing/ruleta/premios/${id}`, {
                 headers: getHeaders()
             });
-            toast.success(res.data?.message || 'Sector eliminado');
-            loadData();
+            toast.success(res.message || 'Sector eliminado');
+            loadData('ruleta');
         } catch {
             toast.error('Error al eliminar sector');
         }
@@ -373,6 +454,7 @@ export default function Marketing() {
         } : kioskParticipant;
 
         sessionStorage.setItem('afinix_ruleta_participante', JSON.stringify(payload));
+        pendingKioskRefresh.current = true;
         window.open('/ruleta-evento', '_blank');
     };
 
@@ -383,24 +465,15 @@ export default function Marketing() {
                 <div className="page-header-left">
                     <h1>
                         <i className="bi bi-megaphone-fill text-primary" aria-hidden="true"></i>
-                        Marketing & Fidelización Comercial
+                        Marketing
                     </h1>
                     <p>
-                        AFINIX DENTAL LAB S.A.C. · Cupones de descuento, ruleta para visitas de campo y recompensas por hitos.
+                        Cupones, campañas e invitaciones para clientes.
                     </p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={loadData}
-                        title="Actualizar datos"
-                        aria-label="Actualizar datos"
-                    >
-                        <i className="bi bi-arrow-clockwise" aria-hidden="true"></i>
-                    </button>
-                    <button
+                    {activeTab === 'cupones' && <button
                         type="button"
                         className="btn btn-primary"
                         onClick={() => {
@@ -410,8 +483,8 @@ export default function Marketing() {
                         style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
                     >
                         <i className="bi bi-plus-lg" aria-hidden="true"></i>
-                        Nuevo Cupón
-                    </button>
+                        Nuevo cupón
+                    </button>}
                 </div>
             </div>
 
@@ -423,7 +496,7 @@ export default function Marketing() {
                             <div className="kpi-icon" aria-hidden="true"><i className="bi bi-tags-fill" aria-hidden="true"></i></div>
                             <div className="dashboard-kpi-heading-group">
                                 <div className="dashboard-kpi-heading">Cupones Activos</div>
-                                <div className="dashboard-kpi-main-value">{metricas?.cupones_activos ?? cupones.filter(c => c.activo).length}</div>
+                                <div className="dashboard-kpi-main-value">{metricas?.cupones_activos ?? '—'}</div>
                                 <div className="dashboard-kpi-note">Disponibles para canje</div>
                             </div>
                         </div>
@@ -435,7 +508,7 @@ export default function Marketing() {
                             <div className="kpi-icon" aria-hidden="true"><i className="bi bi-bag-check-fill" aria-hidden="true"></i></div>
                             <div className="dashboard-kpi-heading-group">
                                 <div className="dashboard-kpi-heading">Canjes Totales</div>
-                                <div className="dashboard-kpi-main-value">{metricas?.total_canjes ?? 0}</div>
+                                <div className="dashboard-kpi-main-value">{metricas?.total_canjes ?? '—'}</div>
                                 <div className="dashboard-kpi-note">Órdenes con descuento</div>
                             </div>
                         </div>
@@ -447,7 +520,7 @@ export default function Marketing() {
                             <div className="kpi-icon" aria-hidden="true"><i className="bi bi-cash-stack" aria-hidden="true"></i></div>
                             <div className="dashboard-kpi-heading-group">
                                 <div className="dashboard-kpi-heading">Ahorro Otorgado</div>
-                                <div className="dashboard-kpi-main-value">S/. {Number(metricas?.total_ahorrado_soles || 0).toFixed(2)}</div>
+                                <div className="dashboard-kpi-main-value">{metricas ? `S/. ${Number(metricas.total_ahorrado_soles || 0).toFixed(2)}` : '—'}</div>
                                 <div className="dashboard-kpi-note">Beneficio total a doctores</div>
                             </div>
                         </div>
@@ -459,7 +532,7 @@ export default function Marketing() {
                             <div className="kpi-icon" aria-hidden="true"><i className="bi bi-disc" aria-hidden="true"></i></div>
                             <div className="dashboard-kpi-heading-group">
                                 <div className="dashboard-kpi-heading">Giros de Ruleta</div>
-                                <div className="dashboard-kpi-main-value">{metricas?.total_giros_ruleta ?? historialGiros.length}</div>
+                                <div className="dashboard-kpi-main-value">{metricas?.total_giros_ruleta ?? '—'}</div>
                                 <div className="dashboard-kpi-note">Participantes en visitas</div>
                             </div>
                         </div>
@@ -476,7 +549,7 @@ export default function Marketing() {
                     aria-pressed={activeTab === 'cupones'}
                 >
                     <i className="bi bi-ticket-perforated" aria-hidden="true"></i>
-                    Cupones de Descuento ({cupones.length})
+                    Cupones ({cupones.length})
                 </button>
                 <button
                     type="button"
@@ -485,7 +558,7 @@ export default function Marketing() {
                     aria-pressed={activeTab === 'bienvenida'}
                 >
                     <i className="bi bi-whatsapp" aria-hidden="true"></i>
-                    Kit de Bienvenida (WhatsApp)
+                    Invitaciones
                 </button>
                 <button
                     type="button"
@@ -494,7 +567,7 @@ export default function Marketing() {
                     aria-pressed={activeTab === 'campanas'}
                 >
                     <i className="bi bi-broadcast" aria-hidden="true"></i>
-                    Campañas Push & Visuales ({campanas.length})
+                    Campañas ({campanas.length})
                 </button>
                 <button
                     type="button"
@@ -503,20 +576,17 @@ export default function Marketing() {
                     aria-pressed={activeTab === 'ruleta'}
                 >
                     <i className="bi bi-disc" aria-hidden="true"></i>
-                    Ruleta de la Suerte (Eventos & Visitas)
-                </button>
-                <button
-                    type="button"
-                    className={`btn section-tab dashboard-view-tab ${activeTab === 'fidelizacion' ? 'btn-primary' : 'btn-ghost'}`}
-                    onClick={() => setActiveTab('fidelizacion')}
-                    aria-pressed={activeTab === 'fidelizacion'}
-                >
-                    <i className="bi bi-trophy" aria-hidden="true"></i>
-                    Hitos & Fidelización (Rewards)
+                    Ruleta
                 </button>
             </div>
 
             {/* CONTENIDO DE PESTAÑAS */}
+            {['bienvenida', 'campanas', 'ruleta'].includes(activeTab) && errors.clinicas && (
+                <div className="marketing-load-error" role="alert">
+                    {errors.clinicas}
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData('clinicas', false)}>Reintentar clínicas</button>
+                </div>
+            )}
             {activeTab === 'cupones' && (
                 <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -531,6 +601,8 @@ export default function Marketing() {
                             <div className="spinner" role="status" aria-label="Cargando cupones"></div>
                             <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)' }}>Cargando cupones...</p>
                         </div>
+                    ) : errors.cupones ? (
+                        <div className="marketing-load-error" role="alert">{errors.cupones} <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData('cupones')}>Reintentar</button></div>
                     ) : cupones.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-secondary)' }}>
                             <i className="bi bi-tag" aria-hidden="true" style={{ fontSize: '2.5rem', opacity: 0.5 }}></i>
@@ -659,7 +731,7 @@ export default function Marketing() {
                                                         <button
                                                             type="button"
                                                             className="btn btn-sm btn-ghost marketing-danger-action"
-                                                            onClick={() => handleDeleteCoupon(c.id)}
+                                                            onClick={() => promptDeleteCoupon(c)}
                                                             title="Eliminar cupón"
                                                             aria-label="Eliminar cupón"
                                                         >
@@ -677,259 +749,10 @@ export default function Marketing() {
                 </div>
             )}
 
-            {activeTab === 'bienvenida' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                    {/* Generador de Invitación y Link */}
-                    <div className="card dashboard-ops-panel" style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
-                            <span style={{
-                                width: '38px',
-                                height: '38px',
-                                borderRadius: '10px',
-                                background: 'rgba(37, 211, 102, 0.15)',
-                                color: '#16a34a',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '1.3rem'
-                            }}>
-                                <i className="bi bi-whatsapp"></i>
-                            </span>
-                            <div>
-                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
-                                    Kit de Bienvenida & Enlace Express
-                                </h3>
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                    Crea invitaciones personalizadas con cupón de regalo para doctores analógicos.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Nombre del Doctor(a)
-                            </label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Ej. Dr. Carlos Mendoza"
-                                value={kitDocNombre}
-                                onChange={(e) => setKitDocNombre(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                WhatsApp del Doctor (para enviar)
-                            </label>
-                            <input
-                                type="tel"
-                                className="form-input"
-                                placeholder="Ej. 958123456"
-                                value={kitDocTelefono}
-                                onChange={(e) => setKitDocTelefono(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Nombre de la Clínica o Consultorio
-                            </label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Ej. Clínica Dental Sonrisas"
-                                value={kitClinicaNombre}
-                                onChange={(e) => setKitClinicaNombre(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Cupón de Beneficio Asignado
-                            </label>
-                            <CustomSelect
-                                options={[
-                                    { value: '', label: 'Personalizado (escribir código)' },
-                                    ...cupones.filter(c => c.activo).map(c => ({
-                                        value: c.codigo,
-                                        label: `${c.codigo} (${c.tipo === 'porcentaje' ? `${c.valor}% DCTO` : `S/. ${c.valor} Soles`})`
-                                    }))
-                                ]}
-                                value={kitCuponSeleccionado}
-                                onChange={(_, val) => {
-                                    setKitCuponSeleccionado(val);
-                                    if (val) setKitCustomCupon(val);
-                                }}
-                                placeholder="Seleccionar cupón de la lista..."
-                            />
-                        </div>
-
-                        {!kitCuponSeleccionado && (
-                            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                    Código del Cupón de Regalo
-                                </label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Ej. AFX-BIENVENIDA50"
-                                    value={kitCustomCupon}
-                                    onChange={(e) => setKitCustomCupon(e.target.value.toUpperCase())}
-                                />
-                            </div>
-                        )}
-
-                        <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Enfoque del Mensaje
-                            </label>
-                            <div className="segmented-control" style={{ width: '100%' }}>
-                                <button
-                                    type="button"
-                                    className={`segmented-control__btn ${kitMensajeTipo === 'bienvenida' ? 'is-active' : ''}`}
-                                    onClick={() => setKitMensajeTipo('bienvenida')}
-                                >
-                                    Bienvenida
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`segmented-control__btn ${kitMensajeTipo === 'visita' ? 'is-active' : ''}`}
-                                    onClick={() => setKitMensajeTipo('visita')}
-                                >
-                                    Visita Comercial
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`segmented-control__btn ${kitMensajeTipo === 'reactivacion' ? 'is-active' : ''}`}
-                                    onClick={() => setKitMensajeTipo('reactivacion')}
-                                >
-                                    Reactivación
-                                </button>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                style={{ flex: 1 }}
-                                onClick={() => {
-                                    const params = new URLSearchParams();
-                                    if (kitDocNombre) params.append('doc', kitDocNombre);
-                                    if (kitDocTelefono) params.append('tel', kitDocTelefono);
-                                    if (kitClinicaNombre) params.append('clinica', kitClinicaNombre);
-                                    const code = kitCuponSeleccionado || kitCustomCupon;
-                                    if (code) params.append('promo', code);
-                                    const fullUrl = `${window.location.origin}/registro?${params.toString()}`;
-                                    navigator.clipboard.writeText(fullUrl);
-                                    toast.success('Enlace de registro copiado al portapapeles');
-                                }}
-                            >
-                                <i className="bi bi-link-45deg"></i> Copiar Link
-                            </button>
-
-                            <a
-                                href={(() => {
-                                    const params = new URLSearchParams();
-                                    if (kitDocNombre) params.append('doc', kitDocNombre);
-                                    if (kitDocTelefono) params.append('tel', kitDocTelefono);
-                                    if (kitClinicaNombre) params.append('clinica', kitClinicaNombre);
-                                    const code = kitCuponSeleccionado || kitCustomCupon;
-                                    if (code) params.append('promo', code);
-                                    const fullUrl = `${window.location.origin}/registro?${params.toString()}`;
-
-                                    const docGreeting = kitDocNombre ? `Estimado/a ${kitDocNombre}` : 'Estimado/a Doctor/a';
-                                    let txt = '';
-                                    if (kitMensajeTipo === 'bienvenida') {
-                                        txt = `¡Hola ${docGreeting}! Le escribe el equipo de AFINIX Dental Lab. Para facilitarle el envío y seguimiento de sus casos sin recetas de papel, le habilitamos su acceso al portal digital con un beneficio exclusivo de bienvenida: cupón *${code || 'AFX-BIENVENIDA'}* para su primer trabajo técnico.\n\nActive su cuenta aquí en 30 segundos:\n${fullUrl}\n\n¡Cualquier consulta estamos a su servicio en Arequipa!`;
-                                    } else if (kitMensajeTipo === 'visita') {
-                                        txt = `¡Hola ${docGreeting}! Fue un gusto visitarlo en su consultorio. Como conversamos, le comparto su acceso al sistema de AFINIX Dental Lab con el código especial *${code || 'AFX-VISITA'}* otorgado en nuestra visita.\n\nPuede ingresar y subir su caso digital aquí:\n${fullUrl}`;
-                                    } else {
-                                        txt = `¡Hola ${docGreeting}! En AFINIX Dental Lab queremos acompañarlo en sus próximos casos de rehabilitación y estética. Le obsequiamos el cupón *${code || 'AFX-VUELVE'}* para su próxima orden clínica.\n\nIngrese directamente a su portal aquí:\n${fullUrl}`;
-                                    }
-
-                                    const cleanTel = (kitDocTelefono || '').replace(/\D/g, '');
-                                    const phonePrefix = cleanTel.startsWith('51') ? cleanTel : cleanTel.length === 9 ? `51${cleanTel}` : '';
-                                    return phonePrefix
-                                        ? `https://wa.me/${phonePrefix}?text=${encodeURIComponent(txt)}`
-                                        : `https://wa.me/?text=${encodeURIComponent(txt)}`;
-                                })()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-success"
-                                style={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 600, backgroundColor: '#16a34a', borderColor: '#16a34a', color: '#fff' }}
-                            >
-                                <i className="bi bi-whatsapp"></i> Enviar por WhatsApp
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* Previsualización del Mensaje en Móvil */}
-                    <div className="card dashboard-ops-panel" style={{ padding: '1.5rem', background: 'var(--color-bg-alt)' }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
-                            Vista Previa de la Experiencia del Doctor
-                        </div>
-
-                        {/* Simulación Chat WhatsApp */}
-                        <div style={{
-                            background: '#efeae2',
-                            borderRadius: '14px',
-                            padding: '1rem',
-                            border: '1px solid #cbd5e1',
-                            marginBottom: '1rem',
-                            fontSize: '0.86rem',
-                            color: '#111827'
-                        }}>
-                            <div style={{
-                                background: '#ffffff',
-                                padding: '0.85rem',
-                                borderRadius: '10px 10px 10px 2px',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                                maxWidth: '92%',
-                                lineHeight: 1.5
-                            }}>
-                                <p style={{ margin: '0 0 0.5rem' }}>
-                                    ¡Hola {kitDocNombre || 'Estimado/a Doctor/a'}! Le escribe el equipo de <strong>AFINIX Dental Lab</strong>.
-                                </p>
-                                <p style={{ margin: '0 0 0.5rem' }}>
-                                    Para facilitarle el envío y seguimiento de sus casos sin recetas de papel, le habilitamos su acceso al portal digital con un beneficio exclusivo: cupón <strong style={{ color: '#0284c7' }}>{kitCuponSeleccionado || kitCustomCupon || 'AFX-BIENVENIDA'}</strong> para su primer trabajo técnico.
-                                </p>
-                                <div style={{
-                                    background: 'rgba(2, 132, 199, 0.08)',
-                                    padding: '0.5rem 0.75rem',
-                                    borderRadius: '6px',
-                                    borderLeft: '3px solid #0284c7',
-                                    fontSize: '0.8rem',
-                                    wordBreak: 'break-all'
-                                }}>
-                                    🔗 {window.location.origin}/registro?promo={kitCuponSeleccionado || kitCustomCupon || 'AFX-BIENVENIDA'}&doc={encodeURIComponent(kitDocNombre || 'Doctor')}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Explicación de lo que pasa al hacer clic */}
-                        <div style={{
-                            background: '#ffffff',
-                            padding: '1rem',
-                            borderRadius: '10px',
-                            border: '1px solid var(--color-border)',
-                            fontSize: '0.82rem',
-                            color: 'var(--color-text-secondary)',
-                            lineHeight: 1.6
-                        }}>
-                            <strong style={{ color: 'var(--color-text)', display: 'block', marginBottom: '0.25rem' }}>
-                                ¿Qué verá el doctor al abrir el enlace?
-                            </strong>
-                            <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                                <li><strong>Pre-llenado de datos:</strong> Su nombre y teléfono ya aparecerán escritos, reduciendo la fricción a solo elegir contraseña.</li>
-                                <li><strong>Incentivo visible:</strong> Una insignia destacada confirmará que su cupón <strong>{kitCuponSeleccionado || kitCustomCupon || 'AFX-BIENVENIDA'}</strong> está listo para ser canjeado.</li>
-                                <li><strong>Cero mensajes perdidos:</strong> Su cuenta quedará conectada al sistema para pedidos y aprobaciones 3D.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <div hidden={activeTab !== 'bienvenida'}>
+                {errors.bienvenida && <div className="marketing-load-error" role="alert">{errors.bienvenida} <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData('bienvenida')}>Reintentar</button></div>}
+                <MarketingInvitation coupons={cupones} couponsError={errors.bienvenida} onCreateCoupon={openInvitationCoupon} />
+            </div>
 
             {activeTab === 'campanas' && (
                 <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
@@ -937,10 +760,10 @@ export default function Marketing() {
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <i className="bi bi-broadcast text-primary" aria-hidden="true"></i>
-                                Campañas Push Masivas & Banners Visuales In-App
+                                Campañas
                             </h3>
                             <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
-                                Envía anuncios visuales al navegador/celular y muestra notificaciones emergentes de temporada (Halloween, capacitaciones, reactivación).
+                                Envía comunicaciones a clientes activos.
                             </p>
                         </div>
 
@@ -951,7 +774,7 @@ export default function Marketing() {
                             style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                         >
                             <i className="bi bi-send-fill" aria-hidden="true"></i>
-                            Nueva Campaña Masiva
+                            Nueva campaña
                         </button>
                     </div>
 
@@ -960,6 +783,8 @@ export default function Marketing() {
                             <div className="spinner" role="status"></div>
                             <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)' }}>Cargando campañas...</p>
                         </div>
+                    ) : errors.campanas ? (
+                        <div className="marketing-load-error" role="alert">{errors.campanas} <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData('campanas')}>Reintentar</button></div>
                     ) : campanas.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-secondary)' }}>
                             <i className="bi bi-megaphone" aria-hidden="true" style={{ fontSize: '2.5rem', opacity: 0.5 }}></i>
@@ -969,7 +794,7 @@ export default function Marketing() {
                                 className="btn btn-secondary btn-sm"
                                 onClick={() => setShowCampanaModal(true)}
                             >
-                                Lanzar Primera Campaña Push
+                                Crear primera campaña
                             </button>
                         </div>
                     ) : (
@@ -1031,7 +856,7 @@ export default function Marketing() {
                                                     color: cmp.tipo_audiencia === 'inactivos' ? 'var(--color-warning)' : 'var(--color-primary)',
                                                     fontWeight: 600
                                                 }}>
-                                                    {cmp.tipo_audiencia === 'todos' ? 'Todos los clientes' : cmp.tipo_audiencia === 'inactivos' ? 'Clientes inactivos (+30d)' : 'Segmentado'}
+                                                    {cmp.tipo_audiencia === 'todos' ? 'Clientes con portal' : cmp.tipo_audiencia === 'inactivos' ? 'Sin pedidos en 30 días' : 'Clínicas seleccionadas'}
                                                 </span>
                                             </td>
                                             <td>
@@ -1047,10 +872,10 @@ export default function Marketing() {
                                             </td>
                                             <td>
                                                 <div style={{ fontSize: '0.82rem' }}>
-                                                    <strong>{cmp.total_enviados}</strong> enviados
+                                                    {cmp.envio_metricas ? <><strong>{cmp.envio_metricas.cuentas_objetivo}</strong> cuentas objetivo<br />{cmp.envio_metricas.avisos_portal} avisos portal<br />{cmp.envio_metricas.push_aceptados} Push aceptados · {cmp.envio_metricas.push_fallidos} fallidos<br />{cmp.envio_metricas.push_inciertos + cmp.envio_metricas.push_pendientes > 0 ? 'Resultados pendientes de confirmar' : cmp.envio_estado === 'partial' ? 'Procesamiento parcial' : 'Procesamiento finalizado'}</> : 'Campaña anterior: entrega no verificada'}
                                                 </div>
                                                 <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
-                                                    {cmp.total_clics} clics
+                                                    Push aceptado no confirma entrega
                                                 </div>
                                             </td>
                                             <td>
@@ -1062,14 +887,28 @@ export default function Marketing() {
                                                 </span>
                                             </td>
                                             <td style={{ textAlign: 'right' }}>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-sm btn-ghost"
-                                                    onClick={() => handleToggleCampana(cmp.id)}
-                                                    title={cmp.activo ? 'Pausar campaña' : 'Activar campaña'}
-                                                >
-                                                    <i className={`bi ${cmp.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
-                                                </button>
+                                                <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-ghost"
+                                                        onClick={() => handleToggleCampana(cmp.id)}
+                                                        title={cmp.activo ? 'Pausar campaña' : 'Activar campaña'}
+                                                        aria-label={cmp.activo ? 'Pausar campaña' : 'Activar campaña'}
+                                                    >
+                                                        <i className={`bi ${cmp.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
+                                                    </button>
+                                                    {user?.tipo === 'admin' && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-ghost marketing-danger-action"
+                                                            onClick={() => promptDeleteCampana(cmp)}
+                                                            title="Eliminar campaña"
+                                                            aria-label="Eliminar campaña"
+                                                        >
+                                                            <i className="bi bi-trash" aria-hidden="true"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -1082,6 +921,13 @@ export default function Marketing() {
 
             {activeTab === 'ruleta' && (
                 <div>
+                    {['premios', 'historial'].filter((key) => errors[key]).map((key) => (
+                        <div key={key} className="marketing-load-error" role="alert">
+                            {key === 'premios' ? 'Sectores de ruleta: ' : 'Historial de giros: '}{errors[key]}
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData('ruleta', false)}>Reintentar ruleta</button>
+                        </div>
+                    ))}
+                    {loadingRuleta && <p role="status">Cargando ruleta…</p>}
                     {/* Barra de Herramientas y Modo Kiosco */}
                     <div style={{
                         display: 'flex',
@@ -1099,441 +945,65 @@ export default function Marketing() {
                         <div className="section-tabs marketing-tabs marketing-subtabs" role="group" aria-label="Secciones de ruleta">
                             <button
                                 type="button"
-                                className={`btn btn-sm ${ruletaSubTab === 'girar' ? 'btn-primary' : 'btn-secondary'}`}
-                                onClick={() => setRuletaSubTab('girar')}
-                    aria-pressed={ruletaSubTab === 'girar'}
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
-                            >
-                                <i className="bi bi-play-circle-fill" aria-hidden="true"></i>
-                                Girar Ruleta (Visitas)
-                            </button>
-                            <button
-                                type="button"
                                 className={`btn btn-sm ${ruletaSubTab === 'sectores' ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={() => setRuletaSubTab('sectores')}
-                    aria-pressed={ruletaSubTab === 'sectores'}
+                                aria-pressed={ruletaSubTab === 'sectores'}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                             >
                                 <i className="bi bi-sliders" aria-hidden="true"></i>
-                                Configurar Sectores & Probabilidades ({sectoresRuleta.length})
+                                Configurar Sectores & Probabilidades ({loadingRuleta || errors.premios ? '—' : sectoresRuleta.length})
                             </button>
                             <button
                                 type="button"
                                 className={`btn btn-sm ${ruletaSubTab === 'historial' ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={() => setRuletaSubTab('historial')}
-                    aria-pressed={ruletaSubTab === 'historial'}
+                                aria-pressed={ruletaSubTab === 'historial'}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                             >
                                 <i className="bi bi-clock-history" aria-hidden="true"></i>
-                                Historial de Giros ({historialGiros.length})
+                                Historial de Giros ({loadingRuleta || errors.historial ? '—' : historialGiros.length})
                             </button>
                         </div>
 
-                        {/* Botón Lanzador Rápido */}
+                        {/* Botón Principal: Lanzar Ruleta en Pantalla Completa */}
                         <button
                             type="button"
-                            className="btn btn-primary btn-sm"
+                            className="btn btn-primary"
                             onClick={() => handleLaunchKiosk(true)}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
-                                fontWeight: 700,
-                                boxShadow: 'var(--shadow-sm)'
+                                gap: '0.55rem',
+                                fontWeight: 800,
+                                padding: '0.55rem 1.25rem',
+                                borderRadius: '10px',
+                                boxShadow: '0 4px 15px rgba(2, 132, 199, 0.35)',
+                                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)'
                             }}
-                            title="Abre la ruleta limpia en pantalla completa, estilo Interacty"
-                            aria-label="Abre la ruleta limpia en pantalla completa, estilo Interacty"
+                            title="Abre la ruleta inmersiva con escenario 3D en pantalla completa"
+                            aria-label="Abrir Ruleta AFINIX en Pantalla Completa"
                         >
-                            <i className="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-                            Lanzar Modo Kiosco Libre
+                            <i className="bi bi-play-circle-fill" style={{ fontSize: '1.15rem' }} aria-hidden="true"></i>
+                            Abrir Ruleta AFINIX en Pantalla Completa
                         </button>
                     </div>
 
-                    {/* VISTA 1: PREPARACIÓN Y LANZADOR MODO INTERACTY */}
-                    {ruletaSubTab === 'girar' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                            {/* Tarjeta 1: Preparación con Doctor Específico */}
-                            <div className="card dashboard-ops-panel" style={{ padding: '1.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                                    <span style={{
-                                        width: '36px',
-                                        height: '36px',
-                                        borderRadius: '8px',
-                                        background: 'var(--color-primary-light)',
-                                        color: 'var(--color-primary)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '1.2rem'
-                                    }}>
-                                        <i className="bi bi-person-fill-check" aria-hidden="true"></i>
-                                    </span>
-                                    <div>
-                                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
-                                            Preparar Visita para Doctor Específico
-                                        </h3>
-                                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                            Vincula el premio a la cuenta del doctor para que le llegue un pop-up a su portal.
-                                        </p>
-                                    </div>
-                                </div>
 
-                                <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                    <label htmlFor="marketing-kioskParticipant-doctor_nombre" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Nombre del Doctor(a)
-                                    </label>
-                                    <input
-                                        id="marketing-kioskParticipant-doctor_nombre"
-                                        type="text"
-                                        className="form-input"
-                                        placeholder="Ej. Dr. Carlos Valdivia"
-                                        value={kioskParticipant.doctor_nombre}
-                                        onChange={(e) => setKioskParticipant((prev) => ({ ...prev, doctor_nombre: e.target.value }))}
-                                    />
-                                </div>
 
-                                <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                    <label htmlFor="marketing-kioskParticipant-clinica_id" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Clínica / Consultorio (Asignación)
-                                    </label>
-                                    <CustomSelect
-                                        id="marketing-kioskParticipant-clinica_id"
-                                        options={clinicOptions}
-                                        value={kioskParticipant.clinica_id ? String(kioskParticipant.clinica_id) : ''}
-                                        onChange={(_, val) => setKioskParticipant((prev) => ({ ...prev, clinica_id: val }))}
-                                        placeholder="Uso Libre (o vincular con cuenta en portal)"
-                                        searchable
-                                    />
-                                </div>
-
-                                <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                    <label htmlFor="marketing-kioskParticipant-doctor_telefono" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Teléfono / WhatsApp (para entrega)
-                                    </label>
-                                    <input
-                                        id="marketing-kioskParticipant-doctor_telefono"
-                                        type="tel"
-                                        className="form-input"
-                                        placeholder="Ej. 958123456"
-                                        value={kioskParticipant.doctor_telefono}
-                                        onChange={(e) => setKioskParticipant((prev) => ({ ...prev, doctor_telefono: e.target.value }))}
-                                    />
-                                </div>
-
-                                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                                    <label htmlFor="marketing-kioskParticipant-evento_nombre" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                        Motivo o Evento
-                                    </label>
-                                    <input
-                                        id="marketing-kioskParticipant-evento_nombre"
-                                        type="text"
-                                        className="form-input"
-                                        placeholder="Ej. Visita Clínica San Juan / Congreso Odontológico"
-                                        value={kioskParticipant.evento_nombre}
-                                        onChange={(e) => setKioskParticipant((prev) => ({ ...prev, evento_nombre: e.target.value }))}
-                                    />
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    onClick={() => handleLaunchKiosk(false)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.85rem',
-                                        fontWeight: 700,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem',
-                                        boxShadow: '0 4px 15px rgba(2, 132, 199, 0.35)'
-                                    }}
-                                >
-                                    <i className="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-                                    🚀 Lanzar Ruleta para este Doctor
-                                </button>
-                            </div>
-
-                            {/* Tarjeta 2: Modo Stand / Evento Libre */}
-                            <div className="card dashboard-ops-panel" style={{
-                                padding: '1.5rem',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.05) 0%, rgba(56, 189, 248, 0.02) 100%)',
-                                border: '1px solid rgba(2, 132, 199, 0.2)'
-                            }}>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                                        <span style={{
-                                            width: '36px',
-                                            height: '36px',
-                                            borderRadius: '8px',
-                                            background: 'rgba(16, 185, 129, 0.12)',
-                                            color: 'var(--color-success)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '1.2rem'
-                                        }}>
-                                            <i className="bi bi-stars" aria-hidden="true"></i>
-                                        </span>
-                                        <div>
-                                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
-                                                Modo Kiosco Libre (Interacty Style)
-                                            </h3>
-                                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                                Ideal para ferias, stands o visitas express donde el doctor gira al instante.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div style={{
-                                        background: '#ffffff',
-                                        padding: '1.25rem',
-                                        borderRadius: '12px',
-                                        border: '1px dashed #cbd5e1',
-                                        marginBottom: '1.5rem'
-                                    }}>
-                                        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-                                            ¿Cómo funciona la Ruleta en Pantalla Completa?
-                                        </div>
-                                        <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.82rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-                                            <li>Pantalla limpia y oscura con los colores oficiales de <strong>AFINIX LAB</strong>.</li>
-                                            <li><strong>Giro con 1 solo clic</strong> en el centro o sobre cualquier parte de la ruleta.</li>
-                                            <li><strong>Ruleta infinita:</strong> Al terminar el giro, muestra el premio con su código de 6 dígitos y botón de reinicio inmediato para el siguiente participante.</li>
-                                            <li>Todos los códigos quedan registrados automáticamente en el historial de marketing.</li>
-                                        </ul>
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className="btn btn-success"
-                                    onClick={() => handleLaunchKiosk(true)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.85rem',
-                                        fontWeight: 700,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem',
-                                        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
-                                        backgroundColor: 'var(--color-success)',
-                                        borderColor: 'var(--color-success)',
-                                        color: '#ffffff'
-                                    }}
-                                >
-                                    <i className="bi bi-play-circle-fill" aria-hidden="true"></i>
-                                    ✨ Abrir Ruleta Libre Ahora (Pantalla Completa)
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* VISTA 2: CONFIGURACIÓN DE SECTORES Y PROBABILIDADES */}
-                    {ruletaSubTab === 'sectores' && (
-                        <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <i className="bi bi-pie-chart-fill text-primary" aria-hidden="true"></i>
-                                        Sectores y Algoritmo de Probabilidad
-                                    </h3>
-                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
-                                        Control de premios variables (merch, porcentaje, monto fijo o sin premio). Los premios con stock agotado o pausados se excluyen automáticamente del azar.
-                                    </p>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className="btn btn-primary btn-sm"
-                                    onClick={handleOpenNewSector}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
-                                >
-                                    <i className="bi bi-plus-lg" aria-hidden="true"></i>
-                                    Nuevo Sector / Premio
-                                </button>
-                            </div>
-
-                            {/* Resumen de probabilidad activa */}
-                            <div style={{
-                                display: 'flex',
-                                gap: '1rem',
-                                flexWrap: 'wrap',
-                                background: 'var(--color-bg-alt)',
-                                padding: '0.85rem 1rem',
-                                borderRadius: '10px',
-                                marginBottom: '1.25rem',
-                                border: '1px solid var(--color-border)',
-                                fontSize: '0.85rem'
-                            }}>
-                                <div>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>Sectores Totales:</span>{' '}
-                                    <strong>{sectoresRuleta.length}</strong>
-                                </div>
-                                <div>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>En Giro Activo:</span>{' '}
-                                    <strong style={{ color: 'var(--color-primary)' }}>
-                                        {sectoresRuleta.filter(s => s.activo && (!s.stock_disponible || s.stock_entregado < s.stock_disponible)).length}
-                                    </strong>
-                                </div>
-                                <div>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>Peso Total Acumulado:</span>{' '}
-                                    <strong>{totalPesoActivo} pts</strong>
-                                </div>
-                            </div>
-
-                            {/* Tabla de sectores */}
-                            <div className="data-table-wrapper marketing-table-wrap">
-                                <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
-                                    <thead>
-                                        <tr>
-                                            <th>Sector / Título</th>
-                                            <th>Tipo de Premio</th>
-                                            <th>Beneficio</th>
-                                            <th>Stock Físico</th>
-                                            <th>Peso & Probabilidad</th>
-                                            <th>Estado</th>
-                                            <th style={{ textAlign: 'right' }}>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {sectoresRuleta.map((s) => {
-                                            const isDepleted = s.stock_disponible !== null && s.stock_entregado >= s.stock_disponible;
-                                            return (
-                                                <tr key={s.id}>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                                            <div style={{
-                                                                width: '24px',
-                                                                height: '24px',
-                                                                borderRadius: '6px',
-                                                                backgroundColor: s.color_hex || '#0284c7',
-                                                                border: '1px solid var(--color-border)',
-                                                                flexShrink: 0
-                                                            }} />
-                                                            <div>
-                                                                <strong style={{ display: 'block', color: 'var(--color-text)' }}>{s.titulo}</strong>
-                                                                {s.descripcion && (
-                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                                                                        {s.descripcion}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span className="badge" style={{
-                                                            background: s.tipo_premio === 'merch' ? 'var(--color-primary-light)' :
-                                                                s.tipo_premio === 'porcentaje' ? 'var(--color-primary-light)' :
-                                                                s.tipo_premio === 'monto_fijo' ? 'var(--color-success-bg)' : 'var(--color-bg-alt)',
-                                                            color: s.tipo_premio === 'merch' ? 'var(--color-primary)' :
-                                                                s.tipo_premio === 'porcentaje' ? 'var(--color-primary)' :
-                                                                s.tipo_premio === 'monto_fijo' ? 'var(--color-success)' : 'var(--color-text-secondary)',
-                                                            fontWeight: 600
-                                                        }}>
-                                                            {s.tipo_premio === 'merch' && <i className="bi bi-box-seam" aria-hidden="true" style={{ marginRight: '4px' }}></i>}
-                                                            {s.tipo_premio === 'porcentaje' && <i className="bi bi-percent" aria-hidden="true" style={{ marginRight: '4px' }}></i>}
-                                                            {s.tipo_premio === 'monto_fijo' && <i className="bi bi-cash" aria-hidden="true" style={{ marginRight: '4px' }}></i>}
-                                                            {s.tipo_premio === 'sin_premio' && <i className="bi bi-emoji-neutral" aria-hidden="true" style={{ marginRight: '4px' }}></i>}
-                                                            {s.tipo_premio === 'merch' ? 'Merch / Físico' :
-                                                                s.tipo_premio === 'porcentaje' ? 'Porcentaje' :
-                                                                s.tipo_premio === 'monto_fijo' ? 'Monto Soles' : 'Sin Premio'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        {s.tipo_premio === 'porcentaje' && <strong>{Number(s.valor)}% DCTO</strong>}
-                                                        {s.tipo_premio === 'monto_fijo' && <strong>S/. {Number(s.valor).toFixed(2)} DCTO</strong>}
-                                                        {s.tipo_premio === 'merch' && <span style={{ color: 'var(--color-text-secondary)' }}>Regalo de Marca</span>}
-                                                        {s.tipo_premio === 'sin_premio' && <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>}
-                                                    </td>
-                                                    <td>
-                                                        {s.stock_disponible === null ? (
-                                                            <span className="badge badge-inactive" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
-                                                                Ilimitado
-                                                            </span>
-                                                        ) : (
-                                                            <div>
-                                                                <span className={`badge ${isDepleted ? 'badge-danger' : 'marketing-badge-primary'}`} style={{
-                                                                    background: isDepleted ? 'var(--color-error-bg)' : 'var(--color-primary-light)',
-                                                                    color: isDepleted ? 'var(--color-error)' : 'var(--color-primary)',
-                                                                    fontWeight: 600
-                                                                }}>
-                                                                    {Math.max(0, s.stock_disponible - s.stock_entregado)} de {s.stock_disponible} restantes
-                                                                </span>
-                                                                <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                                                                    {s.stock_entregado} entregados
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            <span style={{ fontWeight: 600 }}>{s.probabilidad_peso} pts</span>
-                                                            <span className="badge marketing-badge-primary" style={{
-                                                                background: s.activo && !isDepleted ? 'var(--color-primary-light)' : 'var(--color-bg-alt)',
-                                                                color: s.activo && !isDepleted ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
-                                                                fontWeight: 700
-                                                            }}>
-                                                                {s.activo && !isDepleted ? `${s.probabilidad_porcentaje}%` : '0%'}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        {!s.activo ? (
-                                                            <span className="badge" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>Pausado</span>
-                                                        ) : isDepleted ? (
-                                                            <span className="badge" style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)' }}>Agotado</span>
-                                                        ) : (
-                                                            <span className="badge" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>Activo</span>
-                                                        )}
-                                                    </td>
-                                                    <td style={{ textAlign: 'right' }}>
-                                                        <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                                                            <button
-                                                                type="button"
-                                                                className={`btn btn-sm ${s.activo ? 'btn-ghost' : 'btn-ghost'}`}
-                                                                onClick={() => handleToggleSector(s.id)}
-                                                                title={s.activo ? 'Pausar sector' : 'Activar sector'}
-                                                                aria-label={s.activo ? 'Pausar sector' : 'Activar sector'}
-                                                            >
-                                                                <i className={`bi ${s.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-sm btn-secondary"
-                                                                onClick={() => handleOpenEditSector(s)}
-                                                                title="Editar sector"
-                                                                aria-label="Editar sector"
-                                                            >
-                                                                <i className="bi bi-pencil" aria-hidden="true"></i>
-                                                            </button>
-                                                            {user?.tipo === 'admin' && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-sm btn-ghost marketing-danger-action"
-                                                                    onClick={() => handleDeleteSector(s.id)}
-                                                                    title="Eliminar sector"
-                                                                    aria-label="Eliminar sector"
-                                                                >
-                                                                    <i className="bi bi-trash" aria-hidden="true"></i>
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    {/* VISTA 2: CONFIGURADOR ESTILO INTERACTY CON VISTA PREVIA EN VIVO */}
+                    {ruletaSubTab === 'sectores' && !loadingRuleta && !errors.premios && (
+                        <RuletaCustomizer
+                            sectores={sectoresRuleta}
+                            totalPesoActivo={totalPesoActivo}
+                            onUpdateSectoresLocally={setSectoresRuleta}
+                            onReloadSectores={refreshRuletaPremiosSilently}
+                            getHeaders={getHeaders}
+                            onLaunchKiosk={() => handleLaunchKiosk(true)}
+                        />
                     )}
 
                     {/* VISTA 3: HISTORIAL DE GIROS */}
-                    {ruletaSubTab === 'historial' && (
+                    {ruletaSubTab === 'historial' && !loadingRuleta && !errors.historial && (
                         <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1605,127 +1075,67 @@ export default function Marketing() {
                 </div>
             )}
 
-            {activeTab === 'fidelizacion' && (
-                <div className="card dashboard-ops-panel" style={{ padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                        <span style={{
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '10px',
-                            background: 'var(--color-warning-bg)',
-                            color: 'var(--color-warning)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '1.35rem'
-                        }}>
-                            <i className="bi bi-stars" aria-hidden="true"></i>
-                        </span>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
-                                Motor de Fidelización y Gamificación Continua (Rewards)
-                            </h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                                Reglas automáticas para premiar la recurrencia y celebrar fechas especiales con los doctores.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.25rem', marginTop: '1rem' }}>
-                        <div style={{ background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <i className="bi bi-10-circle-fill text-primary" aria-hidden="true" style={{ fontSize: '1.3rem' }}></i>
-                                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600 }}>Hitos por Volumen de Pedidos</h4>
-                            </div>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                                Disparador automático: cuando una clínica alcanza sus primeros <strong>10 trabajos</strong> o <strong>50 trabajos</strong> técnicos, el sistema genera automáticamente un cupón especial de felicitación y alerta al asesor asignado.
-                            </p>
-                            <span className="badge badge-success" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>
-                                <i className="bi bi-check-circle" aria-hidden="true" style={{ marginRight: '4px' }}></i> Arquitectura Lista
-                            </span>
-                        </div>
-
-                        <div style={{ background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <i className="bi bi-cake2-fill text-warning" aria-hidden="true" style={{ fontSize: '1.3rem' }}></i>
-                                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600 }}>Cumpleaños de Doctores (CRM)</h4>
-                            </div>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                                Conectado con la fecha de nacimiento registrada en <strong>Gestión de Clientes (CRM)</strong>. Muestra alertas preventivas de 7 días antes para coordinar el envío de regalo físico o cupón cumpleañero por WhatsApp.
-                            </p>
-                            <span className="badge marketing-badge-primary" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                                <i className="bi bi-link-45deg" aria-hidden="true" style={{ marginRight: '4px' }}></i> Conectado con CRM
-                            </span>
-                        </div>
-
-                        <div style={{ background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <i className="bi bi-share-fill text-info" aria-hidden="true" style={{ fontSize: '1.3rem' }}></i>
-                                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600 }}>Campañas & Redes Sociales</h4>
-                            </div>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                                Creación de enlaces y códigos con seguimiento (UTM) para campañas en Instagram, Facebook y congresos odontológicos, midiendo cuántos pedidos provienen de cada esfuerzo publicitario.
-                            </p>
-                            <span className="badge badge-inactive" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
-                                Planificado Fase 2
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* MODAL CREAR CUPÓN */}
             <Modal
                 className="marketing-modal"
                 bodyClassName="marketing-modal-body"
                 open={showCreateModal}
-                onClose={() => setShowCreateModal(false)}
-                title="Nuevo Cupón Promocional"
+                onClose={closeCouponModal}
+                title={invitationCouponContext ? 'Crear cupón de bienvenida' : 'Nuevo Cupón Promocional'}
                 subtitle="Configura descuentos en soles o porcentaje con límites y vigencia"
                 icon="bi-tag-fill"
                 size="lg"
             >
                 <form onSubmit={handleCreateCoupon}>
-                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                            <label htmlFor="marketing-formData-codigo" className="form-label" style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600 }}>
-                                Código de Cupón <span style={{ color: 'var(--color-error)' }}>*</span>
+                    {couponSaveError && <p className="marketing-form-note" role="alert">{couponSaveError}</p>}
+                    <fieldset disabled={creating} className="marketing-coupon-fields">
+                    {/* 1. Código y Motivo */}
+                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                        <div className="form-group">
+                            <label htmlFor="marketing-formData-codigo" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Código del cupón <span style={{ color: 'var(--color-error)' }}>*</span>
                             </label>
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-secondary"
-                                onClick={handleGenerateCode}
-                            >
-                                Generar Aleatorio
-                            </button>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <input
+                                    id="marketing-formData-codigo"
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Ej. BIENVENIDA50"
+                                    value={formData.codigo}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, codigo: e.target.value.toUpperCase() }))}
+                                    required
+                                    style={{ fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-secondary"
+                                    onClick={handleGenerateCode}
+                                    title="Generar código aleatorio AFX-"
+                                    aria-label="Generar código aleatorio"
+                                    style={{ padding: '0 10px', display: 'grid', placeItems: 'center', minWidth: '38px' }}
+                                >
+                                    <i className="bi bi-shuffle" aria-hidden="true" style={{ fontSize: '1rem' }} />
+                                </button>
+                            </div>
                         </div>
-                        <input
-                            id="marketing-formData-codigo"
-                            type="text"
-                            className="form-input"
-                            placeholder="Ej. AFX-CLIENTE10 o BIENVENIDA50"
-                            value={formData.codigo}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, codigo: e.target.value.toUpperCase() }))}
-                            required
-                            style={{ fontWeight: 700, letterSpacing: '0.05em' }}
-                        />
+
+                        <div className="form-group">
+                            <label htmlFor="marketing-formData-descripcion" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                                Motivo / Descripción
+                            </label>
+                            <input
+                                id="marketing-formData-descripcion"
+                                type="text"
+                                className="form-input"
+                                placeholder="Ej. Bienvenida o apertura"
+                                value={formData.descripcion}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
+                            />
+                        </div>
                     </div>
 
-                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label htmlFor="marketing-formData-descripcion" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                            Descripción o Motivo
-                        </label>
-                        <input
-                            id="marketing-formData-descripcion"
-                            type="text"
-                            className="form-input"
-                            placeholder="Ej. 10% de bienvenida en su primera corona"
-                            value={formData.descripcion}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
-                        />
-                    </div>
-
-                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                    {/* 2. Beneficio: Tipo, Valor y Vencimiento */}
+                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1.1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
                         <div className="form-group">
                             <label htmlFor="marketing-formData-tipo" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                                 Tipo de Descuento
@@ -1740,13 +1150,14 @@ export default function Marketing() {
 
                         <div className="form-group">
                             <label htmlFor="marketing-formData-valor" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                {formData.tipo === 'porcentaje' ? 'Porcentaje (%)' : 'Monto Fijo (S/.)'} <span style={{ color: 'var(--color-error)' }}>*</span>
+                                {formData.tipo === 'porcentaje' ? 'Porcentaje (%)' : 'Monto (S/.)'} <span style={{ color: 'var(--color-error)' }}>*</span>
                             </label>
                             <input
                                 id="marketing-formData-valor"
                                 type="number"
                                 step="0.01"
                                 min="0.01"
+                                max={formData.tipo === 'porcentaje' ? '100' : undefined}
                                 className="form-input"
                                 placeholder={formData.tipo === 'porcentaje' ? '15' : '50.00'}
                                 value={formData.valor}
@@ -1754,105 +1165,130 @@ export default function Marketing() {
                                 required
                             />
                         </div>
-                    </div>
 
-                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                        <div className="form-group">
-                            <label htmlFor="marketing-formData-monto_minimo_pedido" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Pedido Mínimo (S/.)
-                            </label>
-                            <input
-                                id="marketing-formData-monto_minimo_pedido"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                className="form-input"
-                                placeholder="0.00 (sin mínimo)"
-                                value={formData.monto_minimo_pedido}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, monto_minimo_pedido: e.target.value }))}
-                            />
-                        </div>
-
-                        {formData.tipo === 'porcentaje' ? (
-                            <div className="form-group">
-                                <label htmlFor="marketing-formData-tope_descuento_maximo" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                    Tope Máximo DCTO (S/.)
-                                </label>
-                                <input
-                                    id="marketing-formData-tope_descuento_maximo"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    className="form-input"
-                                    placeholder="Opcional"
-                                    value={formData.tope_descuento_maximo}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, tope_descuento_maximo: e.target.value }))}
-                                />
-                            </div>
-                        ) : (
-                            <div className="form-group">
-                                <label htmlFor="marketing-formData-limite_usos_total" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                    Límite Usos Totales
-                                </label>
-                                <input
-                                    id="marketing-formData-limite_usos_total"
-                                    type="number"
-                                    min="1"
-                                    className="form-input"
-                                    value={formData.limite_usos_total}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, limite_usos_total: e.target.value }))}
-                                />
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label htmlFor="marketing-formData-clinica_id" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                            Asignación Exclusiva (Clínica / Doctor)
-                        </label>
-                        <CustomSelect
-                            id="marketing-formData-clinica_id"
-                            options={clinicOptions}
-                            value={formData.clinica_id ? String(formData.clinica_id) : ''}
-                            onChange={(_, val) => setFormData((prev) => ({ ...prev, clinica_id: val }))}
-                            searchable
-                            placeholder="Uso libre para cualquier clínica..."
-                        />
-                    </div>
-
-                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
                         <div className="form-group">
                             <label htmlFor="marketing-formData-fecha_fin" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Fecha de Vencimiento
+                                Vence el (opcional)
                             </label>
-                            <input
+                            <FormDatePicker
                                 id="marketing-formData-fecha_fin"
-                                type="date"
-                                className="form-input"
                                 value={formData.fecha_fin}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, fecha_fin: e.target.value }))}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="marketing-formData-evento_nombre" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Nombre de Evento
-                            </label>
-                            <input
-                                id="marketing-formData-evento_nombre"
-                                type="text"
-                                className="form-input"
-                                placeholder="Ej. Expo Dental"
-                                value={formData.evento_nombre}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, evento_nombre: e.target.value }))}
+                                onChange={(iso) => setFormData((prev) => ({ ...prev, fecha_fin: iso }))}
                             />
                         </div>
                     </div>
+
+                    {/* 3. Condiciones avanzadas colapsables */}
+                    <details style={{ background: 'var(--color-bg-alt)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
+                        <summary style={{ cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            Condiciones y límites de uso (opcional)
+                        </summary>
+                        <div style={{ marginTop: '10px', display: 'grid', gap: '10px' }}>
+                            <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div className="form-group">
+                                    <label htmlFor="marketing-formData-limite_usos_total" className="form-label" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                        Límite Usos Totales
+                                    </label>
+                                    <input
+                                        id="marketing-formData-limite_usos_total"
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        className="form-input"
+                                        placeholder="1"
+                                        value={formData.limite_usos_total}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, limite_usos_total: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label htmlFor="marketing-formData-limite_usos_por_doctor" className="form-label" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                        Usos por cliente
+                                    </label>
+                                    <input
+                                        id="marketing-formData-limite_usos_por_doctor"
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        className="form-input"
+                                        placeholder="1"
+                                        value={formData.limite_usos_por_doctor}
+                                        onChange={(event) => setFormData((previous) => ({ ...previous, limite_usos_por_doctor: event.target.value }))}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: formData.tipo === 'porcentaje' ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
+                                <div className="form-group">
+                                    <label htmlFor="marketing-formData-monto_minimo_pedido" className="form-label" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                        Pedido Mínimo (S/., opcional)
+                                    </label>
+                                    <input
+                                        id="marketing-formData-monto_minimo_pedido"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="form-input"
+                                        placeholder="0.00"
+                                        value={formData.monto_minimo_pedido}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, monto_minimo_pedido: e.target.value }))}
+                                    />
+                                </div>
+                                {formData.tipo === 'porcentaje' && (
+                                    <div className="form-group">
+                                        <label htmlFor="marketing-formData-tope_descuento_maximo" className="form-label" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                            Tope Máximo DCTO (S/., opcional)
+                                        </label>
+                                        <input
+                                            id="marketing-formData-tope_descuento_maximo"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            className="form-input"
+                                            placeholder="Sin tope"
+                                            value={formData.tope_descuento_maximo}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, tope_descuento_maximo: e.target.value }))}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {!invitationCouponContext && (
+                                <div className="form-group">
+                                    <label htmlFor="marketing-formData-clinica_id" className="form-label" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                        Asignación Exclusiva (Clínica / Doctor)
+                                    </label>
+                                    <CustomSelect
+                                        id="marketing-formData-clinica_id"
+                                        options={clinicOptions}
+                                        value={formData.clinica_id ? String(formData.clinica_id) : ''}
+                                        onChange={(_, val) => setFormData((prev) => ({ ...prev, clinica_id: val }))}
+                                        searchable
+                                        placeholder="Uso libre para cualquier clínica..."
+                                    />
+                                </div>
+                            )}
+
+                            <div className="form-group">
+                                <label htmlFor="marketing-formData-evento_nombre" className="form-label" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                    Campaña / Evento de referencia
+                                </label>
+                                <input
+                                    id="marketing-formData-evento_nombre"
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Ej. Campaña Pop-up Noviembre"
+                                    value={formData.evento_nombre}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, evento_nombre: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+                    </details>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
                         <button
                             type="button"
                             className="btn btn-secondary"
-                            onClick={() => setShowCreateModal(false)}
+                            onClick={closeCouponModal}
                             disabled={creating}
                         >
                             Cancelar
@@ -1866,6 +1302,7 @@ export default function Marketing() {
                             {creating ? 'Guardando...' : 'Crear Cupón'}
                         </button>
                     </div>
+                    </fieldset>
                 </form>
             </Modal>
 
@@ -2039,167 +1476,120 @@ export default function Marketing() {
                 </form>
             </Modal>
 
-            {/* MODAL CREAR CAMPAÑA MASIVA & PUSH BROADCAST */}
+            {/* Modal de confirmación de eliminación segura */}
             <Modal
-                className="marketing-modal"
-                bodyClassName="marketing-modal-body"
-                open={showCampanaModal}
-                onClose={() => setShowCampanaModal(false)}
-                title="Lanzar Campaña Masiva & Notificación Visual"
-                subtitle="Envía avisos con banner al navegador/celular y muestra notificación in-app en el portal del doctor"
-                icon="bi-broadcast"
-                size="lg"
+                open={deleteModal.open}
+                onClose={() => !deleteModal.loading && setDeleteModal((prev) => ({ ...prev, open: false }))}
+                title={deleteModal.type === 'coupon' ? 'Eliminar Cupón' : 'Eliminar Campaña'}
+                subtitle="Confirmación de seguridad"
+                icon="bi-exclamation-triangle-fill"
+                size="sm"
             >
-                <form onSubmit={handleCreateCampana}>
-                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                            Título de la Campaña <span style={{ color: 'var(--color-error)' }}>*</span>
-                        </label>
-                        <input
-                            type="text"
-                            className="form-input"
-                            placeholder="Ej. 🔥 ¡Semana del Odontólogo! 20% en Zirconia Monolítica"
-                            value={campanaForm.titulo}
-                            onChange={(e) => setCampanaForm((prev) => ({ ...prev, titulo: e.target.value }))}
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                            Mensaje Promocional o Comunicado <span style={{ color: 'var(--color-error)' }}>*</span>
-                        </label>
-                        <textarea
-                            className="form-input"
-                            rows={3}
-                            placeholder="Ej. Doctor(a), este mes celebramos su labor con un beneficio exclusivo. Utilice el código adjunto en su próximo trabajo técnico o inscríbase a nuestro taller presencial."
-                            value={campanaForm.mensaje}
-                            onChange={(e) => setCampanaForm((prev) => ({ ...prev, mensaje: e.target.value }))}
-                            required
-                        />
-                    </div>
-
-                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                URL de Imagen / Banner Promocional
-                            </label>
-                            <input
-                                type="url"
-                                className="form-input"
-                                placeholder="https://ejemplo.com/banner-halloween.jpg"
-                                value={campanaForm.imagen_url}
-                                onChange={(e) => setCampanaForm((prev) => ({ ...prev, imagen_url: e.target.value }))}
-                            />
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
-                                Se mostrará en la notificación push y en el toast del portal.
-                            </span>
+                <div style={{ padding: '0.25rem 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1rem' }}>
+                        <div style={{
+                            width: '46px',
+                            height: '46px',
+                            borderRadius: '50%',
+                            background: 'var(--color-danger-bg, rgba(239, 68, 68, 0.12))',
+                            color: 'var(--color-danger, #ef4444)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.35rem',
+                            flexShrink: 0,
+                            boxShadow: '0 0 16px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <i className="bi bi-trash3-fill" aria-hidden="true" />
                         </div>
-
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Audiencia Objetivo
-                            </label>
-                            <CustomSelect
-                                options={[
-                                    { value: 'todos', label: 'Todos los doctores y clientes' },
-                                    { value: 'inactivos', label: 'Doctores inactivos (+30 días sin pedidos)' },
-                                    { value: 'clinicas_especificas', label: 'Clínicas seleccionadas' }
-                                ]}
-                                value={campanaForm.tipo_audiencia}
-                                onChange={(_, val) => setCampanaForm((prev) => ({ ...prev, tipo_audiencia: val }))}
-                            />
+                        <div>
+                            <div style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                ¿Eliminar definitivamente este registro?
+                            </div>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                Esta acción es irreversible y no se podrá recuperar.
+                            </div>
                         </div>
                     </div>
 
-                    <div className="marketing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Código de Cupón de Descuento (Opcional)
-                            </label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Ej. AFX-HALLOWEEN20"
-                                value={campanaForm.codigo_descuento}
-                                onChange={(e) => setCampanaForm((prev) => ({ ...prev, codigo_descuento: e.target.value.toUpperCase() }))}
-                            />
+                    {deleteModal.title && (
+                        <div style={{
+                            background: 'var(--color-bg-alt)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '10px',
+                            padding: '0.85rem 1rem',
+                            marginBottom: '1.25rem'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                                <span style={{ fontWeight: 800, fontSize: '1.02rem', letterSpacing: '0.04em', color: 'var(--color-text)' }}>
+                                    {deleteModal.title}
+                                </span>
+                                {deleteModal.details?.badge && (
+                                    <span className="badge" style={{
+                                        background: 'rgba(2, 132, 199, 0.12)',
+                                        color: '#0284c7',
+                                        fontWeight: 700,
+                                        fontSize: '0.74rem',
+                                        padding: '0.2rem 0.55rem',
+                                        borderRadius: '8px'
+                                    }}>
+                                        {deleteModal.details.badge}
+                                    </span>
+                                )}
+                            </div>
+                            {deleteModal.details?.subtitle && (
+                                <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '0.25rem' }}>
+                                    {deleteModal.details.subtitle}
+                                </div>
+                            )}
+                            {deleteModal.details?.usos && (
+                                <div style={{ fontSize: '0.74rem', color: 'var(--color-text-tertiary)' }}>
+                                    {deleteModal.details.usos}
+                                </div>
+                            )}
                         </div>
+                    )}
 
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                Enlace de Destino al Clic
-                            </label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="/pedidos/nuevo o enlace a WhatsApp"
-                                value={campanaForm.link_destino}
-                                onChange={(e) => setCampanaForm((prev) => ({ ...prev, link_destino: e.target.value }))}
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{
-                        background: 'var(--color-bg-alt)',
-                        padding: '0.85rem 1rem',
-                        borderRadius: '10px',
-                        marginBottom: '1.25rem',
-                        border: '1px solid var(--color-border)'
-                    }}>
-                        <div style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            Canales de Disparo Activos:
-                        </div>
-                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.84rem', cursor: 'pointer' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={campanaForm.mostrar_toast_in_app}
-                                    onChange={(e) => setCampanaForm((prev) => ({ ...prev, mostrar_toast_in_app: e.target.checked }))}
-                                />
-                                <span>Toast Emergente Visual In-App</span>
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.84rem', cursor: 'pointer' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={campanaForm.enviar_push_web}
-                                    onChange={(e) => setCampanaForm((prev) => ({ ...prev, enviar_push_web: e.target.checked }))}
-                                />
-                                <span>Web Push al Celular / Navegador</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
                         <button
                             type="button"
                             className="btn btn-secondary"
-                            onClick={() => setShowCampanaModal(false)}
-                            disabled={sendingCampana}
+                            onClick={() => setDeleteModal((prev) => ({ ...prev, open: false }))}
+                            disabled={deleteModal.loading}
                         >
                             Cancelar
                         </button>
                         <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={sendingCampana}
-                            style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={handleConfirmDelete}
+                            disabled={deleteModal.loading}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
                         >
-                            {sendingCampana ? (
+                            {deleteModal.loading ? (
                                 <>
-                                    <span className="spinner-border spinner-border-sm" role="status"></span>
-                                    Disparando Campaña...
+                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                                    Eliminando...
                                 </>
                             ) : (
                                 <>
-                                    <i className="bi bi-send-fill"></i>
-                                    Lanzar y Notificar a Doctores
+                                    <i className="bi bi-trash3" aria-hidden="true" />
+                                    Eliminar
                                 </>
                             )}
                         </button>
                     </div>
-                </form>
+                </div>
             </Modal>
+
+            <MarketingCampaignComposer
+                open={showCampanaModal}
+                onClose={() => setShowCampanaModal(false)}
+                clinicas={clinicas}
+                cupones={cupones}
+                onCreateCoupon={openInvitationCoupon}
+                onCreated={() => loadData('campanas')}
+            />
         </div>
     );
 }

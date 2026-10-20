@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';
 import OrderWizardShell from '../components/orders/wizard/OrderWizardShell.jsx';
@@ -15,7 +15,7 @@ import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrd
 import { useOrderComposerState } from '../modules/orders/composer/useOrderComposerState.js';
 import { fetchVisibleCatalog, peekVisibleCatalog } from '../modules/orders/catalog/visibleCatalogCache.js';
 import { apiClient } from '../services/http/apiClient.js';
-import { isClientRole } from '../utils/accessControl.js';
+import { isClientRole, isTechnicianRole, isVisitorRole } from '../utils/accessControl.js';
 import {
     applyExpressSurcharge,
     expressSurchargeAmount,
@@ -80,6 +80,12 @@ const NuevoPedido = () => {
     const warmCatalog = peekVisibleCatalog();
     const startsOnProductPicker = !preselectProductId;
 
+    useEffect(() => {
+        if (isTechnicianRole(user) || isVisitorRole(user)) {
+            navigate('/pedidos', { replace: true });
+        }
+    }, [user, navigate]);
+
     const [clinicas, setClinicas] = useState([]);
     const [productos, setProductos] = useState(() => warmCatalog?.products || []);
     const [categorias, setCategorias] = useState(() => warmCatalog?.categories || []);
@@ -135,17 +141,28 @@ const NuevoPedido = () => {
     const expressSurcharge = expressSurchargeAmount(productPrice, isExpressOrder);
     const displayUnitPrice = applyExpressSurcharge(productPrice, isExpressOrder);
 
+    const location = useLocation();
+    const incomingCoupon = location.state?.cupon || searchParams.get('cupon') || '';
+
     // Estado del cupón de descuento en checkout
-    const [couponInput, setCouponInput] = useState('');
+    const [couponInput, setCouponInput] = useState(() => incomingCoupon || '');
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [validatingCoupon, setValidatingCoupon] = useState(false);
     const [couponError, setCouponError] = useState('');
-    const [couponEditorOpen, setCouponEditorOpen] = useState(false);
+    const [couponEditorOpen, setCouponEditorOpen] = useState(() => Boolean(incomingCoupon));
     const couponRemoveRef = useRef(null);
     const couponInputRef = useRef(null);
     const couponToggleRef = useRef(null);
     const couponRequestRef = useRef(false);
     const couponFocusRequestedRef = useRef(false);
+
+    useEffect(() => {
+        if (incomingCoupon) {
+            setCouponInput(incomingCoupon);
+            setCouponEditorOpen(true);
+            toast.success(`¡Cupón ${incomingCoupon} de campaña precargado!`, { icon: '🎟️', id: `cupon-campana-${incomingCoupon}` });
+        }
+    }, [incomingCoupon]);
 
     useEffect(() => {
         if (couponEditorOpen && macroStep === 'confirmar' && couponFocusRequestedRef.current) {
@@ -924,51 +941,80 @@ const NuevoPedido = () => {
                                     </div>
 
                                     <div className="order-wizard-confirm-stat is-total order-wizard-confirm-stat-total">
-                                        <span className="order-wizard-confirm-label">
-                                            <i className="bi bi-cash-stack" aria-hidden="true"></i>
-                                            Total a Pagar
-                                        </span>
-                                        <div className="order-confirm-price-row">
-                                            <div className="order-confirm-price">
-                                                {appliedCoupon ? <del className="order-confirm-original-price">S/. {baseOrderTotal.toFixed(2)}</del> : null}
-                                                <strong className="order-wizard-confirm-total-value">S/. {displayTotal.toFixed(2)}</strong>
-                                            </div>
-                                            {!appliedCoupon ? (
+                                        <div className="order-confirm-header-row">
+                                            <span className="order-wizard-confirm-label">
+                                                <i className="bi bi-cash-stack" aria-hidden="true"></i>
+                                                Total a Pagar
+                                            </span>
+
+                                            {appliedCoupon ? (
+                                                <div className="order-confirm-coupon-applied-chip">
+                                                    <i className="bi bi-tag-fill" aria-hidden="true"></i>
+                                                    <span className="order-confirm-coupon-code">{appliedCoupon.codigo}</span>
+                                                    <span className="order-confirm-coupon-saving">· -S/. {discountAmount.toFixed(2)}</span>
+                                                    <button
+                                                        ref={couponRemoveRef}
+                                                        type="button"
+                                                        className="order-confirm-coupon-remove-btn"
+                                                        onClick={() => {
+                                                            handleRemoveCoupon();
+                                                            setCouponEditorOpen(true);
+                                                            requestAnimationFrame(() => couponInputRef.current?.focus());
+                                                        }}
+                                                        title="Quitar cupón"
+                                                        aria-label="Quitar cupón"
+                                                    >
+                                                        <i className="bi bi-x-lg" aria-hidden="true"></i>
+                                                        <span>Quitar</span>
+                                                    </button>
+                                                </div>
+                                            ) : !couponEditorOpen ? (
                                                 <button
                                                     ref={couponToggleRef}
                                                     type="button"
-                                                    className="order-confirm-coupon-action"
-                                                    aria-expanded={couponEditorOpen}
+                                                    className="order-confirm-coupon-action order-confirm-coupon-action--sm"
+                                                    aria-expanded={false}
                                                     aria-controls="order-confirm-coupon-editor"
                                                     disabled={validatingCoupon}
                                                     onClick={() => {
-                                                        if (couponEditorOpen) closeCouponEditor();
-                                                        else {
-                                                            couponFocusRequestedRef.current = true;
-                                                            setCouponEditorOpen(true);
-                                                        }
+                                                        couponFocusRequestedRef.current = true;
+                                                        setCouponEditorOpen(true);
                                                     }}
                                                 >
                                                     <i className="bi bi-tag" aria-hidden="true"></i>
-                                                    {couponEditorOpen ? 'Cerrar cupón' : 'Aplicar cupón'}
+                                                    Aplicar cupón
                                                 </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="order-confirm-coupon-action order-confirm-coupon-action--sm"
+                                                    onClick={closeCouponEditor}
+                                                >
+                                                    Cerrar
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="order-confirm-price-row">
+                                            <div className="order-confirm-price">
+                                                <strong className="order-wizard-confirm-total-value">
+                                                    S/. {displayTotal.toFixed(2)}
+                                                </strong>
+                                                {appliedCoupon ? (
+                                                    <del className="order-confirm-original-price">
+                                                        S/. {baseOrderTotal.toFixed(2)}
+                                                    </del>
+                                                ) : null}
+                                            </div>
+                                            {validatingCoupon ? (
+                                                <span className="order-confirm-validating-tag" role="status" aria-live="polite">
+                                                    <i className="bi bi-arrow-repeat spin" aria-hidden="true"></i> Validando…
+                                                </span>
                                             ) : null}
                                         </div>
-                                        <div className="order-confirm-coupon-status" role="status" aria-live="polite">
-                                            {appliedCoupon ? (
-                                                <div className="order-confirm-coupon-applied">
-                                                    <span><i className="bi bi-tag-fill" aria-hidden="true"></i> <strong>{appliedCoupon.codigo}</strong> · Ahorro: S/. {discountAmount.toFixed(2)}</span>
-                                                    <button ref={couponRemoveRef} type="button" className="order-confirm-coupon-action" onClick={() => {
-                                                        handleRemoveCoupon();
-                                                        setCouponEditorOpen(true);
-                                                        requestAnimationFrame(() => couponInputRef.current?.focus());
-                                                    }}>Quitar</button>
-                                                </div>
-                                            ) : validatingCoupon ? 'Validando cupón…' : null}
-                                        </div>
-                                        {!appliedCoupon ? (
-                                            <div id="order-confirm-coupon-editor" className="order-confirm-coupon-editor" hidden={!couponEditorOpen}>
-                                                <label htmlFor="order-confirm-coupon-code">Código de descuento</label>
+
+                                        {!appliedCoupon && couponEditorOpen ? (
+                                            <div id="order-confirm-coupon-editor" className="order-confirm-coupon-editor">
                                                 <div className="order-confirm-coupon-controls">
                                                     <input
                                                         ref={couponInputRef}
@@ -994,11 +1040,20 @@ const NuevoPedido = () => {
                                                         }}
                                                         disabled={validatingCoupon}
                                                     />
-                                                    <button type="button" className="order-confirm-coupon-action" onClick={handleApplyCoupon} disabled={validatingCoupon || !couponInput.trim()}>
+                                                    <button
+                                                        type="button"
+                                                        className="order-confirm-coupon-action"
+                                                        onClick={handleApplyCoupon}
+                                                        disabled={validatingCoupon || !couponInput.trim()}
+                                                    >
                                                         {validatingCoupon ? 'Validando…' : 'Aplicar'}
                                                     </button>
                                                 </div>
-                                                {couponError ? <p id="order-confirm-coupon-error" className="order-confirm-coupon-error" role="alert">{couponError}</p> : null}
+                                                {couponError ? (
+                                                    <p id="order-confirm-coupon-error" className="order-confirm-coupon-error" role="alert">
+                                                        {couponError}
+                                                    </p>
+                                                ) : null}
                                             </div>
                                         ) : null}
                                     </div>

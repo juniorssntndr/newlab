@@ -74,7 +74,12 @@ export const OrderDesignViewerModal = ({
         createOrderViewerSession({ orderId: order.id, approvalId })
             .then((result) => { if (active) setViewerUrl(result.url); })
             .catch((error) => { if (active) { setIframeLoading(false); setViewerError(error.message || 'No se pudo iniciar el visor seguro.'); } });
-        return () => { active = false; };
+        return () => {
+            active = false;
+            if (viewerFrameRef.current) {
+                viewerFrameRef.current.src = 'about:blank';
+            }
+        };
     }, [open, order?.id, approvalId, viewerAttempt]);
 
     useEffect(() => {
@@ -97,12 +102,28 @@ export const OrderDesignViewerModal = ({
             }
             if (event.data?.type === 'afinix-viewer-error') {
                 setIframeLoading(false);
-                setViewerError('No se pudo iniciar WebGL para este diseño. Verifica el archivo HTML de Exocad e intenta nuevamente.');
+                const isNotFound = event.data?.detail === 'file-not-found';
+                const detailMsg = isNotFound
+                    ? 'El archivo 3D de Exocad aún no se encuentra en el servidor. El laboratorio debe cargar el diseño.'
+                    : 'No se pudo iniciar WebGL para este diseño. Verifica el archivo HTML de Exocad e intenta nuevamente.';
+                setViewerError(detailMsg);
             }
         };
         window.addEventListener('message', onViewerMessage);
         return () => window.removeEventListener('message', onViewerMessage);
     }, [viewerUrl]);
+
+    const handleSolicitarWhatsApp = () => {
+        const phone = String(import.meta.env.VITE_WHATSAPP_E164 || '51910707060').replace(/\D/g, '');
+        const codigo = order?.codigo || `NL-${String(order?.id || '').padStart(5, '0')}`;
+        const paciente = order?.paciente_nombre ? ` (Paciente: ${order.paciente_nombre})` : '';
+        const clinica = order?.clinica_nombre || '';
+        const emisor = clinica ? ` de ${clinica}` : '';
+        const text = encodeURIComponent(
+            `Hola AFINIX Dental Lab, les escribo${emisor} para solicitar el diseño 3D del pedido ${codigo}${paciente}.`
+        );
+        window.open(`https://wa.me/${phone}?text=${text}`, '_blank', 'noopener,noreferrer');
+    };
 
     useEffect(() => {
         if (adjustDrawerOpen) {
@@ -149,18 +170,10 @@ export const OrderDesignViewerModal = ({
                         </div>
                         <div className="order-design-viewer-meta">
                             <div className="order-design-viewer-headline">
-                                <span className="order-design-viewer-title-text" title={order?.codigo || 'Pedido'}>
-                                    {order?.codigo || 'Pedido'}
+                                <span className="order-design-viewer-title-text" title={order?.paciente_nombre || 'Paciente'}>
+                                    {order?.paciente_nombre || 'Paciente'}
                                 </span>
-                                {order?.paciente_nombre && (
-                                    <>
-                                        <span className="order-design-viewer-title-separator" aria-hidden="true">•</span>
-                                        <span className="order-design-viewer-title-text" title={order.paciente_nombre}>
-                                            {order.paciente_nombre}
-                                        </span>
-                                    </>
-                                )}
-                            <span className="order-design-viewer-version">Diseño 3D</span>
+                                <span className="order-design-viewer-version">Diseño 3D</span>
                             </div>
                             <div className="order-design-viewer-sub">
                                 {order?.producto_nombre || 'Estructura CAD/CAM'} • AFINIX Dental Lab
@@ -218,10 +231,44 @@ export const OrderDesignViewerModal = ({
                         </div>
                     )}
                     {viewerError ? (
-                        <div className="order-design-viewer-loading" role="alert">
-                            <i className="bi bi-exclamation-triangle" aria-hidden="true"></i>
-                            <span>{viewerError}</span>
-                            <button type="button" className="order-design-viewer-icon-btn" onClick={() => setViewerAttempt((attempt) => attempt + 1)}>Reintentar</button>
+                        <div className="order-design-viewer-loading" role="alert" style={{ maxWidth: 460, margin: '0 auto', textAlign: 'center', padding: '1.75rem', background: 'var(--color-bg, #0f172a)', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid var(--color-border, #1e293b)' }}>
+                            <i className="bi bi-box" aria-hidden="true" style={{ fontSize: '2.5rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem', display: 'block' }}></i>
+                            <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', color: 'var(--color-text, #fff)' }}>
+                                Diseño 3D no disponible
+                            </h4>
+                            <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--color-text-muted, #94a3b8)', lineHeight: 1.4 }}>
+                                {viewerError}
+                            </p>
+                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                {isClient && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={handleSolicitarWhatsApp}
+                                    >
+                                        <i className="bi bi-whatsapp"></i> Solicitar por WhatsApp
+                                    </button>
+                                )}
+                                {isLab && onOpenUploadModal && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => {
+                                            onClose?.();
+                                            onOpenUploadModal?.();
+                                        }}
+                                    >
+                                        <i className="bi bi-cloud-arrow-up"></i> Subir diseño 3D
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={onClose}
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
                         </div>
                     ) : null}
                     {viewerUrl ? <iframe

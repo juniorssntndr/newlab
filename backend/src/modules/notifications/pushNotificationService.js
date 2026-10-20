@@ -24,6 +24,25 @@ export const getPushPublicKey = () => {
     return getVapidConfig().publicKey;
 };
 
+// Campaign dispatch owns its durable receipt. Never swallow provider outcomes here.
+export const sendCampaignPush = async ({ subscription, payload }) => {
+    initPushService();
+    if (!vapidConfigured) return { state: 'skipped', reason: 'push_not_configured' };
+    try {
+        await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, JSON.stringify(payload), { timeout: 10000 });
+        return { state: 'accepted' }; // Provider acceptance is not proof of device delivery.
+    } catch (error) {
+        // A timeout/reset can occur after the provider accepted the message.
+        // Only an explicit HTTP rejection proves failure; ambiguous transport
+        // outcomes must stay unknown and must never authorize automatic resend.
+        const status = Number(error?.statusCode);
+        if (Number.isInteger(status) && status >= 400 && status <= 599) {
+            return { state: 'failed', expired: [404, 410].includes(status) };
+        }
+        return { state: 'unknown', reason: 'provider_result_unconfirmed' };
+    }
+};
+
 export const saveSubscription = async ({ pool, userId, subscription, userAgent }) => {
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
         throw new Error('Suscripción Web Push inválida');

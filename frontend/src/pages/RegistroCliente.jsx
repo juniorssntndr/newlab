@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import AfinixLogo from '../components/AfinixLogo.jsx';
 import LandingThemeToggle from '../components/afinix/LandingThemeToggle.jsx';
@@ -7,6 +7,7 @@ import SeoHead from '../components/seo/SeoHead.jsx';
 import LoginWorkflowCarousel from '../components/login/LoginWorkflowCarousel.jsx';
 import { API_URL } from '../config.js';
 import { useLandingTheme } from './hooks/useLandingTheme.js';
+import { parseRegistrationPrefill, PREFILL_LIMITS, REGISTRATION_DISTRICT_OPTIONS, REGISTRATION_PASSWORD_MAX_LENGTH } from './registrationPrefill.js';
 import '../styles/login-theme.css';
 
 const LOGIN_STORY_PROOFS = [
@@ -15,47 +16,12 @@ const LOGIN_STORY_PROOFS = [
     { icon: 'bi-archive', value: 'Historial', label: 'Archivos y entregas trazables' },
 ];
 
-const AREQUIPA_DISTRITOS = [
-    'Arequipa (Cercado)',
-    'Yanahuara',
-    'Cayma',
-    'Cerro Colorado',
-    'José Luis Bustamante y Rivero',
-    'Mariano Melgar',
-    'Paucarpata',
-    'Miraflores',
-    'Sachaca',
-    'Alto Selva Alegre',
-    'Socabaya',
-    'Tiabaya',
-    'Jacobo Hunter',
-    'Characato',
-    'Otro distrito'
-];
-
-const DISTRITO_OPTIONS = AREQUIPA_DISTRITOS.map((d) => ({
-    value: d,
-    label: d
-}));
-
 export const RegistroCliente = () => {
     const { theme, toggle } = useLandingTheme();
     const [searchParams] = useSearchParams();
 
-    // Parámetros de Campaña / Kit de Bienvenida
-    const promoCode = searchParams.get('promo') || searchParams.get('cupon') || '';
-    const campanaParam = searchParams.get('campana') || searchParams.get('utm_campaign') || '';
-
     const [step, setStep] = useState(1);
-    const [form, setForm] = useState({
-        nombre: searchParams.get('doc') || searchParams.get('nombre') || '',
-        email: searchParams.get('email') || '',
-        password: '',
-        telefono: searchParams.get('tel') || searchParams.get('telefono') || '',
-        clinica_nombre: searchParams.get('clinica') || '',
-        distrito: 'Arequipa (Cercado)',
-        direccion: ''
-    });
+    const [form, setForm] = useState(() => parseRegistrationPrefill(searchParams));
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -202,42 +168,6 @@ export const RegistroCliente = () => {
                                 : `Paso ${step} de 2: ${step === 1 ? 'Datos de tu cuenta' : 'Datos del consultorio'}`}
                         </p>
 
-                        {!submitted && promoCode && (
-                            <div style={{
-                                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)',
-                                border: '1px dashed var(--color-primary, #0284c7)',
-                                borderRadius: '12px',
-                                padding: '0.65rem 0.9rem',
-                                marginBottom: '1.25rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.6rem'
-                            }}>
-                                <span style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '50%',
-                                    background: 'var(--color-primary, #0284c7)',
-                                    color: '#ffffff',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '1rem',
-                                    flexShrink: 0
-                                }}>
-                                    🎁
-                                </span>
-                                <div>
-                                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary, #0284c7)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        Beneficio de Bienvenida Activado
-                                    </div>
-                                    <div style={{ fontSize: '0.82rem', color: 'var(--login-heading)' }}>
-                                        Tu cuenta recibirá el cupón <strong>{promoCode}</strong> para tu primer trabajo dental.
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                         {submitted ? (
                             <div className="animate-fade-in" style={{ textAlign: 'center', padding: '1rem 0' }}>
                                 <div
@@ -326,6 +256,10 @@ export const RegistroCliente = () => {
                                     </div>
                                 )}
 
+                                <div className="registro-prefill-note">
+                                    <i className="bi bi-info-circle-fill" aria-hidden="true"></i>
+                                    <span>Verifica tus datos y elige tu contraseña para ingresar.</span>
+                                </div>
                                 <form onSubmit={handleSubmit}>
                                     {step === 1 && (
                                         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -337,6 +271,7 @@ export const RegistroCliente = () => {
                                                     id="reg-nombre"
                                                     type="text"
                                                     name="nombre"
+                                                    maxLength={PREFILL_LIMITS.nombre}
                                                     className="form-input"
                                                     placeholder="Ej. Dr. Carlos Mendoza Ramos"
                                                     value={form.nombre}
@@ -355,6 +290,7 @@ export const RegistroCliente = () => {
                                                         id="reg-telefono"
                                                         type="tel"
                                                         name="telefono"
+                                                        maxLength={PREFILL_LIMITS.telefono}
                                                         className="form-input"
                                                         placeholder="Ej. 954 123 456"
                                                         value={form.telefono}
@@ -372,6 +308,7 @@ export const RegistroCliente = () => {
                                                         id="reg-email"
                                                         type="email"
                                                         name="email"
+                                                        maxLength={PREFILL_LIMITS.email}
                                                         className="form-input"
                                                         placeholder="doctor@consultorio.pe"
                                                         value={form.email}
@@ -390,6 +327,7 @@ export const RegistroCliente = () => {
                                                     id="reg-password"
                                                     type="password"
                                                     name="password"
+                                                    maxLength={REGISTRATION_PASSWORD_MAX_LENGTH}
                                                     className="form-input"
                                                     placeholder="Mínimo 6 caracteres"
                                                     value={form.password}
@@ -428,6 +366,7 @@ export const RegistroCliente = () => {
                                                     id="reg-clinica"
                                                     type="text"
                                                     name="clinica_nombre"
+                                                    maxLength={PREFILL_LIMITS.clinica_nombre}
                                                     className="form-input"
                                                     placeholder="Ej. Clínica Dental Sonrisas Arequipa"
                                                     value={form.clinica_nombre}
@@ -444,7 +383,7 @@ export const RegistroCliente = () => {
                                                     id="distrito"
                                                     value={form.distrito}
                                                     onChange={(_, val) => setForm((prev) => ({ ...prev, distrito: val }))}
-                                                    options={DISTRITO_OPTIONS}
+                                                    options={[{ value: '', label: 'Selecciona distrito' }, ...REGISTRATION_DISTRICT_OPTIONS]}
                                                     searchable={true}
                                                     placeholder="Selecciona distrito"
                                                 />
@@ -458,6 +397,7 @@ export const RegistroCliente = () => {
                                                     id="reg-direccion"
                                                     type="text"
                                                     name="direccion"
+                                                    maxLength={PREFILL_LIMITS.direccion}
                                                     className="form-input"
                                                     placeholder="Ej. Av. Cayma 402, Of. 301"
                                                     value={form.direccion}

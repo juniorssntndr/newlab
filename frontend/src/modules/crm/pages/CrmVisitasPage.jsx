@@ -5,6 +5,17 @@ import EstablishmentDrawer from '../components/EstablishmentDrawer.jsx';
 import { useCrmVisitasQuery } from '../queries/useCrmQueries.js';
 import '../styles/crm.css';
 
+const getLimaDateStr = (dateVal) => {
+    if (!dateVal) return '';
+    try {
+        const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+        if (Number.isNaN(d.getTime())) return '';
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(d);
+    } catch {
+        return '';
+    }
+};
+
 export const CrmVisitasPage = () => {
     const [tab, setTab] = useState('pendientes'); // 'pendientes', 'hoy', 'vencidas', 'todas'
     const [activeVisitModal, setActiveVisitModal] = useState(null); // { visit, establishment }
@@ -12,12 +23,11 @@ export const CrmVisitasPage = () => {
 
     const { data: visitas = [], isLoading, refetch } = useCrmVisitasQuery({ limit: 150 });
 
-    const nowLima = new Date();
-    const todayStr = nowLima.toISOString().slice(0, 10);
+    const todayStr = getLimaDateStr(new Date());
 
     const filteredVisits = visitas.filter((v) => {
         const isScheduled = v.estado === 'programada' || v.estado === 'reprogramada';
-        const visitDateStr = v.programada_para ? new Date(v.programada_para).toISOString().slice(0, 10) : '';
+        const visitDateStr = getLimaDateStr(v.programada_para);
 
         if (tab === 'vencidas') {
             return isScheduled && visitDateStr && visitDateStr < todayStr;

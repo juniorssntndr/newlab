@@ -54,22 +54,31 @@ const Equipo = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const isVisitor = isVisitorRole(user);
     const isAdmin = isAdminRole(user);
+    const isOperator = user?.tipo === 'operador';
+    const canManageTeam = isAdmin;
+    const canAccessEquipoPage = isAdmin || isVisitor || isOperator || (Array.isArray(user?.modulos) && user?.modulos.includes('usuarios'));
 
-    // Si es visitador, su vista predeterminada y única es clientes
-    const initialTab = isVisitor ? 'clientes' : (searchParams.get('tab') || 'equipo');
+    // Si no puede gestionar equipo, su vista predeterminada es clientes o pendientes
+    const initialTab = canManageTeam ? (searchParams.get('tab') || 'equipo') : (searchParams.get('tab') === 'pendientes' ? 'pendientes' : 'clientes');
     const [activeTab, setActiveTab] = useState(initialTab);
     const [searchQuery, setSearchQuery] = useState('');
+    const deferredSearch = React.useDeferredValue(searchQuery);
 
     useEffect(() => {
         const tabParam = searchParams.get('tab');
         if (tabParam && ['equipo', 'clientes', 'pendientes'].includes(tabParam)) {
-            setActiveTab(tabParam);
+            if (!canManageTeam && tabParam === 'equipo') {
+                setActiveTab('clientes');
+            } else {
+                setActiveTab(tabParam);
+            }
         }
-    }, [searchParams]);
+    }, [searchParams, canManageTeam]);
 
     const [usuarios, setUsuarios] = useState([]);
     const [clinicas, setClinicas] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState(FORM_EMPTY);
@@ -111,13 +120,14 @@ const Equipo = () => {
     }, [clinicas]);
 
     const handleTabChange = (newTab) => {
-        if (isVisitor && newTab === 'equipo') return;
+        if (!canManageTeam && newTab === 'equipo') return;
         setActiveTab(newTab);
         setSearchParams({ tab: newTab });
     };
 
     const fetchUsuarios = async () => {
         setLoading(true);
+        setFetchError(null);
         try {
             const res = await fetch(`${API_URL}/usuarios`, { headers: getHeaders() });
             if (!res.ok) throw new Error('Error al cargar usuarios');
@@ -126,6 +136,7 @@ const Equipo = () => {
             queryClient.invalidateQueries({ queryKey: ['usuarios', 'pendientes_count'] });
         } catch (err) {
             console.error(err);
+            setFetchError(err.message || 'No se pudo conectar con el servidor para obtener los usuarios.');
             toast.error('No se pudo cargar la lista de usuarios');
         } finally {
             setLoading(false);
@@ -145,11 +156,11 @@ const Equipo = () => {
     };
 
     useEffect(() => {
-        if (isAdmin || isVisitor) {
+        if (canAccessEquipoPage) {
             fetchUsuarios();
             fetchClinicas();
         }
-    }, [isAdmin, isVisitor]);
+    }, [canAccessEquipoPage]);
 
     // Filtrar listas por pestaña
     const equipoUsuarios = useMemo(() => {
@@ -170,15 +181,15 @@ const Equipo = () => {
         else if (activeTab === 'clientes') baseList = clienteUsuarios;
         else if (activeTab === 'pendientes') baseList = pendientesUsuarios;
 
-        if (!searchQuery.trim()) return baseList;
-        const q = searchQuery.toLowerCase();
+        if (!deferredSearch.trim()) return baseList;
+        const q = deferredSearch.toLowerCase();
         return baseList.filter(u =>
             (u.nombre && u.nombre.toLowerCase().includes(q)) ||
             (u.email && u.email.toLowerCase().includes(q)) ||
             (u.clinica_nombre && u.clinica_nombre.toLowerCase().includes(q)) ||
             (u.clinica_ruc && u.clinica_ruc.includes(q))
         );
-    }, [activeTab, equipoUsuarios, clienteUsuarios, pendientesUsuarios, searchQuery]);
+    }, [activeTab, equipoUsuarios, clienteUsuarios, pendientesUsuarios, deferredSearch]);
 
     const handleRoleChange = (newTipo) => {
         const defaultMods = DEFAULT_ROLE_MODULES[newTipo] || [];
@@ -398,7 +409,7 @@ const Equipo = () => {
         }
     };
 
-    if (!isAdmin && !isVisitor) {
+    if (!canAccessEquipoPage) {
         return (
             <div className="card">
                 <div className="empty-state">
@@ -420,7 +431,7 @@ const Equipo = () => {
                     <p>Control de roles del equipo interno y otorgamiento de cuentas de portal a clientes</p>
                 </div>
                 <div>
-                    {activeTab === 'equipo' && (
+                    {activeTab === 'equipo' && canManageTeam && (
                         <button className="btn btn-primary" onClick={() => openNew('tecnico')}>
                             <i className="bi bi-person-plus-fill"></i> Nuevo Integrante de Equipo
                         </button>
@@ -435,7 +446,7 @@ const Equipo = () => {
 
             {/* Navigation Tabs */}
             <div className="section-tabs dashboard-view-switcher" role="group" aria-label="Secciones de usuarios" style={{ marginBottom: 'var(--space-6)' }}>
-                {!isVisitor && (
+                {canManageTeam && (
                     <button
                         type="button"
                         className={`btn section-tab dashboard-view-tab ${activeTab === 'equipo' ? 'btn-primary' : 'btn-ghost'}`}
@@ -534,6 +545,18 @@ const Equipo = () => {
             </div>
 
             <div className="card">
+                {fetchError && (
+                    <div className="alert alert-error" style={{ marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="bi bi-exclamation-triangle-fill"></i>
+                            <span>{fetchError}</span>
+                        </div>
+                        <button className="btn btn-secondary btn-sm" onClick={fetchUsuarios} style={{ minHeight: '36px' }}>
+                            <i className="bi bi-arrow-clockwise"></i> Reintentar
+                        </button>
+                    </div>
+                )}
+
                 {/* Search box */}
                 <div style={{ marginBottom: 'var(--space-4)' }}>
                     <div className="search-box">
@@ -824,7 +847,7 @@ const Equipo = () => {
                                             <div className="mobile-card-actions" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                                                 <button
                                                     className="btn btn-sm btn-primary"
-                                                    style={{ flex: 1, background: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                                    style={{ flex: 1, minHeight: '44px', background: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                                     onClick={() => openApproveModal(u)}
                                                 >
                                                     <i className="bi bi-check-circle-fill"></i> Aprobar y Activar
@@ -835,17 +858,20 @@ const Equipo = () => {
                                                         href={`https://wa.me/51${u.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola Dr. ${u.nombre}, le escribimos de AFINIX Dental Lab sobre su solicitud de registro.`)}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        style={{ minHeight: '44px', minWidth: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        aria-label={`Escribir por WhatsApp a ${u.nombre}`}
                                                     >
-                                                        <i className="bi bi-whatsapp" style={{ color: '#25D366' }}></i>
+                                                        <i className="bi bi-whatsapp" style={{ color: '#25D366', fontSize: '1.1rem' }}></i>
                                                     </a>
                                                 )}
                                                 <button
                                                     className="btn btn-sm btn-ghost text-danger"
                                                     onClick={() => handleInactivarCliente(u)}
                                                     title="Inactivar solicitud"
+                                                    aria-label={`Inactivar solicitud de ${u.nombre}`}
+                                                    style={{ minHeight: '44px', minWidth: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                                 >
-                                                    <i className="bi bi-x-circle"></i>
+                                                    <i className="bi bi-x-circle" style={{ fontSize: '1.1rem' }}></i>
                                                 </button>
                                             </div>
                                         </div>
@@ -883,7 +909,7 @@ const Equipo = () => {
                                             <div className="mobile-field"><span className="mobile-field-label">Último acceso</span><span className="mobile-field-value">{u.ultimo_acceso ? new Date(u.ultimo_acceso).toLocaleDateString('es-PE') : 'Nunca'}</span></div>
                                         </div>
                                         <div className="mobile-card-actions">
-                                            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(u)}>
+                                            <button className="btn btn-ghost btn-sm" style={{ minHeight: '44px', width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => openEdit(u)}>
                                                 Editar <i className="bi bi-pencil"></i>
                                             </button>
                                         </div>
@@ -1064,15 +1090,7 @@ const Equipo = () => {
                                     {(Array.isArray(form.permisos_modulos) ? form.permisos_modulos : (DEFAULT_ROLE_MODULES[form.tipo] || [])).filter(m => SYSTEM_MODULES.some(sm => sm.id === m)).length} de {SYSTEM_MODULES.length} módulos habilitados
                                 </span>
                             </div>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                                gap: '8px',
-                                background: 'var(--color-bg-secondary, #f8fafc)',
-                                padding: '12px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--color-border, #e2e8f0)'
-                            }}>
+                            <div className="equipo-permisos-grid">
                                 {SYSTEM_MODULES.map(mod => {
                                     const activeMods = Array.isArray(form.permisos_modulos)
                                         ? form.permisos_modulos
@@ -1154,6 +1172,31 @@ const Equipo = () => {
                     isOpen={Boolean(approvingUser)}
                     onClose={() => !approving && setApprovingUser(null)}
                     title="Aprobar Solicitud de Doctor / Clínica"
+                    footer={
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', width: '100%' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => setApprovingUser(null)}
+                                disabled={approving}
+                                style={{ minHeight: '40px' }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ background: '#059669', borderColor: '#059669', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '40px' }}
+                                onClick={confirmarActivacion}
+                                disabled={approving || (approvalClinicChoice === 'existing' && !approvalSelectedClinicId)}
+                            >
+                                <i className="bi bi-check-circle-fill"></i>
+                                {approving ? 'Activando...' : (
+                                    approvalClinicChoice === 'existing' ? 'Aprobar y Vincular Clínica' : 'Aprobar como Nueva Clínica'
+                                )}
+                            </button>
+                        </div>
+                    }
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         {/* Resumen del solicitante */}
@@ -1350,29 +1393,6 @@ const Equipo = () => {
                             </div>
                         </div>
 
-                        {/* Botones de acción */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => setApprovingUser(null)}
-                                disabled={approving}
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                style={{ background: '#059669', borderColor: '#059669', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                                onClick={confirmarActivacion}
-                                disabled={approving || (approvalClinicChoice === 'existing' && !approvalSelectedClinicId)}
-                            >
-                                <i className="bi bi-check-circle-fill"></i>
-                                {approving ? 'Activando...' : (
-                                    approvalClinicChoice === 'existing' ? 'Aprobar y Vincular Clínica' : 'Aprobar como Nueva Clínica'
-                                )}
-                            </button>
-                        </div>
                     </div>
                 </Modal>
             )}

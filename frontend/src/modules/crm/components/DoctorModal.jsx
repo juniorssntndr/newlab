@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useCrmMutations, useCrmClinicasQuery } from '../queries/useCrmQueries.js';
 import { consultarDNI } from '../../identity/api/identityApi.js';
 import { useAuth } from '../../../state/AuthContext.jsx';
+import CustomSelect from '../../../components/CustomSelect.jsx';
 import toast from 'react-hot-toast';
 
 const ESPECIALIDADES_DENTALES = [
@@ -236,21 +237,13 @@ export const DoctorModal = ({ doctor, onClose, onSaved }) => {
                             {/* Especialidad */}
                             <div className="crm-form-group" style={{ margin: 0 }}>
                                 <label className="crm-form-label">Especialidad *</label>
-                                <div className="form-input-box has-lead">
-                                    <i className="bi bi-mortarboard input-icon-lead"></i>
-                                    <select
-                                        className="crm-form-control"
-                                        value={form.especialidad}
-                                        onChange={(e) => setForm({ ...form, especialidad: e.target.value })}
-                                        required
-                                    >
-                                        {ESPECIALIDADES_DENTALES.map((esp) => (
-                                            <option key={esp} value={esp}>
-                                                {esp}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <CustomSelect
+                                    value={form.especialidad}
+                                    onChange={(val) => setForm({ ...form, especialidad: val })}
+                                    options={ESPECIALIDADES_DENTALES.map((esp) => ({ value: esp, label: esp }))}
+                                    placeholder="Seleccione especialidad"
+                                    portal={true}
+                                />
                             </div>
                         </div>
 

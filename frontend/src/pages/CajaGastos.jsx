@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Modal from '../components/Modal.jsx';
 import FormDatePicker from '../components/FormDatePicker.jsx';
+import CustomSelect from '../components/CustomSelect.jsx';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useFinanceCatalogsQuery } from '../modules/finance/queries/useFinanceCatalogsQuery.js';
 import { useFinanceMovementsQuery } from '../modules/finance/queries/useFinanceMovementsQuery.js';
@@ -430,21 +431,13 @@ const MovementFormFields = ({ form, setForm, categoryOptions, defaultCategory, m
                     <label className="form-label" htmlFor={categoryInputId}>
                         {isIngreso ? 'Categoría de Ingreso' : 'Categoría de Gasto'}
                     </label>
-                    <select
+                    <CustomSelect
                         id={categoryInputId}
-                        className="form-select"
                         value={form.categoria_gasto}
-                        onChange={(event) => setForm((prev) => ({ ...prev, categoria_gasto: event.target.value }))}
-                    >
-                        {isIngreso
-                            ? INGRESO_CATEGORIES.map((c) => (
-                                <option key={c.value} value={c.value}>{c.label}</option>
-                            ))
-                            : categoryOptions.map((option) => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))
-                        }
-                    </select>
+                        onChange={(_event, val) => setForm((prev) => ({ ...prev, categoria_gasto: val }))}
+                        options={isIngreso ? INGRESO_CATEGORIES : categoryOptions}
+                        aria-label={isIngreso ? 'Categoría de Ingreso' : 'Categoría de Gasto'}
+                    />
                 </div>
 
                 <div className="form-group">
@@ -885,6 +878,7 @@ const CajaGastos = () => {
     const registerPaymentMutation = useRegisterPaymentMutation();
     const registerConsolidatedPaymentMutation = useRegisterConsolidatedPaymentMutation();
     const createInvoiceMutation = useCreateInvoiceMutation();
+    const [isSubmittingCobro, setIsSubmittingCobro] = useState(false);
 
     const pendingOrdersQuery = useFinanceAccountsQuery({
         filters: { search: pedidoSearch },
@@ -1570,6 +1564,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
             return;
         }
 
+        setIsSubmittingCobro(true);
         const toastId = toast.loading(`Registrando cobro de ${count} pedido(s)...`);
 
         try {
@@ -1618,7 +1613,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
             let comprobanteInfo = {
                 tipo: ticketComprobanteTipo,
                 tipo_comprobante: tipoCompCode,
-                serie: ticketComprobanteTipo === 'factura' ? 'F001' : (ticketComprobanteTipo === 'boleta' ? 'B001' : 'NV'),
+                serie: ticketComprobanteTipo === 'factura' ? 'F001' : (ticketComprobanteTipo === 'boleta' ? 'B001' : 'NV01'),
                 numero: null,
                 docIdentidad: ticketDocIdentidad?.trim() || '',
                 razonSocial: ticketRazonSocial?.trim() || '',
@@ -1812,6 +1807,8 @@ _Generado automáticamente por AFINIX Dental Lab_`;
             setCreateForm(createDefaultForm(defaultCategory, { tipo: 'ingreso', tipo_fondo: createForm.tipo_fondo }));
         } catch (err) {
             toast.error(err.message || 'Error al registrar el cobro de pedidos.', { id: toastId });
+        } finally {
+            setIsSubmittingCobro(false);
         }
     };
 
@@ -2504,10 +2501,10 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                     <button
                                         type="submit"
                                         className="btn btn-primary expenses-submit-btn"
-                                        disabled={registerPaymentMutation.isPending || selectedOrdersForPayment.length === 0}
+                                        disabled={isSubmittingCobro || registerConsolidatedPaymentMutation.isPending || createInvoiceMutation.isPending || registerPaymentMutation.isPending || selectedOrdersForPayment.length === 0}
                                     >
                                         <i className="bi bi-check-circle" aria-hidden="true" style={{ marginRight: '6px' }}></i>
-                                        {registerPaymentMutation.isPending
+                                        {(isSubmittingCobro || registerConsolidatedPaymentMutation.isPending || createInvoiceMutation.isPending || registerPaymentMutation.isPending)
                                             ? 'Procesando cobro...'
                                             : (selectedOrdersForPayment.length > 0
                                                 ? `Confirmar Cobro (${selectedOrdersForPayment.length} ${selectedOrdersForPayment.length === 1 ? 'pedido' : 'pedidos'} · ${formatCurrency(totalSelectedOrdersAmount)})`

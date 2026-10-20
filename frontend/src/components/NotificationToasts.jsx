@@ -1,28 +1,91 @@
-import React from 'react';
+import React, { useState } from 'react';
+import CampaignNotificationPreview from './CampaignNotificationPreview.jsx';
+import { notificationData } from '../state/notificationCampaign.js';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../state/NotificationContext.jsx';
 
 const NotificationToasts = () => {
-    const { toasts, dismissToast, markAsRead, setPanelOpen } = useNotifications();
+    const { toasts, notifications, dismissToast, markAsRead, setPanelOpen } = useNotifications();
     const navigate = useNavigate();
+    const [campaign, setCampaign] = useState(null);
+
+    // Auto-apertura inteligente (hasta 3 veces por cliente si no ha canjeado el beneficio)
+    React.useEffect(() => {
+        if (campaign) return;
+        const unreadCampaign = (notifications || []).find(
+            (n) => ['campana_marketing', 'prueba_campana'].includes(n.tipo)
+        );
+        if (unreadCampaign) {
+            const notifId = unreadCampaign.id || unreadCampaign.notificationId;
+            const sessionSeenKey = `afinix_session_seen_${notifId}`;
+            const totalDismissKey = `afinix_dismiss_count_${notifId}`;
+            const claimedKey = `afinix_claimed_campaign_${notifId}`;
+
+            // Si ya lo canjeó o ya se mostró en esta sesión específica, no abrir automáticamente
+            if (sessionStorage.getItem(sessionSeenKey) || localStorage.getItem(claimedKey)) {
+                return;
+            }
+
+            // Permitir mostrar hasta 3 sesiones distintas si solo le dio a cerrar
+            const dismissCount = parseInt(localStorage.getItem(totalDismissKey) || '0', 10);
+            if (dismissCount < 3) {
+                sessionStorage.setItem(sessionSeenKey, '1');
+                setCampaign(unreadCampaign);
+            }
+        }
+    }, [notifications, campaign]);
+
+    const handleCloseCampaign = () => {
+        if (campaign) {
+            const notifId = campaign.id || campaign.notificationId;
+            const sessionSeenKey = `afinix_session_seen_${notifId}`;
+            const totalDismissKey = `afinix_dismiss_count_${notifId}`;
+            sessionStorage.setItem(sessionSeenKey, '1');
+            const currentCount = parseInt(localStorage.getItem(totalDismissKey) || '0', 10);
+            localStorage.setItem(totalDismissKey, String(currentCount + 1));
+        }
+        setCampaign(null);
+    };
+
+    const navigateCampaign = async (couponCode, customLink) => {
+        const targetLink = customLink || campaign?.link || '/pedidos/nuevo';
+        const notifId = campaign?.id || campaign?.notificationId;
+        if (notifId) {
+            sessionStorage.setItem(`afinix_session_seen_${notifId}`, '1');
+            // Marcar como canjeado para que no vuelva a molestar en pop-up automático
+            localStorage.setItem(`afinix_claimed_campaign_${notifId}`, '1');
+            try {
+                await markAsRead(notifId);
+            } catch {
+                // silent
+            }
+        }
+        setCampaign(null);
+        navigate(targetLink, { state: couponCode ? { cupon: couponCode } : {} });
+    };
 
     const handleToastClick = async (toast) => {
         if (!toast.read && toast.notificationId) {
             await markAsRead(toast.notificationId);
         }
         dismissToast(toast.id);
+        if (['campana_marketing', 'prueba_campana'].includes(toast.tipo)) {
+            setCampaign(toast);
+            return;
+        }
         if (toast.link) {
             setPanelOpen(false);
             navigate(toast.link);
         }
     };
 
-    if (!toasts.length) return null;
+    if (!toasts.length && !campaign) return null;
 
     return (
         <div className="notification-toast-stack" aria-live="polite" aria-atomic="false">
+            <CampaignNotificationPreview notification={campaign} onClose={handleCloseCampaign} onNavigate={navigateCampaign} />
             {toasts.map((toast) => {
-                const toastData = typeof toast.data === 'string' ? JSON.parse(toast.data || '{}') : (toast.data || {});
+                const toastData = notificationData(toast.data);
                 const isMarketing = toast.tipo === 'campana_marketing' || Boolean(toastData.campana_id);
                 const imageUrl = toastData.imagen_url;
                 const couponCode = toastData.codigo_descuento;
@@ -53,7 +116,7 @@ const NotificationToasts = () => {
                                     width: '46px',
                                     height: '46px',
                                     borderRadius: '8px',
-                                    objectFit: 'cover',
+                                    objectFit: 'contain',
                                     flexShrink: 0
                                 }}
                             />

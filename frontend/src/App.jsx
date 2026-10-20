@@ -5,7 +5,10 @@ import { useAuth } from './state/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import {
     canAccessModule,
-    isClientRole
+    isClientRole,
+    isTechnicianRole,
+    isVisitorRole,
+    getDefaultRouteForUser
 } from './utils/accessControl.js';
 import Login from './pages/Login.jsx';
 import RegistroCliente from './pages/RegistroCliente.jsx';
@@ -61,12 +64,7 @@ const ModuleRoute = ({ module, children }) => {
     if (loading) return <LoadingScreen />;
     if (!user) return <Navigate to="/login" replace />;
     if (!canAccessModule(user, module)) {
-        if (isClientRole(user)) return <Navigate to="/pedidos" replace />;
-        const fallback = canAccessModule(user, 'pedidos') ? '/pedidos' :
-            canAccessModule(user, 'dashboard') ? '/dashboard' :
-            canAccessModule(user, 'crm') ? '/crm/resumen' :
-            canAccessModule(user, 'caja') ? '/caja-gastos' : '/cuenta';
-        return <Navigate to={fallback} replace />;
+        return <Navigate to={getDefaultRouteForUser(user)} replace />;
     }
     return children;
 };
@@ -75,6 +73,19 @@ const OrdersRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen />;
     if (!user) return <Navigate to="/login" replace />;
+    if (!isClientRole(user) && !canAccessModule(user, 'pedidos')) {
+        return <Navigate to="/cuenta" replace />;
+    }
+    return children;
+};
+
+const CreateOrderRoute = ({ children }) => {
+    const { user, loading } = useAuth();
+    if (loading) return <LoadingScreen />;
+    if (!user) return <Navigate to="/login" replace />;
+    if (isTechnicianRole(user) || isVisitorRole(user)) {
+        return <Navigate to="/pedidos" replace />;
+    }
     if (!isClientRole(user) && !canAccessModule(user, 'pedidos')) {
         return <Navigate to="/cuenta" replace />;
     }
@@ -99,7 +110,7 @@ const App = () => {
                     <Route path="productos" element={<ModuleRoute module="catalogo"><Productos /></ModuleRoute>} />
                     <Route path="almacen" element={<ModuleRoute module="almacen"><Almacen /></ModuleRoute>} />
                     <Route path="pedidos" element={<OrdersRoute><Pedidos /></OrdersRoute>} />
-                    <Route path="pedidos/nuevo" element={<OrdersRoute><NuevoPedido /></OrdersRoute>} />
+                    <Route path="pedidos/nuevo" element={<CreateOrderRoute><NuevoPedido /></CreateOrderRoute>} />
                     <Route path="pedidos/:id" element={<OrdersRoute><DetallePedido /></OrdersRoute>} />
                     <Route path="finanzas" element={<ModuleRoute module="cobros"><Finanzas /></ModuleRoute>} />
                     <Route path="caja-gastos" element={<ModuleRoute module="caja"><CajaGastos /></ModuleRoute>} />

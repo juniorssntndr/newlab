@@ -42,6 +42,10 @@ const run = () => {
     assert.equal(isBridgeProduct({ admite_puente: false, nombre: 'Corona Zirconia' }), false);
     assert.equal(isBridgeProduct({ nombre: 'Puente Fijo Metal Cerámica' }), true);
     assert.equal(isBridgeProduct({ categoria_nombre: 'Puentes Dentales' }), true);
+    // Precedencia estricta de modo_odontograma sobre admite_puente legado
+    assert.equal(isBridgeProduct({ modo_odontograma: 'unitario', admite_puente: true }), false);
+    assert.equal(isBridgeProduct({ modo_odontograma: 'unitario', nombre: 'Puente provisional' }), false);
+    assert.equal(isBridgeProduct({ modo_odontograma: 'puente', admite_puente: false }), true);
 
     // Seleccion de item para puente basico
     const bridgeSelection = buildItemSelection(['11', '13'], true);

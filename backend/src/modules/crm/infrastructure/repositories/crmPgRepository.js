@@ -194,6 +194,7 @@ export const makeCrmPgRepository = ({ pool }) => ({
             where += sql(params.length);
         };
         add(filters.etapa, (n) => ` AND e.etapa = $${n}`);
+        add(filters.excluir_etapa, (n) => ` AND e.etapa <> $${n}`);
         add(filters.tipo, (n) => ` AND e.tipo = $${n}`);
         add(filters.responsable_id, (n) => ` AND e.responsable_id = $${n}`);
         add(filters.search, (n) => ` AND (e.nombre ILIKE '%' || $${n} || '%' OR e.telefono ILIKE '%' || $${n} || '%' OR e.direccion ILIKE '%' || $${n} || '%')`);

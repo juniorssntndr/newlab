@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useNotifications } from '../state/NotificationContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import Modal from '../components/Modal.jsx';
 import { formatDentalSelection, sortTeethByArchOrder, getToothRole } from '../utils/odontograma.js';
 import { apiClient } from '../services/http/apiClient.js';
@@ -14,7 +15,8 @@ import { useUpdateOrderResponsibleMutation } from '../modules/orders/mutations/u
 import { useUpdateOrderDeliveryDateMutation } from '../modules/orders/mutations/useUpdateOrderDeliveryDateMutation.js';
 import { useUploadOrderFileMutation } from '../modules/orders/mutations/useUploadOrderFileMutation.js';
 import { useUpdateApprovalMeetLinkMutation } from '../modules/orders/mutations/useUpdateApprovalMeetLinkMutation.js';
-import { isClientRole, isLabStaffRole } from '../utils/accessControl.js';
+import { useRequestOrderDesignMutation } from '../modules/orders/mutations/useRequestOrderDesignMutation.js';
+import { isClientRole, isLabStaffRole, isTechnicianRole } from '../utils/accessControl.js';
 import {
     ORDER_STATUS_FLOW,
     getOrderStatusLabel,
@@ -134,6 +136,8 @@ const DetallePedido = () => {
     const [deliveryDate, setDeliveryDate] = useState('');
     const [editingDelivery, setEditingDelivery] = useState(false);
     const [viewerModalOpen, setViewerModalOpen] = useState(false);
+    const [designRequested, setDesignRequested] = useState(false);
+    const [historyExpanded, setHistoryExpanded] = useState(false);
     const [approvalFile, setApprovalFile] = useState(null);
     const [uploadMode, setUploadMode] = useState('file');
     const [isDraggingApproval, setIsDraggingApproval] = useState(false);
@@ -149,6 +153,7 @@ const DetallePedido = () => {
     const updateOrderDeliveryDateMutation = useUpdateOrderDeliveryDateMutation();
     const uploadOrderFileMutation = useUploadOrderFileMutation();
     const updateApprovalMeetLinkMutation = useUpdateApprovalMeetLinkMutation();
+    const requestOrderDesignMutation = useRequestOrderDesignMutation();
 
     const updating =
         updateOrderStatusMutation.isPending ||
@@ -158,6 +163,7 @@ const DetallePedido = () => {
     const savingResponsable = updateOrderResponsibleMutation.isPending;
     const savingDelivery = updateOrderDeliveryDateMutation.isPending;
     const uploadingFile = uploadOrderFileMutation.isPending;
+    const requestingDesign = requestOrderDesignMutation.isPending;
 
     useEffect(() => {
         if (user?.tipo === 'admin') {
@@ -456,6 +462,8 @@ const DetallePedido = () => {
         : 0;
     const isClient = isClientRole(user);
     const isLab = isLabStaffRole(user);
+    const isTechnician = isTechnicianRole(user);
+    const canUploadFiles = isLab || (isClient && !['terminado', 'enviado', 'anulado'].includes(pedido.estado));
     const statusLabel = (estado) => getOrderStatusLabel(estado, { forClient: isClient });
     const isApproval = pedido.estado === 'esperando_aprobacion';
     const deliveryMeta = getDeliveryMeta();
@@ -463,9 +471,11 @@ const DetallePedido = () => {
     const orderItems = pedido.items || [];
     // Total del pie solo aporta cuando hay varios ítems; con uno solo el precio de línea ya basta.
     // El desglose express (base + recargo) aún no está disponible: el +25% se hornea en precio_unitario.
-    const showItemsTotal = orderItems.length > 1;
+    // Para el perfil técnico de taller, los importes monetarios se ocultan.
+    const showItemsTotal = !isTechnician && orderItems.length > 1;
     const currentApproval = (pedido.aprobaciones || [])[0];
     const approvalLink = currentApproval?.link_exocad;
+    const hasDesignFile = Boolean(approvalLink && currentApproval?.archivo_disponible !== false);
     const approvalEstado = currentApproval?.estado || 'pendiente';
     const approvalMeetUrl = currentApproval?.meet_url;
     const approvalMeetStatus = currentApproval?.meet_status;
@@ -478,6 +488,21 @@ const DetallePedido = () => {
         : approvalEstado === 'ajuste_solicitado'
             ? 'badge-approval-adjust'
             : 'badge-approval-pending';
+
+    const handleSolicitarDiseno3D = async () => {
+        try {
+            await requestOrderDesignMutation.mutateAsync({ orderId: id });
+            setDesignRequested(true);
+            toast.success('Solicitud enviada al diseñador y administradores', {
+                icon: '📐',
+                duration: 4000
+            });
+        } catch (err) {
+            toast.error(err.message || 'Error al solicitar el diseño 3D', {
+                duration: 4000
+            });
+        }
+    };
     const caseFiles = Array.isArray(pedido.archivos) ? pedido.archivos : [];
     const { intakeMode, notes: observationNotes } = parseIntakeFromObservaciones(pedido.observaciones);
     const intakeLabel = intakeMode ? (ORDER_INTAKE_LABELS[intakeMode] || intakeMode) : null;
@@ -720,45 +745,46 @@ const DetallePedido = () => {
                 </div>
             </div>
 
-            <div className="order-wizard-confirm-hero pedido-detail-hero" aria-label="Resumen del pedido">
-                <div className="order-wizard-confirm-stat">
-                    <div className="order-wizard-confirm-stat-copy">
-                        <span className="order-wizard-confirm-label">
-                            <i className="bi bi-person" aria-hidden="true"></i>
-                            Paciente
-                        </span>
-                        <strong>{pedido.paciente_nombre}</strong>
-                        {!isClient && pedido.clinica_nombre ? (
-                            <em className="order-wizard-confirm-meta">{pedido.clinica_nombre}</em>
-                        ) : null}
+            <div className="pedido-detail-main-flow">
+                <div className="order-wizard-confirm-hero pedido-detail-hero" aria-label="Resumen del pedido">
+                    <div className="order-wizard-confirm-stat pedido-detail-stat-paciente">
+                        <div className="order-wizard-confirm-stat-copy">
+                            <span className="order-wizard-confirm-label">
+                                <i className="bi bi-person" aria-hidden="true"></i>
+                                Paciente
+                            </span>
+                            <strong>{pedido.paciente_nombre}</strong>
+                            {!isClient && pedido.clinica_nombre ? (
+                                <em className="order-wizard-confirm-meta">{pedido.clinica_nombre}</em>
+                            ) : null}
+                        </div>
                     </div>
-                </div>
-                <div className="order-wizard-confirm-stat">
-                    <div className="order-wizard-confirm-stat-copy">
-                        <span className="order-wizard-confirm-label">
-                            <i className={`bi ${intakeIcon}`} aria-hidden="true"></i>
-                            Ingreso del caso
-                        </span>
-                        <strong>{intakeLabel || '—'}</strong>
-                        {intakeMode === 'envio' ? (
-                            <em className="order-wizard-confirm-meta">
-                                {pedido.laboratorio_direccion || AFINIX_LAB_ADDRESS}
-                            </em>
-                        ) : intakeMode === 'recoleccion' ? (
-                            pedido.clinica_direccion ? (
-                                <em className="order-wizard-confirm-meta">{pedido.clinica_direccion}</em>
-                            ) : (
-                                <em className="order-wizard-confirm-meta">Sin dirección de consultorio</em>
-                            )
-                        ) : null}
+                    <div className="order-wizard-confirm-stat pedido-detail-stat-ingreso">
+                        <div className="order-wizard-confirm-stat-copy">
+                            <span className="order-wizard-confirm-label">
+                                <i className={`bi ${intakeIcon}`} aria-hidden="true"></i>
+                                Ingreso del caso
+                            </span>
+                            <strong>{intakeLabel || '—'}</strong>
+                            {intakeMode === 'envio' ? (
+                                <em className="order-wizard-confirm-meta">
+                                    {pedido.laboratorio_direccion || AFINIX_LAB_ADDRESS}
+                                </em>
+                            ) : intakeMode === 'recoleccion' ? (
+                                pedido.clinica_direccion ? (
+                                    <em className="order-wizard-confirm-meta">{pedido.clinica_direccion}</em>
+                                ) : (
+                                    <em className="order-wizard-confirm-meta">Sin dirección de consultorio</em>
+                                )
+                            ) : null}
+                        </div>
                     </div>
-                </div>
-                <div className="order-wizard-confirm-stat order-wizard-confirm-entrega">
-                    <div className="order-wizard-confirm-stat-copy">
-                        <span className="order-wizard-confirm-label">
-                            <i className="bi bi-calendar3" aria-hidden="true"></i>
-                            Entrega
-                        </span>
+                    <div className="order-wizard-confirm-stat order-wizard-confirm-entrega pedido-detail-stat-entrega">
+                        <div className="order-wizard-confirm-stat-copy">
+                            <span className="order-wizard-confirm-label">
+                                <i className="bi bi-calendar3" aria-hidden="true"></i>
+                                Entrega
+                            </span>
                         {isLab && editingDelivery ? (
                             <div className="pedido-detail-field-actions">
                                 <input
@@ -872,7 +898,9 @@ const DetallePedido = () => {
                                                         <span className="order-wizard-confirm-tone">Tono {tone}</span>
                                                     ) : null}
                                                 </div>
-                                                <span className="pedido-detail-item-subtotal">S/. {Number(subtotal || 0).toFixed(2)}</span>
+                                                {!isTechnician && (
+                                                    <span className="pedido-detail-item-subtotal">S/. {Number(subtotal || 0).toFixed(2)}</span>
+                                                )}
                                             </div>
                                         </div>
                                     </li>
@@ -887,55 +915,6 @@ const DetallePedido = () => {
                     </div>
 
                     <div className="pedido-detail-side">
-                    {isLab ? (
-                    <div className="card pedido-detail-info" aria-label="Responsable del caso">
-                        <div className="card-header">
-                            <h3 className="card-title">
-                                <i className="bi bi-person-gear" aria-hidden="true"></i>
-                                Responsable
-                            </h3>
-                        </div>
-                        {user?.tipo === 'admin' ? (
-                            <div className="pedido-detail-field-actions">
-                                <CustomSelect
-                                    size="sm"
-                                    value={currentResponsibleId}
-                                    onChange={e => setResponsableId(e.target.value)}
-                                    aria-label="Asignar responsable"
-                                    placeholder="Sin asignar"
-                                    options={responsibleOptions}
-                                />
-                                <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
-                                    <i className="bi bi-check2"></i>
-                                    {savingResponsable ? 'Guardando...' : 'Guardar'}
-                                </button>
-                            </div>
-                        ) : (
-                            <strong className="pedido-detail-responsable-name">
-                                {responsibleDisplayName}
-                            </strong>
-                        )}
-                        {observationNotes && !pedido.repeat_kind ? (
-                            <div className="pedido-detail-notes">
-                                <i className="bi bi-chat-left-text" aria-hidden="true"></i>
-                                <span>{observationNotes}</span>
-                            </div>
-                        ) : null}
-                    </div>
-                    ) : observationNotes ? (
-                    <div className="card pedido-detail-info">
-                        <div className="card-header">
-                            <h3 className="card-title">
-                                <i className="bi bi-chat-left-text" aria-hidden="true"></i>
-                                Nota de coordinación
-                            </h3>
-                        </div>
-                        <div className="pedido-detail-notes" style={{ margin: 0 }}>
-                            <span>{observationNotes}</span>
-                        </div>
-                    </div>
-                    ) : null}
-
                     <div className="card pedido-detail-design">
                         <div className="card-header pedido-detail-design-header">
                             <div className="pedido-detail-design-header-left">
@@ -944,14 +923,18 @@ const DetallePedido = () => {
                                     <span>Diseño 3D</span>
                                 </h3>
                             </div>
-                            {approvalLink ? (
+                            {hasDesignFile ? (
                                 <span className={`approval-review-status ${approvalBadgeClass}`}>
                                     {approvalStatusLabels[approvalEstado] || approvalEstado.replace(/_/g, ' ')}
                                 </span>
-                            ) : null}
+                            ) : (
+                                <span className="badge badge-secondary" style={{ fontSize: '0.72rem', fontWeight: 600 }}>
+                                    No subido
+                                </span>
+                            )}
                         </div>
                         <div className="approval-card">
-                            {approvalLink ? (
+                            {hasDesignFile ? (
                                 <div className="approval-review">
                                     <div className="approval-actions-single-row">
                                         <button
@@ -1012,8 +995,29 @@ const DetallePedido = () => {
                                 <div className="approval-review-empty">
                                     <div className="approval-empty-copy">
                                         <i className="bi bi-box" aria-hidden="true"></i>
-                                        <span>Pendiente de diseño 3D</span>
+                                        <span>Diseño 3D no subido</span>
                                     </div>
+                                    {isClient && (
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary btn-sm"
+                                            onClick={handleSolicitarDiseno3D}
+                                            disabled={requestingDesign || designRequested}
+                                            aria-label="Solicitar diseño 3D al laboratorio"
+                                        >
+                                            <i
+                                                className={`bi ${requestingDesign ? 'bi-hourglass-split' : designRequested ? 'bi-check2' : 'bi-bell'}`}
+                                                style={{ marginRight: '0.35rem' }}
+                                            ></i>
+                                            <span>
+                                                {requestingDesign
+                                                    ? 'Solicitando...'
+                                                    : designRequested
+                                                    ? 'Diseño solicitado'
+                                                    : 'Solicitar diseño 3D'}
+                                            </span>
+                                        </button>
+                                    )}
                                     {isLab && ['pendiente', 'en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
                                         <button
                                             type="button"
@@ -1021,13 +1025,65 @@ const DetallePedido = () => {
                                             onClick={() => setApprovalModalOpen(true)}
                                             aria-label="Subir diseño 3D interactivo"
                                         >
-                                            <i className="bi bi-cloud-arrow-up"></i> Subir diseño 3D
+                                            <i className="bi bi-cloud-arrow-up" style={{ marginRight: '0.35rem' }}></i>
+                                            <span>Subir diseño 3D</span>
                                         </button>
                                     )}
                                 </div>
                             )}
                         </div>
                     </div>
+
+                    {isLab ? (
+                    <div className="card pedido-detail-info" aria-label="Responsable del caso">
+                        <div className="card-header">
+                            <h3 className="card-title">
+                                <i className="bi bi-person-gear" aria-hidden="true"></i>
+                                Responsable
+                            </h3>
+                        </div>
+                        {user?.tipo === 'admin' ? (
+                            <div className="pedido-detail-field-actions">
+                                <CustomSelect
+                                    size="sm"
+                                    value={currentResponsibleId}
+                                    onChange={e => setResponsableId(e.target.value)}
+                                    aria-label="Asignar responsable"
+                                    placeholder="Sin asignar"
+                                    options={responsibleOptions}
+                                />
+                                <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveResponsable} disabled={savingResponsable}>
+                                    <i className="bi bi-check2"></i>
+                                    {savingResponsable ? 'Guardando...' : 'Guardar'}
+                                </button>
+                            </div>
+                        ) : (
+                            <strong className="pedido-detail-responsable-name">
+                                {responsibleDisplayName}
+                            </strong>
+                        )}
+                        {observationNotes && !pedido.repeat_kind ? (
+                            <div className="pedido-detail-notes">
+                                <i className="bi bi-chat-left-text" aria-hidden="true"></i>
+                                <span>{observationNotes}</span>
+                            </div>
+                        ) : null}
+                    </div>
+                    ) : (
+                    <div className="card pedido-detail-info">
+                        <div className="card-header">
+                            <h3 className="card-title">
+                                <i className="bi bi-chat-left-text" aria-hidden="true"></i>
+                                Nota de coordinación
+                            </h3>
+                        </div>
+                        <div className="pedido-detail-notes" style={{ margin: 0 }}>
+                            <span style={!observationNotes ? { color: 'var(--color-muted, #94a3b8)', fontStyle: 'italic' } : undefined}>
+                                {observationNotes || 'Sin notas ni observaciones adicionales registradas.'}
+                            </span>
+                        </div>
+                    </div>
+                    )}
                     </div>
 
                     <div className="card pedido-detail-files">
@@ -1040,7 +1096,7 @@ const DetallePedido = () => {
                             </div>
                         </div>
                         <div className="card-body">
-                            {isLab && (
+                            {canUploadFiles && (
                                 <div
                                     className={`case-file-dropzone${isDragOver ? ' is-dragover' : ''}${uploadingFiles ? ' is-uploading' : ''}`}
                                     onDragOver={handleDragOver}
@@ -1065,7 +1121,7 @@ const DetallePedido = () => {
                                         <div className="dropzone-uploading-state">
                                             <div className="spinner-border text-primary" role="status" style={{ width: '1.75rem', height: '1.75rem' }}></div>
                                             <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-primary)' }}>
-                                                Subiendo y procesando archivo(s)...
+                                                 Subiendo y procesando archivo(s)...
                                             </span>
                                         </div>
                                     ) : (
@@ -1087,7 +1143,7 @@ const DetallePedido = () => {
                             )}
 
                             {caseFiles.length === 0 ? (
-                                !isLab && (
+                                !canUploadFiles && (
                                     <div className="empty-state case-files-empty">
                                         <i className="bi bi-folder2-open empty-state-icon"></i>
                                         <p className="empty-state-text">No hay archivos adjuntos en este caso.</p>
@@ -1164,47 +1220,100 @@ const DetallePedido = () => {
                     </div>
 
                     <div className="card pedido-detail-history">
-                        <div className="card-header"><h3 className="card-title">Historial</h3></div>
+                        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <h3 className="card-title">Historial</h3>
+                                {timelineSorted.length > 0 && (
+                                    <span className="badge badge-secondary" style={{ fontSize: '0.72rem', fontWeight: 600 }}>
+                                        {timelineSorted.length}
+                                    </span>
+                                )}
+                            </div>
+                            {timelineSorted.length > 1 && (
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setHistoryExpanded(prev => !prev)}
+                                    aria-expanded={historyExpanded}
+                                    style={{ fontSize: '0.78rem', padding: '0.2rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-primary)' }}
+                                >
+                                    <span>{historyExpanded ? 'Colapsar' : 'Ver todo'}</span>
+                                    <i className={`bi bi-chevron-${historyExpanded ? 'up' : 'down'}`} aria-hidden="true"></i>
+                                </button>
+                            )}
+                        </div>
                         {timelineSorted.length === 0 && !hasRepeatHistory ? (
                             <div className="empty-state timeline-empty">
                                 <p className="empty-state-text">Sin actividad registrada</p>
                             </div>
                         ) : (
-                            <div className="timeline-list">
-                                <OrderRepeatLinks
-                                    order={pedido}
-                                    canDownloadEvidence={user?.tipo === 'admin'}
-                                    hideReason={Boolean(repeatReasonAlreadyInTimeline)}
-                                />
-                                {timelineSorted.map((t, i) => {
-                                    const accion = resolveTimelineResponsible(t.accion || (t.estado_nuevo ? `Cambio a ${statusLabel(t.estado_nuevo)}` : 'Actualización'), responsables);
-                                    const detalle = resolveTimelineResponsible(t.detalle || t.comentario, responsables);
-                                    const isLatest = i === 0;
-                                    const timelineIcon = getTimelineIcon(t);
-                                    return (
-                                        <div key={i} className={`timeline-entry ${isLatest ? 'is-latest' : ''}`}>
-                                            <div className={`timeline-dot ${isLatest ? 'is-latest' : ''}`}>
-                                                <i className={`bi ${timelineIcon}`}></i>
-                                            </div>
-                                            <div className="timeline-content">
-                                                <div className="timeline-title-row">
-                                                    <div className="timeline-title">{accion}</div>
-                                                    {isLatest && <span className="timeline-latest-badge">Último cambio</span>}
+                            <>
+                                <div className={`timeline-list ${!historyExpanded && timelineSorted.length > 1 ? 'is-collapsed' : ''}`}>
+                                    <OrderRepeatLinks
+                                        order={pedido}
+                                        canDownloadEvidence={user?.tipo === 'admin'}
+                                        hideReason={Boolean(repeatReasonAlreadyInTimeline)}
+                                    />
+                                    {(historyExpanded ? timelineSorted : timelineSorted.slice(0, 1)).map((t, i) => {
+                                        const accion = resolveTimelineResponsible(t.accion || (t.estado_nuevo ? `Cambio a ${statusLabel(t.estado_nuevo)}` : 'Actualización'), responsables);
+                                        const detalle = resolveTimelineResponsible(t.detalle || t.comentario, responsables);
+                                        const isLatest = i === 0;
+                                        const timelineIcon = getTimelineIcon(t);
+                                        return (
+                                            <div key={i} className={`timeline-entry ${isLatest ? 'is-latest' : ''}`}>
+                                                <div className={`timeline-dot ${isLatest ? 'is-latest' : ''}`}>
+                                                    <i className={`bi ${timelineIcon}`}></i>
                                                 </div>
-                                                {detalle && <div className="timeline-detail">{detalle}</div>}
-                                                <div className="timeline-meta">
-                                                    <i className="bi bi-calendar2-week"></i>
-                                                    <span>{new Date(t.created_at).toLocaleString('es-PE')}</span>
-                                                    <span aria-hidden="true">•</span>
-                                                    <span>{t.usuario_nombre || 'Sistema'}</span>
+                                                <div className="timeline-content">
+                                                    <div className="timeline-title-row">
+                                                        <div className="timeline-title">{accion}</div>
+                                                        {isLatest && <span className="timeline-latest-badge">Último cambio</span>}
+                                                    </div>
+                                                    {detalle && <div className="timeline-detail">{detalle}</div>}
+                                                    <div className="timeline-meta">
+                                                        <i className="bi bi-calendar2-week"></i>
+                                                        <span>{new Date(t.created_at).toLocaleString('es-PE')}</span>
+                                                        <span aria-hidden="true">•</span>
+                                                        <span>{t.usuario_nombre || 'Sistema'}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {timelineSorted.length > 1 && !historyExpanded && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm timeline-expand-footer-btn"
+                                        onClick={() => setHistoryExpanded(true)}
+                                        aria-label={`Ver historial completo (${timelineSorted.length - 1} eventos más)`}
+                                        style={{
+                                            position: 'relative',
+                                            zIndex: 2,
+                                            width: '100%',
+                                            marginTop: '0.65rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.4rem',
+                                            fontSize: '0.8rem',
+                                            color: 'var(--color-primary)',
+                                            fontWeight: 600,
+                                            padding: '0.5rem 0.75rem',
+                                            border: '1px dashed var(--color-border)',
+                                            borderRadius: 'var(--radius-md, 8px)',
+                                            background: 'var(--color-surface, #fff)'
+                                        }}
+                                    >
+                                        <span>Ver historial completo ({timelineSorted.length - 1} eventos más)</span>
+                                        <i className="bi bi-chevron-down" aria-hidden="true"></i>
+                                    </button>
+                                )}
+                            </>
                         )}
                     </div>
+                </div>
             </div>
 
             <Modal

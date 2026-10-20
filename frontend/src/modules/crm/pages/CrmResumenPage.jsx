@@ -122,7 +122,7 @@ export const CrmResumenPage = () => {
                         </div>
 
                         {/* Fila Secundaria: Embudo Comercial y Agenda de Visitas */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
                             {/* Embudo Comercial */}
                             <div className="card" style={{ padding: 'var(--space-4)' }}>
                                 <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>

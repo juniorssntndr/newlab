@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useCrmEstablecimientoDetailQuery, useCrmMutations, useCrmUsuariosQuery } from '../queries/useCrmQueries.js';
 import { useAuth } from '../../../state/AuthContext.jsx';
 import { isAdminRole } from '../../../utils/accessControl.js';
+import CustomSelect from '../../../components/CustomSelect.jsx';
 import EstablishmentModal from './EstablishmentModal.jsx';
 import toast from 'react-hot-toast';
 
@@ -210,22 +211,24 @@ export const EstablishmentDrawer = ({
                                         )}
                                     </div>
                                     {isAssigning ? (
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <select
-                                                className="crm-form-control crm-form-control-sm"
-                                                value={selectedResponsible}
-                                                onChange={(e) => setSelectedResponsible(e.target.value)}
-                                                style={{ flex: 1 }}
-                                            >
-                                                <option value="">Seleccionar responsable...</option>
-                                                {usuarios
-                                                    .filter((u) => u.tipo === 'visitador' || u.tipo === 'admin' || u.tipo === 'tecnico')
-                                                    .map((u) => (
-                                                        <option key={u.id} value={u.id}>
-                                                            {u.nombre} ({u.tipo})
-                                                        </option>
-                                                    ))}
-                                            </select>
+                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <CustomSelect
+                                                    value={selectedResponsible}
+                                                    onChange={(val) => setSelectedResponsible(val)}
+                                                    options={[
+                                                        { value: '', label: 'Seleccionar responsable...' },
+                                                        ...usuarios
+                                                            .filter((u) => u.tipo === 'visitador' || u.tipo === 'admin' || u.tipo === 'tecnico')
+                                                            .map((u) => ({
+                                                                value: String(u.id),
+                                                                label: `${u.nombre} (${u.tipo})`
+                                                            }))
+                                                    ]}
+                                                    placeholder="Seleccionar responsable..."
+                                                    portal={true}
+                                                />
+                                            </div>
                                             <button type="button" className="crm-btn crm-btn-primary crm-btn-sm" onClick={handleAssign}>
                                                 Guardar
                                             </button>

@@ -115,6 +115,7 @@ export const MaterialMovimientoModal = ({
                 cantidad: cantNum,
                 proveedor_id: proveedorId ? parseInt(proveedorId, 10) : null,
                 costo_unitario: costoUnitario ? parseFloat(costoUnitario) : null,
+                referencia: numeroComprobante.trim() || null,
                 numero_comprobante: numeroComprobante.trim() || null,
                 origen,
                 motivo: motivo.trim() || null,
@@ -194,7 +195,7 @@ export const MaterialMovimientoModal = ({
                 {activeMaterial && (
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))',
                         gap: '0.75rem',
                         padding: '0.75rem',
                         background: 'var(--color-bg-alt, #f8fafc)',
@@ -297,7 +298,7 @@ export const MaterialMovimientoModal = ({
                                 ]}
                             />
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem' }}>
                             <div className="form-group" style={{ margin: 0 }}>
                                 <label className="form-label">Costo Unitario (S/.)</label>
                                 <div className="form-input-box has-lead">

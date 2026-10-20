@@ -696,7 +696,9 @@
     grid-template-columns: 1fr;
   }
 
-  .cobros-ops-layout .expenses-create-card {
+  .cobros-ops-layout .expenses-create-card,
+  .register-ops-layout .expenses-create-card,
+  .expenses-layout .expenses-create-card {
     position: static;
   }
 

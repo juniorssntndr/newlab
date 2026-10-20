@@ -137,6 +137,18 @@ const Finanzas = () => {
             };
         }
 
+        const totalDeudaActual = pendingOrdersForBulk.reduce((acc, o) => acc + (parseFloat(o.saldo) || 0), 0);
+        const totalDeudaRounded = Math.round(totalDeudaActual * 100) / 100;
+
+        if (entered > totalDeudaRounded + 0.001) {
+            return {
+                fullyPaidCount: 0,
+                partialPaidCount: 0,
+                isExceeded: true,
+                description: `⚠️ El monto ingresado (${formatCurrency(entered)}) supera la deuda total pendiente (${formatCurrency(totalDeudaRounded)}). No se contemplan sobrepagos.`
+            };
+        }
+
         let remaining = entered;
         let fullyPaid = 0;
         let partialPaid = 0;
@@ -167,6 +179,7 @@ const Finanzas = () => {
         return {
             fullyPaidCount: fullyPaid,
             partialPaidCount: partialPaid,
+            isExceeded: false,
             description: text
         };
     }, [bulkPaymentForm.monto_total, pendingOrdersForBulk]);
@@ -181,6 +194,15 @@ const Finanzas = () => {
         const montoNum = parseFloat(bulkPaymentForm.monto_total);
         if (Number.isNaN(montoNum) || montoNum <= 0) {
             toast.error('Ingresa un monto válido mayor a 0');
+            return;
+        }
+
+        const totalDeudaActual = pendingOrdersForBulk.reduce((acc, o) => acc + (parseFloat(o.saldo) || 0), 0);
+        const totalDeudaRounded = Math.round(totalDeudaActual * 100) / 100;
+        const montoRounded = Math.round(montoNum * 100) / 100;
+
+        if (montoRounded > totalDeudaRounded) {
+            toast.error(`El monto ingresado (${formatCurrency(montoRounded)}) supera la deuda total adeudada (${formatCurrency(totalDeudaRounded)}). No se contemplan sobrepagos.`);
             return;
         }
 
@@ -616,13 +638,13 @@ const Finanzas = () => {
                                 <h3 className="card-title">Deudas por Clínica</h3>
                                 <p className="card-subtitle">Gestión individual y liquidación de pedidos en cascada</p>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                <div className="segmented-control" style={{ maxWidth: '440px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
+                                <div className="segmented-control" style={{ maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', display: 'flex', flex: '1 1 auto' }}>
                                     <button
                                         type="button"
                                         className={`segmented-control__btn${riskFilter === 'all' ? ' is-active' : ''}`}
                                         onClick={() => setRiskFilter('all')}
-                                        style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                                        style={{ fontSize: '0.78rem', padding: '6px 10px', whiteSpace: 'nowrap', minHeight: '36px' }}
                                     >
                                         Todas ({cobranzasData.clinicas.length})
                                     </button>
@@ -630,7 +652,7 @@ const Finanzas = () => {
                                         type="button"
                                         className={`segmented-control__btn${riskFilter === 'critica' ? ' is-active' : ''}`}
                                         onClick={() => setRiskFilter('critica')}
-                                        style={{ fontSize: '0.75rem', padding: '4px 8px', color: riskFilter === 'critica' ? undefined : '#ef4444' }}
+                                        style={{ fontSize: '0.78rem', padding: '6px 10px', whiteSpace: 'nowrap', minHeight: '36px', color: riskFilter === 'critica' ? undefined : '#ef4444' }}
                                     >
                                         🔴 &gt;30d ({cobranzasData.clinicas.filter(c => parseFloat(c.deuda_30_mas || 0) > 0).length})
                                     </button>
@@ -638,7 +660,7 @@ const Finanzas = () => {
                                         type="button"
                                         className={`segmented-control__btn${riskFilter === 'alerta' ? ' is-active' : ''}`}
                                         onClick={() => setRiskFilter('alerta')}
-                                        style={{ fontSize: '0.75rem', padding: '4px 8px', color: riskFilter === 'alerta' ? undefined : '#f59e0b' }}
+                                        style={{ fontSize: '0.78rem', padding: '6px 10px', whiteSpace: 'nowrap', minHeight: '36px', color: riskFilter === 'alerta' ? undefined : '#f59e0b' }}
                                     >
                                         🟡 16–30d ({cobranzasData.clinicas.filter(c => parseFloat(c.deuda_15_30 || 0) > 0).length})
                                     </button>
@@ -646,13 +668,13 @@ const Finanzas = () => {
                                         type="button"
                                         className={`segmented-control__btn${riskFilter === 'corriente' ? ' is-active' : ''}`}
                                         onClick={() => setRiskFilter('corriente')}
-                                        style={{ fontSize: '0.75rem', padding: '4px 8px', color: riskFilter === 'corriente' ? undefined : '#10b981' }}
+                                        style={{ fontSize: '0.78rem', padding: '6px 10px', whiteSpace: 'nowrap', minHeight: '36px', color: riskFilter === 'corriente' ? undefined : '#10b981' }}
                                     >
                                         🟢 0–15d ({cobranzasData.clinicas.filter(c => parseFloat(c.deuda_0_15 || 0) > 0).length})
                                     </button>
                                 </div>
 
-                                <div className="search-box" style={{ width: '240px' }}>
+                                <div className="search-box" style={{ flex: '1 1 220px', minWidth: '180px' }}>
                                     <i className="bi bi-search"></i>
                                     <input
                                         className="form-input"
@@ -865,7 +887,7 @@ const Finanzas = () => {
                             type="button"
                             className="btn btn-primary"
                             onClick={handleRegisterBulkPayment}
-                            disabled={registerBulkPaymentMutation.isPending || pendingOrdersForBulk.length === 0}
+                            disabled={registerBulkPaymentMutation.isPending || pendingOrdersForBulk.length === 0 || cascadeSimulation.isExceeded}
                         >
                             {registerBulkPaymentMutation.isPending ? 'Procesando...' : 'Registrar Pago Global'}
                         </button>

@@ -54,6 +54,24 @@
     gap: 0.5rem;
 }
 
+.crm-section-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 0.35rem !important;
+    scrollbar-width: none !important;
+}
+
+.crm-section-tabs::-webkit-scrollbar {
+    display: none !important;
+}
+
+.crm-section-tabs .section-tab {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+}
+
 .crm-nav-tabs {
     display: flex;
     overflow-x: auto;

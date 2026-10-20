@@ -8,6 +8,7 @@ import EstablishmentDrawer from '../components/EstablishmentDrawer.jsx';
 import VisitModal from '../components/VisitModal.jsx';
 import ConversionModal from '../components/ConversionModal.jsx';
 import EstablishmentModal from '../components/EstablishmentModal.jsx';
+import CustomSelect from '../../../components/CustomSelect.jsx';
 import { useCrmEstablecimientosQuery, useCrmMutations } from '../queries/useCrmQueries.js';
 import '../styles/crm.css';
 
@@ -25,6 +26,22 @@ const AREQUIPA_DISTRITOS = [
     { value: 'Socabaya', label: 'Socabaya' },
     { value: 'Hunter', label: 'Jacobo Hunter' },
     { value: 'Sachaca', label: 'Sachaca' },
+];
+
+const ETAPA_OPTIONS = [
+    { value: '', label: 'Todas las etapas' },
+    { value: 'convertido', label: 'Solo Clientes Activos' },
+    { value: 'nuevo', label: 'Nuevos Prospectos' },
+    { value: 'contactado', label: 'Contactados' },
+    { value: 'visita_programada', label: 'Visita Agendada' },
+    { value: 'visitado', label: 'Visitados' },
+];
+
+const SALUD_OPTIONS = [
+    { value: '', label: 'Cualquier salud comercial' },
+    { value: 'verde', label: 'Verde (0–29d)' },
+    { value: 'amarillo', label: 'Amarillo (30–59d)' },
+    { value: 'rojo', label: 'Rojo (60+d / Reclamo)' },
 ];
 
 const haversineMeters = (lat1, lon1, lat2, lon2) => {
@@ -205,43 +222,27 @@ export const CrmMapaPage = () => {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-
                     <div className="crm-mapa-filter-grid">
-                        <select
-                            className="crm-select"
+                        <CustomSelect
                             value={filterDistrito}
-                            onChange={(e) => setFilterDistrito(e.target.value)}
-                        >
-                            {AREQUIPA_DISTRITOS.map((d) => (
-                                <option key={d.value} value={d.value}>
-                                    {d.label}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFilterDistrito(val)}
+                            options={AREQUIPA_DISTRITOS}
+                            placeholder="Todos los distritos"
+                        />
 
-                        <select
-                            className="crm-select"
+                        <CustomSelect
                             value={filterEtapa}
-                            onChange={(e) => setFilterEtapa(e.target.value)}
-                        >
-                            <option value="">Todas las etapas</option>
-                            <option value="convertido">Solo Clientes Activos</option>
-                            <option value="nuevo">Nuevos Prospectos</option>
-                            <option value="contactado">Contactados</option>
-                            <option value="visita_programada">Visita Agendada</option>
-                            <option value="visitado">Visitados</option>
-                        </select>
+                            onChange={(val) => setFilterEtapa(val)}
+                            options={ETAPA_OPTIONS}
+                            placeholder="Todas las etapas"
+                        />
 
-                        <select
-                            className="crm-select"
+                        <CustomSelect
                             value={filterSalud}
-                            onChange={(e) => setFilterSalud(e.target.value)}
-                        >
-                            <option value="">Cualquier salud comercial</option>
-                            <option value="verde">Verde (0–29d)</option>
-                            <option value="amarillo">Amarillo (30–59d)</option>
-                            <option value="rojo">Rojo (60+d / Reclamo)</option>
-                        </select>
+                            onChange={(val) => setFilterSalud(val)}
+                            options={SALUD_OPTIONS}
+                            placeholder="Cualquier salud comercial"
+                        />
 
                         <button
                             type="button"

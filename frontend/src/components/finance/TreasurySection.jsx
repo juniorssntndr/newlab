@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../state/AuthContext.jsx';
 import Modal from '../Modal.jsx';
 import CustomSelect from '../CustomSelect.jsx';
+import { isAdminRole, isPartnerRole } from '../../utils/accessControl.js';
 import {
     fetchTreasuryAccounts,
     createTreasuryAccount,
@@ -49,7 +50,8 @@ const DOC_TIPO_OPTIONS = [
 ];
 
 export default function TreasurySection() {
-    const { getHeaders } = useAuth();
+    const { getHeaders, user } = useAuth();
+    const canManage = isAdminRole(user) || isPartnerRole(user);
     const queryClient = useQueryClient();
 
     // Queries
@@ -536,7 +538,8 @@ export default function TreasurySection() {
                                                             className="btn btn-xs btn-ghost"
                                                             onClick={() => copyToClipboard(acc.numero_cuenta, 'N° de Cuenta')}
                                                             title="Copiar N° de Cuenta"
-                                                            style={{ padding: '2px 6px', fontSize: '0.75rem' }}
+                                                            aria-label="Copiar número de cuenta"
+                                                            style={{ minWidth: '34px', minHeight: '34px', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}
                                                         >
                                                             <i className="bi bi-clipboard"></i>
                                                         </button>
@@ -553,7 +556,8 @@ export default function TreasurySection() {
                                                             className="btn btn-xs btn-ghost"
                                                             onClick={() => copyToClipboard(acc.cci, 'CCI')}
                                                             title="Copiar CCI"
-                                                            style={{ padding: '2px 6px', fontSize: '0.75rem' }}
+                                                            aria-label="Copiar código interbancario CCI"
+                                                            style={{ minWidth: '34px', minHeight: '34px', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}
                                                         >
                                                             <i className="bi bi-clipboard"></i>
                                                         </button>
@@ -716,25 +720,31 @@ export default function TreasurySection() {
                                             <span className="badge badge-secondary" style={{ fontWeight: 700, fontSize: '0.75rem', padding: '4px 8px' }}>
                                                 {s.porcentaje_participacion ? `${s.porcentaje_participacion}%` : 'Socio'}
                                             </span>
-                                            <button
-                                                type="button"
-                                                className="btn btn-xs btn-ghost"
-                                                onClick={() => handleOpenEditSocio(s)}
-                                                title="Editar socio y porcentaje"
-                                                style={{ padding: '4px 6px', color: 'var(--color-text-secondary)' }}
-                                            >
-                                                <i className="bi bi-pencil"></i>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-xs btn-ghost text-danger"
-                                                onClick={() => handleDeleteSocio(s)}
-                                                disabled={deleteSocioMutation.isPending}
-                                                title="Eliminar o dar de baja al socio"
-                                                style={{ padding: '4px 6px' }}
-                                            >
-                                                <i className="bi bi-trash"></i>
-                                            </button>
+                                            {canManage && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-xs btn-ghost"
+                                                        onClick={() => handleOpenEditSocio(s)}
+                                                        title="Editar socio y porcentaje"
+                                                        aria-label="Editar socio y porcentaje"
+                                                        style={{ minWidth: '34px', minHeight: '34px', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}
+                                                    >
+                                                        <i className="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-xs btn-ghost text-danger"
+                                                        onClick={() => handleDeleteSocio(s)}
+                                                        disabled={deleteSocioMutation.isPending}
+                                                        title="Eliminar o dar de baja al socio"
+                                                        aria-label="Eliminar o dar de baja al socio"
+                                                        style={{ minWidth: '34px', minHeight: '34px', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    >
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 

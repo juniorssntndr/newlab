@@ -10,6 +10,8 @@ import {
     clientToOverridePayload,
     upsertIdentityOverride,
 } from '../infrastructure/identity/identityLocalStore.js';
+import { writeAuditEvent } from '../services/audit.js';
+
 
 const defaultFacturacionDeps = {
     emitirComprobanteSunat,
@@ -118,10 +120,18 @@ const buildSnapshotOverride = ({ baseSnapshot, billingData, tipoComprobante }) =
 const getBillingModule = (req) => req.app.locals?.modules?.billing;
 const isLegacyBillingMode = (req) => getBillingModule(req)?.billingAclMode !== 'new-acl';
 
-// ─── Helper: Admin/Tecnico only ───────────────────────────────────────────────
+// ─── Helper: Billing roles (Admin, Tecnico, Operador) ─────────────────────────
 function requireTecnico(req, res) {
-    if (req.user.tipo !== 'admin' && req.user.tipo !== 'tecnico') {
+    if (!['admin', 'tecnico', 'operador'].includes(req.user.tipo)) {
         res.status(403).json({ error: 'No tienes permisos para esta operación de facturación.' });
+        return false;
+    }
+    return true;
+}
+
+function requireAdminOrTecnico(req, res) {
+    if (req.user.tipo !== 'admin' && req.user.tipo !== 'tecnico') {
+        res.status(403).json({ error: 'Operación restringida a administradores o técnicos.' });
         return false;
     }
     return true;
@@ -263,6 +273,24 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
             console.warn('[facturacion] identity override persist skipped:', persistErr.message);
         }
 
+        if (comprobante?.id) {
+            await writeAuditEvent(req, {
+                entidad: 'comprobante',
+                entidadId: comprobante.id,
+                accion: 'comprobante_emitido',
+                descripcion: `Comprobante ${comprobante.serie || ''}-${comprobante.numero || ''} emitido para pedido(s) ${orderIdsToCheck.join(', ')}`,
+                metadata: {
+                    tipo_comprobante: tipoComprobante,
+                    serie: comprobante.serie,
+                    numero: comprobante.numero,
+                    total: comprobante.total,
+                    pedidos_ids: orderIdsToCheck,
+                    cliente_doc: billingData?.client?.numDoc || null,
+                    cliente_nombre: billingData?.client?.rznSocial || null
+                }
+            });
+        }
+
         res.json(comprobante);
     } catch (err) {
         console.error('[facturacion] emitir error:', err.message);
@@ -273,7 +301,7 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
 // ─── POST /:comprobanteId/anular ──────────────────────────────────────────────
 router.post('/:comprobanteId/anular', async (req, res, next) => {
     try {
-        if (!requireTecnico(req, res)) return;
+        if (!requireAdminOrTecnico(req, res)) return;
         const { motivo } = req.body;
         if (!motivo || motivo.trim().length < 5) {
             return res.status(400).json({ error: 'El motivo de anulación es obligatorio (mín. 5 caracteres).' });
@@ -283,9 +311,23 @@ router.post('/:comprobanteId/anular', async (req, res, next) => {
             const result = await getBillingModule(req).billingPhase2Service.requestVoiding(req.params.comprobanteId, {
                 motivo: motivo.trim(), idempotencyKey: req.body.idempotencyKey
             });
+            await writeAuditEvent(req, {
+                entidad: 'comprobante',
+                entidadId: req.params.comprobanteId,
+                accion: 'comprobante_anulacion_solicitada',
+                descripcion: `Solicitud de baja para comprobante ${req.params.comprobanteId}`,
+                metadata: { motivo: motivo.trim() }
+            });
             return res.status(202).json({ ok: true, baja: result });
         }
         const result = await facturacionDeps.anularComprobante(pool, req.params.comprobanteId, motivo.trim());
+        await writeAuditEvent(req, {
+            entidad: 'comprobante',
+            entidadId: req.params.comprobanteId,
+            accion: 'comprobante_anulado',
+            descripcion: `Comprobante ${req.params.comprobanteId} anulado`,
+            metadata: { motivo: motivo.trim() }
+        });
         res.json({ ok: true, comprobante: result });
     } catch (err) {
         console.error('[facturacion] anular error:', err.message);
@@ -296,7 +338,7 @@ router.post('/:comprobanteId/anular', async (req, res, next) => {
 // ─── POST /:comprobanteId/nota-credito ────────────────────────────────────────
 router.post('/:comprobanteId/nota-credito', async (req, res, next) => {
     try {
-        if (!requireTecnico(req, res)) return;
+        if (!requireAdminOrTecnico(req, res)) return;
         const { motivo, monto, detalles } = req.body;
         if (!motivo || motivo.trim().length < 5) {
             return res.status(400).json({ error: 'El motivo de la nota de crédito es obligatorio (mín. 5 caracteres).' });
@@ -310,15 +352,38 @@ router.post('/:comprobanteId/nota-credito', async (req, res, next) => {
                 motivo: motivo.trim(), monto, detalles, codMotivo: req.body.codMotivo,
                 idempotencyKey: req.body.idempotencyKey
             });
+            await writeAuditEvent(req, {
+                entidad: 'comprobante',
+                entidadId: req.params.comprobanteId,
+                accion: 'nota_credito_emitida',
+                descripcion: `Nota de crédito para comprobante ${req.params.comprobanteId}`,
+                metadata: {
+                    motivo: motivo.trim(),
+                    monto: parseFloat(monto),
+                    codMotivo: req.body.codMotivo || null,
+                    status: result.status
+                }
+            });
             return res.status(result.status === 'aceptado' ? 201 : 422).json({ ok: result.status === 'aceptado', notaCredito: result });
         }
         const result = await facturacionDeps.emitirNotaCredito(pool, req.params.comprobanteId, { motivo: motivo.trim(), monto, detalles });
+        await writeAuditEvent(req, {
+            entidad: 'comprobante',
+            entidadId: req.params.comprobanteId,
+            accion: 'nota_credito_emitida',
+            descripcion: `Nota de crédito para comprobante ${req.params.comprobanteId}`,
+            metadata: {
+                motivo: motivo.trim(),
+                monto: parseFloat(monto)
+            }
+        });
         res.json({ ok: true, notaCredito: result });
     } catch (err) {
         console.error('[facturacion] nota-credito error:', err.message);
         next(err);
     }
 });
+
 
 router.get('/bajas/:bajaId/status', async (req, res, next) => {
     try {
@@ -419,6 +484,12 @@ router.get('/comprobantes/:id/print', async (req, res, next) => {
 
         const row = rows[0];
 
+        if (req.user.tipo === 'cliente') {
+            if (!req.user.clinica_id || Number(row.clinica_id) !== Number(req.user.clinica_id)) {
+                return res.status(403).json({ error: 'Acceso denegado a este comprobante.' });
+            }
+        }
+
         const receptor_documento = row.receptor_documento || row.cl_ruc || row.cl_dni || '';
         const receptor_razon_social = row.receptor_razon_social || row.cl_razon_social || '';
         const receptor_direccion = row.receptor_direccion || row.cl_direccion || '';
@@ -486,11 +557,11 @@ router.get('/comprobantes/:id/print', async (req, res, next) => {
                 receptor_ubigeo: row.receptor_ubigeo || '',
             },
             emisor: {
-                ruc: row.e_ruc || '',
-                razon_social: row.e_razon_social || 'NEWLAB',
-                nombre_comercial: row.e_nombre_comercial || 'NewLab Dental',
-                direccion_fiscal: row.e_direccion_fiscal || '',
-                ubigeo: row.e_ubigeo || '',
+                ruc: row.e_ruc || '20616033973',
+                razon_social: row.e_razon_social || 'AFINIX DENTAL LAB S.A.C.',
+                nombre_comercial: row.e_nombre_comercial || 'AFINIX Dental Lab',
+                direccion_fiscal: row.e_direccion_fiscal || 'Calle Piura 316, Mariano Melgar, Arequipa',
+                ubigeo: row.e_ubigeo || '040126',
                 entorno: row.e_entorno || 'demo',
             },
             pedido: {
@@ -520,6 +591,20 @@ router.get('/comprobantes/:id/print', async (req, res, next) => {
 router.get('/:comprobanteId/status', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
+
+        if (req.user?.tipo === 'cliente') {
+            const check = await pool.query(
+                `SELECT p.clinica_id 
+                 FROM nl_comprobantes c 
+                 LEFT JOIN nl_pedidos p ON c.pedido_id = p.id 
+                 WHERE c.id = $1`,
+                [req.params.comprobanteId]
+            );
+            if (check.rows.length === 0 || Number(check.rows[0].clinica_id) !== Number(req.user.clinica_id)) {
+                return res.status(403).json({ error: 'Acceso denegado a este comprobante.' });
+            }
+        }
+
         let result;
 
         if (isLegacyBillingMode(req)) {

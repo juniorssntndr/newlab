@@ -760,6 +760,26 @@
   gap: 0.85rem;
 }
 
+.login-page .registro-prefill-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--login-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--login-accent) 18%, transparent);
+  color: var(--login-heading);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.login-page .registro-prefill-note i {
+  color: var(--login-accent);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
 /* CustomSelect en login / registro */
 .login-page .login-card .afinix-select-trigger {
   min-height: 44px;

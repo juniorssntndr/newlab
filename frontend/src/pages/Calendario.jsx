@@ -27,13 +27,16 @@ const statusColors = {
     enviado: '#6B7280',
 };
 
-const toLocalIsoDate = (value) => {
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+const getIsoDateKey = (val) => {
+    if (!val) return '';
+    if (typeof val === 'string') {
+        const m = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    if (val instanceof Date && !Number.isNaN(val.getTime())) {
+        return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+    }
+    return '';
 };
 
 const formatDayTitle = (isoDate) => {
@@ -54,11 +57,10 @@ const patientLabel = (name, codigo) => {
 const Calendario = () => {
     const navigate = useNavigate();
     const calendarRef = useRef(null);
-    const { data: pedidos = [], isLoading } = useOrdersListQuery({ filters: undefined });
+    const { data: pedidos = [], isLoading } = useOrdersListQuery({ filters: { limit: 500 } });
     const [isCompact, setIsCompact] = useState(() => (
         typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
     ));
-    const [selectedEvent, setSelectedEvent] = useState(null);
     const [dayPanel, setDayPanel] = useState(null);
     const [viewTitle, setViewTitle] = useState('');
     const [activeView, setActiveView] = useState(() => (
@@ -87,14 +89,13 @@ const Calendario = () => {
 
     const events = useMemo(() => (
         (pedidos || []).filter((pedido) => pedido.fecha_entrega).map((pedido) => {
-            const date = new Date(pedido.fecha_entrega);
-            const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const dateKey = getIsoDateKey(pedido.fecha_entrega);
             const color = statusColors[pedido.estado] || '#64748B';
             const nombre = patientLabel(pedido.paciente_nombre, pedido.codigo);
             return {
                 id: String(pedido.id),
                 title: nombre,
-                start,
+                start: dateKey,
                 allDay: true,
                 backgroundColor: color,
                 borderColor: color,
@@ -105,7 +106,7 @@ const Calendario = () => {
                     clinica_nombre: pedido.clinica_nombre,
                     codigo: pedido.codigo,
                     producto_principal: pedido.producto_principal,
-                    dateKey: toLocalIsoDate(start),
+                    dateKey,
                 },
             };
         })
@@ -115,6 +116,7 @@ const Calendario = () => {
         const map = new Map();
         events.forEach((event) => {
             const key = event.extendedProps.dateKey;
+            if (!key) return;
             if (!map.has(key)) map.set(key, []);
             map.get(key).push(event);
         });
@@ -122,6 +124,7 @@ const Calendario = () => {
     }, [events]);
 
     const openDayPanel = (isoDate) => {
+        if (!isoDate) return;
         const items = eventsByDate.get(isoDate) || [];
         if (items.length === 0) return;
         setDayPanel({ date: isoDate, items });
@@ -165,21 +168,6 @@ const Calendario = () => {
         });
         return next;
     }, [pedidos]);
-
-    const openMobilePopup = (info) => {
-        const rect = info.el.getBoundingClientRect();
-        const popupWidth = Math.min(280, Math.max(220, window.innerWidth - 20));
-        setSelectedEvent({
-            id: info.event.id,
-            title: info.event.extendedProps.codigo || info.event.title,
-            ...info.event.extendedProps,
-            position: {
-                top: rect.bottom + window.scrollY + 10,
-                left: Math.max(10, Math.min(rect.left, window.innerWidth - popupWidth - 10)),
-                width: popupWidth,
-            },
-        });
-    };
 
     return (
         <div className="animate-fade-in page-container">
@@ -255,14 +243,14 @@ const Calendario = () => {
                             locale={esLocale}
                             events={events}
                             displayEventTime={false}
-                            dayMaxEvents={1}
+                            dayMaxEvents={isCompact ? 1 : 3}
                             datesSet={(arg) => {
                                 setViewTitle(arg.view.title);
                                 setActiveView(arg.view.type);
                             }}
                             moreLinkClick={(info) => {
                                 info.jsEvent.preventDefault();
-                                openDayPanel(toLocalIsoDate(info.date));
+                                openDayPanel(info.dateStr || getIsoDateKey(info.date));
                                 return 'none';
                             }}
                             moreLinkContent={(arg) => (
@@ -270,20 +258,16 @@ const Calendario = () => {
                             )}
                             dateClick={(info) => {
                                 if (info.view.type !== 'dayGridMonth') return;
-                                openDayPanel(toLocalIsoDate(info.date));
+                                openDayPanel(info.dateStr || getIsoDateKey(info.date));
                             }}
                             eventClick={(info) => {
                                 const isMonthView = info.view.type === 'dayGridMonth';
                                 if (isMonthView) {
                                     info.jsEvent.preventDefault();
-                                    openDayPanel(info.event.extendedProps.dateKey || toLocalIsoDate(info.event.start));
+                                    openDayPanel(info.event.extendedProps.dateKey || info.event.startStr || getIsoDateKey(info.event.start));
                                     return;
                                 }
-                                if (!isCompact) {
-                                    navigate(`/pedidos/${info.event.id}`);
-                                    return;
-                                }
-                                openMobilePopup(info);
+                                navigate(`/pedidos/${info.event.id}`);
                             }}
                             height={isCompact ? 480 : 'auto'}
                             eventContent={(arg) => {
@@ -382,75 +366,6 @@ const Calendario = () => {
                     <p className="calendar-day-empty">No hay entregas este día.</p>
                 )}
             </Modal>
-
-            {selectedEvent && (
-                <>
-                    <div
-                        onClick={() => setSelectedEvent(null)}
-                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
-                    />
-                    <div
-                        className="animate-fade-in"
-                        style={{
-                            position: 'absolute',
-                            top: selectedEvent.position.top,
-                            left: selectedEvent.position.left,
-                            zIndex: 1000,
-                            background: 'var(--color-bg-elevated, var(--color-bg-card, #1e293b))',
-                            padding: '1.25rem',
-                            borderRadius: '12px',
-                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
-                            border: '1px solid var(--color-border, #334155)',
-                            width: selectedEvent.position.width,
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text, #f8fafc)' }}>{selectedEvent.title}</h3>
-                            <button
-                                type="button"
-                                className="btn-icon"
-                                onClick={() => setSelectedEvent(null)}
-                                style={{ padding: '0.25rem', background: 'transparent', border: 'none', color: 'var(--color-text-muted, #94a3b8)' }}
-                            >
-                                <i className="bi bi-x-lg" style={{ fontSize: '1rem' }}></i>
-                            </button>
-                        </div>
-
-                        <div style={{ marginBottom: '0.75rem' }}>
-                            <span
-                                className="fc-event-status"
-                                style={{
-                                    background: statusColors[selectedEvent.estado] || '#64748B',
-                                    display: 'inline-block',
-                                    fontSize: '0.75rem',
-                                    padding: '0.15rem 0.5rem',
-                                }}
-                            >
-                                {statusLabels[selectedEvent.estado] || selectedEvent.estado}
-                            </span>
-                        </div>
-
-                        <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                            <p style={{ margin: '0 0 0.25rem 0' }}><strong>Paciente:</strong> {selectedEvent.paciente_nombre}</p>
-                            <p style={{ margin: '0 0 0.25rem 0' }}><strong>Clínica:</strong> {selectedEvent.clinica_nombre}</p>
-                            {selectedEvent.producto_principal && (
-                                <p style={{ margin: '0 0 0.25rem 0' }}><strong>Producto:</strong> {selectedEvent.producto_principal}</p>
-                            )}
-                        </div>
-
-                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                style={{ width: '100%', padding: '0.5rem' }}
-                                onClick={() => navigate(`/pedidos/${selectedEvent.id}`)}
-                            >
-                                Ver Seguimiento
-                            </button>
-                        </div>
-                    </div>
-                </>
-            )}
         </div>
     );
 };

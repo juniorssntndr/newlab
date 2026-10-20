@@ -6,6 +6,7 @@ import { createMovimientoFinancieroSchema, createPagoSchema, updateMovimientoFin
 export const makeFinanceRoutes = ({ financeController }) => {
     const router = Router();
     const labCashier = requireRole('admin', 'operador');
+    const labPartnerRole = requireRole('admin', 'socio');
 
     router.use(authenticateToken);
     router.get('/', labCashier, financeController.listFinanceOrders);
@@ -28,16 +29,16 @@ export const makeFinanceRoutes = ({ financeController }) => {
     router.post('/sesiones-caja/abrir', labCashier, financeController.openCashSession);
     router.post('/sesiones-caja/:sesionId/cerrar', labCashier, financeController.closeCashSession);
     // Rutas de Tesorería Multi-Banco, Transferencias y Socios
-    router.get('/cuentas', labCashier, financeController.listAccountsWithBalance);
+    router.get('/cuentas', labPartnerRole, financeController.listAccountsWithBalance);
     router.post('/cuentas', requireRole('admin'), financeController.createAccount);
     router.put('/cuentas/:id', requireRole('admin'), financeController.updateAccount);
-    router.get('/transferencias', labCashier, financeController.listTransfers);
-    router.post('/transferencias', labCashier, financeController.registerTransfer);
-    router.get('/socios', labCashier, financeController.listSocios);
+    router.get('/transferencias', labPartnerRole, financeController.listTransfers);
+    router.post('/transferencias', labPartnerRole, financeController.registerTransfer);
+    router.get('/socios', labPartnerRole, financeController.listSocios);
     router.post('/socios', requireRole('admin'), financeController.createSocio);
     router.put('/socios/:id', requireRole('admin'), financeController.updateSocio);
     router.delete('/socios/:id', requireRole('admin'), financeController.deleteSocio);
-    router.get('/retiros-socios', labCashier, financeController.listRetirosSocios);
+    router.get('/retiros-socios', labPartnerRole, financeController.listRetirosSocios);
     router.post('/retiros-socios', requireRole('admin'), financeController.registerRetiroSocio);
 
     router.get('/:id', labCashier, financeController.getOrderFinanceDetail);

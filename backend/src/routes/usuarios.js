@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { authenticateToken } from '../middleware/auth.js';
 import { ensureClinicEstablishment } from '../modules/crm/application/services/clinicCrmIntegration.js';
+import { writeAuditEvent } from '../services/audit.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -10,6 +11,7 @@ const ensureCanManageUsers = (req, res, next) => {
     const isAllowed = req.user.tipo === 'admin'
         || req.user.tipo === 'operador'
         || req.user.tipo === 'visitador'
+        || (Array.isArray(req.user.modulos) && req.user.modulos.includes('usuarios'))
         || (req.user.permisos_modulos && (
             Array.isArray(req.user.permisos_modulos)
                 ? req.user.permisos_modulos.includes('usuarios')
@@ -113,9 +115,18 @@ router.post('/', ensureCanManageUsers, async (req, res, next) => {
             return res.status(400).json({ error: 'Tipo de usuario no válido' });
         }
 
-        // El visitador solo puede otorgar cuentas a clientes de clínicas
-        if (req.user.tipo === 'visitador' && tipo !== 'cliente') {
-            return res.status(403).json({ error: 'Como visitador solo tiene autorización para otorgar cuentas a clientes de clínicas' });
+        // Solo un administrador puede dar de alta integrantes del equipo del laboratorio
+        if (req.user.tipo !== 'admin' && tipo !== 'cliente') {
+            return res.status(403).json({ error: 'Solo los administradores pueden crear usuarios con roles internos del laboratorio' });
+        }
+
+        // Solo un administrador puede personalizar permisos de módulos
+        if (req.user.tipo !== 'admin' && permisos_modulos) {
+            return res.status(403).json({ error: 'Solo los administradores pueden asignar permisos de módulos' });
+        }
+
+        if (typeof password !== 'string' || password.trim().length < 6) {
+            return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
         }
 
         if (tipo === 'cliente' && !clinica_id) {
@@ -135,8 +146,20 @@ router.post('/', ensureCanManageUsers, async (req, res, next) => {
             [nombre, email, telefono || null, passwordHash, rolId, tipo, tipo === 'cliente' ? clinica_id : null, estado || 'activo', modulosValue]
         );
 
+        await writeAuditEvent(req, {
+            entidad: 'usuario',
+            entidadId: result.rows[0].id,
+            accion: 'user_created',
+            descripcion: `Usuario creado (${tipo}): ${email}`
+        });
+
         res.status(201).json(result.rows[0]);
-    } catch (err) { next(err); }
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(400).json({ error: 'El correo electrónico ya está registrado por otro usuario' });
+        }
+        next(err);
+    }
 });
 
 // POST /api/usuarios/:id/activar-cliente
@@ -149,6 +172,11 @@ router.post('/:id/activar-cliente', ensureCanManageUsers, async (req, res, next)
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
         const target = userResult.rows[0];
+
+        if (target.tipo !== 'cliente') {
+            return res.status(400).json({ error: 'Solo se pueden activar cuentas de clientes con portal' });
+        }
+
         const oldClinicaId = target.clinica_id;
         const finalClinicaId = clinica_id ? Number(clinica_id) : oldClinicaId;
 
@@ -174,6 +202,13 @@ router.post('/:id/activar-cliente', ensureCanManageUsers, async (req, res, next)
             }
         }
 
+        await writeAuditEvent(req, {
+            entidad: 'usuario',
+            entidadId: target.id,
+            accion: 'user_client_activated',
+            descripcion: `Cuenta de cliente activada (Clínica ID: ${finalClinicaId || 'sin vincular'})`
+        });
+
         res.json({ message: 'Cuenta activada exitosamente', id: target.id, estado: 'activo', clinica_id: finalClinicaId });
     } catch (err) { next(err); }
 });
@@ -184,19 +219,38 @@ router.patch('/:id', ensureCanManageUsers, async (req, res, next) => {
         const pool = req.app.locals.pool;
         const { nombre, email, telefono, tipo, estado, password, clinica_id, permisos_modulos } = req.body;
 
-        // Si es visitador, verificar que el usuario objetivo sea de tipo cliente
-        if (req.user.tipo === 'visitador') {
-            const checkUser = await pool.query('SELECT tipo FROM nl_usuarios WHERE id = $1', [req.params.id]);
-            if (checkUser.rows.length === 0 || checkUser.rows[0].tipo !== 'cliente') {
-                return res.status(403).json({ error: 'Solo puede modificar usuarios clientes' });
+        const checkUser = await pool.query('SELECT id, email, tipo, estado FROM nl_usuarios WHERE id = $1', [req.params.id]);
+        if (checkUser.rows.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        const currentTarget = checkUser.rows[0];
+
+        // Solo un administrador puede modificar usuarios del equipo interno o cambiar roles/permisos
+        if (req.user.tipo !== 'admin') {
+            if (currentTarget.tipo !== 'cliente') {
+                return res.status(403).json({ error: 'Solo los administradores pueden modificar integrantes del equipo' });
             }
             if (tipo && tipo !== 'cliente') {
-                return res.status(403).json({ error: 'No puede cambiar el tipo de un cliente a un rol de equipo' });
+                return res.status(403).json({ error: 'No tiene autorización para asignar roles internos del laboratorio' });
+            }
+            if (permisos_modulos !== undefined) {
+                return res.status(403).json({ error: 'Solo los administradores pueden modificar permisos de módulos' });
             }
         }
 
         if (tipo && !['admin', 'socio', 'operador', 'tecnico', 'visitador', 'cliente'].includes(tipo)) {
             return res.status(400).json({ error: 'Tipo no válido' });
+        }
+
+        // Guardia de seguridad: Impedir desactivar o degradar al último administrador activo
+        if (currentTarget.tipo === 'admin' && (estado === 'inactivo' || (tipo && tipo !== 'admin'))) {
+            const activeAdmins = await pool.query(
+                "SELECT COUNT(*)::int as count FROM nl_usuarios WHERE tipo = 'admin' AND estado = 'activo' AND id != $1",
+                [currentTarget.id]
+            );
+            if ((activeAdmins.rows[0]?.count || 0) === 0) {
+                return res.status(400).json({ error: 'No se puede desactivar o cambiar el rol del único administrador activo del sistema' });
+            }
         }
 
         const updates = [];
@@ -223,6 +277,9 @@ router.patch('/:id', ensureCanManageUsers, async (req, res, next) => {
         }
 
         if (password) {
+            if (typeof password !== 'string' || password.trim().length < 6) {
+                return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+            }
             const passwordHash = await bcrypt.hash(password, 10);
             params.push(passwordHash);
             updates.push(`password_hash = $${params.length}`);
@@ -237,8 +294,20 @@ router.patch('/:id', ensureCanManageUsers, async (req, res, next) => {
             params
         );
 
+        await writeAuditEvent(req, {
+            entidad: 'usuario',
+            entidadId: result.rows[0].id,
+            accion: 'user_updated',
+            descripcion: `Usuario actualizado (${result.rows[0].tipo}): ${result.rows[0].email}`
+        });
+
         res.json(result.rows[0]);
-    } catch (err) { next(err); }
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(400).json({ error: 'El correo electrónico ya está registrado por otro usuario' });
+        }
+        next(err);
+    }
 });
 
 export default router;

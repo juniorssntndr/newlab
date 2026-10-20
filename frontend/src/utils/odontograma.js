@@ -67,7 +67,9 @@ export const normalizeBridgePillars = (bridgeTeeth = [], pillars = []) => {
 
 export const isBridgeProduct = (product) => {
     if (!product) return false;
-    if (product.modo_odontograma === 'puente') return true;
+    if (product.modo_odontograma) {
+        return product.modo_odontograma === 'puente';
+    }
     if (product.admite_puente === true || product.admite_puente === 'true') return true;
     const source = [product.nombre, product.categoria_nombre, product.categoria_tipo, product.tipo]
         .filter(Boolean)
@@ -78,7 +80,9 @@ export const isBridgeProduct = (product) => {
 
 export const isVeneerProduct = (product) => {
     if (!product) return false;
-    if (product.modo_odontograma === 'carilla') return true;
+    if (product.modo_odontograma) {
+        return product.modo_odontograma === 'carilla';
+    }
     const source = [product.nombre, product.categoria_nombre, product.categoria_tipo, product.tipo]
         .filter(Boolean)
         .join(' ')
@@ -88,7 +92,9 @@ export const isVeneerProduct = (product) => {
 
 export const isArchProduct = (product) => {
     if (!product) return false;
-    if (product.modo_odontograma === 'arcada') return true;
+    if (product.modo_odontograma) {
+        return product.modo_odontograma === 'arcada';
+    }
     const source = [product.nombre, product.categoria_nombre, product.categoria_tipo, product.tipo]
         .filter(Boolean)
         .join(' ')
@@ -103,7 +109,9 @@ export const isArchProduct = (product) => {
 
 export const isSurgicalGuideProduct = (product) => {
     if (!product) return false;
-    if (product.modo_odontograma === 'guia_quirurgica') return true;
+    if (product.modo_odontograma) {
+        return product.modo_odontograma === 'guia_quirurgica';
+    }
     const source = [product.nombre, product.categoria_nombre, product.categoria_tipo, product.tipo]
         .filter(Boolean)
         .join(' ')

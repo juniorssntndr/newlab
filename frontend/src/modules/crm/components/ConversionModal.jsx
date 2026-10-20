@@ -190,7 +190,7 @@ export const ConversionModal = ({ establishment, onClose, onConverted }) => {
                                     className="crm-form-control"
                                     value={numDoc}
                                     onChange={(e) => setNumDoc(e.target.value)}
-                                    placeholder={tipoDoc === 'ruc' ? 'Ej. 20608941231' : 'Ej. 45892134'}
+                                    placeholder={tipoDoc === 'ruc' ? 'Ej. 20XXXXXXXXX' : 'Ej. 4XXXXXXX'}
                                     maxLength={tipoDoc === 'ruc' ? 11 : 8}
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLookup(); } }}
                                 />

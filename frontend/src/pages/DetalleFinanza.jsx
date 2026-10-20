@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import Modal from '../components/Modal.jsx';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import BillingConfirmModal from '../components/billing/BillingConfirmModal.jsx';
@@ -128,8 +129,15 @@ const DetalleFinanza = () => {
     };
 
     const submitPago = async () => {
-        if (!form.monto || Number.isNaN(parseFloat(form.monto)) || parseFloat(form.monto) <= 0) {
-            alert('Ingresa un monto válido mayor a 0');
+        const montoNum = parseFloat(form.monto);
+        if (!form.monto || Number.isNaN(montoNum) || montoNum <= 0) {
+            toast.error('Ingresa un monto válido mayor a 0');
+            return;
+        }
+
+        const saldoActual = parseFloat(finanza.saldo || 0);
+        if (montoNum > saldoActual + 0.001) {
+            toast.error(`El monto ingresado (${formatCurrency(montoNum)}) supera el saldo pendiente (${formatCurrency(saldoActual)}). No se contemplan sobrepagos.`);
             return;
         }
 
@@ -152,8 +160,9 @@ const DetalleFinanza = () => {
                 fecha_pago: new Date().toISOString().split('T')[0],
                 notas: ''
             });
+            toast.success('Pago registrado correctamente');
         } catch (err) {
-            alert(err.message);
+            toast.error(err.message || 'Error al registrar el pago');
         }
     };
 
@@ -225,7 +234,7 @@ const DetalleFinanza = () => {
 
     const submitAnulacion = async () => {
         if (!anularModal) return;
-        if (anularMotivo.trim().length < 5) { alert('El motivo debe tener al menos 5 caracteres.'); return; }
+        if (anularMotivo.trim().length < 5) { toast.error('El motivo debe tener al menos 5 caracteres.'); return; }
         try {
             await annulInvoiceMutation.mutateAsync({
                 orderId: id,
@@ -233,9 +242,9 @@ const DetalleFinanza = () => {
                 payload: { motivo: anularMotivo.trim(), idempotencyKey: voidingKeyRef.current }
             });
             setAnularModal(null);
-            alert('La comunicación de baja fue enviada. SUNAT la procesará mediante un ticket pendiente.');
+            toast.success('La comunicación de baja fue enviada. SUNAT la procesará mediante un ticket pendiente.');
         } catch (err) {
-            alert(err.message);
+            toast.error(err.message || 'Error al anular comprobante');
         }
     };
 
@@ -247,9 +256,9 @@ const DetalleFinanza = () => {
 
     const submitNotaCredito = async () => {
         if (!notaCreditoModal) return;
-        if (ncForm.motivo.trim().length < 5) { alert('El motivo debe tener al menos 5 caracteres.'); return; }
+        if (ncForm.motivo.trim().length < 5) { toast.error('El motivo debe tener al menos 5 caracteres.'); return; }
         if (!ncForm.monto || isNaN(parseFloat(ncForm.monto)) || parseFloat(ncForm.monto) <= 0) {
-            alert('Ingresa un monto válido mayor a 0.'); return;
+            toast.error('Ingresa un monto válido mayor a 0.'); return;
         }
         try {
             await createCreditNoteMutation.mutateAsync({
@@ -261,8 +270,9 @@ const DetalleFinanza = () => {
                 }
             });
             setNotaCreditoModal(null);
+            toast.success('Nota de crédito emitida con éxito.');
         } catch (err) {
-            alert(err.message);
+            toast.error(err.message || 'Error al emitir nota de crédito');
         }
     };
 
@@ -272,7 +282,7 @@ const DetalleFinanza = () => {
 
     const reenviarComprobante = async (comp, { askConfirm = true } = {}) => {
         if (!comp?.idempotency_key) {
-            alert('Este comprobante no tiene clave de reenvío. No se puede reintentar desde aquí.');
+            toast.error('Este comprobante no tiene clave de reenvío. No se puede reintentar desde aquí.');
             return;
         }
         if (askConfirm) {
@@ -401,6 +411,8 @@ const DetalleFinanza = () => {
   <div class="header">
     <div class="header-brand">
       <img src="${escapeHtml(logoSrc)}" alt="AFINIX Dental Lab" />
+      <div style="font-size:11px;font-weight:700;color:#0A1B33;margin-top:4px">AFINIX DENTAL LAB S.A.C.</div>
+      <div style="font-size:9.5px;color:#64748B">RUC: 20616033973 &bull; Calle Piura 316, Mariano Melgar, Arequipa</div>
     </div>
     <div class="header-doc">
       <div class="doc-type">COMPROBANTE INTERNO</div>
@@ -439,13 +451,13 @@ const DetalleFinanza = () => {
     </div>
   </div>
 
-  <div class="footer">Documento interno — No válido como comprobante de pago tributario &nbsp;·&nbsp; AFINIX Dental Lab &nbsp;·&nbsp; ${escapeHtml(formatDate(new Date(), true))}</div>
+  <div class="footer">Documento interno — No válido como comprobante de pago tributario &nbsp;·&nbsp; AFINIX DENTAL LAB S.A.C. &nbsp;·&nbsp; ${escapeHtml(formatDate(new Date(), true))}</div>
 </div>
 <script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
 
         const printWindow = window.open('', 'PRINT_A4', 'height=900,width=800');
-        if (!printWindow) { alert('No se pudo abrir la ventana de impresión'); return; }
+        if (!printWindow) { toast.error('No se pudo abrir la ventana de impresión'); return; }
         printWindow.document.write(html);
         printWindow.document.close();
     };
@@ -496,7 +508,9 @@ const DetalleFinanza = () => {
 </style></head><body>
 <div class="center">
   <img class="brand-logo" src="${escapeHtml(isoSrc)}" alt="AFINIX" />
-  <div class="brand-name">AFINIX DENTAL LAB</div>
+  <div class="brand-name">AFINIX DENTAL LAB S.A.C.</div>
+  <div style="font-size:9.5px;color:#475569;font-weight:600">RUC: 20616033973</div>
+  <div style="font-size:8.5px;color:#64748B;line-height:1.2">Calle Piura 316, Mariano Melgar, Arequipa</div>
 </div>
 <hr class="divider">
 <div class="center">
@@ -524,12 +538,12 @@ const DetalleFinanza = () => {
 </table>
 <hr class="divider">
 <div class="footer-note">Documento interno — No válido tributariamente</div>
-<div class="footer-note">AFINIX Dental Lab</div>
+<div class="footer-note">AFINIX DENTAL LAB S.A.C. &bull; Arequipa</div>
 <script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
 
         const printWindow = window.open('', 'PRINT_80MM', 'height=700,width=320');
-        if (!printWindow) { alert('No se pudo abrir la ventana de impresión'); return; }
+        if (!printWindow) { toast.error('No se pudo abrir la ventana de impresión'); return; }
         printWindow.document.write(html);
         printWindow.document.close();
     };
@@ -545,14 +559,20 @@ const DetalleFinanza = () => {
                     <style>
                         * { box-sizing: border-box; }
                         body { font-family: monospace; font-size: 12px; margin: 0; padding: 12px; width: 300px; color: #000; }
-                        h1 { font-size: 16px; margin: 0 0 4px; text-align: center; }
-                        h2 { font-size: 12px; margin: 4px 0 12px; text-align: center; font-weight: normal; }
+                        h1 { font-size: 15px; margin: 6px 0 2px; text-align: center; }
+                        h2 { font-size: 12px; margin: 2px 0 10px; text-align: center; font-weight: normal; }
                         .divider { border-top: 1px dashed #000; margin: 8px 0; }
                         .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-                        .centered { text-align: center; margin-top: 12px; }
+                        .centered { text-align: center; margin-top: 8px; font-size: 11px; }
                     </style>
                 </head>
                 <body>
+                    <div class="centered">
+                        <div style="font-weight:bold;font-size:13px">AFINIX DENTAL LAB S.A.C.</div>
+                        <div>RUC: 20616033973</div>
+                        <div style="font-size:10px">Calle Piura 316, Mariano Melgar, Arequipa</div>
+                    </div>
+                    <div class="divider"></div>
                     <h1>TICKET DE ANTICIPO</h1>
                     <h2>Pedido: ${escapeHtml(finanza.codigo)}</h2>
                     <div class="divider"></div>
@@ -572,7 +592,7 @@ const DetalleFinanza = () => {
         `;
         const printWindow = window.open('', 'PRINT', 'height=600,width=400');
         if (!printWindow) {
-            alert('No se pudo abrir la ventana de impresión');
+            toast.error('No se pudo abrir la ventana de impresión');
             return;
         }
         printWindow.document.write(html);
@@ -829,7 +849,18 @@ const DetalleFinanza = () => {
                             <article className="mobile-card" key={`pago-mobile-${pago.id}`}>
                                 <div className="mobile-card-head">
                                     <div className="mobile-card-title">{formatDate(pago.fecha_pago || pago.created_at)}</div>
-                                    <span className="badge badge-enviado">{pago.metodo || '—'}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span className="badge badge-enviado">{pago.metodo || '—'}</span>
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost btn-icon btn-sm"
+                                            title="Imprimir ticket"
+                                            onClick={() => printTicketPago(pago)}
+                                            style={{ minWidth: '32px', minHeight: '32px', padding: '4px' }}
+                                        >
+                                            <i className="bi bi-printer"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="mobile-card-grid">
                                     <div className="mobile-field">
@@ -937,7 +968,8 @@ const DetalleFinanza = () => {
                             <p className="detail-finanza-comprobantes-empty-text">Sin comprobantes electrónicos emitidos</p>
                         </div>
                     ) : (
-                    <div className="detail-finanza-comprobantes-scroll">
+                    <>
+                    <div className="detail-finanza-comprobantes-scroll desktop-only">
                         <table className="detail-finanza-comprobantes-table">
                             <thead>
                                 <tr>
@@ -1047,6 +1079,92 @@ const DetalleFinanza = () => {
                             </tbody>
                         </table>
                     </div>
+                    <div className="mobile-cards mobile-only">
+                        {comprobantes.map((comp) => {
+                            const isVoided = comp.estado_sunat === 'anulado';
+                            const isActive = comp.estado_sunat === 'aceptado' || comp.estado_sunat === 'generado';
+                            const isRetryable = comp.estado_sunat === 'error' || comp.estado_sunat === 'generado';
+                            const canFiscalActions = !isVoided && !isRetryable;
+                            const isDemo = !!(comp.pdf_url && (comp.pdf_url.includes('/demo/') || comp.pdf_url.includes('demo.apisperu')));
+                            const isReenviando = reenviandoId === comp.id;
+
+                            return (
+                                <article className={`mobile-card${isVoided ? ' is-voided' : ''}`} key={`comp-mobile-${comp.id}`} style={{ padding: '12px', marginBottom: '10px' }}>
+                                    <div className="mobile-card-head" style={{ marginBottom: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <i className={`bi ${comp.tipo_comprobante === '01' ? 'bi-receipt' : 'bi-file-text'} detail-finanza-icon-tone`}></i>
+                                            <strong style={{ fontSize: '0.9rem' }}>{comp.tipo_comprobante === '01' ? 'Factura' : 'Boleta'} {comp.serie}-{comp.correlativo}</strong>
+                                        </div>
+                                        <span className={`badge badge-${isVoided ? 'cancelado' : isActive ? 'enviado' : 'pendiente'}`}>
+                                            {comp.estado_sunat}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-card-grid" style={{ marginBottom: '10px' }}>
+                                        <div className="mobile-field">
+                                            <span className="mobile-field-label">Fecha Emisión</span>
+                                            <span className="mobile-field-value">{formatDate(comp.fecha_emision)}</span>
+                                        </div>
+                                        <div className="mobile-field">
+                                            <span className="mobile-field-label">Total</span>
+                                            <span className="mobile-field-value"><strong>{formatCurrency(comp.total_venta)}</strong></span>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePrintComprobante(comp)}
+                                            className="btn btn-sm btn-ghost"
+                                            style={{ minHeight: '34px', fontSize: '0.8rem' }}
+                                        >
+                                            <i className="bi bi-printer"></i> Imprimir
+                                        </button>
+                                        {comp.pdf_url && !isDemo && (
+                                            <a href={comp.pdf_url} target="_blank" rel="noreferrer"
+                                                className="btn btn-sm btn-ghost"
+                                                style={{ minHeight: '34px', fontSize: '0.8rem' }}
+                                            >
+                                                <i className="bi bi-filetype-pdf"></i> PDF
+                                            </a>
+                                        )}
+                                        {isRetryable && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleReenviarComprobante(comp)}
+                                                disabled={isReenviando || createInvoiceMutation.isPending}
+                                                className="btn btn-sm detail-finanza-retry-btn"
+                                                style={{ minHeight: '34px', fontSize: '0.8rem' }}
+                                            >
+                                                {isReenviando ? <><i className="bi bi-arrow-repeat detail-finanza-spin"></i> Reenviando…</> : <><i className="bi bi-send"></i> Reenviar</>}
+                                            </button>
+                                        )}
+                                        {canFiscalActions && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleAnularComprobante(comp)}
+                                                disabled={annulInvoiceMutation.isPending}
+                                                className="btn btn-sm detail-finanza-danger-btn"
+                                                style={{ minHeight: '34px', fontSize: '0.8rem' }}
+                                            >
+                                                <i className="bi bi-x-circle"></i> Anular
+                                            </button>
+                                        )}
+                                        {canFiscalActions && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleNotaCredito(comp)}
+                                                disabled={createCreditNoteMutation.isPending}
+                                                className="btn btn-sm detail-finanza-outline-btn"
+                                                style={{ minHeight: '34px', fontSize: '0.8rem' }}
+                                            >
+                                                <i className="bi bi-arrow-counterclockwise"></i> N/C
+                                            </button>
+                                        )}
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                    </>
                     )}
             </div>
             </div>

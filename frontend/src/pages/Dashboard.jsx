@@ -5,7 +5,7 @@ import { Doughnut, Bar } from 'react-chartjs-2';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useDashboardStatsQuery } from '../modules/dashboard/queries/useDashboardStatsQuery.js';
 import { useDashboardFinanceQuery } from '../modules/dashboard/queries/useDashboardFinanceQuery.js';
-import { canAccessFinanceDashboard } from '../utils/accessControl.js';
+import { canAccessFinanceDashboard, canAccessTreasury, isTechnicianRole } from '../utils/accessControl.js';
 import { getOrderStatusLabel } from '../utils/orderStatusLabels.js';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
 import FormDatePicker from '../components/FormDatePicker.jsx';
@@ -166,6 +166,9 @@ const formatPercent = (value) => `${toNumber(value).toFixed(1)}%`;
 
 const toMonthKey = (value) => {
     if (!value) return null;
+    if (typeof value === 'string' && /^\d{4}-\d{2}/.test(value)) {
+        return `${value.slice(0, 7)}-01`;
+    }
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
@@ -175,6 +178,8 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const canAccessFinance = canAccessFinanceDashboard(user);
+    const canAccessTesoreria = canAccessTreasury(user);
+    const isTechnician = isTechnicianRole(user);
     const [activeView, setActiveView] = useState('operativo');
     const [financeView, setFinanceView] = useState('resumen');
     const [strategicTopN, setStrategicTopN] = useState(5);
@@ -200,17 +205,6 @@ const Dashboard = () => {
     const financeStats = dashboardFinanceQuery.data || null;
     const loading = dashboardStatsQuery.isLoading;
     const loadingFinance = dashboardFinanceQuery.isLoading && !dashboardFinanceQuery.data;
-
-    if (loading) {
-        return (
-            <div className="dashboard-page">
-                <div className="page-header"><div className="page-header-left"><h1>Dashboard</h1></div></div>
-                <div className="dashboard-loading-grid grid grid-cols-5">
-                    {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton dashboard-loading-card" />)}
-                </div>
-            </div>
-        );
-    }
 
     const kpis = stats?.kpis || {};
     const topProductoMes = stats?.top_producto_mes || null;
@@ -269,7 +263,7 @@ const Dashboard = () => {
             icon: 'bi-gear-wide-connected',
             detail: kpis.en_produccion > 0 ? `${kpis.en_produccion} en máquinas · ${kpis.en_diseno || 0} en diseño` : 'Diseño, fresado e impresión',
             colorScheme: 'primary',
-            onClick: () => navigate('/pedidos?estado=en_produccion')
+            onClick: () => navigate('/pedidos?filtro=en_taller')
         },
         {
             label: 'Listos para despacho',
@@ -296,7 +290,7 @@ const Dashboard = () => {
         };
     }).filter((e) => e.count > 0);
 
-    const doughnutData = {
+    const doughnutData = useMemo(() => ({
         labels: estadosBreakdown.map((e) => e.label),
         datasets: [{
             data: estadosBreakdown.map((e) => e.count),
@@ -304,13 +298,13 @@ const Dashboard = () => {
             borderWidth: 0,
             borderRadius: 4
         }]
-    };
+    }), [estadosBreakdown]);
 
     const monthsMap = { '3m': 3, '6m': 6, '12m': 12 };
     const selectedMonths = monthsMap[operativeRange] || 12;
-    const historicoOperativoSlice = historicoOperativo.slice(-selectedMonths);
-    const historicoTopProductoSlice = historicoTopProducto.slice(-12);
-    const historicoTopClinicaSlice = historicoTopClinica.slice(-12);
+    const historicoOperativoSlice = useMemo(() => historicoOperativo.slice(-selectedMonths), [historicoOperativo, selectedMonths]);
+    const historicoTopProductoSlice = useMemo(() => historicoTopProducto.slice(-12), [historicoTopProducto]);
+    const historicoTopClinicaSlice = useMemo(() => historicoTopClinica.slice(-12), [historicoTopClinica]);
     const maxHistoricoTopProducto = Math.max(
         ...historicoTopProductoSlice.map((item) => Number(item.cantidad) || 0),
         1,
@@ -320,7 +314,7 @@ const Dashboard = () => {
         1,
     );
 
-    const operativoBarDataSlice = {
+    const operativoBarDataSlice = useMemo(() => ({
         labels: historicoOperativoSlice.map((item) => toMonthLabel(item.periodo)),
         datasets: [
             {
@@ -338,10 +332,10 @@ const Dashboard = () => {
                 borderSkipped: false
             }
         ]
-    };
+    }), [historicoOperativoSlice]);
 
     const financeSeries = finance?.series?.mensual || [];
-    const financeBarData = {
+    const financeBarData = useMemo(() => ({
         labels: financeSeries.map((item) => toMonthLabel(item?.periodo)),
         datasets: [
             {
@@ -365,7 +359,7 @@ const Dashboard = () => {
                 barPercentage: 0.7
             }
         ]
-    };
+    }), [financeSeries]);
 
     const categoryTotalsMap = new Map();
     (gastosFin?.por_categoria || []).forEach((row) => {
@@ -402,7 +396,7 @@ const Dashboard = () => {
 
     const getStrategicValue = (row) => (strategicMetric === 'pct' ? toNumber(row.participacion_pct) : toNumber(row.total));
 
-    const topClinicasChartData = {
+    const topClinicasChartData = useMemo(() => ({
         labels: topClinicasEstrategico.map((row) => row.clinica),
         datasets: [
             {
@@ -413,9 +407,9 @@ const Dashboard = () => {
                 borderSkipped: false
             }
         ]
-    };
+    }), [topClinicasEstrategico, strategicMetric]);
 
-    const topProductosChartData = {
+    const topProductosChartData = useMemo(() => ({
         labels: topProductosEstrategico.map((row) => row.producto),
         datasets: [
             {
@@ -426,39 +420,37 @@ const Dashboard = () => {
                 borderSkipped: false
             }
         ]
-    };
+    }), [topProductosEstrategico, strategicMetric]);
 
     const strategicHistoryClinicas = estrategicos.historico_top_clinicas || [];
     const strategicHistoryProductos = estrategicos.historico_top_productos || [];
+    const strategicYear = (filters.to || todayIso()).match(/^(\d{4})/)?.[1] || String(new Date().getFullYear());
 
-    const historyMap = new Map();
-    strategicHistoryClinicas.forEach((row) => {
-        const key = toMonthKey(row.periodo);
-        if (!key) return;
-        const current = historyMap.get(key) || { clinicas: 0, productos: 0 };
-        current.clinicas += toNumber(row.total);
-        historyMap.set(key, current);
-    });
-    strategicHistoryProductos.forEach((row) => {
-        const key = toMonthKey(row.periodo);
-        if (!key) return;
-        const current = historyMap.get(key) || { clinicas: 0, productos: 0 };
-        current.productos += toNumber(row.total);
-        historyMap.set(key, current);
-    });
+    const historyRows = useMemo(() => {
+        const historyMap = new Map();
+        strategicHistoryClinicas.forEach((row) => {
+            const key = toMonthKey(row.periodo);
+            if (!key) return;
+            const current = historyMap.get(key) || { clinicas: 0, productos: 0 };
+            current.clinicas += toNumber(row.total);
+            historyMap.set(key, current);
+        });
+        strategicHistoryProductos.forEach((row) => {
+            const key = toMonthKey(row.periodo);
+            if (!key) return;
+            const current = historyMap.get(key) || { clinicas: 0, productos: 0 };
+            current.productos += toNumber(row.total);
+            historyMap.set(key, current);
+        });
 
-    const strategicYear = (() => {
-        const date = new Date(filters.to || todayIso());
-        return Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear();
-    })();
+        return Array.from({ length: 12 }, (_, monthIndex) => {
+            const periodo = `${strategicYear}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+            const values = historyMap.get(periodo) || { clinicas: 0, productos: 0 };
+            return { periodo, ...values };
+        });
+    }, [strategicHistoryClinicas, strategicHistoryProductos, strategicYear]);
 
-    const historyRows = Array.from({ length: 12 }, (_, monthIndex) => {
-        const periodo = `${strategicYear}-${String(monthIndex + 1).padStart(2, '0')}-01`;
-        const values = historyMap.get(periodo) || { clinicas: 0, productos: 0 };
-        return { periodo, ...values };
-    });
-
-    const strategicHistoryData = {
+    const strategicHistoryData = useMemo(() => ({
         labels: historyRows.map((row) => toMonthLabel(row.periodo)),
         datasets: [
             {
@@ -476,7 +468,7 @@ const Dashboard = () => {
                 borderSkipped: false
             }
         ]
-    };
+    }), [historyRows]);
 
     const isCurrentMonth = filters.from === startOfMonthIso() && filters.to === todayIso();
     const periodLabel = isCurrentMonth ? 'del mes' : 'del período';
@@ -755,7 +747,9 @@ const Dashboard = () => {
                 <svg
                     viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
                     className="dashboard-callout-donut-svg dashboard-callout-donut-desktop"
-                    style={{ width: '100%', height: 'auto', maxHeight: '275px', overflow: 'visible' }}
+                    style={{ width: '100%', height: 'auto', maxHeight: '235px', overflow: 'visible' }}
+                    role="img"
+                    aria-label={`Distribución de pedidos por estado. Total: ${totalPedidosEstado} pedidos.`}
                 >
                     {/* Outer subtle tech guide ring */}
                     <circle
@@ -871,7 +865,12 @@ const Dashboard = () => {
                 {/* Mobile Responsive Layout: Generous Donut + Organized Breakdown Grid */}
                 <div className="dashboard-donut-mobile-view">
                     <div className="dashboard-donut-mobile-chart-wrap">
-                        <svg viewBox="0 0 200 200" className="dashboard-donut-mobile-svg">
+                        <svg
+                            viewBox="0 0 200 200"
+                            className="dashboard-donut-mobile-svg"
+                            role="img"
+                            aria-label={`Distribución de pedidos por estado. Total: ${totalPedidosEstado} pedidos.`}
+                        >
                             <circle
                                 cx={mobileCx}
                                 cy={mobileCy}
@@ -1115,6 +1114,8 @@ const Dashboard = () => {
                     viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
                     className="dashboard-callout-donut-svg dashboard-callout-donut-desktop"
                     style={{ width: '100%', height: 'auto', maxHeight: '280px', overflow: 'visible' }}
+                    role="img"
+                    aria-label={`Distribución de egresos y gastos. Total: S/. ${totalGastosMonto.toFixed(2)}`}
                 >
                     {/* Outer subtle tech guide ring */}
                     <circle
@@ -1230,7 +1231,12 @@ const Dashboard = () => {
                 {/* Mobile Responsive Layout: Generous Donut + Organized Breakdown Grid */}
                 <div className="dashboard-donut-mobile-view">
                     <div className="dashboard-donut-mobile-chart-wrap">
-                        <svg viewBox="0 0 200 200" className="dashboard-donut-mobile-svg">
+                        <svg
+                            viewBox="0 0 200 200"
+                            className="dashboard-donut-mobile-svg"
+                            role="img"
+                            aria-label={`Distribución de egresos y gastos. Total: S/. ${totalGastosMonto.toFixed(2)}`}
+                        >
                             <circle
                                 cx={mobileCx}
                                 cy={mobileCy}
@@ -1319,6 +1325,15 @@ const Dashboard = () => {
                 key={options.key || i}
                 className={cardClasses}
                 onClick={kpi.onClick}
+                role={kpi.onClick ? 'button' : undefined}
+                tabIndex={kpi.onClick ? 0 : undefined}
+                onKeyDown={kpi.onClick ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        kpi.onClick();
+                    }
+                } : undefined}
+                aria-label={kpi.onClick ? `${kpi.label}: ${kpi.value ?? 0}. ${kpi.detail || ''}` : undefined}
             >
                 {kpi.onClick && (
                     <span className="dashboard-kpi-card-arrow" aria-hidden="true">
@@ -1342,6 +1357,17 @@ const Dashboard = () => {
             </div>
         );
     };
+
+    if (loading) {
+        return (
+            <div className="dashboard-page">
+                <div className="page-header"><div className="page-header-left"><h1>Dashboard</h1></div></div>
+                <div className="dashboard-loading-grid grid grid-cols-5">
+                    {[1, 2, 3, 4, 5].map((i) => <div key={i} className="skeleton dashboard-loading-card" />)}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-fade-in dashboard-page page-container">
@@ -1373,19 +1399,21 @@ const Dashboard = () => {
                         <i className="bi bi-cash-coin" aria-hidden="true"></i> Financiero BI
                     </button>
                 ) : null}
-                {canAccessFinance ? (
+                {canAccessTesoreria ? (
                     <button
                         type="button"
                         className={`btn section-tab dashboard-view-tab ${activeView === 'tesoreria' ? 'btn-primary' : 'btn-ghost'}`}
                         onClick={() => setActiveView('tesoreria')}
                         aria-pressed={activeView === 'tesoreria'}
                     >
-                        <i className="bi bi-bank" aria-hidden="true"></i> Tesorería, Bancos y Socios
+                        <i className="bi bi-bank" aria-hidden="true"></i>
+                        <span className="desktop-only">Tesorería, Bancos y Socios</span>
+                        <span className="mobile-only">Tesorería</span>
                     </button>
                 ) : null}
             </div>
 
-            {activeView === 'financiero' && (
+            {canAccessFinance && activeView === 'financiero' && (
                 <>
             <div className="card dashboard-ops-panel dashboard-stack">
                 <div className="card-header dashboard-card-header" style={{ marginBottom: '0.85rem' }}>
@@ -1594,7 +1622,13 @@ const Dashboard = () => {
                                     plugins: { legend: { display: true } },
                                     scales: {
                                         x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                                        y: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } }
+                                        y: {
+                                            grid: { color: dashboardGridColor },
+                                            ticks: {
+                                                font: { size: 11 },
+                                                callback: (val) => 'S/. ' + Number(val).toLocaleString('es-PE')
+                                            }
+                                        }
                                     }
                                 }}
                             />
@@ -1764,7 +1798,13 @@ const Dashboard = () => {
                                         plugins: { legend: { display: true } },
                                         scales: {
                                             x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                                            y: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } }
+                                            y: {
+                                                grid: { color: dashboardGridColor },
+                                                ticks: {
+                                                    font: { size: 11 },
+                                                    callback: (val) => 'S/. ' + Number(val).toLocaleString('es-PE')
+                                                }
+                                            }
                                         }
                                     }}
                                 />
@@ -1780,7 +1820,7 @@ const Dashboard = () => {
             )}
 
             {/* VISTA TESORERÍA, BANCOS Y SOCIOS */}
-            {activeView === 'tesoreria' && (
+            {canAccessTesoreria && activeView === 'tesoreria' && (
                 <div style={{ marginTop: 'var(--space-2)' }}>
                     <TreasurySection />
                 </div>
@@ -1981,7 +2021,10 @@ const Dashboard = () => {
                                 plugins: { legend: { display: true } },
                                 scales: {
                                     x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                                    y: { grid: { color: dashboardGridColor }, ticks: { font: { size: 11 } } }
+                                    y: {
+                                        grid: { color: dashboardGridColor },
+                                        ticks: { font: { size: 11 }, stepSize: 1, precision: 0 }
+                                    }
                                 }
                             }} />
                         </div>
@@ -2247,9 +2290,11 @@ const Dashboard = () => {
                                                 </span>
                                             </span>
                                             <span className="pedidos-order-aside">
-                                                <strong className="pedidos-order-total">
-                                                    S/. {parseFloat(p.total ?? 0).toFixed(2)}
-                                                </strong>
+                                                {!isTechnician && (
+                                                    <strong className="pedidos-order-total">
+                                                        S/. {parseFloat(p.total ?? 0).toFixed(2)}
+                                                    </strong>
+                                                )}
                                                 <span className="pedidos-order-cta">
                                                     Ver detalle
                                                     <i className="bi bi-chevron-right" aria-hidden="true"></i>

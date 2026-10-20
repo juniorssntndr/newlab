@@ -949,10 +949,12 @@ h4 {
     display: none !important;
   }
   .almacen-section-tabs .section-tab {
-    flex: 1 1 50% !important;
-    padding: 0.5rem 0.4rem !important;
-    font-size: 0.78rem !important;
+    flex: 0 0 auto !important;
+    min-width: 120px !important;
+    padding: 0.5rem 0.65rem !important;
+    font-size: 0.8rem !important;
     gap: 0.35rem !important;
+    white-space: nowrap !important;
   }
   .almacen-tab-text-full {
     display: none !important;
@@ -2377,6 +2379,24 @@ h4 {
   bottom: 16px;
   width: 2px;
   background: linear-gradient(180deg, rgba(var(--color-primary-rgb), 0.24), var(--color-border));
+  z-index: 0;
+}
+
+.timeline-list.is-collapsed::before,
+.timeline-list:has(.timeline-entry:only-of-type)::before {
+  display: none;
+}
+
+.timeline-expand-footer-btn {
+  position: relative;
+  z-index: 2;
+  background: var(--color-surface) !important;
+  transition: all 0.2s ease;
+}
+
+.timeline-expand-footer-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.05) !important;
+  border-color: var(--color-primary) !important;
 }
 
 .timeline-entry:last-child {
@@ -3553,9 +3573,21 @@ h4 {
 }
 
 .pedidos-chip-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-left: 4px;
-  font-size: 0.7rem;
+  padding: 2px 4px;
+  font-size: 0.72rem;
   opacity: 0.85;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.pedidos-chip-clear:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.08);
 }
 
 .pedidos-chip-danger {
@@ -3788,6 +3820,27 @@ div.pedidos-desktop-filters.desktop-only {
   flex-shrink: 0;
 }
 
+@media (max-width: 1024px) {
+  .pedidos-toolbar-row {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .pedidos-search {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .pedidos-desktop-filters,
+  .pedidos-toolbar-row .pedidos-desktop-filters,
+  div.pedidos-desktop-filters.desktop-only {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
 .pedidos-custom-select-wrap {
   position: relative;
   flex-shrink: 0;
@@ -3900,8 +3953,10 @@ div.pedidos-desktop-filters.desktop-only {
 /* ============================================ */
 .afinix-select-wrap {
   position: relative;
-  display: inline-block;
+  display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .afinix-select-trigger {
@@ -4210,17 +4265,11 @@ div.pedidos-desktop-filters.desktop-only {
   .pedidos-status-filters-scroller {
     width: 100%;
     min-width: 0;
+    position: relative;
   }
 
   .pedidos-status-filters-scroller::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 1.75rem;
-    pointer-events: none;
-    background: linear-gradient(to right, transparent, var(--color-surface, #fff));
+    display: none;
   }
 
   .pedidos-status-filters {
@@ -4230,11 +4279,13 @@ div.pedidos-desktop-filters.desktop-only {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
     touch-action: pan-x;
-    gap: 0.4rem;
-    margin-inline: -0.25rem;
-    padding-inline: 0.25rem 1.25rem;
+    gap: 0.45rem;
+    margin: 0;
+    padding-inline: 0 1.75rem;
     padding-bottom: 0.15rem;
     scrollbar-width: none;
+    mask-image: linear-gradient(to right, black calc(100% - 2rem), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 2rem), transparent 100%);
   }
 
   .pedidos-status-filters::-webkit-scrollbar {
@@ -4824,6 +4875,10 @@ div.pedidos-desktop-filters.desktop-only {
   padding-left: 0.05rem;
 }
 
+.pedido-detail-main-flow {
+  display: contents;
+}
+
 /* Lab/cliente: Datos del caso (2/3) | columna Entrega con Responsable + Diseño (1/3); abajo 50/50 */
 .pedido-detail-layout {
   display: grid;
@@ -4870,8 +4925,14 @@ div.pedidos-desktop-filters.desktop-only {
 }
 
 .pedido-detail-items { grid-area: items; }
-.pedido-detail-files { grid-area: files; }
-.pedido-detail-history { grid-area: history; }
+.pedido-detail-files {
+  grid-area: files;
+  align-self: start;
+}
+.pedido-detail-history {
+  grid-area: history;
+  align-self: start;
+}
 
 .pedido-detail-info,
 .pedido-detail-design,
@@ -5294,23 +5355,61 @@ div.pedidos-desktop-filters.desktop-only {
 }
 
 @media (max-width: 960px) {
-  .pedido-detail-layout,
-  .pedido-detail-layout.is-client {
-    grid-template-columns: 1fr;
-    column-gap: var(--space-6);
-    grid-template-areas:
-      "items"
-      "side"
-      "files"
-      "history";
+  .pedido-detail-main-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .pedido-detail-main-flow > .pedido-detail-hero,
+  .pedido-detail-main-flow > .pedido-detail-layout,
+  .pedido-detail-layout > .pedido-detail-side {
+    display: contents;
+  }
+
+  .pedido-detail-main-flow .order-wizard-confirm-stat,
+  .pedido-detail-main-flow .card {
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  /* Orden vertical específico para mobile (Diseño 3D prioritario arriba de paciente) */
+  .pedido-detail-design {
+    order: 1;
+  }
+
+  .pedido-detail-stat-paciente {
+    order: 2;
+  }
+
+  .pedido-detail-items {
+    order: 3;
+  }
+
+  .pedido-detail-stat-entrega {
+    order: 4;
+  }
+
+  .pedido-detail-stat-ingreso {
+    order: 5;
+  }
+
+  .pedido-detail-info {
+    order: 6;
+  }
+
+  .pedido-detail-files {
+    order: 7;
+  }
+
+  .pedido-detail-history {
+    order: 8;
   }
 
   .pedido-detail-side {
     height: auto;
-  }
-
-  .pedido-detail-hero {
-    grid-template-columns: 1fr;
   }
 
   .pedidos-order-card {
@@ -5320,6 +5419,7 @@ div.pedidos-desktop-filters.desktop-only {
   .pedidos-order-thumb {
     min-width: 9.5rem;
     max-width: 12rem;
+    grid-row: 1 / span 2;
   }
 
   .pedidos-order-aside {
@@ -5338,6 +5438,7 @@ div.pedidos-desktop-filters.desktop-only {
   }
 
   .pedidos-order-thumb {
+    grid-row: auto;
     width: 100%;
     min-width: 0;
     max-width: none;
@@ -6226,7 +6327,9 @@ div.pedidos-desktop-filters.desktop-only {
 
 .calendar-client-toolbar-views .segmented-control__btn {
   flex: 1 1 0;
-  min-height: 2rem;
+  min-height: 2.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .calendar-client-toolbar-title {
@@ -6240,11 +6343,13 @@ div.pedidos-desktop-filters.desktop-only {
 }
 
 .calendar-client-toolbar .fc-button {
-  min-height: 2rem;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.85rem;
+  font-weight: 600;
 }
 
 .calendar-client-toolbar .fc-button .bi {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   line-height: 1;
 }
 
@@ -6270,6 +6375,15 @@ div.pedidos-desktop-filters.desktop-only {
   .calendar-client-toolbar-title {
     font-size: 0.9rem;
     text-align: left;
+  }
+
+  .calendar-client-toolbar-views .segmented-control__btn {
+    min-height: 2.5rem;
+  }
+
+  .calendar-client-toolbar .fc-button {
+    min-height: 2.5rem;
+    padding: 0.4rem 0.9rem;
   }
 }
 
@@ -6634,9 +6748,6 @@ div.pedidos-desktop-filters.desktop-only {
   color: var(--color-text);
 }
 
-[data-theme="dark"] .pedidos-status-filters-scroller::after {
-  background: linear-gradient(to right, transparent, var(--color-surface));
-}
 
 /* ============================================ */
 /* Responsive                                   */
@@ -10002,7 +10113,7 @@ Rediseño UI: Nuevo Pedido Layout Base
 
 .catalog-product-skeleton {
   border-radius: 16px;
-  height: 280px;
+  height: 360px;
 }
 
 .catalog-order-express-btn {
@@ -10132,12 +10243,12 @@ Rediseño UI: Nuevo Pedido Layout Base
   color: var(--color-text-secondary);
   line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   cursor: default;
-  min-height: 1.4em;
+  min-height: 2.8em;
 }
 
 .catalog-product-card-description:not(:disabled) {
@@ -10278,22 +10389,23 @@ Rediseño UI: Nuevo Pedido Layout Base
   bottom: 0.65rem;
   right: 0.65rem;
   z-index: 1;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   border-radius: 999px;
-  padding: 0.2rem 0.55rem;
+  padding: 0.25rem 0.65rem;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.45rem;
+  min-height: 38px;
 }
 
 .productos-card-switch {
   margin: 0;
-  transform: scale(0.8);
+  transform: scale(0.85);
 }
 
 .productos-card-visibility-text {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   color: #fff;
   font-weight: 600;
 }
@@ -10378,12 +10490,12 @@ Rediseño UI: Nuevo Pedido Layout Base
   margin: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .catalog-search-filter-container {
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
-    overflow: hidden; /* Force strict containment locally */
+    overflow: hidden;
   }
   
   .catalog-search-wrapper {
@@ -10397,6 +10509,44 @@ Rediseño UI: Nuevo Pedido Layout Base
     padding: 0 0 0.5rem 0;
   }
 
+  .productos-filter-chips-scroller {
+    width: 100%;
+    min-width: 0;
+    position: relative;
+  }
+
+  .productos-filter-chips-scroller::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 2rem;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent, var(--color-surface));
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+
+  .productos-filter-chips {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scrollbar-width: none;
+    padding-inline: 0.1rem 2rem;
+    padding-bottom: 0.2rem;
+    gap: 0.45rem;
+  }
+
+  .productos-filter-chips::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
   .catalog-empty-state {
     padding: 2.5rem 1.25rem;
   }
@@ -10481,7 +10631,8 @@ Rediseño UI: Nuevo Pedido Layout Base
   }
 
   .productos-grid,
-  .catalog-products-grid {
+  .catalog-products-grid,
+  .order-wizard-product-grid.catalog-products-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -14892,8 +15043,10 @@ Rediseño UI: Nuevo Pedido Layout Base
   }
 
   .order-wizard-topbar-nav {
-    width: 2.4rem;
-    height: 2.4rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 44px;
+    min-height: 44px;
     padding: 0;
     justify-content: center;
   }
@@ -15494,46 +15647,194 @@ Rediseño UI: Nuevo Pedido Layout Base
   }
 }
 
-/* Compact coupon disclosure stays inside the order confirmation total. */
-.order-wizard-confirm .order-confirm-price-row,
-.order-wizard-confirm .order-confirm-coupon-controls,
-.order-wizard-confirm .order-confirm-coupon-applied {
+/* Compact coupon disclosure & balanced horizontal total composition */
+.order-wizard-confirm .order-confirm-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.order-wizard-confirm .order-confirm-price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 0.5rem;
   min-width: 0;
+  width: 100%;
+  margin-top: 0.15rem;
 }
-.order-wizard-confirm .order-confirm-price { display: flex; flex-direction: column; min-width: 0; }
-.order-wizard-confirm .order-confirm-original-price { color: var(--color-text-secondary); font-size: 0.8rem; }
+
+.order-wizard-confirm .order-confirm-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.order-wizard-confirm .order-confirm-original-price {
+  color: var(--color-text-tertiary, #94a3b8);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: line-through;
+  line-height: 1;
+}
+
+.order-wizard-confirm .order-confirm-coupon-applied-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  max-width: 100%;
+  min-width: 0;
+}
+
+[data-theme="dark"] .order-wizard-confirm .order-confirm-coupon-applied-chip {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.order-wizard-confirm .order-confirm-coupon-applied-chip i {
+  font-size: 0.72rem;
+  flex-shrink: 0;
+}
+
+.order-wizard-confirm .order-confirm-coupon-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.order-wizard-confirm .order-confirm-coupon-saving {
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.order-wizard-confirm .order-confirm-coupon-remove-btn {
+  background: transparent;
+  border: 0;
+  padding: 0 0 0 5px;
+  margin-left: 2px;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.85;
+  transition: opacity 0.15s, color 0.15s;
+  border-left: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.order-wizard-confirm .order-confirm-coupon-remove-btn:hover {
+  opacity: 1;
+  color: var(--color-error, #ef4444);
+}
+
 .order-wizard-confirm .order-confirm-coupon-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  min-height: 36px;
-  padding: 0.35rem 0.5rem;
+  min-height: 32px;
+  padding: 0.25rem 0.55rem;
   border: 1px solid rgba(var(--color-primary-rgb), 0.3);
   border-radius: 8px;
   background: transparent;
   color: var(--color-primary);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
-.order-wizard-confirm .order-confirm-coupon-action:hover:not(:disabled) { background: rgba(var(--color-primary-rgb), 0.1); }
-.order-wizard-confirm .order-confirm-coupon-action:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.order-wizard-confirm .order-confirm-coupon-action:disabled { opacity: 0.5; cursor: not-allowed; }
-.order-wizard-confirm .order-confirm-coupon-editor:not([hidden]) { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.4rem; }
-.order-wizard-confirm .order-confirm-coupon-editor[hidden] { display: none; }
-.order-wizard-confirm .order-confirm-coupon-editor label,
-.order-wizard-confirm .order-confirm-coupon-status { font-size: 0.78rem; color: var(--color-text-secondary); }
-.order-wizard-confirm .order-confirm-coupon-status:empty { display: none; }
-.order-wizard-confirm .order-confirm-coupon-controls .form-input { flex: 1 1 140px; min-width: 0; width: auto; }
-.order-wizard-confirm .order-confirm-coupon-applied span { overflow-wrap: anywhere; flex: 1 1 140px; }
-.order-wizard-confirm .order-confirm-coupon-error { margin: 0; font-size: 0.78rem; color: var(--color-danger, #dc2626); }
+
+.order-wizard-confirm .order-confirm-coupon-action--sm {
+  min-height: 24px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+.order-wizard-confirm .order-confirm-coupon-action:hover:not(:disabled) {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.order-wizard-confirm .order-confirm-coupon-action:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.order-wizard-confirm .order-confirm-coupon-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.order-wizard-confirm .order-confirm-coupon-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--color-border-light);
+  width: 100%;
+}
+
+.order-wizard-confirm .order-confirm-coupon-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.order-wizard-confirm .order-confirm-coupon-controls .form-input {
+  flex: 1 1 130px;
+  min-width: 0;
+  width: auto;
+  height: 32px;
+  min-height: 32px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.order-wizard-confirm .order-confirm-coupon-controls .order-confirm-coupon-action {
+  min-height: 32px;
+  padding: 0 0.75rem;
+  font-weight: 700;
+}
+
+.order-wizard-confirm .order-confirm-validating-tag {
+  font-size: 0.76rem;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.order-wizard-confirm .order-confirm-coupon-error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-danger, #dc2626);
+}
+
 @media (max-width: 680px) {
-  .order-wizard-confirm .order-confirm-coupon-action { min-height: 44px; }
+  .order-wizard-confirm .order-confirm-header-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
+

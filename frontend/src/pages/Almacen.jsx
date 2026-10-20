@@ -140,6 +140,15 @@ const Almacen = () => {
     const [loadingMovimientos, setLoadingMovimientos] = useState(false);
     const [filtroTipoMov, setFiltroTipoMov] = useState('todos'); // 'todos' | 'ingresos' | 'egresos'
     const [searchMovimiento, setSearchMovimiento] = useState('');
+    const [debouncedSearchMovimiento, setDebouncedSearchMovimiento] = useState('');
+
+    // Debounce de búsqueda de movimientos (300ms) para evitar ráfagas de red
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchMovimiento(searchMovimiento);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [searchMovimiento]);
 
     // Fetch Materiales
     const fetchMateriales = useCallback(() => {
@@ -176,7 +185,7 @@ const Almacen = () => {
         setLoadingMovimientos(true);
         const params = new URLSearchParams();
         if (filtroTipoMov && filtroTipoMov !== 'todos') params.append('tipo', filtroTipoMov);
-        if (searchMovimiento.trim()) params.append('search', searchMovimiento.trim());
+        if (debouncedSearchMovimiento.trim()) params.append('search', debouncedSearchMovimiento.trim());
 
         fetch(`${API_URL}/inventory/movimientos?${params.toString()}`, { headers: getHeaders() })
             .then(r => r.json())
@@ -188,13 +197,18 @@ const Almacen = () => {
                 console.error(err);
                 setLoadingMovimientos(false);
             });
-    }, [getHeaders, filtroTipoMov, searchMovimiento]);
+    }, [getHeaders, filtroTipoMov, debouncedSearchMovimiento]);
 
+    // Carga inicial desacoplada de materiales y proveedores
     useEffect(() => {
         fetchMateriales();
         fetchProveedores();
+    }, [fetchMateriales, fetchProveedores]);
+
+    // Carga de movimientos desacoplada (se activa al cambiar filtro de tipo o término debounced)
+    useEffect(() => {
         fetchMovimientos();
-    }, [fetchMateriales, fetchProveedores, fetchMovimientos]);
+    }, [fetchMovimientos]);
 
     // Manejo de apertura nuevo material
     const openNew = () => {
@@ -290,23 +304,27 @@ const Almacen = () => {
                 toast.error('Ingresa un nombre de material');
                 return;
             }
+            const payload = {
+                nombre: form.nombre.trim(),
+                flujo: form.flujo,
+                categoria: form.categoria,
+                color: form.color || null,
+                tipo_control: form.tipo_control || 'unitario',
+                stock_minimo: Number(form.stock_minimo) || 0,
+                unidad: form.unidad,
+                alerta_bajo_stock: !!form.alerta_bajo_stock,
+                activo: form.activo !== false,
+                notas: form.notas || null
+            };
+            if (!editing) {
+                payload.stock_actual = Number(form.stock_actual) || 0;
+                payload.stock_en_uso = Number(form.stock_en_uso) || 0;
+            }
+
             const res = await fetch(url, {
                 method,
                 headers: { ...getHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    nombre: form.nombre.trim(),
-                    flujo: form.flujo,
-                    categoria: form.categoria,
-                    color: form.color || null,
-                    stock_actual: Number(form.stock_actual) || 0,
-                    stock_en_uso: Number(form.stock_en_uso) || 0,
-                    tipo_control: form.tipo_control || 'unitario',
-                    stock_minimo: Number(form.stock_minimo) || 0,
-                    unidad: form.unidad,
-                    alerta_bajo_stock: !!form.alerta_bajo_stock,
-                    activo: form.activo !== false,
-                    notas: form.notas || null
-                })
+                body: JSON.stringify(payload)
             });
             if (res.ok) {
                 const saved = await res.json();
@@ -906,34 +924,34 @@ const Almacen = () => {
                                                     <span className="mobile-field-value">{m.color || '—'}</span>
                                                 </div>
                                             </div>
-                                            <div className="mobile-card-actions" style={{ flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'space-between' }}>
-                                                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                            <div className="mobile-card-actions" style={{ flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                                                     <button
                                                         className="btn btn-sm btn-secondary"
                                                         onClick={() => openMovimiento(m)}
-                                                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                                        style={{ fontSize: '0.78rem', minHeight: '36px', padding: '0.4rem 0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                                                     >
                                                         <i className="bi bi-arrow-left-right text-primary"></i> Movimiento
                                                     </button>
                                                     <button
                                                         className="btn btn-ghost btn-sm"
                                                         onClick={() => openKardex(m)}
-                                                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                                                        style={{ fontSize: '0.78rem', minHeight: '36px', padding: '0.4rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                                                     >
                                                         <i className="bi bi-journal-text"></i> Kárdex
                                                     </button>
                                                 </div>
 
-                                                <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(m)} aria-label="Editar">
+                                                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(m)} aria-label="Editar" style={{ minWidth: '36px', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                                                         <i className="bi bi-pencil"></i>
                                                     </button>
                                                     {m.activo === false ? (
-                                                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => restoreMaterial(m)} disabled={restoringId === m.id} aria-label="Restaurar">
+                                                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => restoreMaterial(m)} disabled={restoringId === m.id} aria-label="Restaurar" style={{ minWidth: '36px', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                                                             <i className="bi bi-arrow-counterclockwise"></i>
                                                         </button>
                                                     ) : (
-                                                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setConfirmDeleteMaterial(m)} disabled={deletingId === m.id} aria-label="Eliminar">
+                                                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setConfirmDeleteMaterial(m)} disabled={deletingId === m.id} aria-label="Eliminar" style={{ minWidth: '36px', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                                                             <i className="bi bi-trash"></i>
                                                         </button>
                                                     )}
@@ -1680,14 +1698,14 @@ const Almacen = () => {
                                             <div className="mobile-field"><span className="mobile-field-label">Insumos vinculados</span><span className="mobile-field-value">{p.total_materiales || 0} ítems</span></div>
                                             <div className="mobile-field"><span className="mobile-field-label">Condición</span><span className="mobile-field-value">{p.condicion_pago || 'Contado'}</span></div>
                                         </div>
-                                        <div className="mobile-card-actions">
+                                        <div className="mobile-card-actions" style={{ alignItems: 'center', gap: '0.4rem' }}>
                                             <button
                                                 className="btn btn-primary btn-sm"
                                                 onClick={() => {
                                                     setSelectedProveedorId(p.id);
                                                     setMaterialesModalOpen(true);
                                                 }}
-                                                style={{ flex: 1 }}
+                                                style={{ flex: 1, minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
                                             >
                                                 <i className="bi bi-card-checklist"></i> Insumos & Precios ({p.total_materiales || 0})
                                             </button>
@@ -1697,6 +1715,8 @@ const Almacen = () => {
                                                     setEditingProveedor(p);
                                                     setProveedorModalOpen(true);
                                                 }}
+                                                style={{ minHeight: '36px', minWidth: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                                aria-label="Editar datos del proveedor"
                                             >
                                                 <i className="bi bi-pencil"></i>
                                             </button>
@@ -1705,15 +1725,18 @@ const Almacen = () => {
                                                     className="btn btn-ghost btn-sm"
                                                     onClick={() => handleToggleProveedorEstado(p, true)}
                                                     disabled={restoringProveedorId === p.id}
+                                                    style={{ minHeight: '36px', minWidth: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    aria-label="Reactivar proveedor"
                                                 >
                                                     <i className="bi bi-arrow-counterclockwise"></i>
                                                 </button>
                                             ) : (
                                                 <button
                                                     className="btn btn-ghost btn-sm"
-                                                    style={{ color: '#ef4444' }}
+                                                    style={{ color: '#ef4444', minHeight: '36px', minWidth: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                                     onClick={() => handleToggleProveedorEstado(p, false)}
                                                     disabled={deletingProveedorId === p.id}
+                                                    aria-label="Dar de baja proveedor"
                                                 >
                                                     <i className="bi bi-trash"></i>
                                                 </button>
@@ -1809,7 +1832,9 @@ const Almacen = () => {
 
                     <div className="grid grid-cols-3" style={{ gap: '0.85rem' }}>
                         <div className="form-group" style={{ margin: 0 }}>
-                            <label className="form-label">Stock en Almacén</label>
+                            <label className="form-label">
+                                Stock en Almacén {editing && <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', fontWeight: 'normal' }}>(Kárdex)</span>}
+                            </label>
                             <div className="form-input-box has-lead">
                                 <i className="bi bi-box-seam input-icon-lead"></i>
                                 <input
@@ -1819,11 +1844,15 @@ const Almacen = () => {
                                     value={form.stock_actual}
                                     onChange={e => setForm({ ...form, stock_actual: e.target.value })}
                                     placeholder="0.00"
+                                    disabled={Boolean(editing)}
+                                    title={editing ? "Las existencias se modifican mediante Movimientos o Kárdex" : ""}
                                 />
                             </div>
                         </div>
                         <div className="form-group" style={{ margin: 0 }}>
-                            <label className="form-label">Stock en Laboratorio</label>
+                            <label className="form-label">
+                                Stock en Laboratorio {editing && <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', fontWeight: 'normal' }}>(Kárdex)</span>}
+                            </label>
                             <div className="form-input-box has-lead">
                                 <i className="bi bi-gear-wide-connected input-icon-lead"></i>
                                 <input
@@ -1833,6 +1862,8 @@ const Almacen = () => {
                                     value={form.stock_en_uso}
                                     onChange={e => setForm({ ...form, stock_en_uso: e.target.value })}
                                     placeholder="0.00"
+                                    disabled={Boolean(editing)}
+                                    title={editing ? "Las existencias se modifican mediante Movimientos o Kárdex" : ""}
                                 />
                             </div>
                         </div>
@@ -1851,6 +1882,11 @@ const Almacen = () => {
                             </div>
                         </div>
                     </div>
+                    {editing && (
+                        <div style={{ fontSize: '0.76rem', color: 'var(--color-text-secondary)', marginTop: '0.35rem' }}>
+                            <i className="bi bi-info-circle"></i> Para modificar existencias de un material existente, use el botón <strong>+ Ingreso</strong> o registre un <strong>Movimiento / Ajuste</strong>.
+                        </div>
+                    )}
 
                     <div className="form-option-row" style={{ margin: '0.25rem 0 0 0' }}>
                         <div className="form-option-content">

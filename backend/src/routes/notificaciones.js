@@ -10,26 +10,36 @@ import {
 const router = Router();
 router.use(authenticateToken);
 
+// Campaign eligibility comes from the current campaign, not the copied notice
+// payload. Use this exact predicate for both inbox rows and the unread counter.
+// Self-tests and every ordinary notification keep their existing behavior.
+export const visibleNotificationPredicate = `(
+    n.tipo IS DISTINCT FROM 'campana_marketing' OR EXISTS (
+        SELECT 1 FROM nl_campanas_marketing c
+        WHERE c.id::text = n.data->>'campana_id'
+          AND c.activo = TRUE AND c.mostrar_toast_in_app = TRUE
+          AND COALESCE((to_jsonb(c)->>'fecha_fin')::timestamptz, 'infinity'::timestamptz) >= NOW()
+    )
+)`;
+
 // GET /api/notificaciones
 router.get('/', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { no_leidas } = req.query;
-        let query = 'SELECT * FROM nl_notificaciones WHERE usuario_id = $1';
-        const params = [req.user.id];
+        // One statement gives inbox and badge the same authoritative snapshot,
+        // even when an administrator pauses a campaign during polling.
+        const result = await pool.query(`WITH visible AS MATERIALIZED (
+            SELECT n.* FROM nl_notificaciones n WHERE n.usuario_id = $1 AND ${visibleNotificationPredicate}
+        ), listed AS (
+            SELECT * FROM visible ${no_leidas === 'true' ? 'WHERE leida = FALSE' : ''}
+            ORDER BY created_at DESC LIMIT 50
+        ) SELECT
+            COALESCE((SELECT jsonb_agg(to_jsonb(listed) ORDER BY listed.created_at DESC) FROM listed), '[]'::jsonb) AS items,
+            (SELECT COUNT(*)::int FROM visible WHERE leida = FALSE) AS no_leidas`, [req.user.id]);
 
-        if (no_leidas === 'true') query += ' AND leida = false';
-        query += ' ORDER BY created_at DESC LIMIT 50';
-
-        const result = await pool.query(query, params);
-
-        // Count unread
-        const unread = await pool.query(
-            'SELECT COUNT(*) FROM nl_notificaciones WHERE usuario_id = $1 AND leida = false',
-            [req.user.id]
-        );
-
-        res.json({ items: result.rows, no_leidas: parseInt(unread.rows[0].count) });
+        const inbox = result.rows[0];
+        res.json({ items: inbox.items, no_leidas: Number(inbox.no_leidas) });
     } catch (err) { next(err); }
 });
 

@@ -27,13 +27,16 @@ const statusColors = {
     enviado: '#6B7280',
 };
 
-const toLocalIsoDate = (value) => {
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+const getIsoDateKey = (val) => {
+    if (!val) return '';
+    if (typeof val === 'string') {
+        const m = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    if (val instanceof Date && !Number.isNaN(val.getTime())) {
+        return `${val.getUTCFullYear()}-${String(val.getUTCMonth() + 1).padStart(2, '0')}-${String(val.getUTCDate()).padStart(2, '0')}`;
+    }
+    return '';
 };
 
 const formatDayTitle = (isoDate) => {
@@ -54,7 +57,7 @@ const patientLabel = (name, codigo) => {
 const CalendarioCliente = () => {
     const navigate = useNavigate();
     const calendarRef = useRef(null);
-    const { data: pedidos = [], isLoading } = useOrdersListQuery({ filters: undefined });
+    const { data: pedidos = [], isLoading } = useOrdersListQuery({ filters: { limit: 500 } });
     const [isCompact, setIsCompact] = useState(() => (
         typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
     ));
@@ -86,14 +89,13 @@ const CalendarioCliente = () => {
 
     const events = useMemo(() => (
         (pedidos || []).filter((pedido) => pedido.fecha_entrega).map((pedido) => {
-            const date = new Date(pedido.fecha_entrega);
-            const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const dateKey = getIsoDateKey(pedido.fecha_entrega);
             const color = statusColors[pedido.estado] || '#64748B';
             const nombre = patientLabel(pedido.paciente_nombre, pedido.codigo);
             return {
                 id: String(pedido.id),
                 title: nombre,
-                start,
+                start: dateKey,
                 allDay: true,
                 backgroundColor: color,
                 borderColor: color,
@@ -103,7 +105,7 @@ const CalendarioCliente = () => {
                     paciente_nombre: nombre,
                     codigo: pedido.codigo,
                     producto_principal: pedido.producto_principal,
-                    dateKey: toLocalIsoDate(start),
+                    dateKey,
                 },
             };
         })
@@ -113,6 +115,7 @@ const CalendarioCliente = () => {
         const map = new Map();
         events.forEach((event) => {
             const key = event.extendedProps.dateKey;
+            if (!key) return;
             if (!map.has(key)) map.set(key, []);
             map.get(key).push(event);
         });
@@ -120,6 +123,7 @@ const CalendarioCliente = () => {
     }, [events]);
 
     const openDayPanel = (isoDate) => {
+        if (!isoDate) return;
         const items = eventsByDate.get(isoDate) || [];
         if (items.length === 0) return;
         setDayPanel({ date: isoDate, items });
@@ -183,7 +187,7 @@ const CalendarioCliente = () => {
                     <div className="calendar-empty">
                         <i className="bi bi-calendar-x" aria-hidden="true" />
                         <h3>No hay pedidos con fecha de entrega</h3>
-                        <p>Cuando el laboratorio asigne fechas a tus pedidos, aparecerán aquí.</p>
+                        <p>Cuando AFINIX Dental Lab asigne fechas a tus pedidos, aparecerán aquí.</p>
                     </div>
                 ) : (
                     <>
@@ -239,14 +243,14 @@ const CalendarioCliente = () => {
                             locale={esLocale}
                             events={events}
                             displayEventTime={false}
-                            dayMaxEvents={1}
+                            dayMaxEvents={isCompact ? 1 : 3}
                             datesSet={(arg) => {
                                 setViewTitle(arg.view.title);
                                 setActiveView(arg.view.type);
                             }}
                             moreLinkClick={(info) => {
                                 info.jsEvent.preventDefault();
-                                openDayPanel(toLocalIsoDate(info.date));
+                                openDayPanel(info.dateStr || getIsoDateKey(info.date));
                                 return 'none';
                             }}
                             moreLinkContent={(arg) => (
@@ -254,13 +258,13 @@ const CalendarioCliente = () => {
                             )}
                             dateClick={(info) => {
                                 if (info.view.type !== 'dayGridMonth') return;
-                                openDayPanel(toLocalIsoDate(info.date));
+                                openDayPanel(info.dateStr || getIsoDateKey(info.date));
                             }}
                             eventClick={(info) => {
                                 const isMonthView = info.view.type === 'dayGridMonth';
                                 if (isMonthView) {
                                     info.jsEvent.preventDefault();
-                                    openDayPanel(info.event.extendedProps.dateKey || toLocalIsoDate(info.event.start));
+                                    openDayPanel(info.event.extendedProps.dateKey || info.event.startStr || getIsoDateKey(info.event.start));
                                     return;
                                 }
                                 navigate(`/pedidos/${info.event.id}`);
@@ -312,7 +316,7 @@ const CalendarioCliente = () => {
                 open={Boolean(dayPanel)}
                 onClose={() => setDayPanel(null)}
                 title={dayPanel ? formatDayTitle(dayPanel.date) : 'Entregas del día'}
-                kicker="Mi Portal • Cronograma de Entregas"
+                kicker="AFINIX LAB • Cronograma de Entregas"
                 subtitle="Trabajos programados para entrega en su clínica"
                 icon="bi-calendar-event"
                 className="calendar-day-modal"

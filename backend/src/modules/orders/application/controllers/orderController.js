@@ -35,11 +35,26 @@ export const makeOrderController = ({ orderService }) => ({
     },
     createOrderRepeat: async (req, res, next) => {
         try {
-            return sendServiceResult(res, await orderService.createOrderRepeat({
+            const result = await orderService.createOrderRepeat({
                 user: req.user, orderId: req.params.id, body: req.body, files: req.files || []
-            }));
+            });
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'pedido',
+                    entidadId: req.params.id,
+                    accion: 'pedido_repeticion_created',
+                    descripcion: `Repetición solicitada para el pedido ${req.params.id}`,
+                    metadata: {
+                        motivo: req.body?.motivo,
+                        tipo_repeticion: req.body?.tipo_repeticion || 'garantia',
+                        archivos_adjuntos: (req.files || []).length
+                    }
+                });
+            }
+            return sendServiceResult(res, result);
         } catch (error) { next(error); }
     },
+
     getOrderRepeatPhoto: async (req, res, next) => {
         try {
             const result = await orderService.getOrderRepeatPhoto({ user: req.user, orderId: req.params.id, photoId: req.params.photoId });
@@ -106,6 +121,7 @@ export const makeOrderController = ({ orderService }) => ({
     createOrder: async (req, res, next) => {
         try {
             const result = await orderService.createOrder({
+                user: req.user,
                 actorUserId: req.user.id,
                 body: req.body
             });
@@ -239,6 +255,18 @@ export const makeOrderController = ({ orderService }) => ({
                 body: req.body
             });
 
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'pedido',
+                    entidadId: req.params.id,
+                    accion: 'pedido_responsable_updated',
+                    descripcion: `Asignación de técnico responsable en pedido ${req.params.id}`,
+                    metadata: {
+                        responsable_id: req.body?.responsable_id || null
+                    }
+                });
+            }
+
             return sendServiceResult(res, result);
         } catch (error) {
             next(error);
@@ -251,6 +279,19 @@ export const makeOrderController = ({ orderService }) => ({
                 orderId: req.params.id,
                 body: req.body
             });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'pedido',
+                    entidadId: req.params.id,
+                    accion: 'pedido_fecha_entrega_updated',
+                    descripcion: `Fecha de entrega reprogramada en pedido ${req.params.id}`,
+                    metadata: {
+                        fecha_entrega_nueva: req.body?.fecha_entrega || null,
+                        motivo: req.body?.motivo || null
+                    }
+                });
+            }
 
             return sendServiceResult(res, result);
         } catch (error) {
@@ -266,11 +307,26 @@ export const makeOrderController = ({ orderService }) => ({
                 body: req.body
             });
 
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'pedido',
+                    entidadId: req.params.id,
+                    accion: 'pedido_aprobacion_respondida',
+                    descripcion: `Aprobación de diseño respondida: ${req.body?.estado || 'revisado'}`,
+                    metadata: {
+                        aprobacion_id: req.params.aprobacionId,
+                        estado: req.body?.estado,
+                        comentario: req.body?.comentarios || req.body?.comentario || null
+                    }
+                });
+            }
+
             return sendServiceResult(res, result);
         } catch (error) {
             next(error);
         }
     },
+
     updateApprovalMeetLink: async (req, res, next) => {
         try {
             const result = await orderService.updateApprovalMeetLink({
@@ -278,6 +334,18 @@ export const makeOrderController = ({ orderService }) => ({
                 orderId: req.params.id,
                 approvalId: req.params.aprobacionId,
                 body: req.body
+            });
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    requestDesign: async (req, res, next) => {
+        try {
+            const result = await orderService.requestDesign({
+                user: req.user,
+                orderId: req.params.id
             });
 
             return sendServiceResult(res, result);

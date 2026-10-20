@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
 import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
@@ -20,6 +20,7 @@ export default function CatalogoCliente() {
     const [loading, setLoading] = useState(true);
     const [selectedCat, setSelectedCat] = useState('all');
     const [search, setSearch] = useState('');
+    const deferredSearch = useDeferredValue(search);
 
     useEffect(() => {
         if (!token) return undefined;
@@ -52,7 +53,7 @@ export default function CatalogoCliente() {
     }, [categorias, selectedCat]);
 
     const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
+        const q = deferredSearch.trim().toLowerCase();
         return productos.filter((p) => {
             if (p.activo === false || p.visible === false) return false;
             const matchCat = selectedCat === 'all' || String(p.categoria_id) === String(selectedCat);
@@ -64,7 +65,7 @@ export default function CatalogoCliente() {
                 .toLowerCase();
             return haystack.includes(q);
         });
-    }, [productos, selectedCat, search]);
+    }, [productos, selectedCat, deferredSearch]);
 
     const grouped = useMemo(() => {
         if (selectedCat !== 'all') {

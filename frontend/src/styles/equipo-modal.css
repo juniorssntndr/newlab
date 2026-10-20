@@ -33,6 +33,23 @@
     }
 }
 
+.equipo-permisos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+    background: var(--color-bg-secondary, #f8fafc);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border, #e2e8f0);
+}
+
+@media (max-width: 640px) {
+    .equipo-permisos-grid {
+        grid-template-columns: 1fr;
+        padding: 8px;
+    }
+}
+
 /* Buscador interactivo de clínicas para modal de aprobación */
 .approval-search-wrap {
     position: relative;

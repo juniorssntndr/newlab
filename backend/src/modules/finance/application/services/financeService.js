@@ -332,6 +332,10 @@ export const makeFinanceService = ({ financeRepository }) => ({
             return { ok: false, status: 400, error: registerResult.accountError };
         }
 
+        if (registerResult.validationError) {
+            return { ok: false, status: 400, error: registerResult.validationError };
+        }
+
         return {
             ok: true,
             status: 201,
@@ -379,6 +383,10 @@ export const makeFinanceService = ({ financeRepository }) => ({
 
         if (result.accountError) {
             return { ok: false, status: 400, error: result.accountError };
+        }
+
+        if (result.validationError) {
+            return { ok: false, status: 400, error: result.validationError };
         }
 
         return {

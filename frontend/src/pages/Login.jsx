@@ -7,6 +7,7 @@ import SeoHead from '../components/seo/SeoHead.jsx';
 import LoginWorkflowCarousel from '../components/login/LoginWorkflowCarousel.jsx';
 import { whatsappLoginAccessHref } from '../config/siteSeo.js';
 import { useLandingTheme } from './hooks/useLandingTheme.js';
+import { getDefaultRouteForUser } from '../utils/accessControl.js';
 import '../styles/login-theme.css';
 
 const LOGIN_PORTAL_ASSURANCES = [
@@ -55,7 +56,7 @@ const Login = () => {
         setLoading(true);
         try {
             const user = await login(email, password);
-            navigate(user.tipo === 'cliente' ? '/pedidos' : '/dashboard');
+            navigate(getDefaultRouteForUser(user));
         } catch (err) {
             setError(err.message);
         } finally {

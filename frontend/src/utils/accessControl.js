@@ -15,8 +15,8 @@ export const DEFAULT_ROLE_MODULES = {
     admin: ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'marketing', 'catalogo', 'almacen', 'usuarios', 'cuenta'],
     socio: ['dashboard', 'pedidos', 'caja', 'cobros', 'calendario', 'crm', 'marketing', 'catalogo', 'cuenta'],
     tecnico: ['pedidos', 'catalogo', 'almacen', 'calendario', 'cuenta'],
-    operador: ['caja', 'pedidos', 'calendario', 'crm', 'catalogo', 'usuarios', 'cuenta'],
-    visitador: ['pedidos', 'crm', 'marketing', 'calendario', 'usuarios', 'cuenta'],
+    operador: ['dashboard', 'caja', 'pedidos', 'calendario', 'crm', 'catalogo', 'usuarios', 'cuenta'],
+    visitador: ['crm', 'marketing', 'calendario', 'usuarios', 'cuenta'],
     cliente: ['pedidos_cliente', 'catalogo_cliente', 'cuenta'],
 };
 
@@ -29,6 +29,7 @@ export const isOperatorRole = (user) => user?.tipo === 'operador';
 export const isTechnicianRole = (user) => user?.tipo === 'tecnico';
 
 export const isVisitorRole = (user) => user?.tipo === 'visitador';
+export const isSalesRole = isVisitorRole;
 
 export const isClientRole = (user) => user?.tipo === 'cliente';
 
@@ -86,9 +87,17 @@ export const canAccessCrm = (user) =>
 export const canAdministerCrm = (user) =>
     isAdminRole(user) || isPartnerRole(user);
 
-/** KPIs financieros y Reportes contables globales. */
+/** KPIs financieros y Reportes contables globales: solo Admin y Socio. */
 export const canAccessFinanceDashboard = (user) =>
-    canAccessModule(user, 'dashboard');
+    (isAdminRole(user) || isPartnerRole(user)) && canAccessModule(user, 'dashboard');
+
+/** Tesorería, Cuentas Bancarias y Participación de Socios: solo Admin y Socio. */
+export const canAccessTreasury = (user) =>
+    (isAdminRole(user) || isPartnerRole(user)) && canAccessModule(user, 'dashboard');
+
+/** Dashboard Operativo de Taller y Despacho: personal interno del laboratorio con acceso al módulo. */
+export const canAccessOperativeDashboard = (user) =>
+    isLabStaffRole(user) && canAccessModule(user, 'dashboard');
 
 export const canAccessReports = (user) =>
     canAccessModule(user, 'dashboard') || isAdminRole(user);
@@ -103,4 +112,20 @@ export const canManageProviders = (user) =>
 
 export const canManageUsers = (user) =>
     canAccessModule(user, 'usuarios');
+
+/**
+ * Retorna la ruta inicial por defecto según el rol y módulos asignados.
+ * Previene bucles 403 y aterriza a cada perfil en su superficie principal.
+ */
+export const getDefaultRouteForUser = (user) => {
+    if (!user) return '/login';
+    if (isClientRole(user)) return '/pedidos';
+    if (isSalesRole(user)) return '/crm/resumen';
+    if (isTechnicianRole(user)) return '/pedidos';
+    if (canAccessModule(user, 'dashboard')) return '/dashboard';
+    if (canAccessModule(user, 'pedidos')) return '/pedidos';
+    if (canAccessModule(user, 'crm')) return '/crm/resumen';
+    if (canAccessModule(user, 'caja')) return '/caja-gastos';
+    return '/cuenta';
+};
 

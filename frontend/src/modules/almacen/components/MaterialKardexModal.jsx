@@ -105,7 +105,7 @@ export const MaterialKardexModal = ({ isOpen, onClose, material }) => {
                 </div>
 
                 {/* Tabla de movimientos */}
-                <div className="data-table-wrapper" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                <div className="data-table-wrapper" style={{ maxHeight: '420px', overflow: 'auto' }}>
                     <table className="data-table" style={{ fontSize: '0.82rem' }}>
                         <thead>
                             <tr>
@@ -150,9 +150,9 @@ export const MaterialKardexModal = ({ isOpen, onClose, material }) => {
                                             <strong style={{ color: '#0284c7' }}>{mov.stock_en_uso_nuevo}</strong>
                                         </td>
                                         <td>
-                                            {mov.numero_comprobante && (
+                                            {(mov.referencia || mov.numero_comprobante) && (
                                                 <div style={{ fontWeight: 600, fontSize: '0.75rem' }}>
-                                                    Doc: {mov.numero_comprobante}
+                                                    Doc: {mov.referencia || mov.numero_comprobante}
                                                 </div>
                                             )}
                                             {mov.proveedor_nombre && (
@@ -162,7 +162,7 @@ export const MaterialKardexModal = ({ isOpen, onClose, material }) => {
                                             )}
                                             {mov.motivo && <div>{mov.motivo}</div>}
                                             {mov.notas && <div style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)' }}>{mov.notas}</div>}
-                                            {!mov.numero_comprobante && !mov.proveedor_nombre && !mov.motivo && !mov.notas && '—'}
+                                            {!mov.referencia && !mov.numero_comprobante && !mov.proveedor_nombre && !mov.motivo && !mov.notas && '—'}
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap' }}>
                                             {mov.usuario_nombre || 'Sistema'}

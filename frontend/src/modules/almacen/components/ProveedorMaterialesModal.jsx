@@ -400,7 +400,7 @@ export const ProveedorMaterialesModal = ({
                         </p>
                     </div>
                 ) : (
-                    <div className="table-container" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                    <div className="data-table-wrapper" style={{ maxHeight: '420px', overflow: 'auto' }}>
                         <table className="data-table">
                             <thead>
                                 <tr>

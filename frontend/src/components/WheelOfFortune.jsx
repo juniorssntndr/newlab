@@ -135,84 +135,357 @@ export default function WheelOfFortune({ onGiroCompletado, isKiosk = false }) {
             playTickSound();
         }
 
-        // Borde exterior dorado / premium
+        // Borde exterior AFINIX LAB (Neón celeste con base azul cobalto profundo)
         ctx.save();
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius + 10, 0, 2 * Math.PI);
+        ctx.arc(centerX, centerY, radius + 12, 0, 2 * Math.PI);
         ctx.fillStyle = '#0f172a';
         ctx.fill();
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.stroke();
+
+        // Aro de base azul AFINIX
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius + 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#0284c7';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
         ctx.stroke();
         ctx.restore();
 
-        // Dibujar sectores
+        // Helper para dibujar piña vectorial 100% simétrica, estética y centrada en el eje radial
+        const drawSymmetricPineapple = (c, size) => {
+            c.save();
+            const w = size * 0.54;
+            const h = size * 0.74;
+
+            // 1. Sombra suave de contacto
+            c.save();
+            c.beginPath();
+            c.ellipse(h * 0.58, 0, h * 0.14, w * 0.46, 0, 0, 2 * Math.PI);
+            c.fillStyle = 'rgba(15, 23, 42, 0.08)';
+            c.fill();
+            c.restore();
+
+            // 2. Corona de hojas tropicales estilizadas (multicapa con nervaduras)
+            c.save();
+            // Capa trasera (verde bosque oscuro para profundidad)
+            c.fillStyle = '#047857';
+            c.strokeStyle = '#064e3b';
+            c.lineWidth = 1.1;
+
+            // Hoja trasera superior
+            c.beginPath();
+            c.moveTo(-h * 0.22, -w * 0.12);
+            c.quadraticCurveTo(-h * 0.65, -w * 0.60, -h * 0.84, -w * 0.58);
+            c.quadraticCurveTo(-h * 0.55, -w * 0.25, -h * 0.20, -w * 0.05);
+            c.fill();
+            c.stroke();
+
+            // Hoja trasera inferior (simetría perfecta)
+            c.beginPath();
+            c.moveTo(-h * 0.22, w * 0.12);
+            c.quadraticCurveTo(-h * 0.65, w * 0.60, -h * 0.84, w * 0.58);
+            c.quadraticCurveTo(-h * 0.55, w * 0.25, -h * 0.20, w * 0.05);
+            c.fill();
+            c.stroke();
+
+            // Capa intermedia (verde esmeralda brillante)
+            c.fillStyle = '#059669';
+            c.strokeStyle = '#047857';
+
+            // Hoja intermedia superior
+            c.beginPath();
+            c.moveTo(-h * 0.24, -w * 0.10);
+            c.quadraticCurveTo(-h * 0.72, -w * 0.38, -h * 0.94, -w * 0.34);
+            c.quadraticCurveTo(-h * 0.62, -w * 0.12, -h * 0.22, 0);
+            c.fill();
+            c.stroke();
+
+            // Hoja intermedia inferior (simetría perfecta)
+            c.beginPath();
+            c.moveTo(-h * 0.24, w * 0.10);
+            c.quadraticCurveTo(-h * 0.72, w * 0.38, -h * 0.94, w * 0.34);
+            c.quadraticCurveTo(-h * 0.62, w * 0.12, -h * 0.22, 0);
+            c.fill();
+            c.stroke();
+
+            // Capa frontal: Hoja central majestuosa
+            c.fillStyle = '#10b981';
+            c.strokeStyle = '#047857';
+            c.lineWidth = 1.3;
+            c.beginPath();
+            c.moveTo(-h * 0.26, -w * 0.14);
+            c.quadraticCurveTo(-h * 0.70, -w * 0.16, -h * 1.05, 0);
+            c.quadraticCurveTo(-h * 0.70, w * 0.16, -h * 0.26, w * 0.14);
+            c.closePath();
+            c.fill();
+            c.stroke();
+
+            // Nervadura / resplandor de hojas en verde lima
+            c.strokeStyle = '#6ee7b7';
+            c.lineWidth = 1.1;
+            c.beginPath();
+            c.moveTo(-h * 0.26, 0);
+            c.lineTo(-h * 0.96, 0);
+            c.moveTo(-h * 0.24, -w * 0.08);
+            c.quadraticCurveTo(-h * 0.58, -w * 0.22, -h * 0.86, -w * 0.28);
+            c.moveTo(-h * 0.24, w * 0.08);
+            c.quadraticCurveTo(-h * 0.58, w * 0.22, -h * 0.86, w * 0.28);
+            c.stroke();
+            c.restore();
+
+            // 3. Cuerpo de la piña (silueta curva orgánica y gradiente cálido con volumen)
+            c.save();
+            c.beginPath();
+            c.moveTo(-h * 0.22, 0);
+            c.bezierCurveTo(-h * 0.22, -w * 0.52, h * 0.18, -w * 0.55, h * 0.54, -w * 0.26);
+            c.bezierCurveTo(h * 0.66, -w * 0.12, h * 0.66, w * 0.12, h * 0.54, w * 0.26);
+            c.bezierCurveTo(h * 0.18, w * 0.55, -h * 0.22, w * 0.52, -h * 0.22, 0);
+            c.closePath();
+
+            const grad = c.createLinearGradient(-h * 0.22, -w * 0.35, h * 0.65, w * 0.35);
+            grad.addColorStop(0, '#fef08a'); // resplandor amarillo superior
+            grad.addColorStop(0.3, '#fbbf24'); // ámbar cálido
+            grad.addColorStop(0.7, '#f59e0b'); // dorado miel
+            grad.addColorStop(1, '#d97706'); // sombra caramelo
+            c.fillStyle = grad;
+            c.shadowColor = 'rgba(180, 83, 9, 0.25)';
+            c.shadowBlur = 6;
+            c.fill();
+            c.shadowBlur = 0;
+            c.lineWidth = 1.4;
+            c.strokeStyle = '#b45309';
+            c.stroke();
+
+            // Textura y escamas internas (recortadas al cuerpo)
+            c.save();
+            c.clip();
+
+            // Rejilla de escamas biseladas
+            c.strokeStyle = 'rgba(180, 83, 9, 0.45)';
+            c.lineWidth = 1.2;
+            const step = w * 0.28;
+            for (let off = -h; off <= h * 1.6; off += step) {
+                c.beginPath();
+                c.moveTo(off, -w);
+                c.lineTo(off + w * 0.9, w);
+                c.stroke();
+
+                c.beginPath();
+                c.moveTo(off + w * 0.9, -w);
+                c.lineTo(off, w);
+                c.stroke();
+            }
+
+            // Ojos / acentos dorados simétricos en cada escama
+            const scalePoints = [
+                { x: 0, y: 0 },
+                { x: h * 0.22, y: 0 },
+                { x: h * 0.42, y: 0 },
+                { x: -h * 0.05, y: -w * 0.22 },
+                { x: -h * 0.05, y: w * 0.22 },
+                { x: h * 0.18, y: -w * 0.24 },
+                { x: h * 0.18, y: w * 0.24 },
+                { x: h * 0.38, y: -w * 0.18 },
+                { x: h * 0.38, y: w * 0.18 }
+            ];
+            scalePoints.forEach(pt => {
+                c.beginPath();
+                c.arc(pt.x, pt.y, Math.max(1.1, size * 0.024), 0, 2 * Math.PI);
+                c.fillStyle = 'rgba(180, 83, 9, 0.75)';
+                c.fill();
+
+                c.beginPath();
+                c.arc(pt.x - 0.7, pt.y - 0.7, Math.max(0.6, size * 0.013), 0, 2 * Math.PI);
+                c.fillStyle = 'rgba(254, 240, 138, 0.95)';
+                c.fill();
+            });
+
+            // Brillo especular lateral superior (look moderno)
+            c.beginPath();
+            c.ellipse(h * 0.08, -w * 0.26, h * 0.28, w * 0.12, -0.2, 0, 2 * Math.PI);
+            c.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            c.fill();
+
+            c.restore();
+
+            // Corona collar en la base de las hojas
+            c.fillStyle = '#047857';
+            c.beginPath();
+            c.moveTo(-h * 0.25, -w * 0.16);
+            c.lineTo(-h * 0.16, -w * 0.08);
+            c.lineTo(-h * 0.25, 0);
+            c.lineTo(-h * 0.16, w * 0.08);
+            c.lineTo(-h * 0.25, w * 0.16);
+            c.lineTo(-h * 0.20, 0);
+            c.closePath();
+            c.fill();
+
+            c.restore();
+            c.restore();
+        };
+
+        // Dibujar sectores alternados (Azul AFINIX y Blanco)
         premios.forEach((premio, i) => {
             const startAngle = angle + i * arc;
             const endAngle = startAngle + arc;
+
+            const isPina = premio.tipo_premio === 'sin_premio' || (premio.titulo && premio.titulo.toUpperCase().includes('PIÑA'));
 
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
             ctx.arc(centerX, centerY, radius, startAngle, endAngle);
             ctx.closePath();
-            ctx.fillStyle = premio.color_hex || '#0284c7';
+
+            if (!isPina) {
+                const grad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
+                grad.addColorStop(0, '#0284c7');
+                grad.addColorStop(1, '#0369a1');
+                ctx.fillStyle = grad;
+            } else {
+                const grad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(1, '#f8fafc');
+                ctx.fillStyle = grad;
+            }
             ctx.fill();
             ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = '#ffffff'; // divisor blanco limpio
             ctx.stroke();
 
-            // Texto en el sector
-            ctx.save();
+            // Contenido en el sector
             ctx.translate(centerX, centerY);
             ctx.rotate(startAngle + arc / 2);
-            ctx.textAlign = 'right';
-            ctx.fillStyle = premio.texto_color || '#ffffff';
-            ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
-            ctx.shadowColor = 'rgba(0,0,0,0.6)';
-            ctx.shadowBlur = 4;
-            
-            // Si el texto es largo, truncar elegantemente
-            const displayTitle = premio.titulo.length > 20 ? `${premio.titulo.substring(0, 19)}…` : premio.titulo;
-            ctx.fillText(displayTitle, radius - 22, 5);
-            ctx.restore();
+
+            if (!isPina) {
+                // SECTOR CON PREMIO: Descuento explícito en alto contraste
+                const dist = radius * 0.77;
+                ctx.translate(dist, 0);
+                ctx.rotate(Math.PI / 2); // perpendicular al radio
+
+                // Extraer el monto limpio para jerarquía visual
+                const rawTitle = (premio.titulo || '').trim();
+                let amountText = rawTitle;
+                if (rawTitle.toUpperCase().includes('DCTO')) {
+                    amountText = rawTitle.replace(/DCTO\.?/i, '').trim();
+                } else if (rawTitle.toUpperCase().includes('DESCUENTO')) {
+                    amountText = rawTitle.replace(/DESCUENTO/i, '').trim();
+                }
+                if (!amountText) amountText = `S/. ${premio.valor || 0}`;
+
+                // 1. Monto grande y destacado
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const fontSize = Math.max(12, Math.round(radius * 0.082));
+                ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(amountText, 0, -fontSize * 0.88);
+
+                // 2. Badge cápsula "DESCUENTO" (aclara 100% que no es dinero regalado)
+                ctx.shadowBlur = 0;
+                const badgeW = Math.max(52, Math.round(fontSize * 3.4));
+                const badgeH = Math.max(13, Math.round(fontSize * 0.78));
+                const bx = -badgeW / 2;
+                const by = -badgeH * 0.35;
+
+                ctx.save();
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(bx, by, badgeW, badgeH, badgeH / 2);
+                } else {
+                    ctx.rect(bx, by, badgeW, badgeH);
+                }
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = '#38bdf8';
+                ctx.stroke();
+
+                ctx.font = `800 ${Math.max(7, Math.round(fontSize * 0.44))}px system-ui, sans-serif`;
+                ctx.fillStyle = '#e0f2fe';
+                ctx.letterSpacing = '0.05em';
+                ctx.fillText('DESCUENTO', 0, by + badgeH / 2 + 0.5);
+                ctx.restore();
+
+                // 3. Ícono abajo hacia el centro
+                const val = Number(premio.valor) || 0;
+                let icon = '💰';
+                if (val >= 100) icon = '🏆';
+                else if (val >= 50) icon = '🎉';
+                else if (val >= 30) icon = '💰';
+                else icon = '⭐';
+
+                const iconSize = Math.max(15, Math.round(radius * 0.12));
+                ctx.font = `${iconSize}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+                ctx.fillText(icon, 0, iconSize * 1.15);
+            } else {
+                // SECTOR PIÑA: 100% alineada en su eje central con el centro de la ruleta y situada en el tercio exterior
+                const dist = radius * 0.73;
+                ctx.translate(dist, 0);
+                // Invertimos para que las hojas apunten hacia el exterior y la base al centro
+                ctx.rotate(Math.PI);
+
+                const pinaSize = Math.max(28, Math.round(radius * 0.20));
+                drawSymmetricPineapple(ctx, pinaSize);
+            }
 
             ctx.restore();
         });
 
-        // Pines exteriores de la ruleta (estilo Interacty / rueda de feria)
+        // Luces / Pines exteriores alrededor de la ruleta (24 bombillas neón)
         for (let i = 0; i < numSegments * 2; i++) {
             const pinAngle = angle + (i * Math.PI) / numSegments;
-            const pinX = centerX + Math.cos(pinAngle) * (radius + 2);
-            const pinY = centerY + Math.sin(pinAngle) * (radius + 2);
+            const pinX = centerX + Math.cos(pinAngle) * (radius + 6);
+            const pinY = centerY + Math.sin(pinAngle) * (radius + 6);
 
+            ctx.save();
             ctx.beginPath();
-            ctx.arc(pinX, pinY, 4, 0, 2 * Math.PI);
+            ctx.arc(pinX, pinY, 3.5, 0, 2 * Math.PI);
             ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 8;
             ctx.fill();
             ctx.lineWidth = 1;
-            ctx.strokeStyle = '#cbd5e1';
+            ctx.strokeStyle = '#38bdf8';
             ctx.stroke();
+            ctx.restore();
         }
 
-        // Centro de la ruleta (buje con sello oficial AFINIX LAB)
+        // Centro / Hub BLANCO Oficial AFINIX con Logo
+        const hubRadius = Math.round(radius * 0.22);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+        ctx.arc(centerX, centerY, hubRadius, 0, 2 * Math.PI);
         ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(2, 132, 199, 0.4)';
+        ctx.shadowBlur = 12;
         ctx.fill();
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 3.5;
         ctx.strokeStyle = '#0284c7';
         ctx.stroke();
 
+        // Aro interno celeste en el buje blanco
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, hubRadius - 5, 0, 2 * Math.PI);
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = '#bae6fd';
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 11px system-ui, sans-serif';
+        ctx.font = `900 ${Math.round(hubRadius * 0.38)}px system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('AFINIX', centerX, centerY - 4);
-        ctx.font = '8px system-ui, sans-serif';
-        ctx.fillStyle = '#64748b';
-        ctx.fillText('LAB', centerX, centerY + 8);
+        ctx.fillText('AFINIX', centerX, centerY - hubRadius * 0.18);
+        ctx.font = `800 ${Math.round(hubRadius * 0.26)}px system-ui, sans-serif`;
+        ctx.fillStyle = '#0284c7';
+        ctx.fillText('LAB', centerX, centerY + hubRadius * 0.24);
         ctx.restore();
     };
 
@@ -558,22 +831,28 @@ export default function WheelOfFortune({ onGiroCompletado, isKiosk = false }) {
                         height: isKiosk ? '380px' : '340px',
                         maxWidth: '90vw'
                     }}>
-                        {/* Puntero Superior Triángulo */}
+                        {/* Puntero Superior estilo Pin de Mapa */}
                         <div
                             style={{
                                 position: 'absolute',
-                                top: '-14px',
+                                top: '-20px',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
-                                width: 0,
-                                height: 0,
-                                borderLeft: '16px solid transparent',
-                                borderRight: '16px solid transparent',
-                                borderTop: '32px solid #ef4444',
-                                zIndex: 10,
-                                filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.45))'
+                                zIndex: 15,
+                                filter: 'drop-shadow(0 4px 10px rgba(2, 132, 199, 0.5)) drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+                                pointerEvents: 'none'
                             }}
-                        />
+                        >
+                            <svg width="34" height="42" viewBox="0 0 34 42" fill="none">
+                                <path
+                                    d="M 17 40 C 11.5 29 3 22 3 15 A 14 14 0 1 1 31 15 C 31 22 22.5 29 17 40 Z"
+                                    fill="#0284c7"
+                                    stroke="#ffffff"
+                                    strokeWidth="2.5"
+                                />
+                                <circle cx="17" cy="14" r="4.5" fill="#ffffff" />
+                            </svg>
+                        </div>
 
                         {/* Canvas */}
                         <canvas
