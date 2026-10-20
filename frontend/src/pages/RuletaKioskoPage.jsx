@@ -91,7 +91,7 @@ export default function RuletaKioskoPage() {
     useEffect(() => {
         const fetchClinicas = async () => {
             try {
-                const res = await apiClient.get('/api/marketing/campanas/clinicas', { headers: getHeaders() });
+                const res = await apiClient.get('/marketing/campanas/clinicas', { headers: getHeaders() });
                 const list = res?.data || (Array.isArray(res) ? res : []);
                 setClinicas(list);
             } catch {
@@ -199,8 +199,8 @@ export default function RuletaKioskoPage() {
         try {
             setLoadingPremios(true);
             const [premiosRes, configRes] = await Promise.allSettled([
-                apiClient.get('/api/marketing/ruleta/premios', { headers: getHeaders() }),
-                apiClient.get('/api/marketing/ruleta/config', { headers: getHeaders() })
+                apiClient.get('/marketing/ruleta/premios', { headers: getHeaders() }),
+                apiClient.get('/marketing/ruleta/config', { headers: getHeaders() })
             ]);
 
             if (premiosRes.status === 'fulfilled') {
@@ -665,7 +665,7 @@ export default function RuletaKioskoPage() {
 
         try {
             // Mandar solicitud de giro (el backend usa participante si existe, o default "Participante Invitado")
-            const response = await apiClient.post('/api/marketing/ruleta/girar', {
+            const response = await apiClient.post('/marketing/ruleta/girar', {
                 doctor_nombre: participant.doctor_nombre || 'Participante Invitado',
                 clinica_id: participant.clinica_id || null,
                 doctor_telefono: participant.doctor_telefono || null,

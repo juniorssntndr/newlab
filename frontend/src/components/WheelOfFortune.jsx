@@ -82,8 +82,8 @@ export default function WheelOfFortune({ onGiroCompletado, isKiosk = false }) {
         const loadInitialData = async () => {
             try {
                 const [clinicasRes, premiosRes] = await Promise.all([
-                    apiClient.get('/api/clinicas', { headers: getHeaders() }).catch(() => []),
-                    apiClient.get('/api/marketing/ruleta/premios', { headers: getHeaders() }).catch(() => ({ data: [] }))
+                    apiClient.get('/clinicas', { headers: getHeaders() }).catch(() => []),
+                    apiClient.get('/marketing/ruleta/premios', { headers: getHeaders() }).catch(() => ({ data: [] }))
                 ]);
 
                 const clinicsList = Array.isArray(clinicasRes) ? clinicasRes : (clinicasRes?.data || []);
@@ -509,7 +509,7 @@ export default function WheelOfFortune({ onGiroCompletado, isKiosk = false }) {
 
         try {
             // 1. Llamar al backend para determinar el resultado
-            const response = await apiClient.post('/api/marketing/ruleta/girar', form, {
+            const response = await apiClient.post('/marketing/ruleta/girar', form, {
                 headers: getHeaders()
             });
 

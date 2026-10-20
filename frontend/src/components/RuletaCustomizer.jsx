@@ -105,7 +105,7 @@ export default function RuletaCustomizer({
         const fetchConfig = async () => {
             try {
                 setLoadingConfig(true);
-                const res = await apiClient.get('/api/marketing/ruleta/config', { headers: getHeaders?.() });
+                const res = await apiClient.get('/marketing/ruleta/config', { headers: getHeaders?.() });
                 if (res?.data) {
                     setConfig({
                         fondo_url: res.data.fondo_url || '',
@@ -185,7 +185,7 @@ export default function RuletaCustomizer({
             setUploadingSectorImg(true);
             const headers = getHeaders?.() || {};
             delete headers['Content-Type'];
-            const res = await apiClient.post('/api/marketing/campanas/imagen', formData, {
+            const res = await apiClient.post('/marketing/campanas/imagen', formData, {
                 headers: { ...headers }
             });
             if (res?.imagen_url) {
@@ -215,13 +215,13 @@ export default function RuletaCustomizer({
             setUploadingBg(true);
             const headers = getHeaders?.() || {};
             delete headers['Content-Type'];
-            const res = await apiClient.post('/api/marketing/campanas/imagen', formData, {
+            const res = await apiClient.post('/marketing/campanas/imagen', formData, {
                 headers: { ...headers }
             });
             if (res?.imagen_url) {
                 const newConfig = { ...config, fondo_url: res.imagen_url };
                 setConfig(newConfig);
-                await apiClient.put('/api/marketing/ruleta/config', newConfig, { headers: getHeaders?.() });
+                await apiClient.put('/marketing/ruleta/config', newConfig, { headers: getHeaders?.() });
                 toast.success('Imagen de fondo guardada');
             }
         } catch {
@@ -237,7 +237,7 @@ export default function RuletaCustomizer({
         e?.preventDefault();
         try {
             setSavingConfig(true);
-            await apiClient.put('/api/marketing/ruleta/config', config, { headers: getHeaders?.() });
+            await apiClient.put('/marketing/ruleta/config', config, { headers: getHeaders?.() });
             toast.success('Configuración general de la ruleta guardada');
         } catch {
             toast.error('Error al guardar configuración');
@@ -262,7 +262,7 @@ export default function RuletaCustomizer({
             };
 
             if (isCreatingNew) {
-                const res = await apiClient.post('/api/marketing/ruleta/premios', payload, { headers: getHeaders?.() });
+                const res = await apiClient.post('/marketing/ruleta/premios', payload, { headers: getHeaders?.() });
                 toast.success('Nuevo sector añadido a la ruleta');
                 const createdSector = res?.data;
                 if (createdSector && onUpdateSectoresLocally) {
@@ -276,7 +276,7 @@ export default function RuletaCustomizer({
                 if (onUpdateSectoresLocally) {
                     onUpdateSectoresLocally(prev => prev.map(s => s.id === sectorForm.id ? { ...s, ...payload } : s));
                 }
-                const res = await apiClient.put(`/api/marketing/ruleta/premios/${sectorForm.id}`, payload, { headers: getHeaders?.() });
+                const res = await apiClient.put(`/marketing/ruleta/premios/${sectorForm.id}`, payload, { headers: getHeaders?.() });
                 toast.success('Sector actualizado con éxito');
                 if (res?.data && onUpdateSectoresLocally) {
                     onUpdateSectoresLocally(prev => prev.map(s => s.id === sectorForm.id ? res.data : s));
@@ -308,7 +308,7 @@ export default function RuletaCustomizer({
                 resultado_descripcion: sector.resultado_descripcion,
                 orden: sectores.length
             };
-            const res = await apiClient.post('/api/marketing/ruleta/premios', payload, { headers: getHeaders?.() });
+            const res = await apiClient.post('/marketing/ruleta/premios', payload, { headers: getHeaders?.() });
             toast.success('Sector duplicado exitosamente');
             if (res?.data && onUpdateSectoresLocally) {
                 onUpdateSectoresLocally(prev => [...prev, res.data]);
@@ -335,7 +335,7 @@ export default function RuletaCustomizer({
         setSectorToDelete(null);
 
         try {
-            await apiClient.delete(`/api/marketing/ruleta/premios/${id}`, { headers: getHeaders?.() });
+            await apiClient.delete(`/marketing/ruleta/premios/${id}`, { headers: getHeaders?.() });
             toast.success('Sector eliminado de la ruleta');
         } catch {
             toast.error('Error al eliminar sector');
@@ -361,7 +361,7 @@ export default function RuletaCustomizer({
 
         const ordenIds = newOrder.map(s => s.id);
         try {
-            await apiClient.put('/api/marketing/ruleta/premios/reordenar', { ordenIds }, { headers: getHeaders?.() });
+            await apiClient.put('/marketing/ruleta/premios/reordenar', { ordenIds }, { headers: getHeaders?.() });
             toast.success('Orden de sectores actualizado');
         } catch {
             toast.error('Error al reordenar sectores');
@@ -376,7 +376,7 @@ export default function RuletaCustomizer({
             onUpdateSectoresLocally(prev => prev.map(s => s.id === id ? { ...s, activo: !s.activo } : s));
         }
         try {
-            await apiClient.patch(`/api/marketing/ruleta/premios/${id}/toggle`, {}, { headers: getHeaders?.() });
+            await apiClient.patch(`/marketing/ruleta/premios/${id}/toggle`, {}, { headers: getHeaders?.() });
             toast.success('Estado del sector actualizado');
         } catch {
             toast.error('Error al cambiar estado del sector');

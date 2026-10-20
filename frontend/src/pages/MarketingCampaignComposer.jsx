@@ -44,7 +44,7 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
         try { const stored = JSON.parse(sessionStorage.getItem(pendingKey) || 'null'); if (stored?.request_id) setPending(stored); } catch { /* Invalid local draft does not authorize an action. */ }
         setReadinessLoading(true);
         setReadiness(previous => previous?.error ? { ...previous, ready: false } : null);
-        apiClient.get('/api/marketing/campanas/readiness', { headers: getHeaders() })
+        apiClient.get('/marketing/campanas/readiness', { headers: getHeaders() })
             .then(result => { if (!cancelled) setReadiness(result); })
             .catch(err => { if (!cancelled) setReadiness({ ready: false, error: marketingErrorMessage(err) }); })
             .finally(() => { if (!cancelled) setReadinessLoading(false); });
@@ -57,7 +57,7 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
         if (form.tipo_audiencia === 'clinicas_especificas' && !form.segmento_ids.length) { setPreviewBusy(false); return; }
         let cancelled = false;
         setPreviewBusy(true);
-        const timer = setTimeout(() => apiClient.post('/api/marketing/campanas/preview', { tipo_audiencia: form.tipo_audiencia, segmento_ids: form.segmento_ids }, { headers: getHeaders() })
+        const timer = setTimeout(() => apiClient.post('/marketing/campanas/preview', { tipo_audiencia: form.tipo_audiencia, segmento_ids: form.segmento_ids }, { headers: getHeaders() })
             .then(result => { if (!cancelled) setAudience(result); })
             .catch(err => { if (!cancelled) setError(marketingErrorMessage(err)); })
             .finally(() => { if (!cancelled) setPreviewBusy(false); }), 250);
@@ -71,7 +71,7 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
         setUploading(true); setError('');
         try {
             const body = new FormData(); body.append('imagen', file);
-            const result = await apiClient('/api/marketing/campanas/imagen', { method: 'POST', body, headers: getHeaders() });
+            const result = await apiClient('/marketing/campanas/imagen', { method: 'POST', body, headers: getHeaders() });
             if (activeRef.current) {
                 patch({ imagen_url: result.imagen_url, imagen_token: result.imagen_token });
                 setImageName(file.name);
@@ -100,7 +100,7 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
         updatePending(operation);
         setBusy(true); setError(''); setReceipt(null);
         try {
-            const result = await apiClient.post(`/api/marketing/campanas${isTest ? '/prueba' : ''}`, { ...form, request_id: requestId }, { headers: getHeaders() });
+            const result = await apiClient.post(`/marketing/campanas${isTest ? '/prueba' : ''}`, { ...form, request_id: requestId }, { headers: getHeaders() });
             await acceptReceipt(result.data, isTest);
         } catch (err) {
             if ((err.status >= 400 && err.status < 500) || (err.status === 503 && /migration_938/.test(err.message))) { updatePending(null); requestRef.current = null; }
@@ -109,7 +109,7 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
     };
     const checkStatus = async () => {
         setBusy(true); setError('');
-        try { const result = await apiClient.get(`/api/marketing/campanas/envios/${pending.request_id}`, { headers: getHeaders() }); await acceptReceipt(result.data, pending.es_prueba); }
+        try { const result = await apiClient.get(`/marketing/campanas/envios/${pending.request_id}`, { headers: getHeaders() }); await acceptReceipt(result.data, pending.es_prueba); }
         catch (err) { if (err.status === 404) { updatePending(null); requestRef.current = null; } setError(marketingErrorMessage(err)); }
         finally { setBusy(false); }
     };

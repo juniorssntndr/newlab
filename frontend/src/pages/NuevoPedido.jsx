@@ -218,7 +218,7 @@ const NuevoPedido = () => {
         setValidatingCoupon(true);
         setCouponError('');
         try {
-            const res = await apiClient.post('/api/marketing/cupones/validar', {
+            const res = await apiClient.post('/marketing/cupones/validar', {
                 codigo: couponInput.trim(),
                 clinica_id: form.clinica_id || user?.clinica_id,
                 subtotal: baseOrderTotal

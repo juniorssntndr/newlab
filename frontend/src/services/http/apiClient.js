@@ -4,13 +4,18 @@ const buildUrl = (path, query) => {
     let cleanPath = path.startsWith('/') ? path : `/${path}`;
     const base = (API_URL || '/api').replace(/\/+$/, '');
 
-    // Prevent duplicating the base path if cleanPath already begins with it (e.g. /api/marketing -> /api/marketing)
-    if (base && !cleanPath.startsWith(base + '/') && cleanPath !== base) {
-        cleanPath = `${base}${cleanPath}`;
+    // Normalize path to prevent duplicate /api if caller passed /api/... or api/...
+    let relativePath = cleanPath;
+    if (relativePath.startsWith('/api/')) {
+        relativePath = relativePath.slice('/api'.length);
+    } else if (relativePath === '/api') {
+        relativePath = '';
     }
 
+    const fullPath = `${base}${relativePath}`;
+
     if (API_URL.startsWith('http')) {
-        const url = new URL(cleanPath, API_URL);
+        const url = new URL(fullPath);
         if (query) {
             Object.entries(query).forEach(([key, value]) => {
                 if (value !== undefined && value !== null && value !== '') {
@@ -21,7 +26,7 @@ const buildUrl = (path, query) => {
         return url.toString();
     }
 
-    const url = new URL(cleanPath, window.location.origin);
+    const url = new URL(fullPath, window.location.origin);
     if (query) {
         Object.entries(query).forEach(([key, value]) => {
             if (value !== undefined && value !== null && value !== '') {
@@ -30,7 +35,7 @@ const buildUrl = (path, query) => {
         });
     }
 
-    return `${cleanPath}${url.search}`;
+    return `${fullPath}${url.search}`;
 };
 
 export const apiClient = async (path, options = {}) => {

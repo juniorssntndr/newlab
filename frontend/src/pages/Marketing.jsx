@@ -92,7 +92,7 @@ export default function Marketing() {
     const loadData = async (section = activeTab, refreshMetrics = true) => {
         const headers = getHeaders();
         const metricsRequest = refreshMetrics || section === 'cupones'
-            ? apiClient.get('/api/marketing/metricas', { headers }).catch(() => null)
+            ? apiClient.get('/marketing/metricas', { headers }).catch(() => null)
             : null;
         if (section === 'cupones') setLoading(true);
         if (section === 'campanas') setLoadingCampanas(true);
@@ -102,20 +102,20 @@ export default function Marketing() {
             key, request: () => apiClient.get(path, { headers }), onSuccess
         });
         if (section === 'cupones' || section === 'bienvenida') {
-            addResource(section, '/api/marketing/cupones', (response) => setCupones(readMarketingData(response)));
+            addResource(section, '/marketing/cupones', (response) => setCupones(readMarketingData(response)));
         }
         if (section === 'campanas') {
-            addResource('campanas', '/api/marketing/campanas', (response) => setCampanas(readMarketingData(response)));
+            addResource('campanas', '/marketing/campanas', (response) => setCampanas(readMarketingData(response)));
         }
         if (section === 'ruleta') {
-            addResource('historial', '/api/marketing/ruleta/historial', (response) => setHistorialGiros(readMarketingData(response)));
-            addResource('premios', '/api/marketing/ruleta/premios/admin', (response) => {
+            addResource('historial', '/marketing/ruleta/historial', (response) => setHistorialGiros(readMarketingData(response)));
+            addResource('premios', '/marketing/ruleta/premios/admin', (response) => {
                 setSectoresRuleta(readMarketingData(response));
                 setTotalPesoActivo(response.totalPesoActivo || 0);
             });
         }
         if (['campanas', 'ruleta', 'clinicas'].includes(section) && (section === 'clinicas' || clinicas.length === 0)) {
-            addResource('clinicas', '/api/marketing/campanas/clinicas', (response) => setClinicas(readMarketingData(response)));
+            addResource('clinicas', '/marketing/campanas/clinicas', (response) => setClinicas(readMarketingData(response)));
         }
         setErrors((previous) => ({ ...previous, ...Object.fromEntries(resources.map(({ key }) => [key, null])) }));
         try {
@@ -138,7 +138,7 @@ export default function Marketing() {
     // Recarga silenciosa exclusiva para la ruleta sin desmontar el componente ni poner spinners
     const refreshRuletaPremiosSilently = async () => {
         try {
-            const res = await apiClient.get('/api/marketing/ruleta/premios/admin', { headers: getHeaders() });
+            const res = await apiClient.get('/marketing/ruleta/premios/admin', { headers: getHeaders() });
             const list = readMarketingData(res);
             setSectoresRuleta(list);
             if (res?.totalPesoActivo !== undefined) setTotalPesoActivo(res.totalPesoActivo);
@@ -150,7 +150,7 @@ export default function Marketing() {
 
     const handleToggleCampana = async (id) => {
         try {
-            await apiClient.patch(`/api/marketing/campanas/${id}/toggle`, {}, {
+            await apiClient.patch(`/marketing/campanas/${id}/toggle`, {}, {
                 headers: getHeaders()
             });
             toast.success('Estado de campaña actualizado');
@@ -223,7 +223,7 @@ export default function Marketing() {
 
         setCreating(true);
         try {
-            const response = await apiClient.post('/api/marketing/cupones', formData, {
+            const response = await apiClient.post('/marketing/cupones', formData, {
                 headers: getHeaders()
             });
             const savedCoupon = readMarketingData(response);
@@ -265,7 +265,7 @@ export default function Marketing() {
 
     const handleToggleActive = async (id) => {
         try {
-            await apiClient.patch(`/api/marketing/cupones/${id}/toggle`, {}, {
+            await apiClient.patch(`/marketing/cupones/${id}/toggle`, {}, {
                 headers: getHeaders()
             });
             toast.success('Estado del cupón actualizado');
@@ -310,13 +310,13 @@ export default function Marketing() {
         setDeleteModal((prev) => ({ ...prev, loading: true }));
         try {
             if (deleteModal.type === 'coupon') {
-                const res = await apiClient.delete(`/api/marketing/cupones/${deleteModal.id}`, {
+                const res = await apiClient.delete(`/marketing/cupones/${deleteModal.id}`, {
                     headers: getHeaders()
                 });
                 toast.success(res?.message || 'Cupón eliminado correctamente');
                 loadData('cupones');
             } else if (deleteModal.type === 'campaign') {
-                const res = await apiClient.delete(`/api/marketing/campanas/${deleteModal.id}`, {
+                const res = await apiClient.delete(`/marketing/campanas/${deleteModal.id}`, {
                     headers: getHeaders()
                 });
                 toast.success(res?.message || 'Campaña eliminada correctamente');
@@ -402,12 +402,12 @@ export default function Marketing() {
         setSavingSector(true);
         try {
             if (editingSector) {
-                await apiClient.put(`/api/marketing/ruleta/premios/${editingSector.id}`, sectorForm, {
+                await apiClient.put(`/marketing/ruleta/premios/${editingSector.id}`, sectorForm, {
                     headers: getHeaders()
                 });
                 toast.success('Sector actualizado con éxito');
             } else {
-                await apiClient.post('/api/marketing/ruleta/premios', sectorForm, {
+                await apiClient.post('/marketing/ruleta/premios', sectorForm, {
                     headers: getHeaders()
                 });
                 toast.success('Nuevo sector creado en la ruleta');
@@ -423,7 +423,7 @@ export default function Marketing() {
 
     const handleToggleSector = async (id) => {
         try {
-            await apiClient.patch(`/api/marketing/ruleta/premios/${id}/toggle`, {}, {
+            await apiClient.patch(`/marketing/ruleta/premios/${id}/toggle`, {}, {
                 headers: getHeaders()
             });
             toast.success('Estado del sector actualizado');
@@ -436,7 +436,7 @@ export default function Marketing() {
     const handleDeleteSector = async (id) => {
         if (!window.confirm('¿Seguro que deseas eliminar este sector de la ruleta?')) return;
         try {
-            const res = await apiClient.delete(`/api/marketing/ruleta/premios/${id}`, {
+            const res = await apiClient.delete(`/marketing/ruleta/premios/${id}`, {
                 headers: getHeaders()
             });
             toast.success(res.message || 'Sector eliminado');
