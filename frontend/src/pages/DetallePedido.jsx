@@ -992,22 +992,19 @@ const DetallePedido = () => {
                                     )}
                                 </div>
                             ) : (
-                                <div className="approval-review-empty">
-                                    <div className="approval-empty-copy">
-                                        <i className="bi bi-box" aria-hidden="true"></i>
-                                        <span>Diseño 3D no subido</span>
-                                    </div>
-                                    {isApproval && (
+                                <div className="approval-review-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', width: '100%', boxSizing: 'border-box' }}>
+                                    {isApproval ? (
                                         <div
                                             style={{
-                                                margin: '0.75rem 0',
                                                 padding: '0.65rem 0.85rem',
                                                 borderRadius: '8px',
                                                 backgroundColor: isClient ? 'rgba(234, 179, 8, 0.12)' : 'rgba(239, 68, 68, 0.12)',
                                                 border: `1px solid ${isClient ? 'rgba(234, 179, 8, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
                                                 fontSize: '0.82rem',
                                                 lineHeight: '1.4',
-                                                textAlign: 'left'
+                                                textAlign: 'left',
+                                                width: '100%',
+                                                boxSizing: 'border-box'
                                             }}
                                         >
                                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
@@ -1022,15 +1019,20 @@ const DetallePedido = () => {
                                                     </strong>
                                                     <span style={{ opacity: 0.9 }}>
                                                         {isClient
-                                                            ? 'El laboratorio ha iniciado la fase de aprobación clínica y está procesando el visor 3D interactivo. En cuanto esté publicado, podrás revisarlo aquí.'
+                                                            ? 'El laboratorio está procesando el visor 3D interactivo. En cuanto esté publicado, podrás revisarlo aquí.'
                                                             : 'El pedido está en "Esperando Aprobación" pero no cuenta con un archivo 3D disponible. Sube el visor HTML o regresa el pedido a "En diseño".'}
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
+                                    ) : (
+                                        <div className="approval-empty-copy" style={{ justifyContent: 'center' }}>
+                                            <i className="bi bi-box" aria-hidden="true"></i>
+                                            <span>Diseño 3D no subido</span>
+                                        </div>
                                     )}
                                     {isClient && (
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', width: '100%' }}>
                                             <button
                                                 type="button"
                                                 className="btn btn-primary btn-sm"
@@ -1064,7 +1066,7 @@ const DetallePedido = () => {
                                         </div>
                                     )}
                                     {isLab && ['pendiente', 'en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', width: '100%' }}>
                                             <button
                                                 type="button"
                                                 className="btn btn-primary btn-sm"
