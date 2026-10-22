@@ -63,10 +63,6 @@ export const OrderWhatsAppModal = ({
         !candidateLink.startsWith('private-viewer://') &&
         /^https?:\/\//i.test(candidateLink);
 
-    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://afinixlab.com';
-    const linkSeguimiento = `${appOrigin}/pedidos/${pedido?.id}`;
-    const linkParaAprobacion = isDirectExternalWebLink ? candidateLink : linkSeguimiento;
-
     // Detectar entorno móvil vs escritorio
     const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -77,6 +73,11 @@ export const OrderWhatsAppModal = ({
     const [copiado, setCopiado] = useState(false);
     const [magicLink, setMagicLink] = useState('');
     const [loadingMagic, setLoadingMagic] = useState(false);
+
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://afinixlab.com';
+    const linkSeguimiento = `${appOrigin}/pedidos/${pedido?.id}`;
+    const finalLink = magicLink || linkSeguimiento;
+    const linkParaAprobacion = isDirectExternalWebLink ? candidateLink : finalLink;
 
     // Obtener enlace mágico de acceso directo sin contraseña para el cliente
     useEffect(() => {
