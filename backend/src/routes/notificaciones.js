@@ -53,6 +53,24 @@ router.patch('/:id/leer', async (req, res, next) => {
 });
 
 // PATCH /api/notificaciones/leer-todas
+// DELETE /api/notificaciones/:id (Eliminar notificación individual)
+router.delete('/:id', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        await pool.query('DELETE FROM nl_notificaciones WHERE id = $1 AND usuario_id = $2', [req.params.id, req.user.id]);
+        res.json({ message: 'Notificación eliminada' });
+    } catch (err) { next(err); }
+});
+
+// DELETE /api/notificaciones/pruebas/limpiar (Limpiar notificaciones de prueba de campaña del usuario)
+router.delete('/pruebas/limpiar', async (req, res, next) => {
+    try {
+        const pool = req.app.locals.pool;
+        await pool.query("DELETE FROM nl_notificaciones WHERE usuario_id = $1 AND tipo = 'prueba_campana'", [req.user.id]);
+        res.json({ message: 'Pruebas eliminadas' });
+    } catch (err) { next(err); }
+});
+
 router.patch('/leer-todas', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;

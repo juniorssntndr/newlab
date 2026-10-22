@@ -937,6 +937,8 @@ router.delete('/campanas/:id', forbidRole('cliente'), async (req, res) => {
         // Limpiar dependencias en destinatarios y envíos si existieran
         await client.query('DELETE FROM nl_campana_destinatarios WHERE campana_id = $1', [id]);
         await client.query('UPDATE nl_campana_envios SET campana_id = NULL WHERE campana_id = $1', [id]);
+        // Limpiar notificaciones in-app generadas por la campana
+        await client.query("DELETE FROM nl_notificaciones WHERE data->>'campana_id' = $1", [String(id)]);
 
         const result = await client.query(`
             DELETE FROM nl_campanas_marketing 
