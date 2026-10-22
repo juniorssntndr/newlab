@@ -5,6 +5,7 @@ import Header from './Header.jsx';
 import NotificationToasts from './NotificationToasts.jsx';
 import NotificationPermissionModal from './notifications/NotificationPermissionModal.jsx';
 import DoctorGiftTicketPopup from './DoctorGiftTicketPopup.jsx';
+import PwaInstallButton from './PwaInstallButton.jsx';
 
 const Layout = () => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -27,6 +28,7 @@ const Layout = () => {
             <NotificationToasts />
             <NotificationPermissionModal />
             <DoctorGiftTicketPopup />
+            <PwaInstallButton />
         </div>
     );
 };
