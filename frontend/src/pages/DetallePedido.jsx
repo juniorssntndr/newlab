@@ -996,33 +996,23 @@ const DetallePedido = () => {
                                     {isApproval ? (
                                         <div
                                             style={{
-                                                padding: '0.65rem 0.85rem',
+                                                padding: '0.5rem 0.75rem',
                                                 borderRadius: '8px',
                                                 backgroundColor: isClient ? 'rgba(234, 179, 8, 0.12)' : 'rgba(239, 68, 68, 0.12)',
                                                 border: `1px solid ${isClient ? 'rgba(234, 179, 8, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
-                                                fontSize: '0.82rem',
-                                                lineHeight: '1.4',
-                                                textAlign: 'left',
                                                 width: '100%',
                                                 boxSizing: 'border-box'
                                             }}
                                         >
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                                 <i
                                                     className={`bi ${isClient ? 'bi-clock-history text-warning' : 'bi-exclamation-triangle-fill text-danger'}`}
-                                                    style={{ fontSize: '1.1rem', marginTop: '1px' }}
+                                                    style={{ fontSize: '1.05rem', flexShrink: 0 }}
                                                     aria-hidden="true"
                                                 ></i>
-                                                <div>
-                                                    <strong style={{ display: 'block', marginBottom: '0.2rem' }}>
-                                                        {isClient ? 'Archivo 3D en preparación' : 'Falta archivo 3D de aprobación'}
-                                                    </strong>
-                                                    <span style={{ opacity: 0.9 }}>
-                                                        {isClient
-                                                            ? 'El laboratorio está procesando el visor 3D interactivo. En cuanto esté publicado, podrás revisarlo aquí.'
-                                                            : 'El pedido está en "Esperando Aprobación" pero no cuenta con un archivo 3D disponible. Sube el visor HTML o regresa el pedido a "En diseño".'}
-                                                    </span>
-                                                </div>
+                                                <strong style={{ fontSize: '0.86rem', color: isClient ? '#eab308' : '#ef4444' }}>
+                                                    {isClient ? 'Diseño 3D en preparación' : 'Falta archivo 3D'}
+                                                </strong>
                                             </div>
                                         </div>
                                     ) : (
