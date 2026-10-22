@@ -997,37 +997,100 @@ const DetallePedido = () => {
                                         <i className="bi bi-box" aria-hidden="true"></i>
                                         <span>Diseño 3D no subido</span>
                                     </div>
-                                    {isClient && (
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary btn-sm"
-                                            onClick={handleSolicitarDiseno3D}
-                                            disabled={requestingDesign || designRequested}
-                                            aria-label="Solicitar diseño 3D al laboratorio"
+                                    {isApproval && (
+                                        <div
+                                            style={{
+                                                margin: '0.75rem 0',
+                                                padding: '0.65rem 0.85rem',
+                                                borderRadius: '8px',
+                                                backgroundColor: isClient ? 'rgba(234, 179, 8, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                                border: `1px solid ${isClient ? 'rgba(234, 179, 8, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+                                                fontSize: '0.82rem',
+                                                lineHeight: '1.4',
+                                                textAlign: 'left'
+                                            }}
                                         >
-                                            <i
-                                                className={`bi ${requestingDesign ? 'bi-hourglass-split' : designRequested ? 'bi-check2' : 'bi-bell'}`}
-                                                style={{ marginRight: '0.35rem' }}
-                                            ></i>
-                                            <span>
-                                                {requestingDesign
-                                                    ? 'Solicitando...'
-                                                    : designRequested
-                                                    ? 'Diseño solicitado'
-                                                    : 'Solicitar diseño 3D'}
-                                            </span>
-                                        </button>
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                                <i
+                                                    className={`bi ${isClient ? 'bi-clock-history text-warning' : 'bi-exclamation-triangle-fill text-danger'}`}
+                                                    style={{ fontSize: '1.1rem', marginTop: '1px' }}
+                                                    aria-hidden="true"
+                                                ></i>
+                                                <div>
+                                                    <strong style={{ display: 'block', marginBottom: '0.2rem' }}>
+                                                        {isClient ? 'Archivo 3D en preparación' : 'Falta archivo 3D de aprobación'}
+                                                    </strong>
+                                                    <span style={{ opacity: 0.9 }}>
+                                                        {isClient
+                                                            ? 'El laboratorio ha iniciado la fase de aprobación clínica y está procesando el visor 3D interactivo. En cuanto esté publicado, podrás revisarlo aquí.'
+                                                            : 'El pedido está en "Esperando Aprobación" pero no cuenta con un archivo 3D disponible. Sube el visor HTML o regresa el pedido a "En diseño".'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {isClient && (
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary btn-sm"
+                                                onClick={handleSolicitarDiseno3D}
+                                                disabled={requestingDesign || designRequested}
+                                                aria-label="Solicitar diseño 3D al laboratorio"
+                                            >
+                                                <i
+                                                    className={`bi ${requestingDesign ? 'bi-hourglass-split' : designRequested ? 'bi-check2' : 'bi-bell'}`}
+                                                    style={{ marginRight: '0.35rem' }}
+                                                ></i>
+                                                <span>
+                                                    {requestingDesign
+                                                        ? 'Solicitando...'
+                                                        : designRequested
+                                                        ? 'Diseño solicitado'
+                                                        : 'Solicitar diseño 3D'}
+                                                </span>
+                                            </button>
+                                            {isApproval && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => setWhatsAppModalOpen(true)}
+                                                    aria-label="Consultar por WhatsApp"
+                                                >
+                                                    <i className="bi bi-whatsapp" style={{ color: '#25D366', marginRight: '0.35rem' }}></i>
+                                                    <span>Consultar estado</span>
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                     {isLab && ['pendiente', 'en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary btn-sm"
-                                            onClick={() => setApprovalModalOpen(true)}
-                                            aria-label="Subir diseño 3D interactivo"
-                                        >
-                                            <i className="bi bi-cloud-arrow-up" style={{ marginRight: '0.35rem' }}></i>
-                                            <span>Subir diseño 3D</span>
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => setApprovalModalOpen(true)}
+                                                aria-label="Subir diseño 3D interactivo"
+                                            >
+                                                <i className="bi bi-cloud-arrow-up" style={{ marginRight: '0.35rem' }}></i>
+                                                <span>Subir diseño 3D</span>
+                                            </button>
+                                            {isApproval && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => {
+                                                        setRollbackState('en_diseno');
+                                                        setRollbackReason('Archivo 3D no completado; devuelto a fase de diseño');
+                                                        setRollbackModalOpen(true);
+                                                    }}
+                                                    aria-label="Devolver a diseño"
+                                                    title="Regresar a fase de diseño"
+                                                >
+                                                    <i className="bi bi-arrow-counterclockwise" style={{ marginRight: '0.35rem' }}></i>
+                                                    <span>Regresar a Diseño</span>
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             )}

@@ -303,12 +303,17 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
                 };
             }
             if (estado === 'esperando_aprobacion' && !link_exocad) {
-                return {
-                    ok: false,
-                    type: 'BAD_REQUEST',
-                    error: 'Link de Exocad es requerido para aprobación'
-                };
+                const existingApprovals = await orderRepository.listOrderApprovals({ orderId });
+                const hasExisting = existingApprovals && existingApprovals.some((a) => a.link_exocad && a.archivo_disponible !== false);
+                if (!hasExisting) {
+                    return {
+                        ok: false,
+                        type: 'BAD_REQUEST',
+                        error: 'Para pasar a esperando aprobación se requiere adjuntar el archivo HTML o link del visor 3D'
+                    };
+                }
             }
+
             if (isForced && (!comentario || !comentario.trim())) {
                 return {
                     ok: false,

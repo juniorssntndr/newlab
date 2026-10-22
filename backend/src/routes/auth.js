@@ -132,7 +132,7 @@ router.post('/login', authLimiter, validateBody(loginSchema), async (req, res, n
         const token = jwt.sign(
             { id: user.id, email: user.email, tipo: user.tipo, nombre: user.nombre, clinica_id: user.clinica_id, rol: user.rol_nombre, modulos },
             JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '30d' }
         );
 
         res.json({
