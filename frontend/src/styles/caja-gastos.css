@@ -3182,6 +3182,98 @@
   }
 }
 
+/* ==========================================================================
+   Responsive Adaptations for Gastos List & KPIs (Mobile)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .gasto-kpi-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px 14px;
+  }
 
+  .gasto-kpi-main {
+    width: 100%;
+    justify-content: flex-start;
+  }
 
+  .gasto-kpi-pills {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .gasto-kpi-pill {
+    flex: 1 1 auto;
+    justify-content: center;
+    font-size: 0.76rem;
+    padding: 6px 10px;
+  }
+
+  .gasto-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .gasto-search-wrapper {
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .gasto-card-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+    min-height: auto;
+  }
+
+  .gasto-card-left {
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .gasto-card-category-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1.15rem;
+    border-radius: 8px;
+  }
+
+  .gasto-card-beneficiary {
+    font-size: 0.98rem;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .gasto-card-desc {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .gasto-card-chips {
+    gap: 6px;
+  }
+
+  .gasto-card-right {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed var(--color-border);
+    padding-top: 10px;
+    margin-top: 2px;
+    gap: 8px;
+  }
+
+  .gasto-card-amount {
+    font-size: 1.15rem;
+  }
+}
 
