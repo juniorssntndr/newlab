@@ -81,14 +81,20 @@ export const AuthProvider = ({ children }) => {
         return data.user;
     }, []);
 
+    const setSession = useCallback((newToken, newUser) => {
+        localStorage.setItem('nl_token', newToken);
+        setToken(newToken);
+        setUser(newUser);
+    }, []);
+
     const getHeaders = useCallback(() => ({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
     }), [token]);
 
     const value = useMemo(
-        () => ({ user, token, loading, login, logout, getHeaders, refreshUser, setUser }),
-        [user, token, loading, login, logout, getHeaders, refreshUser]
+        () => ({ user, token, loading, login, logout, getHeaders, refreshUser, setUser, setSession }),
+        [user, token, loading, login, logout, getHeaders, refreshUser, setSession]
     );
 
     return (

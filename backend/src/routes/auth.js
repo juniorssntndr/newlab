@@ -362,6 +362,90 @@ router.patch('/me', authenticateToken, async (req, res, next) => {
     }
 });
 
+// POST /api/auth/magic-login
+router.post('/magic-login', authLimiter, async (req, res, next) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ error: 'Token de acceso requerido' });
+
+        const JWT_SECRET = getJwtSecret();
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET);
+        } catch (err) {
+            return res.status(401).json({ error: 'El enlace de acceso ha expirado o no es válido. Solicita un nuevo enlace a AFINIX Dental Lab.' });
+        }
+
+        if (decoded.typ !== 'magic-link' || !decoded.userId) {
+            return res.status(401).json({ error: 'Tipo de token no válido' });
+        }
+
+        const pool = req.app.locals.pool;
+        const result = await pool.query(
+            `SELECT u.*, r.nombre as rol_nombre, r.permisos as rol_permisos, c.nombre as clinica_nombre, c.direccion as clinica_direccion,
+              COALESCE(
+                (
+                  SELECT NULLIF(TRIM(e.direccion_fiscal), '')
+                  FROM nl_empresas e
+                  WHERE e.activo = true
+                  ORDER BY e.id ASC
+                  LIMIT 1
+                ),
+                'Calle Piura 316, Mariano Melgar'
+              ) as laboratorio_direccion
+       FROM nl_usuarios u
+       LEFT JOIN nl_roles r ON u.rol_id = r.id
+       LEFT JOIN nl_clinicas c ON u.clinica_id = c.id
+       WHERE u.id = $1 AND u.estado = 'activo'`,
+            [decoded.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(403).json({ error: 'Usuario no encontrado o inactivo' });
+        }
+
+        const user = result.rows[0];
+        await pool.query('UPDATE nl_usuarios SET ultimo_acceso = NOW() WHERE id = $1', [user.id]);
+
+        const modulos = resolveUserModules(user);
+        const sessionToken = jwt.sign(
+            { id: user.id, email: user.email, tipo: user.tipo, nombre: user.nombre, clinica_id: user.clinica_id, rol: user.rol_nombre, modulos },
+            JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
+        await writeAuditEvent(req, {
+            entidad: 'auth',
+            entidadId: user.id,
+            accion: 'magic_login_success',
+            descripcion: 'Inicio de sesion exitoso via magic link',
+            metadata: { orderId: decoded.orderId }
+        });
+
+        res.json({
+            token: sessionToken,
+            redirect: decoded.redirect || `/pedidos/${decoded.orderId}`,
+            user: {
+                id: user.id,
+                nombre: user.nombre,
+                email: user.email,
+                telefono: user.telefono,
+                tipo: user.tipo,
+                rol: user.rol_nombre,
+                modulos,
+                permisos_modulos: user.permisos_modulos,
+                clinica_id: user.clinica_id,
+                clinica_nombre: user.clinica_nombre,
+                clinica_direccion: user.clinica_direccion,
+                laboratorio_direccion: user.laboratorio_direccion,
+                avatar_url: user.avatar_url
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
 // PATCH /api/auth/password
 router.patch('/password', authenticateToken, async (req, res, next) => {
     try {

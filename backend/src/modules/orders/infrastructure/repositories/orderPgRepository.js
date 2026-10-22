@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 export const makeOrderPgRepository = ({ pool }) => ({
     pool,
     listOrders: async ({ user, filters = {} }) => {
@@ -635,6 +636,45 @@ export const makeOrderPgRepository = ({ pool }) => ({
             [clinicId]
         );
         return result.rows;
+    },
+    findClientUserByClinicId: async ({ clinicaId }) => {
+        const result = await pool.query(
+            `SELECT u.*, r.nombre as rol_nombre
+             FROM nl_usuarios u
+             LEFT JOIN nl_roles r ON u.rol_id = r.id
+             WHERE u.clinica_id = $1 AND u.tipo = 'cliente' AND u.estado = 'activo'
+             ORDER BY u.id ASC
+             LIMIT 1`,
+            [clinicaId]
+        );
+        return result.rows[0] || null;
+    },
+    autoProvisionClientUser: async ({ clinicaId }) => {
+        const clinicRes = await pool.query('SELECT * FROM nl_clinicas WHERE id = $1', [clinicaId]);
+        if (clinicRes.rows.length === 0) return null;
+        const clinic = clinicRes.rows[0];
+
+        const tempPassword = `Afinix_${Date.now()}`;
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+        const email = clinic.email && clinic.email.includes('@')
+            ? clinic.email.toLowerCase().trim()
+            : `cliente_${clinic.id}@afinixlab.pe`;
+        const nombre = clinic.contacto_nombre || clinic.nombre || 'Doctor(a)';
+        const telefono = clinic.telefono || null;
+
+        const emailCheck = await pool.query('SELECT id FROM nl_usuarios WHERE LOWER(email) = LOWER($1)', [email]);
+        const finalEmail = emailCheck.rows.length > 0 ? `cliente_${clinic.id}_${Date.now()}@afinixlab.pe` : email;
+
+        const roleRes = await pool.query("SELECT id FROM nl_roles WHERE es_admin = false AND (nombre ILIKE '%cliente%' OR LOWER(nombre) = 'cliente') LIMIT 1");
+        const rolId = roleRes.rows[0]?.id || null;
+
+        const insertRes = await pool.query(
+            `INSERT INTO nl_usuarios (nombre, email, telefono, password_hash, rol_id, tipo, clinica_id, estado)
+             VALUES ($1, $2, $3, $4, $5, 'cliente', $6, 'activo')
+             RETURNING *`,
+            [nombre, finalEmail, telefono, passwordHash, rolId, clinicaId]
+        );
+        return insertRes.rows[0] || null;
     },
     markOrderNotificationsRead: async ({ orderId, types = ['aprobacion'] }) => {
         const targetLink = `/pedidos/${orderId}`;

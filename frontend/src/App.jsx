@@ -11,6 +11,7 @@ import {
     getDefaultRouteForUser
 } from './utils/accessControl.js';
 import Login from './pages/Login.jsx';
+import MagicAccessPage from './pages/MagicAccessPage.jsx';
 import RegistroCliente from './pages/RegistroCliente.jsx';
 import AfinixLanding from './pages/AfinixLanding.jsx';
 import AfinixLandingV2 from './pages/AfinixLandingV2.jsx';
@@ -104,6 +105,7 @@ const App = () => {
                 ))}
                 <Route path="/login" element={<Login />} />
                 <Route path="/registro" element={<RegistroCliente />} />
+                <Route path="/acceso" element={<MagicAccessPage />} />
                 <Route path="/ruleta-evento" element={<ProtectedRoute><ModuleRoute module="marketing"><RuletaKioskoPage /></ModuleRoute></ProtectedRoute>} />
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="dashboard" element={<ModuleRoute module="dashboard"><Dashboard /></ModuleRoute>} />

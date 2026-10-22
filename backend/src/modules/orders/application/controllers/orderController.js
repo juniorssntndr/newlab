@@ -341,6 +341,17 @@ export const makeOrderController = ({ orderService }) => ({
             next(error);
         }
     },
+    getOrderMagicLink: async (req, res, next) => {
+        try {
+            const result = await orderService.getOrderMagicLink({
+                user: req.user,
+                orderId: req.params.id
+            });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
     requestDesign: async (req, res, next) => {
         try {
             const result = await orderService.requestDesign({

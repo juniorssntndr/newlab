@@ -1,3 +1,5 @@
+import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../../../../config/env.js';
 import { getIgvFactor } from '../../../../config/env.js';
 import { sendPushNotificationToMany } from '../../../notifications/pushNotificationService.js';
 import { makeOrderRepeatService } from './orderRepeatService.js';
@@ -842,6 +844,53 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             ok: true,
             type: 'SUCCESS',
             data: result.approval
+        };
+    },
+    getOrderMagicLink: async ({ user, orderId }) => {
+        if (user?.tipo === 'cliente') {
+            return { ok: false, type: 'FORBIDDEN', error: 'No autorizado' };
+        }
+
+        const order = await orderRepository.getOrderBaseById({ orderId });
+        if (!order) {
+            return { ok: false, type: 'NOT_FOUND', error: 'Pedido no encontrado' };
+        }
+
+        if (!order.clinica_id) {
+            return { ok: false, type: 'BAD_REQUEST', error: 'El pedido no tiene clínica asociada' };
+        }
+
+        let clientUser = await orderRepository.findClientUserByClinicId({ clinicaId: order.clinica_id });
+        if (!clientUser) {
+            clientUser = await orderRepository.autoProvisionClientUser({ clinicaId: order.clinica_id });
+        }
+
+        if (!clientUser) {
+            return { ok: false, type: 'INTERNAL_ERROR', error: 'No se pudo vincular o generar el acceso del cliente' };
+        }
+
+        const JWT_SECRET = getJwtSecret();
+        const magicToken = jwt.sign(
+            {
+                typ: 'magic-link',
+                userId: clientUser.id,
+                orderId: String(orderId),
+                clinicaId: order.clinica_id,
+                redirect: `/pedidos/${orderId}`
+            },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        return {
+            ok: true,
+            type: 'SUCCESS',
+            data: {
+                token: magicToken,
+                orderId,
+                clientName: clientUser.nombre,
+                urlPath: `/acceso?token=${encodeURIComponent(magicToken)}`
+            }
         };
     },
     requestDesign: async ({ user, orderId }) => {

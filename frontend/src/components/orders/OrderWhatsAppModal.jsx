@@ -1,3 +1,4 @@
+import { API_URL } from '../../config.js';
 import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '../Modal.jsx';
 import CustomSelect from '../CustomSelect.jsx';
@@ -74,6 +75,38 @@ export const OrderWhatsAppModal = ({
     const [tipoPlantilla, setTipoPlantilla] = useState('aprobacion');
     const [mensajeCustom, setMensajeCustom] = useState('');
     const [copiado, setCopiado] = useState(false);
+    const [magicLink, setMagicLink] = useState('');
+    const [loadingMagic, setLoadingMagic] = useState(false);
+
+    // Obtener enlace mágico de acceso directo sin contraseña para el cliente
+    useEffect(() => {
+        if (!isModalOpen || !pedido?.id) return;
+        let isCurrent = true;
+        setLoadingMagic(true);
+
+        const fetchMagic = async () => {
+            try {
+                const token = localStorage.getItem('nl_token');
+                const res = await fetch(`${API_URL}/pedidos/${pedido.id}/magic-link`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (isCurrent && data.urlPath) {
+                        setMagicLink(`${appOrigin}${data.urlPath}`);
+                    }
+                }
+            } catch {
+                // fallback a link estándar
+            } finally {
+                if (isCurrent) setLoadingMagic(false);
+            }
+        };
+
+        fetchMagic();
+
+        return () => { isCurrent = false; };
+    }, [isModalOpen, pedido?.id, appOrigin]);
 
     // Inicializar teléfono y plantilla según fase actual
     useEffect(() => {
@@ -109,7 +142,7 @@ export const OrderWhatsAppModal = ({
             msg = `¡Hola equipo de *${clinicaNombre}*! ⚙️\n\nEl trabajo de *${productosTexto}* para el paciente *${pacienteNombre}* ya ingresó a fase de producción.${extraFecha}\n\n*AFINIX Dental Lab*`;
         }
         setMensajeCustom(msg);
-    }, [tipoPlantilla, clinicaNombre, productosTexto, pacienteNombre, linkParaAprobacion, fechaEntregaTexto]);
+    }, [tipoPlantilla, clinicaNombre, productosTexto, pacienteNombre, linkParaAprobacion, finalLink, fechaEntregaTexto]);
 
     const handleCopy = async () => {
         try {

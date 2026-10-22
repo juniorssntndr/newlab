@@ -52,6 +52,7 @@ router.post('/', validateBody(createPedidoSchema), delegateToOrders('createOrder
 router.get('/:id/repeticion/cotizacion', requireOrderRepeatStaff, delegateToOrders('getOrderRepeatQuote'));
 router.post('/:id/repeticion', requireOrderRepeatStaff, uploadRepeatPhotos, delegateToOrders('createOrderRepeat'));
 router.get('/:id/repeticion/fotos/:photoId', requireOrderRepeatStaff, delegateToOrders('getOrderRepeatPhoto'));
+router.get('/:id/magic-link', delegateToOrders('getOrderMagicLink'));
 router.patch('/:id/estado', delegateToOrders('updateOrderStatus'));
 router.post('/:id/aprobacion', handleOptionalApprovalUpload, delegateToOrders('createOrderApprovalLink'));
 router.post('/:id/aprobacion/:aprobacionId/visor', delegateToOrders('createViewerSession'));
