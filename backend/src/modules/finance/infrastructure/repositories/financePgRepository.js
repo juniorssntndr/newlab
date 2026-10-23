@@ -1039,7 +1039,7 @@ export const makeFinancePgRepository = ({ pool }) => ({
     getActiveCashSession: async () => {
         // Look for open session
         const sessionRes = await pool.query(
-            `SELECT s.*, u.nombre as abierto_por_nombre
+            `SELECT s.*, s.fecha::text as fecha, u.nombre as abierto_por_nombre
              FROM nl_fin_sesiones_caja s
              LEFT JOIN nl_usuarios u ON s.abierto_por = u.id
              WHERE s.estado = 'abierta'
@@ -1051,16 +1051,15 @@ export const makeFinancePgRepository = ({ pool }) => ({
         const todayStr = getLimaDateString(new Date());
         let sessionDateStr = todayStr;
         if (session) {
-            if (session.abierto_at) {
+            if (session.fecha) {
+                sessionDateStr = typeof session.fecha === 'string'
+                    ? session.fecha.slice(0, 10)
+                    : (session.fecha instanceof Date ? getLimaDateString(session.fecha) : String(session.fecha).slice(0, 10));
+            } else if (session.abierto_at) {
                 sessionDateStr = getLimaDateString(new Date(session.abierto_at));
-            } else if (session.fecha) {
-                sessionDateStr = session.fecha instanceof Date ? getLimaDateString(session.fecha) : String(session.fecha).slice(0, 10);
             }
         }
-        const sessionFechaCol = session && session.fecha 
-            ? (session.fecha instanceof Date ? getLimaDateString(session.fecha) : String(session.fecha).slice(0, 10))
-            : todayStr;
-        const isCajaTrasnochada = Boolean(session && (sessionDateStr < todayStr || sessionFechaCol < todayStr));
+        const isCajaTrasnochada = Boolean(session && sessionDateStr && sessionDateStr < todayStr);
         const targetDate = sessionDateStr;
         const sessionId = session ? session.id : null;
 
@@ -1165,7 +1164,7 @@ export const makeFinancePgRepository = ({ pool }) => ({
             VALUES (
                 $1::date, $2, $3, 'abierta', $4, NOW()
             )
-            RETURNING *`,
+            RETURNING *, fecha::text as fecha`,
             [targetFecha, turno || 'general', montoApertura, actorUserId]
         );
 
@@ -1242,7 +1241,7 @@ export const makeFinancePgRepository = ({ pool }) => ({
                      cerrado_por = $9,
                      cerrado_at = NOW()
                  WHERE id = $10
-                 RETURNING *`,
+                 RETURNING *, fecha::text as fecha`,
                 [
                     montoEsperadoEf,
                     montoRealEfNumber,
@@ -1297,7 +1296,7 @@ export const makeFinancePgRepository = ({ pool }) => ({
     },
     listCashSessions: async ({ limit = 30, offset = 0 } = {}) => {
         const result = await pool.query(
-            `SELECT s.*,
+            `SELECT s.*, s.fecha::text as fecha,
                     u1.nombre as abierto_por_nombre,
                     u2.nombre as cerrado_por_nombre,
                     u3.nombre as reabierto_por_nombre

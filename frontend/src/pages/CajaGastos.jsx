@@ -967,14 +967,13 @@ const CajaGastos = () => {
     };
 
     const isCajaTrasnochada = useMemo(() => {
-        if (activeSessionData?.isCajaTrasnochada) return true;
         if (!activeSession) return false;
+        if (typeof activeSessionData?.isCajaTrasnochada === 'boolean') {
+            return activeSessionData.isCajaTrasnochada;
+        }
         const hoyStr = localDateInputValue();
-        const fechaStr = activeSession.abierto_at
-            ? localDateInputValue(new Date(activeSession.abierto_at))
-            : (activeSession.fecha ? String(activeSession.fecha).slice(0, 10) : hoyStr);
         const fechaCol = activeSession.fecha ? String(activeSession.fecha).slice(0, 10) : hoyStr;
-        return fechaStr < hoyStr || fechaCol < hoyStr;
+        return fechaCol < hoyStr;
     }, [activeSession, activeSessionData]);
 
     // Aviso / modal pop up de apertura al ingresar a cobros o gastos si la caja está cerrada
@@ -1852,7 +1851,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                 <div className="caja-title-area">
                     <h1>
                         <i className="bi bi-wallet2 text-primary" aria-hidden="true"></i>
-                        Caja y Facturación
+                        <span>Caja y<br className="caja-title-br" /> Facturación</span>
                     </h1>
                 </div>
                 
@@ -1872,14 +1871,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                     <i className="bi bi-lock-fill"></i> Cerrar Caja Anterior
                                 </button>
                             ) : activeSession ? (
-                                <>
-                                    <div className="caja-status-pill">
-                                        <span className="cash-status-dot pulse-green"></span>
-                                        <span>Caja Abierta &bull; {activeSession.turno === 'manana' ? 'Turno Mañana' : activeSession.turno === 'tarde' ? 'Turno Tarde' : 'Día Completo'}</span>
-                                    </div>
-                                    <button 
-                                        type="button" 
-                                        className="btn btn-secondary"
+                                <button type="button" className="btn btn-primary"
                                         style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
                                         onClick={() => {
                                             setArqueoRealEfectivo('');
@@ -1888,7 +1880,6 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                     >
                                         <i className="bi bi-calculator"></i> Arqueo y Cierre
                                     </button>
-                                </>
                             ) : (
                                 <button 
                                     type="button" 
@@ -1994,7 +1985,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
 
             {/* TAB 1: COBROS E INGRESOS */}
             {currentTab === 'registro' && (
-                <div className="register-ops-layout cobros-ops-layout">
+                <div className="register-ops-layout cobros-ops-layout cobros-income-layout">
                     {/* Panel Izquierdo: Formulario de Cobros / Ingresos */}
                     <section className="card expenses-create-card finance-entry-card">
                         <div className="expenses-panel-head finance-entry-head" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', marginBottom: 'var(--space-4)' }}>
@@ -2003,11 +1994,11 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                             </div>
                             <div style={{ minWidth: 0, flex: 1 }}>
                                 <h2 className="card-title" style={{ margin: 0 }}>Registrar Ingreso</h2>
-                                <p className="expenses-panel-sub" style={{ margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={selectedOrdersForPayment.length > 0 ? `${selectedOrdersForPayment.length} trabajo(s) en cuenta para cobro` : 'Cobro de trabajos clínicos y anticipos'}>
-                                    {selectedOrdersForPayment.length > 0
-                                        ? `${selectedOrdersForPayment.length} trabajo(s) en cuenta para cobro`
-                                        : 'Cobro de trabajos clínicos y anticipos'}
-                                </p>
+                                {selectedOrdersForPayment.length > 0 && (
+                                    <p className="expenses-panel-sub" style={{ margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {selectedOrdersForPayment.length} trabajo(s) en cuenta para cobro
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -2521,7 +2512,6 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
                                 <div>
                                     <h2 className="card-title">Pedidos Listos para Cobro</h2>
-                                    <p className="expenses-panel-sub">Trabajos terminados o enviados con saldo pendiente de pago</p>
                                 </div>
 
                                 {/* Toggle: Prioritarios (Terminados/Enviados) vs Todos */}
@@ -2721,9 +2711,6 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                             </div>
                             <div style={{ minWidth: 0, flex: 1 }}>
                                 <h2 className="card-title" style={{ margin: 0 }}>Registrar Gasto</h2>
-                                <p className="expenses-panel-sub" style={{ margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title="Insumos, servicios y retiros de caja">
-                                    Insumos, servicios y retiros de caja
-                                </p>
                             </div>
                         </div>
 

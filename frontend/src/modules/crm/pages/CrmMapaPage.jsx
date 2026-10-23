@@ -13,7 +13,7 @@ import { useCrmEstablecimientosQuery, useCrmMutations } from '../queries/useCrmQ
 import '../styles/crm.css';
 
 const AREQUIPA_DISTRITOS = [
-    { value: '', label: 'Todos los distritos' },
+    { value: '', label: 'Distrito: Todos' },
     { value: 'Cercado', label: 'Cercado (Centro)' },
     { value: 'Bustamante', label: 'J.L. Bustamante y Rivero' },
     { value: 'Yanahuara', label: 'Yanahuara' },
@@ -29,7 +29,7 @@ const AREQUIPA_DISTRITOS = [
 ];
 
 const ETAPA_OPTIONS = [
-    { value: '', label: 'Todas las etapas' },
+    { value: '', label: 'Etapa: Todas' },
     { value: 'convertido', label: 'Solo Clientes Activos' },
     { value: 'nuevo', label: 'Nuevos Prospectos' },
     { value: 'contactado', label: 'Contactados' },
@@ -38,7 +38,7 @@ const ETAPA_OPTIONS = [
 ];
 
 const SALUD_OPTIONS = [
-    { value: '', label: 'Cualquier salud comercial' },
+    { value: '', label: 'Salud: Todas' },
     { value: 'verde', label: 'Verde (0–29d)' },
     { value: 'amarillo', label: 'Amarillo (30–59d)' },
     { value: 'rojo', label: 'Rojo (60+d / Reclamo)' },
@@ -114,9 +114,10 @@ export const CrmMapaPage = () => {
 
     // Filter by district if selected
     let establishments = rawEstablishments;
-    if (filterDistrito) {
+    const distritoStr = typeof filterDistrito === 'string' ? filterDistrito : (filterDistrito?.target?.value || '');
+    if (distritoStr) {
         establishments = establishments.filter((e) =>
-            (e.direccion || '').toLowerCase().includes(filterDistrito.toLowerCase())
+            (e.direccion || '').toLowerCase().includes(distritoStr.toLowerCase())
         );
     }
 
@@ -189,30 +190,12 @@ export const CrmMapaPage = () => {
             <CrmNavigation
                 title="Mapa Territorial Comercial"
                 subtitle="Georreferenciación con íconos dentales, ruteo diario, proximidad y zonificación Arequipa"
-                actions={
-                    <div className="crm-mapa-header-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div className="crm-mapa-counter" style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary, #64748b)', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', padding: '0.35rem 0.75rem', borderRadius: '6px', whiteSpace: 'nowrap' }}>
-                            Consultorios en mapa: <strong style={{ color: 'var(--color-text-primary, #0f172a)' }}>{establishments.filter((e) => e.latitud && e.longitud).length}</strong>
-                        </div>
-                        <button
-                            type="button"
-                            className="btn btn-primary btn-sm crm-mapa-btn-prospecto"
-                            onClick={() => {
-                                setNewProspectCoords(null);
-                                setIsNewProspectOpen(true);
-                            }}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, whiteSpace: 'nowrap' }}
-                        >
-                            <i className="bi bi-plus-circle"></i> Nuevo Prospecto
-                        </button>
-                    </div>
-                }
             />
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {/* Map Filter Controls */}
-                <div className="crm-filter-bar crm-mapa-filter-bar" style={{ marginBottom: '0.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div className="crm-search-input-wrap" style={{ minWidth: '220px', flex: 1 }}>
+                {/* Map Filter Controls - Single Compact Toolbar */}
+                <div className="crm-filter-bar crm-mapa-filter-bar">
+                    <div className="crm-search-input-wrap">
                         <i className="bi bi-search"></i>
                         <input
                             type="text"
@@ -222,36 +205,63 @@ export const CrmMapaPage = () => {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <div className="crm-mapa-filter-grid">
-                        <CustomSelect
-                            value={filterDistrito}
-                            onChange={(val) => setFilterDistrito(val)}
-                            options={AREQUIPA_DISTRITOS}
-                            placeholder="Todos los distritos"
-                        />
 
-                        <CustomSelect
-                            value={filterEtapa}
-                            onChange={(val) => setFilterEtapa(val)}
-                            options={ETAPA_OPTIONS}
-                            placeholder="Todas las etapas"
-                        />
+                    <div className="crm-mapa-filters-row">
+                        <div className="crm-mapa-counter-chip mobile-hide" title="Total de consultorios geolocalizados">
+                            <i className="bi bi-geo-alt-fill text-primary"></i>
+                            <span><strong>{establishments.filter((e) => e.latitud && e.longitud).length}</strong> en mapa</span>
+                        </div>
 
-                        <CustomSelect
-                            value={filterSalud}
-                            onChange={(val) => setFilterSalud(val)}
-                            options={SALUD_OPTIONS}
-                            placeholder="Cualquier salud comercial"
-                        />
+                        <div className="crm-mapa-select-wrap crm-mapa-select-distrito mobile-hide">
+                            <CustomSelect
+                                value={filterDistrito}
+                                onChange={(e, val) => setFilterDistrito(typeof val === 'string' ? val : (e?.target?.value || ''))}
+                                options={AREQUIPA_DISTRITOS}
+                                placeholder="Distrito"
+                                size="sm"
+                            />
+                        </div>
+
+                        <div className="crm-mapa-select-wrap">
+                            <CustomSelect
+                                value={filterEtapa}
+                                onChange={(e, val) => setFilterEtapa(typeof val === 'string' ? val : (e?.target?.value || ''))}
+                                options={ETAPA_OPTIONS}
+                                placeholder="Etapa"
+                                size="sm"
+                            />
+                        </div>
+
+                        <div className="crm-mapa-select-wrap">
+                            <CustomSelect
+                                value={filterSalud}
+                                onChange={(e, val) => setFilterSalud(typeof val === 'string' ? val : (e?.target?.value || ''))}
+                                options={SALUD_OPTIONS}
+                                placeholder="Salud"
+                                size="sm"
+                            />
+                        </div>
 
                         <button
                             type="button"
                             className={`btn btn-sm ${cleanStyle ? 'btn-primary' : 'btn-secondary'} crm-mapa-style-btn`}
                             onClick={() => setCleanStyle((v) => !v)}
                             title="Activar/Desactivar mapa limpio (oculta tiendas y ruido ajeno)"
-                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
                         >
-                            <i className="bi bi-layers"></i> {cleanStyle ? 'Mapa Limpio' : 'Mapa Estándar'}
+                            <i className="bi bi-layers"></i>
+                            <span>{cleanStyle ? 'Limpio' : 'Estándar'}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm crm-mapa-btn-prospecto mobile-hide"
+                            onClick={() => {
+                                setNewProspectCoords(null);
+                                setIsNewProspectOpen(true);
+                            }}
+                        >
+                            <i className="bi bi-plus-circle"></i>
+                            <span>Nuevo Prospecto</span>
                         </button>
                     </div>
                 </div>
@@ -378,9 +388,6 @@ export const CrmMapaPage = () => {
                         </div>
                     ) : (
                         <>
-                            <div className="crm-map-mobile-hint">
-                                <i className="bi bi-geo-alt-fill"></i> Toca un consultorio en el mapa
-                            </div>
                             <div className="crm-map-sidebar crm-map-sidebar--empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', textAlign: 'center', color: '#64748b' }}>
                                 <div>
                                     <i className="bi bi-geo-alt" style={{ fontSize: '2rem', opacity: 0.5 }}></i>

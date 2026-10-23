@@ -31,10 +31,11 @@ export function newCampaignForm() {
 export function campaignContentError(form) {
     if (!form.titulo || !form.titulo.trim()) return 'Ingresa el título de la campaña.';
     if (!form.fecha_inicio || !form.fecha_fin || form.fecha_fin < form.fecha_inicio) return 'Revisa las fechas de vigencia.';
-    if (form.beneficio) {
+    if (form.beneficio && !form.cupon_id) {
         const b = form.beneficio;
         if (!(Number(b.valor) > 0) || (b.tipo === 'porcentaje' && Number(b.valor) > 100)) return 'Revisa el valor del descuento.';
-        if (!Number.isInteger(Number(b.limite_usos_por_clinica)) || Number(b.limite_usos_por_clinica) < 1 || Number(b.limite_usos_por_clinica) > 100) return 'Indica entre 1 y 100 usos por clínica.';
+        const limit = b.limite_usos_por_clinica ?? b.limite_usos_por_doctor ?? 1;
+        if (!Number.isInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100) return 'Indica entre 1 y 100 usos por clínica.';
     }
     return '';
 }

@@ -33,6 +33,7 @@ const Productos = () => {
         precio_base: '',
         material_id: '',
         tiempo_estimado_dias: 5,
+        permite_express: false,
         visible: true,
         admite_puente: false,
         modo_odontograma: 'unitario',
@@ -147,6 +148,7 @@ const Productos = () => {
             precio_base: '',
             material_id: '',
             tiempo_estimado_dias: 5,
+            permite_express: false,
             visible: true,
             admite_puente: false,
             modo_odontograma: 'unitario',
@@ -170,6 +172,7 @@ const Productos = () => {
             precio_base: p.precio_base,
             material_id: p.material_id ? String(p.material_id) : '',
             tiempo_estimado_dias: p.tiempo_estimado_dias || 5,
+            permite_express: Boolean(p.permite_express),
             visible: p.visible,
             admite_puente: Boolean(p.admite_puente),
             modo_odontograma: p.modo_odontograma || (p.admite_puente ? 'puente' : 'unitario'),
@@ -358,6 +361,7 @@ const Productos = () => {
         formData.append('precio_base', String(form.precio_base || '0').trim());
         formData.append('material_id', form.material_id);
         formData.append('tiempo_estimado_dias', form.tiempo_estimado_dias);
+        formData.append('permite_express', form.permite_express);
         formData.append('visible', form.visible);
         formData.append('admite_puente', form.modo_odontograma === 'puente');
         formData.append('modo_odontograma', form.modo_odontograma || 'unitario');
@@ -486,7 +490,6 @@ const Productos = () => {
                     <h1>
                         <i className="bi bi-box-seam text-primary" aria-hidden="true"></i> Catálogo de Productos
                     </h1>
-                    <p>Servicios y trabajos del laboratorio</p>
                 </div>
                 <div className="productos-header-actions">
                     {canManageCategories && (
@@ -898,6 +901,26 @@ const Productos = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>
+                        <div className="form-option-row">
+                            <div className="form-option-content">
+                                <div className="form-option-icon" style={{ background: 'rgba(232, 145, 58, 0.15)', color: '#d97706' }}>
+                                    <i className="bi bi-lightning-charge-fill"></i>
+                                </div>
+                                <div>
+                                    <h4 className="form-option-title">Entrega Express (Mismo Día)</h4>
+                                    <p className="form-option-desc">Permite solicitar fabricación prioritaria con entrega el mismo día (+25%)</p>
+                                </div>
+                            </div>
+                            <label className="switch" style={{ margin: 0 }}>
+                                <input
+                                    type="checkbox"
+                                    checked={!!form.permite_express}
+                                    onChange={e => setForm({ ...form, permite_express: e.target.checked })}
+                                />
+                                <span className="slider round"></span>
+                            </label>
+                        </div>
+
                         <div className="form-option-row">
                             <div className="form-option-content">
                                 <div className="form-option-icon">

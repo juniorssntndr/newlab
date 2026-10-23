@@ -21,10 +21,45 @@ const Cuenta = () => {
     const [message, setMessage] = useState(null);
     const [passwordForm, setPasswordForm] = useState({ actual: '', nueva: '', confirmar: '' });
     const [savingPassword, setSavingPassword] = useState(false);
+    const [showActual, setShowActual] = useState(false);
+    const [showNueva, setShowNueva] = useState(false);
+    const [showConfirmar, setShowConfirmar] = useState(false);
+
     const isClient = isClientRole(user);
     const hasClinic = user?.clinica_id != null && String(user.clinica_id) !== '';
     const canEditClinicAddress = isClient && hasClinic;
     const showClinicName = Boolean(user?.clinica_nombre) || canEditClinicAddress;
+
+    const isProfileDirty = Boolean(
+        user && (
+            (form.nombre || '') !== (user.nombre || '') ||
+            (form.email || '') !== (user.email || '') ||
+            (form.telefono || '') !== (user.telefono || '') ||
+            (canEditClinicAddress && (form.clinica_direccion || '') !== (user.clinica_direccion || ''))
+        )
+    );
+
+    const initials = (user?.nombre || 'U')
+        .split(' ')
+        .filter(Boolean)
+        .map(n => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
+    const passwordValidation = (() => {
+        if (!passwordForm.nueva && !passwordForm.confirmar) return null;
+        if (passwordForm.nueva && passwordForm.nueva.trim().length > 0 && passwordForm.nueva.trim().length < 6) {
+            return { valid: false, message: 'La nueva contraseña debe tener mínimo 6 caracteres' };
+        }
+        if (passwordForm.confirmar && passwordForm.nueva !== passwordForm.confirmar) {
+            return { valid: false, message: 'Las nuevas contraseñas no coinciden' };
+        }
+        if (passwordForm.nueva && passwordForm.confirmar && passwordForm.nueva === passwordForm.confirmar && passwordForm.nueva.length >= 6) {
+            return { valid: true, message: 'Las contraseñas coinciden correctamente' };
+        }
+        return null;
+    })();
 
     // Re-sincronizar perfil desde /me al entrar (recupera clinica_id / dirección si el estado local quedó incompleto).
     useEffect(() => {
@@ -150,8 +185,16 @@ const Cuenta = () => {
 
             <div className="cuenta-grid">
                 <div className="card">
-                    <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 className="card-title">Perfil</h3>
+                    {/* Header lado a lado en desktop y mobile (nunca apilado ni centrado) */}
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 'var(--space-4)',
+                        gap: 'var(--space-2)'
+                    }}>
+                        <h3 className="card-title" style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Perfil</h3>
                         {user?.tipo && (
                             <span
                                 className={`badge-role badge-role-${user.tipo}`}
@@ -162,7 +205,8 @@ const Cuenta = () => {
                                     fontWeight: 600,
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '5px'
+                                    gap: '5px',
+                                    flexShrink: 0
                                 }}
                             >
                                 <i className={
@@ -182,19 +226,60 @@ const Cuenta = () => {
                             </span>
                         )}
                     </div>
+
+                    {/* Resumen visual de identidad con Avatar */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-3)',
+                        padding: 'var(--space-3)',
+                        borderRadius: 'var(--radius-md, 8px)',
+                        background: 'var(--color-bg-secondary, #f8fafc)',
+                        border: '1px solid var(--color-border)',
+                        marginBottom: 'var(--space-4)'
+                    }}>
+                        <div style={{
+                            width: '46px',
+                            height: '46px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, var(--color-primary, #0284c7), var(--color-accent, #38bdf8))',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '1.1rem',
+                            flexShrink: 0,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}>
+                            {initials}
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {user?.nombre || 'Usuario'}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {user?.email || 'Sin correo registrado'}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="form-group">
                         <label className="form-label" htmlFor="cuenta-nombre">Nombre</label>
                         <input id="cuenta-nombre" className="form-input" value={form.nombre}
+                            placeholder="Nombre y apellido"
                             onChange={e => setForm({ ...form, nombre: e.target.value })} />
                     </div>
                     <div className="form-group">
                         <label className="form-label" htmlFor="cuenta-email">Email</label>
                         <input id="cuenta-email" className="form-input" type="email" value={form.email}
+                            placeholder="correo@ejemplo.com"
                             onChange={e => setForm({ ...form, email: e.target.value })} />
                     </div>
                     <div className="form-group">
                         <label className="form-label" htmlFor="cuenta-telefono">Teléfono</label>
                         <input id="cuenta-telefono" className="form-input" value={form.telefono}
+                            placeholder="Ej. 987654321"
                             onChange={e => setForm({ ...form, telefono: e.target.value })} />
                     </div>
                     {showClinicName && (
@@ -221,29 +306,164 @@ const Cuenta = () => {
                             </span>
                         </div>
                     )}
-                    <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
-                        {saving ? 'Guardando...' : 'Guardar cambios'}
+                    <button
+                        className="btn btn-primary"
+                        onClick={saveProfile}
+                        disabled={saving || !isProfileDirty}
+                        style={{
+                            opacity: (!isProfileDirty && !saving) ? 0.65 : 1,
+                            transition: 'opacity 0.2s ease'
+                        }}
+                    >
+                        {saving ? 'Guardando...' : isProfileDirty ? 'Guardar cambios' : 'Sin cambios pendientes'}
                     </button>
                 </div>
 
                 <div className="card">
-                    <div className="card-header"><h3 className="card-title">Seguridad</h3></div>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 'var(--space-4)'
+                    }}>
+                        <h3 className="card-title" style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Seguridad</h3>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <i className="bi bi-shield-lock"></i> Clave segura
+                        </span>
+                    </div>
+
                     <div className="form-group">
                         <label className="form-label" htmlFor="cuenta-pwd-actual">Contraseña actual</label>
-                        <input id="cuenta-pwd-actual" className="form-input" type="password" autoComplete="current-password" value={passwordForm.actual}
-                            onChange={e => setPasswordForm({ ...passwordForm, actual: e.target.value })} />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                id="cuenta-pwd-actual"
+                                className="form-input"
+                                type={showActual ? "text" : "password"}
+                                autoComplete="current-password"
+                                value={passwordForm.actual}
+                                onChange={e => setPasswordForm({ ...passwordForm, actual: e.target.value })}
+                                style={{ paddingRight: '2.5rem' }}
+                                placeholder="Tu contraseña actual"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowActual(!showActual)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '0.75rem',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-text-secondary)',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    fontSize: '1rem'
+                                }}
+                                aria-label={showActual ? "Ocultar contraseña" : "Ver contraseña"}
+                            >
+                                <i className={`bi ${showActual ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
+                            </button>
+                        </div>
                     </div>
+
                     <div className="form-group">
                         <label className="form-label" htmlFor="cuenta-pwd-nueva">Nueva contraseña (mínimo 6 caracteres)</label>
-                        <input id="cuenta-pwd-nueva" className="form-input" type="password" autoComplete="new-password" value={passwordForm.nueva}
-                            onChange={e => setPasswordForm({ ...passwordForm, nueva: e.target.value })} />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                id="cuenta-pwd-nueva"
+                                className="form-input"
+                                type={showNueva ? "text" : "password"}
+                                autoComplete="new-password"
+                                value={passwordForm.nueva}
+                                onChange={e => setPasswordForm({ ...passwordForm, nueva: e.target.value })}
+                                style={{ paddingRight: '2.5rem' }}
+                                placeholder="Mínimo 6 caracteres"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowNueva(!showNueva)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '0.75rem',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-text-secondary)',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    fontSize: '1rem'
+                                }}
+                                aria-label={showNueva ? "Ocultar contraseña" : "Ver contraseña"}
+                            >
+                                <i className={`bi ${showNueva ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
+                            </button>
+                        </div>
                     </div>
+
                     <div className="form-group">
                         <label className="form-label" htmlFor="cuenta-pwd-confirmar">Confirmar nueva contraseña</label>
-                        <input id="cuenta-pwd-confirmar" className="form-input" type="password" autoComplete="new-password" value={passwordForm.confirmar}
-                            onChange={e => setPasswordForm({ ...passwordForm, confirmar: e.target.value })} />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                id="cuenta-pwd-confirmar"
+                                className="form-input"
+                                type={showConfirmar ? "text" : "password"}
+                                autoComplete="new-password"
+                                value={passwordForm.confirmar}
+                                onChange={e => setPasswordForm({ ...passwordForm, confirmar: e.target.value })}
+                                style={{ paddingRight: '2.5rem' }}
+                                placeholder="Repite la nueva contraseña"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmar(!showConfirmar)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '0.75rem',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-text-secondary)',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    fontSize: '1rem'
+                                }}
+                                aria-label={showConfirmar ? "Ocultar contraseña" : "Ver contraseña"}
+                            >
+                                <i className={`bi ${showConfirmar ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
+                            </button>
+                        </div>
                     </div>
-                    <button className="btn btn-accent" onClick={savePassword} disabled={savingPassword}>
+
+                    {/* Feedback en tiempo real sobre coincidencia y fortaleza */}
+                    {passwordValidation && (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '0.8125rem',
+                            marginBottom: 'var(--space-3)',
+                            color: passwordValidation.valid ? '#059669' : '#dc2626'
+                        }}>
+                            <i className={`bi ${passwordValidation.valid ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'}`}></i>
+                            <span>{passwordValidation.message}</span>
+                        </div>
+                    )}
+
+                    <button
+                        className="btn btn-primary"
+                        onClick={savePassword}
+                        disabled={savingPassword || (passwordValidation && !passwordValidation.valid)}
+                    >
                         {savingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
                     </button>
                 </div>

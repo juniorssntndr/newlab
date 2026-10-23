@@ -53,6 +53,30 @@ const PRESET_RUBROS_FILTER = [
     'Servicios'
 ];
 
+const STOCK_FILTER_OPTIONS = [
+    { value: '', label: 'Cualquier stock', icon: 'bi-boxes' },
+    { value: 'low', label: 'Bajo stock', icon: 'bi-exclamation-triangle' },
+    { value: 'ok', label: 'Stock normal', icon: 'bi-check-circle' },
+];
+
+const MATERIAL_VIEW_OPTIONS = [
+    { value: 'activos', label: 'Activos', icon: 'bi-check2' },
+    { value: 'inactivos', label: 'Inactivos', icon: 'bi-slash-circle' },
+    { value: 'todos', label: 'Todos', icon: 'bi-grid' },
+];
+
+const PROVEEDOR_VIEW_OPTIONS = [
+    { value: 'activos', label: 'Activos', icon: 'bi-check2' },
+    { value: 'inactivos', label: 'Inactivos', icon: 'bi-slash-circle' },
+    { value: 'todos', label: 'Todos', icon: 'bi-grid' },
+];
+
+const TIPO_MOV_OPTIONS = [
+    { value: 'todos', label: 'Todos los movimientos', icon: 'bi-grid' },
+    { value: 'ingresos', label: 'Ingresos (Compras)', icon: 'bi-box-arrow-in-down' },
+    { value: 'egresos', label: 'Salidas (Laboratorio)', icon: 'bi-box-arrow-up-right' },
+];
+
 const Almacen = () => {
     const { getHeaders } = useAuth();
     const location = useLocation();
@@ -508,47 +532,6 @@ const Almacen = () => {
                     </h1>
                     <p>Gestión de materiales de laboratorio, existencias y catálogo de proveedores</p>
                 </div>
-                {activeTab === 'inventario' ? (
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => openMovimiento(null, 'ingreso')}
-                            title="Registrar compra o ingreso de material a almacén"
-                        >
-                            <i className="bi bi-box-arrow-in-down text-success"></i> + Ingreso / Compra
-                        </button>
-                        <button className="btn btn-primary" onClick={openNew}>
-                            <i className="bi bi-plus-lg"></i> Nuevo Material
-                        </button>
-                    </div>
-                ) : activeTab === 'movimientos' ? (
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => openMovimiento(null, 'ingreso')}
-                            title="Registrar compra o ingreso a almacén"
-                        >
-                            <i className="bi bi-box-arrow-in-down"></i> + Ingreso / Compra
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => openMovimiento(null, 'apertura_taller')}
-                            title="Registrar movimiento o pase a laboratorio"
-                        >
-                            <i className="bi bi-arrow-left-right text-primary"></i> Movimiento Laboratorio
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => {
-                            setEditingProveedor(null);
-                            setProveedorModalOpen(true);
-                        }}
-                    >
-                        <i className="bi bi-plus-lg"></i> Nuevo Proveedor
-                    </button>
-                )}
             </div>
 
             {/* Selector de Pestañas / Tabs */}
@@ -624,6 +607,8 @@ const Almacen = () => {
                 </button>
             </div>
 
+
+
             {/* TAB 1: INVENTARIO */}
             {activeTab === 'inventario' && (
                 <>
@@ -688,54 +673,42 @@ const Almacen = () => {
                                         onChange={e => setSearch(e.target.value)}
                                     />
                                 </div>
-                                <div className="inventory-filters" role="group" aria-label="Nivel de stock">
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${!filtroEstado ? ' is-active' : ''}`}
-                                        onClick={() => setFiltroEstado('')}
-                                    >
-                                        Cualquier stock
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${filtroEstado === 'low' ? ' is-active' : ''}`}
-                                        onClick={() => setFiltroEstado(filtroEstado === 'low' ? '' : 'low')}
-                                    >
-                                        Bajo stock
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${filtroEstado === 'ok' ? ' is-active' : ''}`}
-                                        onClick={() => setFiltroEstado(filtroEstado === 'ok' ? '' : 'ok')}
-                                    >
-                                        Normal
-                                    </button>
+                                <div style={{ minWidth: '160px' }}>
+                                    <CustomSelect
+                                        value={filtroEstado}
+                                        onChange={(_, val) => setFiltroEstado(val || '')}
+                                        options={STOCK_FILTER_OPTIONS}
+                                        placeholder="Nivel de stock"
+                                        size="sm"
+                                        aria-label="Filtrar por nivel de stock"
+                                    />
+                                </div>
+                                <div style={{ minWidth: '130px' }}>
+                                    <CustomSelect
+                                        value={materialView}
+                                        onChange={(_, val) => setMaterialView(val || 'activos')}
+                                        options={MATERIAL_VIEW_OPTIONS}
+                                        placeholder="Estado"
+                                        size="sm"
+                                        aria-label="Filtrar por estado del material"
+                                    />
                                 </div>
                             </div>
-                            <div className="segmented-control inventory-status-switch" role="group" aria-label="Estado del material">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', marginLeft: 'auto' }}>
                                 <button
                                     type="button"
-                                    className={`segmented-control__btn${materialView === 'activos' ? ' is-active' : ''}`}
-                                    aria-pressed={materialView === 'activos'}
-                                    onClick={() => setMaterialView('activos')}
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => openMovimiento(null, 'ingreso')}
+                                    title="Registrar compra o ingreso de material a almacén"
                                 >
-                                    Activos
+                                    <i className="bi bi-box-arrow-in-down text-success"></i> + Ingreso / Compra
                                 </button>
                                 <button
                                     type="button"
-                                    className={`segmented-control__btn${materialView === 'inactivos' ? ' is-active' : ''}`}
-                                    aria-pressed={materialView === 'inactivos'}
-                                    onClick={() => setMaterialView('inactivos')}
+                                    className="btn btn-primary btn-sm"
+                                    onClick={openNew}
                                 >
-                                    Inactivos
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`segmented-control__btn${materialView === 'todos' ? ' is-active' : ''}`}
-                                    aria-pressed={materialView === 'todos'}
-                                    onClick={() => setMaterialView('todos')}
-                                >
-                                    Todos
+                                    <i className="bi bi-plus-lg"></i> Nuevo Material
                                 </button>
                             </div>
                         </div>
@@ -1029,7 +1002,7 @@ const Almacen = () => {
                                     <i className="bi bi-search"></i>
                                     <input
                                         className="form-input"
-                                        placeholder="Buscar por material, comprobante, proveedor..."
+                                        placeholder="Buscar material o comprobante..."
                                         value={searchMovimiento}
                                         onChange={e => setSearchMovimiento(e.target.value)}
                                     />
@@ -1039,40 +1012,34 @@ const Almacen = () => {
                                         </button>
                                     )}
                                 </div>
-
-                                <div className="inventory-filters" role="group" aria-label="Filtro de tipo de movimiento">
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${filtroTipoMov === 'todos' ? ' is-active' : ''}`}
-                                        onClick={() => setFiltroTipoMov('todos')}
-                                    >
-                                        Todos
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${filtroTipoMov === 'ingresos' ? ' is-active' : ''}`}
-                                        onClick={() => setFiltroTipoMov('ingresos')}
-                                    >
-                                        <i className="bi bi-box-arrow-in-down"></i> Ingresos (Compras)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${filtroTipoMov === 'egresos' ? ' is-active' : ''}`}
-                                        onClick={() => setFiltroTipoMov('egresos')}
-                                    >
-                                        <i className="bi bi-box-arrow-up-right"></i> Salidas (Laboratorio)
-                                    </button>
+                                <div style={{ minWidth: '190px' }}>
+                                    <CustomSelect
+                                        value={filtroTipoMov}
+                                        onChange={(_, val) => setFiltroTipoMov(val || 'todos')}
+                                        options={TIPO_MOV_OPTIONS}
+                                        placeholder="Tipo de movimiento"
+                                        size="sm"
+                                        aria-label="Filtrar por tipo de movimiento"
+                                    />
                                 </div>
                             </div>
 
-                            <div className="inventory-toolbar-actions">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', marginLeft: 'auto' }}>
                                 <button
-                                    className="btn btn-primary"
-                                    onClick={() => openMovimiento(null, 'ingreso')}
-                                    style={{ gap: '0.45rem' }}
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => openMovimiento(null, 'apertura_taller')}
+                                    title="Registrar movimiento o pase a laboratorio"
                                 >
-                                    <i className="bi bi-arrow-left-right"></i>
-                                    <span>Registrar Movimiento</span>
+                                    <i className="bi bi-arrow-left-right text-primary"></i> Movimiento Laboratorio
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => openMovimiento(null, 'ingreso')}
+                                    title="Registrar compra o ingreso a almacén"
+                                >
+                                    <i className="bi bi-box-arrow-in-down"></i> + Ingreso / Compra
                                 </button>
                             </div>
                         </div>
@@ -1443,31 +1410,27 @@ const Almacen = () => {
                                         </div>
                                     )}
                                 </div>
+                                <div style={{ minWidth: '130px' }}>
+                                    <CustomSelect
+                                        value={proveedorView}
+                                        onChange={(_, val) => setProveedorView(val || 'activos')}
+                                        options={PROVEEDOR_VIEW_OPTIONS}
+                                        placeholder="Estado"
+                                        size="sm"
+                                        aria-label="Filtrar por estado del proveedor"
+                                    />
+                                </div>
                             </div>
-                            <div className="segmented-control inventory-status-switch" role="group" aria-label="Estado del proveedor">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', marginLeft: 'auto' }}>
                                 <button
                                     type="button"
-                                    className={`segmented-control__btn${proveedorView === 'activos' ? ' is-active' : ''}`}
-                                    aria-pressed={proveedorView === 'activos'}
-                                    onClick={() => setProveedorView('activos')}
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => {
+                                        setEditingProveedor(null);
+                                        setProveedorModalOpen(true);
+                                    }}
                                 >
-                                    Activos
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`segmented-control__btn${proveedorView === 'inactivos' ? ' is-active' : ''}`}
-                                    aria-pressed={proveedorView === 'inactivos'}
-                                    onClick={() => setProveedorView('inactivos')}
-                                >
-                                    Inactivos
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`segmented-control__btn${proveedorView === 'todos' ? ' is-active' : ''}`}
-                                    aria-pressed={proveedorView === 'todos'}
-                                    onClick={() => setProveedorView('todos')}
-                                >
-                                    Todos
+                                    <i className="bi bi-plus-lg"></i> Nuevo Proveedor
                                 </button>
                             </div>
                         </div>

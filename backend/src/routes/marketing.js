@@ -415,7 +415,10 @@ router.post('/ruleta/premios', forbidRole('cliente'), async (req, res) => {
         imagen_url,
         resultado_titulo,
         resultado_descripcion,
-        orden
+        orden,
+        subtitulo_badge,
+        modo_visual,
+        grafico_tipo
     } = req.body;
 
     if (!titulo || !tipo_premio) {
@@ -427,8 +430,13 @@ router.post('/ruleta/premios', forbidRole('cliente'), async (req, res) => {
             INSERT INTO nl_ruleta_premios (
                 titulo, tipo_premio, valor, descripcion, color_hex, texto_color,
                 probabilidad_peso, stock_disponible, stock_entregado, activo,
-                imagen_url, resultado_titulo, resultado_descripcion, orden
-            ) VALUES ($1, $2, $3, $4, COALESCE($5, '#0284c7'), COALESCE($6, '#ffffff'), COALESCE($7, 10), $8, 0, TRUE, $9, $10, $11, COALESCE($12, 0))
+                imagen_url, resultado_titulo, resultado_descripcion, orden,
+                subtitulo_badge, modo_visual, grafico_tipo
+            ) VALUES (
+                $1, $2, $3, $4, COALESCE($5, '#0284c7'), COALESCE($6, '#ffffff'),
+                COALESCE($7, 10), $8, 0, TRUE, $9, $10, $11, COALESCE($12, 0),
+                $13, COALESCE($14, 'texto_icono'), COALESCE($15, 'auto')
+            )
             RETURNING *
         `, [
             String(titulo).trim(),
@@ -444,7 +452,10 @@ router.post('/ruleta/premios', forbidRole('cliente'), async (req, res) => {
             imagen_url || null,
             resultado_titulo || null,
             resultado_descripcion || null,
-            orden !== undefined ? Number(orden) : 0
+            orden !== undefined ? Number(orden) : 0,
+            subtitulo_badge !== undefined && subtitulo_badge !== '' ? String(subtitulo_badge).trim() : null,
+            modo_visual || 'texto_icono',
+            grafico_tipo || 'auto'
         ]);
 
         res.status(201).json({ ok: true, data: insertRes.rows[0] });
@@ -470,7 +481,10 @@ router.put('/ruleta/premios/:id', forbidRole('cliente'), async (req, res) => {
         imagen_url,
         resultado_titulo,
         resultado_descripcion,
-        orden
+        orden,
+        subtitulo_badge,
+        modo_visual,
+        grafico_tipo
     } = req.body;
 
     try {
@@ -490,8 +504,11 @@ router.put('/ruleta/premios/:id', forbidRole('cliente'), async (req, res) => {
                 resultado_titulo = $11,
                 resultado_descripcion = $12,
                 orden = COALESCE($13, orden),
+                subtitulo_badge = $14,
+                modo_visual = COALESCE($15, modo_visual),
+                grafico_tipo = COALESCE($16, grafico_tipo),
                 updated_at = NOW()
-            WHERE id = $14
+            WHERE id = $17
             RETURNING *
         `, [
             titulo,
@@ -509,6 +526,9 @@ router.put('/ruleta/premios/:id', forbidRole('cliente'), async (req, res) => {
             resultado_titulo !== undefined ? resultado_titulo : null,
             resultado_descripcion !== undefined ? resultado_descripcion : null,
             orden !== undefined ? Number(orden) : null,
+            subtitulo_badge !== undefined ? (subtitulo_badge ? String(subtitulo_badge).trim() : null) : null,
+            modo_visual,
+            grafico_tipo,
             id
         ]);
 

@@ -134,6 +134,14 @@ const NuevoPedido = () => {
         return fromCatalog || selectedItem?.product || selectedItem || null;
     }, [productos, selectedItem]);
 
+    const allowsExpress = Boolean(productForUi?.permite_express);
+
+    useEffect(() => {
+        if (!allowsExpress && isExpressOrder) {
+            setIsExpressOrder(false);
+        }
+    }, [allowsExpress, isExpressOrder]);
+
     const standardDays = daysForProduct(productForUi || items[0], false);
     const urgentDays = daysForProduct(productForUi || items[0], true);
     const displayDays = isExpressOrder ? urgentDays : standardDays;
@@ -748,43 +756,50 @@ const NuevoPedido = () => {
                             </div>
 
                             <div className="order-wizard-paciente-footer">
-                                <div className="order-wizard-urgency-block">
-                                    <button
-                                        type="button"
-                                        className={`order-wizard-express${isExpressOrder ? ' is-on' : ''}`}
-                                        onClick={() => setIsExpressOrder((prev) => !prev)}
-                                        aria-pressed={isExpressOrder}
-                                        aria-label={
-                                            isExpressOrder
-                                                ? `Pedido Express activo, +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
-                                                : `Activar Pedido Express, +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
-                                        }
-                                    >
-                                        <span className="order-wizard-express-copy">
-                                            <strong>
-                                                <i className="bi bi-lightning-charge-fill" aria-hidden="true"></i>
-                                                Express
-                                            </strong>
-                                            <span className="order-wizard-express-badge">
-                                                +{Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%
-                                            </span>
-                                            {productPrice > 0 ? (
-                                                <span className="order-wizard-express-price">
-                                                    {isExpressOrder
-                                                        ? `S/. ${applyExpressSurcharge(productPrice, true).toFixed(2)}`
-                                                        : `S/. ${productPrice.toFixed(2)} → ${applyExpressSurcharge(productPrice, true).toFixed(2)}`}
-                                                </span>
-                                            ) : null}
-                                        </span>
-                                        <span
-                                            className="order-wizard-express-switch"
-                                            role="presentation"
-                                            aria-hidden="true"
+                                {allowsExpress ? (
+                                    <div className="order-wizard-urgency-block">
+                                        <button
+                                            type="button"
+                                            className={`order-wizard-express${isExpressOrder ? ' is-on' : ''}`}
+                                            onClick={() => setIsExpressOrder((prev) => !prev)}
+                                            aria-pressed={isExpressOrder}
+                                            aria-label={
+                                                isExpressOrder
+                                                    ? `Pedido Express activo (Entrega hoy), +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
+                                                    : `Activar Pedido Express (Entrega hoy), +${Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%`
+                                            }
                                         >
-                                            <span className="order-wizard-express-knob"></span>
-                                        </span>
-                                    </button>
-                                </div>
+                                            <div className="order-wizard-express-main">
+                                                <div className="order-wizard-express-copy">
+                                                    <strong>
+                                                        <i className="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+                                                        Entrega Mismo Día (Express)
+                                                    </strong>
+                                                    <span className="order-wizard-express-badge">
+                                                        +{Math.round(ORDER_EXPRESS_SURCHARGE_RATE * 100)}%
+                                                    </span>
+                                                    {productPrice > 0 ? (
+                                                        <span className="order-wizard-express-price">
+                                                            {isExpressOrder
+                                                                ? `S/. ${applyExpressSurcharge(productPrice, true).toFixed(2)}`
+                                                                : `S/. ${productPrice.toFixed(2)} → ${applyExpressSurcharge(productPrice, true).toFixed(2)}`}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                                <div className="order-wizard-express-subtitle">
+                                                    Fabricación prioritaria para entrega garantizada en el mismo día.
+                                                </div>
+                                            </div>
+                                            <span
+                                                className="order-wizard-express-switch"
+                                                role="presentation"
+                                                aria-hidden="true"
+                                            >
+                                                <span className="order-wizard-express-knob"></span>
+                                            </span>
+                                        </button>
+                                    </div>
+                                ) : null}
                                 <button
                                     type="button"
                                     className="btn btn-primary order-wizard-paciente-cta"

@@ -158,15 +158,6 @@ const Pedidos = () => {
     };
 
     const pageTitle = isClient ? 'Mis pedidos' : 'Gestión de pedidos';
-    const pageSubtitle = isClient
-        ? (filtroEstado === 'esperando_aprobacion'
-            ? 'Diseños que esperan tu visto bueno'
-            : 'Sigue el avance de tus trabajos')
-        : (filtroOperativo === 'retrasados'
-            ? 'Pedidos fuera de fecha comprometida · Requieren acción inmediata'
-            : filtroOperativo === 'entregas_hoy'
-                ? 'Pedidos comprometidos para entrega el día de hoy'
-                : 'Gestión y seguimiento de trabajos dentales');
     const showApprovalCue = isClient
         && pendingApprovalCount > 0
         && filtroEstado !== 'esperando_aprobacion';
@@ -178,7 +169,6 @@ const Pedidos = () => {
                     <h1>
                         <i className="bi bi-clipboard2-pulse text-primary" aria-hidden="true"></i> {pageTitle}
                     </h1>
-                    <p>{pageSubtitle}</p>
                 </div>
                 {canCreateOrders && (
                     <button

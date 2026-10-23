@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import CrmNavigation from '../components/CrmNavigation.jsx';
 import VisitModal from '../components/VisitModal.jsx';
 import EstablishmentDrawer from '../components/EstablishmentDrawer.jsx';
@@ -18,6 +18,7 @@ const getLimaDateStr = (dateVal) => {
 
 export const CrmVisitasPage = () => {
     const [tab, setTab] = useState('pendientes'); // 'pendientes', 'hoy', 'vencidas', 'todas'
+    const [search, setSearch] = useState('');
     const [activeVisitModal, setActiveVisitModal] = useState(null); // { visit, establishment }
     const [drawerId, setDrawerId] = useState(null);
 
@@ -25,21 +26,48 @@ export const CrmVisitasPage = () => {
 
     const todayStr = getLimaDateStr(new Date());
 
-    const filteredVisits = visitas.filter((v) => {
-        const isScheduled = v.estado === 'programada' || v.estado === 'reprogramada';
-        const visitDateStr = getLimaDateStr(v.programada_para);
+    const counts = useMemo(() => {
+        let pendientes = 0;
+        let hoy = 0;
+        let vencidas = 0;
+        for (const v of visitas) {
+            const isScheduled = v.estado === 'programada' || v.estado === 'reprogramada';
+            if (!isScheduled) continue;
+            pendientes++;
+            const d = getLimaDateStr(v.programada_para);
+            if (d && d < todayStr) vencidas++;
+            if (d && d === todayStr) hoy++;
+        }
+        return { pendientes, hoy, vencidas, todas: visitas.length };
+    }, [visitas, todayStr]);
 
-        if (tab === 'vencidas') {
-            return isScheduled && visitDateStr && visitDateStr < todayStr;
-        }
-        if (tab === 'hoy') {
-            return isScheduled && visitDateStr === todayStr;
-        }
-        if (tab === 'pendientes') {
-            return isScheduled;
-        }
-        return true;
-    });
+    const filteredVisits = useMemo(() => {
+        return visitas.filter((v) => {
+            const isScheduled = v.estado === 'programada' || v.estado === 'reprogramada';
+            const visitDateStr = getLimaDateStr(v.programada_para);
+
+            if (tab === 'vencidas') {
+                if (!isScheduled || !visitDateStr || visitDateStr >= todayStr) return false;
+            } else if (tab === 'hoy') {
+                if (!isScheduled || !visitDateStr || visitDateStr !== todayStr) return false;
+            } else if (tab === 'pendientes') {
+                if (!isScheduled) return false;
+            }
+
+            if (search.trim()) {
+                const q = search.toLowerCase();
+                const est = (v.establecimiento_nombre || '').toLowerCase();
+                const prop = (v.proposito || '').toLowerCase();
+                const notas = (v.notas || '').toLowerCase();
+                const resp = (v.responsable_nombre || '').toLowerCase();
+                if (!est.includes(q) && !prop.includes(q) && !notas.includes(q) && !resp.includes(q)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }, [visitas, tab, todayStr, search]);
 
     return (
         <div className="animate-fade-in page-container">
@@ -49,35 +77,81 @@ export const CrmVisitasPage = () => {
             />
 
             <div>
-                {/* Agenda Status Filters */}
-                <div
-                    className="crm-filter-pills-scroll"
-                    style={{
-                        display: 'flex',
-                        gap: '0.5rem',
-                        marginBottom: '1.25rem',
-                        overflowX: 'auto',
-                        WebkitOverflowScrolling: 'touch',
-                        scrollbarWidth: 'none',
-                        paddingBottom: '4px'
-                    }}
-                >
-                    {[
-                        { id: 'pendientes', label: 'Todas las Pendientes', icon: 'bi-calendar-event' },
-                        { id: 'hoy', label: 'Para Hoy', icon: 'bi-clock' },
-                        { id: 'vencidas', label: 'Vencidas', icon: 'bi-exclamation-circle' },
-                        { id: 'todas', label: 'Historial Completo', icon: 'bi-archive' },
-                    ].map((t) => (
+                {/* Agenda Status & Search Toolbar */}
+                <div className="crm-filter-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div className="crm-search-input-wrap" style={{ flex: 1, minWidth: '220px' }}>
+                        <i className="bi bi-search"></i>
+                        <input
+                            type="text"
+                            className="crm-search-input"
+                            placeholder="Buscar por clínica, notas o responsable..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+
+                    <div
+                        className="crm-filter-pills-scroll"
+                        role="group"
+                        aria-label="Filtrar visitas"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.45rem',
+                            overflowX: 'auto',
+                            WebkitOverflowScrolling: 'touch',
+                            scrollbarWidth: 'none',
+                            flexWrap: 'nowrap'
+                        }}
+                    >
                         <button
-                            key={t.id}
                             type="button"
-                            className={`btn ${tab === t.id ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                            onClick={() => setTab(t.id)}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}
+                            className={`btn btn-sm pedidos-filter-chip${tab === 'pendientes' ? ' is-active' : ''}`}
+                            onClick={() => setTab('pendientes')}
                         >
-                            <i className={`bi ${t.icon}`}></i> {t.label}
+                            <i className="bi bi-calendar-event" aria-hidden="true"></i>
+                            <span>Pendientes</span>
+                            {counts.pendientes > 0 && (
+                                <span className="crm-filter-count-badge">{counts.pendientes}</span>
+                            )}
                         </button>
-                    ))}
+
+                        <button
+                            type="button"
+                            className={`btn btn-sm pedidos-filter-chip crm-filter-chip-hoy pedidos-chip-warning${tab === 'hoy' ? ' is-active' : ''}`}
+                            onClick={() => setTab('hoy')}
+                        >
+                            <i className="bi bi-clock" aria-hidden="true"></i>
+                            <span>Hoy</span>
+                            {counts.hoy > 0 && (
+                                <span className="crm-filter-count-badge crm-filter-badge-warning">{counts.hoy}</span>
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`btn btn-sm pedidos-filter-chip pedidos-chip-danger${tab === 'vencidas' ? ' is-active' : ''}`}
+                            onClick={() => setTab('vencidas')}
+                        >
+                            <i className="bi bi-exclamation-circle" aria-hidden="true"></i>
+                            <span>Vencidas</span>
+                            {counts.vencidas > 0 && (
+                                <span className="crm-filter-count-badge crm-filter-badge-danger">{counts.vencidas}</span>
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`btn btn-sm pedidos-filter-chip mobile-hide${tab === 'todas' ? ' is-active' : ''}`}
+                            onClick={() => setTab('todas')}
+                        >
+                            <i className="bi bi-archive" aria-hidden="true"></i>
+                            <span>Historial</span>
+                            {counts.todas > 0 && (
+                                <span className="crm-filter-count-badge">{counts.todas}</span>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="crm-table-container">

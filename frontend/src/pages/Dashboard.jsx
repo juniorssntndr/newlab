@@ -10,6 +10,7 @@ import { getOrderStatusLabel } from '../utils/orderStatusLabels.js';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
 import FormDatePicker from '../components/FormDatePicker.jsx';
 import BiReportModal from '../components/BiReportModal.jsx';
+import CustomSelect from '../components/CustomSelect.jsx';
 import { sortTeethByArchOrder } from '../utils/odontograma.js';
 import { formatCategoriaGasto } from '../constants/financeCategories.js';
 import TreasurySection from '../components/finance/TreasurySection.jsx';
@@ -18,6 +19,14 @@ import '../styles/dashboard-ui-consistency.css';
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const MAX_TEETH_PREVIEW = 4;
+
+const PERIOD_OPTIONS = [
+    { value: 'este_mes', label: 'Este mes', icon: 'bi-calendar-check' },
+    { value: 'mes_anterior', label: 'Mes anterior', icon: 'bi-calendar-minus' },
+    { value: 'ultimos_3_meses', label: 'Últimos 3 meses', icon: 'bi-calendar-range' },
+    { value: 'ano_actual', label: 'Año actual', icon: 'bi-calendar3' },
+    { value: 'personalizado', label: 'Personalizado', icon: 'bi-calendar-event' },
+];
 
 const statusLabels = {
     pendiente: 'Pendiente', en_diseno: 'En Diseño', esperando_aprobacion: 'Esperando Aprobación',
@@ -471,6 +480,26 @@ const Dashboard = () => {
     }), [historyRows]);
 
     const isCurrentMonth = filters.from === startOfMonthIso() && filters.to === todayIso();
+
+    const currentPeriod = useMemo(() => {
+        if (filters.from === startOfMonthIso() && filters.to === todayIso()) return 'este_mes';
+        if (filters.from === startOfPreviousMonthIso() && filters.to === endOfPreviousMonthIso()) return 'mes_anterior';
+        if (filters.from === startOfLast3MonthsIso() && filters.to === todayIso()) return 'ultimos_3_meses';
+        if (filters.from === startOfYearIso() && filters.to === todayIso()) return 'ano_actual';
+        return 'personalizado';
+    }, [filters.from, filters.to]);
+
+    const handlePeriodChange = (val) => {
+        if (val === 'este_mes') {
+            setFilters((prev) => ({ ...prev, from: startOfMonthIso(), to: todayIso() }));
+        } else if (val === 'mes_anterior') {
+            setFilters((prev) => ({ ...prev, from: startOfPreviousMonthIso(), to: endOfPreviousMonthIso() }));
+        } else if (val === 'ultimos_3_meses') {
+            setFilters((prev) => ({ ...prev, from: startOfLast3MonthsIso(), to: todayIso() }));
+        } else if (val === 'ano_actual') {
+            setFilters((prev) => ({ ...prev, from: startOfYearIso(), to: todayIso() }));
+        }
+    };
     const periodLabel = isCurrentMonth ? 'del mes' : 'del período';
     const metricas = finance?.metricas || {};
     const cuentasPorCobrar = finance?.cuentas_por_cobrar || {};
@@ -1115,7 +1144,7 @@ const Dashboard = () => {
                     className="dashboard-callout-donut-svg dashboard-callout-donut-desktop"
                     style={{ width: '100%', height: 'auto', maxHeight: '280px', overflow: 'visible' }}
                     role="img"
-                    aria-label={`Distribución de egresos y gastos. Total: S/. ${totalGastosMonto.toFixed(2)}`}
+                    aria-label={`Distribución de egresos y gastos. Total: S/. ${totalGastos.toFixed(2)}`}
                 >
                     {/* Outer subtle tech guide ring */}
                     <circle
@@ -1235,7 +1264,7 @@ const Dashboard = () => {
                             viewBox="0 0 200 200"
                             className="dashboard-donut-mobile-svg"
                             role="img"
-                            aria-label={`Distribución de egresos y gastos. Total: S/. ${totalGastosMonto.toFixed(2)}`}
+                            aria-label={`Distribución de egresos y gastos. Total: S/. ${totalGastos.toFixed(2)}`}
                         >
                             <circle
                                 cx={mobileCx}
@@ -1469,59 +1498,17 @@ const Dashboard = () => {
                                 />
                             </div>
                         </div>
-                        <div className="dashboard-filters-actions pedidos-status-filters" role="group" aria-label="Rangos rápidos del dashboard financiero">
-                            {(() => {
-                                const isMonthActive = filters.from === startOfMonthIso() && filters.to === todayIso();
-                                return (
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${isMonthActive ? ' is-active' : ''}`}
-                                        aria-pressed={isMonthActive}
-                                        onClick={() => setFilters((prev) => ({ ...prev, from: startOfMonthIso(), to: todayIso() }))}
-                                    >
-                                        Este mes
-                                    </button>
-                                );
-                            })()}
-                            {(() => {
-                                const isPrevMonthActive = filters.from === startOfPreviousMonthIso() && filters.to === endOfPreviousMonthIso();
-                                return (
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${isPrevMonthActive ? ' is-active' : ''}`}
-                                        aria-pressed={isPrevMonthActive}
-                                        onClick={() => setFilters((prev) => ({ ...prev, from: startOfPreviousMonthIso(), to: endOfPreviousMonthIso() }))}
-                                    >
-                                        Mes anterior
-                                    </button>
-                                );
-                            })()}
-                            {(() => {
-                                const isLast3MonthsActive = filters.from === startOfLast3MonthsIso() && filters.to === todayIso();
-                                return (
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${isLast3MonthsActive ? ' is-active' : ''}`}
-                                        aria-pressed={isLast3MonthsActive}
-                                        onClick={() => setFilters((prev) => ({ ...prev, from: startOfLast3MonthsIso(), to: todayIso() }))}
-                                    >
-                                        Últimos 3 meses
-                                    </button>
-                                );
-                            })()}
-                            {(() => {
-                                const isYearActive = filters.from === startOfYearIso() && filters.to === todayIso();
-                                return (
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm pedidos-filter-chip${isYearActive ? ' is-active' : ''}`}
-                                        aria-pressed={isYearActive}
-                                        onClick={() => setFilters((prev) => ({ ...prev, from: startOfYearIso(), to: todayIso() }))}
-                                    >
-                                        Año actual
-                                    </button>
-                                );
-                            })()}
+                        <div className="form-group dashboard-period-select-group" style={{ minWidth: '175px', flex: '0 0 auto', marginBottom: 0 }}>
+                            <label className="form-label" id="dashboard-period-select-label">Período</label>
+                            <CustomSelect
+                                id="dashboard-period-select"
+                                value={currentPeriod}
+                                onChange={(_, val) => handlePeriodChange(val)}
+                                options={PERIOD_OPTIONS}
+                                placeholder="Período"
+                                size="md"
+                                aria-labelledby="dashboard-period-select-label"
+                            />
                         </div>
                     </div>
                     <div className="dashboard-finance-right-actions" style={{ display: 'flex', alignItems: 'flex-end', gap: '0.65rem', flexWrap: 'wrap' }}>
@@ -1663,52 +1650,45 @@ const Dashboard = () => {
                                 </span>
                                 <div>
                                     <h3 className="card-title dashboard-strategic-title">Centro Estratégico</h3>
-                                    <p className="card-subtitle dashboard-strategic-subtitle desktop-only">Identifica rápidamente qué clínica y qué producto impulsan tus ingresos</p>
+                                    <p className="card-subtitle dashboard-strategic-subtitle desktop-only">Clínicas y productos de mayor facturación</p>
                                 </div>
                             </div>
-                            <div className="dashboard-strategic-filters">
-                                <div className="dashboard-strategic-filter-group">
-                                    <span className="dashboard-strategic-filter-label">Ranking:</span>
-                                    <div className="segmented-control dashboard-strategic-segmented" role="group" aria-label="Cantidad de elementos en ranking">
-                                        <button
-                                            type="button"
-                                            className={`segmented-control__btn${strategicTopN === 5 ? ' is-active' : ''}`}
-                                            onClick={() => setStrategicTopN(5)}
-                                        >
-                                            Top 5
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={`segmented-control__btn${strategicTopN === 10 ? ' is-active' : ''}`}
-                                            onClick={() => setStrategicTopN(10)}
-                                        >
-                                            Top 10
-                                        </button>
-                                    </div>
+                            <div className="dashboard-strategic-filters" style={{ gap: '0.65rem' }}>
+                                <div className="segmented-control dashboard-strategic-segmented" role="group" aria-label="Cantidad de elementos en ranking">
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${strategicTopN === 5 ? ' is-active' : ''}`}
+                                        onClick={() => setStrategicTopN(5)}
+                                    >
+                                        Top 5
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${strategicTopN === 10 ? ' is-active' : ''}`}
+                                        onClick={() => setStrategicTopN(10)}
+                                    >
+                                        Top 10
+                                    </button>
                                 </div>
 
-                                <div className="dashboard-strategic-filter-group dashboard-strategic-filter-group--metric">
-                                    <span className="dashboard-strategic-filter-label">Métrica:</span>
-                                    <div className="segmented-control dashboard-strategic-segmented" role="group" aria-label="Unidad de medida">
-                                        <button
-                                            type="button"
-                                            className={`segmented-control__btn${strategicMetric === 'monto' ? ' is-active' : ''}`}
-                                            onClick={() => setStrategicMetric('monto')}
-                                            title="Ver montos facturados en Soles"
-                                        >
-                                            <i className="bi bi-cash-stack" aria-hidden="true"></i>
-                                            <span>Soles<span className="desktop-only"> (S/.)</span></span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={`segmented-control__btn${strategicMetric === 'pct' ? ' is-active' : ''}`}
-                                            onClick={() => setStrategicMetric('pct')}
-                                            title="Ver porcentaje de participación"
-                                        >
-                                            <i className="bi bi-percent" aria-hidden="true"></i>
-                                            <span>Participación<span className="desktop-only"> (%)</span></span>
-                                        </button>
-                                    </div>
+                                <div className="segmented-control dashboard-strategic-segmented" role="group" aria-label="Unidad de medida">
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${strategicMetric === 'monto' ? ' is-active' : ''}`}
+                                        onClick={() => setStrategicMetric('monto')}
+                                        title="Ver montos facturados en Soles"
+                                    >
+                                        <i className="bi bi-cash-stack" aria-hidden="true"></i>
+                                        <span>Soles</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${strategicMetric === 'pct' ? ' is-active' : ''}`}
+                                        onClick={() => setStrategicMetric('pct')}
+                                        title="Ver porcentaje de participación"
+                                    >
+                                        <span>Participación</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>

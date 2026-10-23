@@ -484,17 +484,21 @@ export default function RuletaKioskoPage() {
             ctx.arc(centerX, centerY, radius, startAngle, endAngle);
             ctx.closePath();
 
-            if (!isPina) {
-                const grad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
+            const baseColor = premio.color_hex || (premio.tipo_premio === 'sin_premio' ? '#ffffff' : '#0284c7');
+            const isLightBg = ['#ffffff', '#fff', '#f8fafc', '#f1f5f9'].includes(baseColor.toLowerCase());
+
+            const grad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
+            if (isLightBg) {
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(1, '#f1f5f9');
+            } else if (baseColor.toLowerCase() === '#0284c7') {
                 grad.addColorStop(0, '#0284c7');
                 grad.addColorStop(1, '#0369a1');
-                ctx.fillStyle = grad;
             } else {
-                const grad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
-                grad.addColorStop(0, '#ffffff');
-                grad.addColorStop(1, '#f8fafc');
-                ctx.fillStyle = grad;
+                grad.addColorStop(0, baseColor);
+                grad.addColorStop(1, baseColor);
             }
+            ctx.fillStyle = grad;
             ctx.fill();
             ctx.lineWidth = 2.5;
             ctx.strokeStyle = '#ffffff'; // divisor blanco nítido
@@ -505,89 +509,111 @@ export default function RuletaKioskoPage() {
             ctx.rotate(startAngle + arc / 2);
 
             const sectorImg = getCachedImage(premio.imagen_url);
+            const modoVisual = premio.modo_visual || (premio.tipo_premio === 'sin_premio' || (premio.titulo && premio.titulo.toUpperCase().includes('PIÑA')) ? 'solo_icono' : 'texto_icono');
+            const graficoTipo = premio.grafico_tipo || (premio.tipo_premio === 'sin_premio' || (premio.titulo && premio.titulo.toUpperCase().includes('PIÑA')) ? 'pina' : (premio.imagen_url ? 'imagen' : 'auto'));
 
-            if (!isPina) {
-                // SECTOR CON PREMIO: Descuento explícito en alto contraste
+            if (modoVisual === 'solo_icono') {
+                // Modo SOLO ÍCONO (como la Piña clásica de Afinix): centrado en el tercio exterior sin texto
+                const dist = radius * 0.73;
+                ctx.translate(dist, 0);
+
+                if (graficoTipo === 'pina') {
+                    ctx.rotate(Math.PI);
+                    const pinaSize = Math.max(38, Math.round(radius * 0.20));
+                    drawSymmetricPineapple(ctx, pinaSize);
+                } else if (graficoTipo === 'imagen' && sectorImg) {
+                    ctx.rotate(Math.PI / 2);
+                    const imgSize = Math.max(36, Math.round(radius * 0.22));
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, imgSize / 2, 0, 2 * Math.PI);
+                    ctx.clip();
+                    ctx.drawImage(sectorImg, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+                    ctx.restore();
+                } else {
+                    ctx.rotate(Math.PI / 2);
+                    const iconSize = Math.max(30, Math.round(radius * 0.18));
+                    ctx.font = `${iconSize}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🎁', 0, 0);
+                }
+            } else {
+                // Modo TEXTO + ÍCONO o SOLO TEXTO
                 const dist = radius * 0.77;
                 ctx.translate(dist, 0);
                 ctx.rotate(Math.PI / 2); // perpendicular al radio
 
-                // Extraer el monto limpio para jerarquía visual
+                // 1. Título / Monto grande y destacado
                 const rawTitle = (premio.titulo || '').trim();
-                let amountText = rawTitle;
-                if (rawTitle.toUpperCase().includes('DCTO')) {
-                    amountText = rawTitle.replace(/DCTO\.?/i, '').trim();
-                } else if (rawTitle.toUpperCase().includes('DESCUENTO')) {
-                    amountText = rawTitle.replace(/DESCUENTO/i, '').trim();
-                }
-                if (!amountText) amountText = `S/. ${premio.valor || 0}`;
-
-                // 1. Monto grande y destacado
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const fontSize = Math.max(16, Math.round(radius * 0.082));
                 ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
-                ctx.fillStyle = '#ffffff';
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-                ctx.shadowBlur = 5;
-                ctx.fillText(amountText, 0, -fontSize * 0.88);
-
-                // 2. Badge cápsula "DESCUENTO" (aclara 100% que no es dinero regalado)
+                ctx.fillStyle = premio.texto_color || (isLightBg ? '#0f172a' : '#ffffff');
+                ctx.shadowColor = isLightBg ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.55)';
+                ctx.shadowBlur = isLightBg ? 0 : 5;
+                ctx.fillText(rawTitle, 0, -fontSize * 0.88);
                 ctx.shadowBlur = 0;
-                const badgeW = Math.max(68, Math.round(fontSize * 3.4));
-                const badgeH = Math.max(15, Math.round(fontSize * 0.78));
-                const bx = -badgeW / 2;
-                const by = -badgeH * 0.35;
 
-                ctx.save();
-                ctx.beginPath();
-                if (ctx.roundRect) {
-                    ctx.roundRect(bx, by, badgeW, badgeH, badgeH / 2);
-                } else {
-                    ctx.rect(bx, by, badgeW, badgeH);
-                }
-                ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-                ctx.fill();
-                ctx.lineWidth = 1.2;
-                ctx.strokeStyle = '#38bdf8';
-                ctx.stroke();
+                // 2. Badge cápsula (si tiene subtítulo configurado)
+                const badgeText = premio.subtitulo_badge ? String(premio.subtitulo_badge).trim().toUpperCase() : null;
+                if (badgeText) {
+                    const badgeW = Math.max(68, Math.round(fontSize * 3.4));
+                    const badgeH = Math.max(15, Math.round(fontSize * 0.78));
+                    const bx = -badgeW / 2;
+                    const by = -badgeH * 0.35;
 
-                ctx.font = `800 ${Math.max(9, Math.round(fontSize * 0.44))}px system-ui, sans-serif`;
-                ctx.fillStyle = '#e0f2fe';
-                ctx.letterSpacing = '0.05em';
-                ctx.fillText('DESCUENTO', 0, by + badgeH / 2 + 0.8);
-                ctx.restore();
-
-                // 3. Ícono abajo hacia el centro
-                if (sectorImg) {
-                    const imgSize = Math.max(26, Math.round(radius * 0.15));
                     ctx.save();
                     ctx.beginPath();
-                    ctx.arc(0, imgSize * 0.85, imgSize / 2, 0, 2 * Math.PI);
-                    ctx.clip();
-                    ctx.drawImage(sectorImg, -imgSize / 2, imgSize * 0.35, imgSize, imgSize);
+                    if (ctx.roundRect) {
+                        ctx.roundRect(bx, by, badgeW, badgeH, badgeH / 2);
+                    } else {
+                        ctx.rect(bx, by, badgeW, badgeH);
+                    }
+                    ctx.fillStyle = isLightBg ? 'rgba(2, 132, 199, 0.15)' : 'rgba(56, 189, 248, 0.25)';
+                    ctx.fill();
+                    ctx.lineWidth = 1.2;
+                    ctx.strokeStyle = isLightBg ? '#0284c7' : '#38bdf8';
+                    ctx.stroke();
+
+                    ctx.font = `800 ${Math.max(9, Math.round(fontSize * 0.44))}px system-ui, sans-serif`;
+                    ctx.fillStyle = isLightBg ? '#0284c7' : '#e0f2fe';
+                    ctx.letterSpacing = '0.05em';
+                    ctx.fillText(badgeText, 0, by + badgeH / 2 + 0.8);
                     ctx.restore();
-                } else {
-                    const val = Number(premio.valor) || 0;
-                    let icon = '💰';
-                    if (val >= 100) icon = '🏆';
-                    else if (val >= 50) icon = '🎉';
-                    else if (val >= 30) icon = '💰';
-                    else icon = '⭐';
-
-                    const iconSize = Math.max(20, Math.round(radius * 0.12));
-                    ctx.font = `${iconSize}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
-                    ctx.fillText(icon, 0, iconSize * 1.15);
                 }
-            } else {
-                // SECTOR PIÑA: 100% alineada en su eje central con el centro de la ruleta y situada en el tercio exterior
-                const dist = radius * 0.73;
-                ctx.translate(dist, 0);
-                // Invertimos para que las hojas apunten hacia el exterior y la base al centro
-                ctx.rotate(Math.PI);
 
-                const pinaSize = Math.max(38, Math.round(radius * 0.20));
-                drawSymmetricPineapple(ctx, pinaSize);
+                // 3. Gráfico inferior (solo si modoVisual === 'texto_icono')
+                if (modoVisual === 'texto_icono' && graficoTipo !== 'ninguno') {
+                    if (graficoTipo === 'pina') {
+                        const pinaSize = Math.max(24, Math.round(radius * 0.13));
+                        ctx.save();
+                        ctx.translate(0, pinaSize * 0.95);
+                        ctx.rotate(Math.PI);
+                        drawSymmetricPineapple(ctx, pinaSize);
+                        ctx.restore();
+                    } else if (graficoTipo === 'imagen' && sectorImg) {
+                        const imgSize = Math.max(26, Math.round(radius * 0.15));
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(0, imgSize * 0.85, imgSize / 2, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(sectorImg, -imgSize / 2, imgSize * 0.35, imgSize, imgSize);
+                        ctx.restore();
+                    } else {
+                        const val = Number(premio.valor) || 0;
+                        let icon = '💰';
+                        if (val >= 100) icon = '🏆';
+                        else if (val >= 50) icon = '🎉';
+                        else if (val >= 30) icon = '💰';
+                        else icon = '⭐';
+
+                        const iconSize = Math.max(20, Math.round(radius * 0.12));
+                        ctx.font = `${iconSize}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+                        ctx.fillText(icon, 0, iconSize * 1.15);
+                    }
+                }
             }
 
             ctx.restore();
@@ -1169,7 +1195,12 @@ export default function RuletaKioskoPage() {
                     <button
                         type="button"
                         className="btn btn-sm kiosko-header-btn"
-                        onClick={() => navigate('/marketing')}
+                        onClick={() => {
+                            if (document.fullscreenElement) {
+                                document.exitFullscreen().catch(() => {});
+                            }
+                            navigate('/marketing');
+                        }}
                         style={{
                             background: 'rgba(15, 23, 42, 0.65)',
                             border: '1px solid rgba(255, 255, 255, 0.2)',

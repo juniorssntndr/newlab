@@ -221,7 +221,6 @@ const Doctores = () => {
             <div className="page-header">
                 <div className="page-header-left">
                     <h1>Doctores</h1>
-                    <p>Gestión de doctores y odontólogos asociados</p>
                 </div>
                 <button className="btn btn-primary" onClick={openNew}>
                     <i className="bi bi-plus-lg"></i> Nuevo Doctor

@@ -1,5 +1,6 @@
 import { resolveImageUrl } from '../utils/resolveImageUrl.js';
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../state/AuthContext.jsx';
 import { apiClient } from '../services/http/apiClient.js';
@@ -15,6 +16,7 @@ import '../styles/marketing.css';
 
 export default function Marketing() {
     const { getHeaders, user } = useAuth();
+    const navigate = useNavigate();
 
     const [activeTab, setActiveTab] = useState('cupones');
     const [metricas, setMetricas] = useState(null);
@@ -456,7 +458,10 @@ export default function Marketing() {
 
         sessionStorage.setItem('afinix_ruleta_participante', JSON.stringify(payload));
         pendingKioskRefresh.current = true;
-        window.open('/ruleta-evento', '_blank');
+        if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
+        navigate('/ruleta-evento');
     };
 
     return (
@@ -468,24 +473,9 @@ export default function Marketing() {
                         <i className="bi bi-megaphone-fill text-primary" aria-hidden="true"></i>
                         Marketing
                     </h1>
-                    <p>
-                        Cupones, campañas e invitaciones para clientes.
-                    </p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    {activeTab === 'cupones' && <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={() => {
-                            handleGenerateCode();
-                            setShowCreateModal(true);
-                        }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
-                    >
-                        <i className="bi bi-plus-lg" aria-hidden="true"></i>
-                        Nuevo cupón
-                    </button>}
                 </div>
             </div>
 
@@ -581,6 +571,7 @@ export default function Marketing() {
                 </button>
             </div>
 
+
             {/* CONTENIDO DE PESTAÑAS */}
             {['bienvenida', 'campanas', 'ruleta'].includes(activeTab) && errors.clinicas && (
                 <div className="marketing-load-error" role="alert">
@@ -590,17 +581,26 @@ export default function Marketing() {
             )}
             {activeTab === 'cupones' && (
                 <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Listado Oficial de Cupones</h3>
-                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
-                            Los cupones se validan en tiempo real en el Paso 3 del pedido técnico.
-                        </span>
+                    <div className="marketing-coupons-header">
+                        <h3 className="marketing-coupons-title">Lista de Cupones</h3>
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm marketing-btn-new-coupon"
+                            onClick={() => {
+                                handleGenerateCode();
+                                setShowCreateModal(true);
+                            }}
+                        >
+                            <i className="bi bi-plus-lg" aria-hidden="true"></i>
+                            <span>Nuevo cupón</span>
+                        </button>
                     </div>
 
-                    {loading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <div className="spinner" role="status" aria-label="Cargando cupones"></div>
-                            <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)' }}>Cargando cupones...</p>
+                    {loading && cupones.length === 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.5rem 0' }} aria-busy="true">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="skeleton" style={{ height: 48, borderRadius: 8 }} />
+                            ))}
                         </div>
                     ) : errors.cupones ? (
                         <div className="marketing-load-error" role="alert">{errors.cupones} <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData('cupones')}>Reintentar</button></div>
@@ -620,132 +620,242 @@ export default function Marketing() {
                             </button>
                         </div>
                     ) : (
-                        <div className="data-table-wrapper marketing-table-wrap">
-                            <table className="data-table" style={{ width: '100%', fontSize: '0.88rem' }}>
-                                <thead>
-                                    <tr>
-                                        <th>Código</th>
-                                        <th>Beneficio</th>
-                                        <th>Destino / Clínica</th>
-                                        <th>Origen</th>
-                                        <th>Usos</th>
-                                        <th>Vigencia</th>
-                                        <th>Estado</th>
-                                        <th style={{ textAlign: 'right' }}>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {cupones.map((c) => (
-                                        <tr key={c.id}>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                    <code style={{
-                                                        background: 'var(--color-primary-ultra-light)',
-                                                        color: 'var(--color-primary)',
-                                                        padding: '0.2rem 0.5rem',
-                                                        borderRadius: '6px',
-                                                        fontWeight: 700
-                                                    }}>
-                                                        {c.codigo}
-                                                    </code>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-ghost"
-                                                        onClick={() => copyToClipboard(c.codigo)}
-                                                        title="Copiar código"
-                                                        aria-label="Copiar código"
-                                                        style={{ padding: '0.15rem 0.35rem' }}
-                                                    >
-                                                        <i className="bi bi-copy" aria-hidden="true"></i>
-                                                    </button>
-                                                </div>
-                                                {c.descripcion && (
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px' }}>
-                                                        {c.descripcion}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <strong>
-                                                    {c.tipo === 'porcentaje' ? `${Number(c.valor)}% DCTO` : `S/. ${Number(c.valor).toFixed(2)}`}
-                                                </strong>
-                                                {c.monto_minimo_pedido > 0 && (
-                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
-                                                        Mín: S/. {Number(c.monto_minimo_pedido).toFixed(2)}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td>
-                                                {c.clinica_nombre ? (
-                                                    <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
-                                                        <i className="bi bi-hospital" aria-hidden="true" style={{ marginRight: '4px' }}></i>
-                                                        {c.clinica_nombre}
-                                                    </span>
-                                                ) : (
-                                                    <span className="badge badge-inactive" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
-                                                        Uso Libre (Cualquiera)
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <span className="badge" style={{
-                                                    background: c.origen === 'ruleta_evento' ? 'var(--color-primary-light)' : 'var(--color-primary-ultra-light)',
-                                                    color: c.origen === 'ruleta_evento' ? 'var(--color-primary)' : 'var(--color-primary)'
-                                                }}>
-                                                    {c.origen === 'ruleta_evento' ? 'Ruleta Evento' : (c.origen || 'Manual')}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span style={{ fontWeight: 600 }}>{c.usos_actuales}</span> / {c.limite_usos_total || '∞'}
-                                            </td>
-                                            <td>
-                                                {c.fecha_fin ? (
-                                                    <span style={{ fontSize: '0.8rem' }}>
-                                                        Hasta {new Date(c.fecha_fin).toLocaleDateString('es-PE')}
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Permanente</span>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <span className={`badge ${c.activo ? 'badge-success' : 'badge-inactive'}`} style={{
-                                                    background: c.activo ? 'var(--color-success-bg)' : 'var(--color-bg-alt)',
-                                                    color: c.activo ? 'var(--color-success)' : 'var(--color-text-secondary)',
-                                                    padding: '0.2rem 0.6rem',
-                                                    borderRadius: '12px'
-                                                }}>
-                                                    {c.activo ? 'Activo' : 'Pausado'}
-                                                </span>
-                                            </td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                                                    <button
-                                                        type="button"
-                                                        className={`btn btn-sm ${c.activo ? 'btn-ghost' : 'btn-ghost'}`}
-                                                        onClick={() => handleToggleActive(c.id)}
-                                                        title={c.activo ? 'Pausar cupón' : 'Activar cupón'}
-                                                        aria-label={c.activo ? 'Pausar cupón' : 'Activar cupón'}
-                                                    >
-                                                        <i className={`bi ${c.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
-                                                    </button>
-                                                    {user?.tipo === 'admin' && (
+                        <>
+                            <div className="data-table-wrapper marketing-table-wrap desktop-only">
+                                <table className="data-table" style={{ width: '100%', fontSize: '0.88rem' }}>
+                                    <thead>
+                                        <tr>
+                                            <th>Código</th>
+                                            <th>Beneficio</th>
+                                            <th>Destino / Clínica</th>
+                                            <th>Origen</th>
+                                            <th>Usos</th>
+                                            <th>Vigencia</th>
+                                            <th>Estado</th>
+                                            <th style={{ textAlign: 'right' }}>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {cupones.map((c) => (
+                                            <tr key={c.id}>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                        <code style={{
+                                                            background: 'var(--color-primary-ultra-light)',
+                                                            color: 'var(--color-primary)',
+                                                            padding: '0.2rem 0.5rem',
+                                                            borderRadius: '6px',
+                                                            fontWeight: 700
+                                                        }}>
+                                                            {c.codigo}
+                                                        </code>
                                                         <button
                                                             type="button"
-                                                            className="btn btn-sm btn-ghost marketing-danger-action"
-                                                            onClick={() => promptDeleteCoupon(c)}
-                                                            title="Eliminar cupón"
-                                                            aria-label="Eliminar cupón"
+                                                            className="btn btn-sm btn-ghost"
+                                                            onClick={() => copyToClipboard(c.codigo)}
+                                                            title="Copiar código"
+                                                            aria-label="Copiar código"
+                                                            style={{ padding: '0.15rem 0.35rem' }}
                                                         >
-                                                            <i className="bi bi-trash" aria-hidden="true"></i>
+                                                            <i className="bi bi-copy" aria-hidden="true"></i>
                                                         </button>
+                                                    </div>
+                                                    {c.descripcion && (
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px' }}>
+                                                            {c.descripcion}
+                                                        </span>
                                                     )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                                </td>
+                                                <td>
+                                                    <strong>
+                                                        {c.tipo === 'porcentaje' ? `${Number(c.valor)}% DCTO` : `S/. ${Number(c.valor).toFixed(2)}`}
+                                                    </strong>
+                                                    {c.monto_minimo_pedido > 0 && (
+                                                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
+                                                            Mín: S/. {Number(c.monto_minimo_pedido).toFixed(2)}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    {c.clinica_nombre ? (
+                                                        <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
+                                                            <i className="bi bi-hospital" aria-hidden="true" style={{ marginRight: '4px' }}></i>
+                                                            {c.clinica_nombre}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="badge badge-inactive" style={{ background: 'var(--color-bg-alt)', color: 'var(--color-text-secondary)' }}>
+                                                            Uso Libre (Cualquiera)
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <span className="badge" style={{
+                                                        background: c.origen === 'ruleta_evento' ? 'var(--color-primary-light)' : 'var(--color-primary-ultra-light)',
+                                                        color: c.origen === 'ruleta_evento' ? 'var(--color-primary)' : 'var(--color-primary)'
+                                                    }}>
+                                                        {c.origen === 'ruleta_evento' ? 'Ruleta Evento' : (c.origen || 'Manual')}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span style={{ fontWeight: 600 }}>{c.usos_actuales}</span> / {c.limite_usos_total || '∞'}
+                                                </td>
+                                                <td>
+                                                    {c.fecha_fin ? (
+                                                        <span style={{ fontSize: '0.8rem' }}>
+                                                            Hasta {new Date(c.fecha_fin).toLocaleDateString('es-PE')}
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Permanente</span>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <span className={`badge ${c.activo ? 'badge-success' : 'badge-inactive'}`} style={{
+                                                        background: c.activo ? 'var(--color-success-bg)' : 'var(--color-bg-alt)',
+                                                        color: c.activo ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                                                        padding: '0.2rem 0.6rem',
+                                                        borderRadius: '12px'
+                                                    }}>
+                                                        {c.activo ? 'Activo' : 'Pausado'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ textAlign: 'right' }}>
+                                                    <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                                                        <button
+                                                            type="button"
+                                                            className={`btn btn-sm ${c.activo ? 'btn-ghost' : 'btn-ghost'}`}
+                                                            onClick={() => handleToggleActive(c.id)}
+                                                            title={c.activo ? 'Pausar cupón' : 'Activar cupón'}
+                                                            aria-label={c.activo ? 'Pausar cupón' : 'Activar cupón'}
+                                                        >
+                                                            <i className={`bi ${c.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
+                                                        </button>
+                                                        {user?.tipo === 'admin' && (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-ghost marketing-danger-action"
+                                                                onClick={() => promptDeleteCoupon(c)}
+                                                                title="Eliminar cupón"
+                                                                aria-label="Eliminar cupón"
+                                                            >
+                                                                <i className="bi bi-trash" aria-hidden="true"></i>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Tarjetas verticales para Mobile */}
+                            <div className="mobile-cards mobile-only marketing-coupon-cards">
+                                {cupones.map((c) => (
+                                    <div key={c.id} className="mobile-card marketing-coupon-card">
+                                        <div className="mobile-card-head">
+                                            <div className="marketing-coupon-code-wrap">
+                                                <code className="marketing-coupon-code">{c.codigo}</code>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-ghost"
+                                                    onClick={() => copyToClipboard(c.codigo)}
+                                                    title="Copiar código"
+                                                    aria-label="Copiar código"
+                                                >
+                                                    <i className="bi bi-copy" aria-hidden="true"></i>
+                                                </button>
+                                            </div>
+                                            <span className={`badge ${c.activo ? 'badge-success' : 'badge-inactive'}`} style={{
+                                                background: c.activo ? 'var(--color-success-bg)' : 'var(--color-bg-alt)',
+                                                color: c.activo ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                                                padding: '0.2rem 0.6rem',
+                                                borderRadius: '12px'
+                                            }}>
+                                                {c.activo ? 'Activo' : 'Pausado'}
+                                            </span>
+                                        </div>
+
+                                        {c.descripcion && (
+                                            <div className="marketing-coupon-card-desc">
+                                                {c.descripcion}
+                                            </div>
+                                        )}
+
+                                        <div className="mobile-card-grid marketing-coupon-grid">
+                                            <div className="mobile-field">
+                                                <span className="mobile-field-label">Beneficio</span>
+                                                <span className="mobile-field-value">
+                                                    <strong>{c.tipo === 'porcentaje' ? `${Number(c.valor)}% DCTO` : `S/. ${Number(c.valor).toFixed(2)}`}</strong>
+                                                    {c.monto_minimo_pedido > 0 && (
+                                                        <small className="marketing-coupon-subtext">
+                                                            Mín: S/. {Number(c.monto_minimo_pedido).toFixed(2)}
+                                                        </small>
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <div className="mobile-field">
+                                                <span className="mobile-field-label">Destino</span>
+                                                <span className="mobile-field-value">
+                                                    {c.clinica_nombre ? (
+                                                        <span className="marketing-coupon-clinic">
+                                                            <i className="bi bi-hospital" aria-hidden="true"></i>
+                                                            {c.clinica_nombre}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="badge badge-inactive">Uso Libre</span>
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <div className="mobile-field">
+                                                <span className="mobile-field-label">Usos</span>
+                                                <span className="mobile-field-value">
+                                                    <strong>{c.usos_actuales}</strong> / {c.limite_usos_total || '∞'}
+                                                </span>
+                                            </div>
+                                            <div className="mobile-field">
+                                                <span className="mobile-field-label">Vigencia</span>
+                                                <span className="mobile-field-value">
+                                                    {c.fecha_fin ? `Hasta ${new Date(c.fecha_fin).toLocaleDateString('es-PE')}` : 'Permanente'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="marketing-coupon-card-footer">
+                                            <span className="badge" style={{
+                                                background: c.origen === 'ruleta_evento' ? 'var(--color-primary-light)' : 'var(--color-primary-ultra-light)',
+                                                color: 'var(--color-primary)',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 500
+                                            }}>
+                                                {c.origen === 'ruleta_evento' ? 'Ruleta Evento' : (c.origen || 'Manual')}
+                                            </span>
+                                            <div className="marketing-coupon-card-actions">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-secondary"
+                                                    onClick={() => handleToggleActive(c.id)}
+                                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                                >
+                                                    <i className={`bi ${c.activo ? 'bi-pause-fill' : 'bi-play-fill'}`} aria-hidden="true"></i>
+                                                    <span>{c.activo ? 'Pausar' : 'Activar'}</span>
+                                                </button>
+                                                {user?.tipo === 'admin' && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-ghost marketing-danger-action"
+                                                        onClick={() => promptDeleteCoupon(c)}
+                                                        title="Eliminar cupón"
+                                                        aria-label="Eliminar cupón"
+                                                    >
+                                                        <i className="bi bi-trash" aria-hidden="true"></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
             )}
@@ -757,32 +867,27 @@ export default function Marketing() {
 
             {activeTab === 'campanas' && (
                 <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <i className="bi bi-broadcast text-primary" aria-hidden="true"></i>
-                                Campañas
-                            </h3>
-                            <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
-                                Envía comunicaciones a clientes activos.
-                            </p>
-                        </div>
+                    <div className="marketing-coupons-header" style={{ marginBottom: '1.25rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <i className="bi bi-broadcast text-primary" aria-hidden="true"></i>
+                            Campañas
+                        </h3>
 
                         <button
                             type="button"
-                            className="btn btn-primary btn-sm"
+                            className="btn btn-primary btn-sm marketing-btn-new-coupon"
                             onClick={() => setShowCampanaModal(true)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                         >
                             <i className="bi bi-send-fill" aria-hidden="true"></i>
-                            Nueva campaña
+                            <span>Nueva campaña</span>
                         </button>
                     </div>
 
-                    {loadingCampanas ? (
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <div className="spinner" role="status"></div>
-                            <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)' }}>Cargando campañas...</p>
+                    {loadingCampanas && campanas.length === 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.5rem 0' }} aria-busy="true">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="skeleton" style={{ height: 56, borderRadius: 8 }} />
+                            ))}
                         </div>
                     ) : errors.campanas ? (
                         <div className="marketing-load-error" role="alert">{errors.campanas} <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData('campanas')}>Reintentar</button></div>
@@ -928,101 +1033,109 @@ export default function Marketing() {
                             <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData('ruleta', false)}>Reintentar ruleta</button>
                         </div>
                     ))}
-                    {loadingRuleta && <p role="status">Cargando ruleta…</p>}
                     {/* Barra de Herramientas y Modo Kiosco */}
-                    <div style={{
+                    <div className="card" style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         flexWrap: 'wrap',
                         gap: '1rem',
                         marginBottom: '1.25rem',
-                        background: 'var(--color-bg-alt)',
-                        padding: '1rem 1.25rem',
-                        borderRadius: '12px',
-                        border: '1px solid var(--color-border)'
+                        padding: '0.85rem 1.25rem'
                     }}>
                         {/* Sub-pestañas de Ruleta */}
-                        <div className="section-tabs marketing-tabs marketing-subtabs" role="group" aria-label="Secciones de ruleta">
+                        <div className="pedidos-status-filters" role="group" aria-label="Secciones de ruleta">
                             <button
                                 type="button"
-                                className={`btn btn-sm ${ruletaSubTab === 'sectores' ? 'btn-primary' : 'btn-secondary'}`}
+                                className={`btn btn-sm pedidos-filter-chip${ruletaSubTab === 'sectores' ? ' is-active' : ''}`}
                                 onClick={() => setRuletaSubTab('sectores')}
                                 aria-pressed={ruletaSubTab === 'sectores'}
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                             >
-                                <i className="bi bi-sliders" aria-hidden="true"></i>
-                                Configurar Sectores & Probabilidades ({loadingRuleta || errors.premios ? '—' : sectoresRuleta.length})
+                                <i className="bi bi-sliders" aria-hidden="true" style={{ marginRight: '0.35rem' }}></i>
+                                Configurar
                             </button>
                             <button
                                 type="button"
-                                className={`btn btn-sm ${ruletaSubTab === 'historial' ? 'btn-primary' : 'btn-secondary'}`}
+                                className={`btn btn-sm pedidos-filter-chip${ruletaSubTab === 'historial' ? ' is-active' : ''}`}
                                 onClick={() => setRuletaSubTab('historial')}
                                 aria-pressed={ruletaSubTab === 'historial'}
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                             >
-                                <i className="bi bi-clock-history" aria-hidden="true"></i>
-                                Historial de Giros ({loadingRuleta || errors.historial ? '—' : historialGiros.length})
+                                <i className="bi bi-clock-history" aria-hidden="true" style={{ marginRight: '0.35rem' }}></i>
+                                Historial
                             </button>
                         </div>
 
                         {/* Botón Principal: Lanzar Ruleta en Pantalla Completa */}
                         <button
                             type="button"
-                            className="btn btn-primary"
+                            className="btn btn-primary btn-sm"
                             onClick={() => handleLaunchKiosk(true)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.55rem',
-                                fontWeight: 800,
-                                padding: '0.55rem 1.25rem',
-                                borderRadius: '10px',
-                                boxShadow: '0 4px 15px rgba(2, 132, 199, 0.35)',
-                                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)'
-                            }}
-                            title="Abre la ruleta inmersiva con escenario 3D en pantalla completa"
-                            aria-label="Abrir Ruleta AFINIX en Pantalla Completa"
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}
+                            title="Abre la ruleta inmersiva en pantalla completa"
+                            aria-label="Abrir ruleta"
                         >
-                            <i className="bi bi-play-circle-fill" style={{ fontSize: '1.15rem' }} aria-hidden="true"></i>
-                            Abrir Ruleta AFINIX en Pantalla Completa
+                            <i className="bi bi-play-circle-fill" aria-hidden="true"></i>
+                            Abrir ruleta
                         </button>
                     </div>
 
-
-
                     {/* VISTA 2: CONFIGURADOR ESTILO INTERACTY CON VISTA PREVIA EN VIVO */}
-                    {ruletaSubTab === 'sectores' && !loadingRuleta && !errors.premios && (
-                        <RuletaCustomizer
-                            sectores={sectoresRuleta}
-                            totalPesoActivo={totalPesoActivo}
-                            onUpdateSectoresLocally={setSectoresRuleta}
-                            onReloadSectores={refreshRuletaPremiosSilently}
-                            getHeaders={getHeaders}
-                            onLaunchKiosk={() => handleLaunchKiosk(true)}
-                        />
+                    {ruletaSubTab === 'sectores' && (
+                        loadingRuleta && sectoresRuleta.length === 0 ? (
+                            <div className="ruleta-interacty-customizer animate-fade-in" aria-busy="true">
+                                <div className="card" style={{ padding: '1.25rem', borderRadius: '16px' }}>
+                                    <div className="skeleton" style={{ height: 38, width: 180, borderRadius: 999, marginBottom: '1.25rem' }} />
+                                    <div className="skeleton" style={{ height: 32, width: '100%', borderRadius: 8, marginBottom: '0.75rem' }} />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                                        {[1, 2, 3, 4].map(i => (
+                                            <div key={i} className="skeleton" style={{ height: 42, borderRadius: 8 }} />
+                                        ))}
+                                    </div>
+                                    <div className="skeleton" style={{ height: 160, borderRadius: 12 }} />
+                                </div>
+                                <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 460, background: 'linear-gradient(180deg, #0b1329 0%, #070d1e 100%)' }}>
+                                    <div className="skeleton" style={{ width: 280, height: 280, borderRadius: '50%', marginBottom: '1.5rem' }} />
+                                    <div className="skeleton" style={{ width: 140, height: 18, borderRadius: 6 }} />
+                                </div>
+                            </div>
+                        ) : !errors.premios && (
+                            <RuletaCustomizer
+                                sectores={sectoresRuleta}
+                                totalPesoActivo={totalPesoActivo}
+                                onUpdateSectoresLocally={setSectoresRuleta}
+                                onReloadSectores={refreshRuletaPremiosSilently}
+                                getHeaders={getHeaders}
+                            />
+                        )
                     )}
 
                     {/* VISTA 3: HISTORIAL DE GIROS */}
-                    {ruletaSubTab === 'historial' && !loadingRuleta && !errors.historial && (
-                        <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <i className="bi bi-clock-history text-primary" aria-hidden="true"></i>
-                                    Historial de Giros y Doctores Premiados
-                                </h3>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                    Últimos 100 giros registrados en visitas y eventos
-                                </span>
+                    {ruletaSubTab === 'historial' && (
+                        loadingRuleta && historialGiros.length === 0 ? (
+                            <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }} aria-busy="true">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '1rem 0' }}>
+                                    {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton" style={{ height: 48, borderRadius: 8 }} />)}
+                                </div>
                             </div>
+                        ) : !errors.historial ? (
+                            <div className="card dashboard-ops-panel" style={{ padding: '1.25rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <i className="bi bi-clock-history text-primary" aria-hidden="true"></i>
+                                        Historial de Giros y Doctores Premiados
+                                    </h3>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                        Últimos 100 giros registrados en visitas y eventos
+                                    </span>
+                                </div>
 
-                            {historialGiros.length === 0 ? (
-                                <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '1.5rem 0' }}>
-                                    Aún no se han realizado giros de ruleta. ¡Utiliza la herramienta superior en tu próxima visita!
-                                </p>
-                            ) : (
-                                <div className="data-table-wrapper marketing-table-wrap">
-                                    <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
+                                {historialGiros.length === 0 ? (
+                                    <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '1.5rem 0' }}>
+                                        Aún no se han realizado giros de ruleta. ¡Utiliza la herramienta superior en tu próxima visita!
+                                    </p>
+                                ) : (
+                                    <div className="data-table-wrapper marketing-table-wrap">
+                                        <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
                                         <thead>
                                             <tr>
                                                 <th>Fecha y Hora</th>
@@ -1072,7 +1185,7 @@ export default function Marketing() {
                                 </div>
                             )}
                         </div>
-                    )}
+                    ) : null)}
                 </div>
             )}
 

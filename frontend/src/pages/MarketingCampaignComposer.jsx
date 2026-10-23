@@ -5,6 +5,7 @@ import { useAuth } from '../state/AuthContext.jsx';
 import CustomSelect from '../components/CustomSelect.jsx';
 import FormDatePicker from '../components/FormDatePicker.jsx';
 import Modal from '../components/Modal.jsx';
+import CampaignNotificationPreview from '../components/CampaignNotificationPreview.jsx';
 import { marketingErrorMessage, marketingClinicLabel } from './marketingData.js';
 import { campaignAudiences, campaignBenefitLabel, campaignContentError, campaignDestinations, campaignReceiptLines, newCampaignForm } from './marketingCampaign.js';
 
@@ -13,6 +14,7 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
     const { getHeaders, user } = useAuth();
     const [form, setForm] = useState(newCampaignForm);
     const [step, setStep] = useState(0);
+    const [showLivePreview, setShowLivePreview] = useState(false);
     const [audience, setAudience] = useState(null);
     const [readiness, setReadiness] = useState(null);
     const [readinessLoading, setReadinessLoading] = useState(false);
@@ -120,7 +122,8 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
     };
     const benefitText = campaignBenefitLabel(form.beneficio, form.codigo_descuento);
     const immutable = busy || Boolean(pending) || Boolean(receipt && !receipt.es_prueba);
-    return <Modal open={open} onClose={close} title="Nueva campaña" subtitle="Prepara, prueba y revisa antes del envío masivo." icon="bi-broadcast" size="2xl" className="marketing-modal campaign-composer-modal" footer={
+    return <>
+        <Modal open={open} onClose={close} title="Nueva campaña" subtitle="Prepara, prueba y revisa antes del envío masivo." icon="bi-broadcast" size="2xl" className="marketing-modal campaign-composer-modal" footer={
             <div className="campaign-actions"><button type="button" className="btn btn-ghost" disabled={busy || uploading} onClick={close}>Cerrar</button>{step > 0 && <button type="button" className="btn btn-secondary" disabled={immutable || uploading} onClick={() => setStep(prev => prev - 1)}>Atrás</button>}{step < 2 ? <button type="button" className="btn btn-primary" disabled={immutable || uploading || previewBusy} onClick={next}>Continuar</button> : <button type="button" className="btn btn-primary" disabled={immutable || !confirmed || !readiness?.ready || readinessLoading || !audience?.cuentas || uploading || previewBusy} onClick={() => send(false)}>{busy ? 'Procesando…' : `Enviar a ${audience?.cuentas || 0} cuentas`}</button>}</div>
         }>
         <div className="campaign-composer">
@@ -248,7 +251,12 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
                                                 patch({
                                                     cupon_id: found.id,
                                                     codigo_descuento: found.codigo,
-                                                    beneficio: { tipo: found.tipo, valor: found.valor }
+                                                    beneficio: {
+                                                        tipo: found.tipo,
+                                                        valor: found.valor,
+                                                        limite_usos_por_clinica: found.limite_usos_por_clinica || found.limite_usos_por_doctor || 1,
+                                                        monto_minimo_pedido: found.monto_minimo_pedido || 0
+                                                    }
                                                 });
                                             } else if (newCode) {
                                                 patch({
@@ -287,7 +295,12 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
                                         patch({
                                             cupon_id: Number(value),
                                             codigo_descuento: selected?.codigo || '',
-                                            beneficio: selected ? { tipo: selected.tipo, valor: selected.valor } : null
+                                            beneficio: selected ? {
+                                                tipo: selected.tipo,
+                                                valor: selected.valor,
+                                                limite_usos_por_clinica: selected.limite_usos_por_clinica || selected.limite_usos_por_doctor || 1,
+                                                monto_minimo_pedido: selected.monto_minimo_pedido || 0
+                                            } : null
                                         });
                                     }
                                 }}
@@ -459,19 +472,20 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
                         <div className="campaign-test-box">
                             <div className="campaign-test-info">
                                 <span className="campaign-test-title">
-                                    <i className="bi bi-shield-check text-primary" /> Envío de prueba preventivo
+                                    <i className="bi bi-eye-fill text-primary" aria-hidden="true" style={{ marginRight: '6px' }} />
+                                    Vista previa del pop-up
                                 </span>
                                 <p className="campaign-test-desc">
-                                    Envía la notificación a tu cuenta para verificarla antes del lanzamiento.
+                                    Comprueba el diseño y la cuenta regresiva en pantalla completa.
                                 </p>
                             </div>
                             <button
-                                className="btn btn-secondary btn-sm"
                                 type="button"
-                                disabled={!readiness?.ready || readinessLoading || uploading || busy}
-                                onClick={() => send(true)}
+                                className="campaign-btn-preview"
+                                onClick={() => setShowLivePreview(true)}
                             >
-                                <i className="bi bi-eye" aria-hidden="true" /> Probar conmigo
+                                <i className="bi bi-arrows-fullscreen" aria-hidden="true" />
+                                <span>Previsualizar pop-up</span>
                             </button>
                         </div>
 
@@ -486,7 +500,18 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
                     </>}
                 </fieldset>
                 <aside className="campaign-preview campaign-preview--flyer" aria-label="Vista previa de campaña">
-                    <span className="campaign-preview-label">Vista previa del pop-up en el portal</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                        <span className="campaign-preview-label" style={{ margin: 0 }}>Vista previa del pop-up en el portal</span>
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setShowLivePreview(true)}
+                            style={{ fontSize: '0.75rem', padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            title="Previsualizar pop-up en pantalla completa"
+                        >
+                            <i className="bi bi-arrows-fullscreen" aria-hidden="true" /> Pantalla completa
+                        </button>
+                    </div>
                     <div className="campaign-flyer-card" style={{ width: '100%', maxWidth: '380px' }}>
                         <img
                             src={resolveImageUrl(form.imagen_url) || '/images/promo-popup-bg.png'}
@@ -526,7 +551,30 @@ export default function MarketingCampaignComposer({ open, onClose, clinicas, cup
             </div>
 
         </div>
-    </Modal>;
+    </Modal>
+    {showLivePreview && (
+        <CampaignNotificationPreview
+            notification={{
+                id: 'preview',
+                tipo: 'prueba_campana',
+                data: {
+                    campana_id: 'preview',
+                    titulo: form.titulo || 'Campaña Promocional',
+                    mensaje: form.mensaje,
+                    imagen_url: form.imagen_url,
+                    codigo_descuento: form.codigo_descuento,
+                    texto_boton: form.texto_boton,
+                    link_destino: form.link_destino,
+                    fecha_fin: form.fecha_fin,
+                    prueba_campana: true
+                },
+                link: form.link_destino
+            }}
+            onClose={() => setShowLivePreview(false)}
+            onNavigate={() => setShowLivePreview(false)}
+        />
+    )}
+    </>;
 }
 function AudienceSummary({ audience, loading }) {
     if (loading) {

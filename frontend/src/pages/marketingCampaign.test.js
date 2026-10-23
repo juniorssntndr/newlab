@@ -13,6 +13,8 @@ test('benefit summary and validation support amount and percentage', () => {
     assert.equal(campaignBenefitLabel({ tipo: 'monto_fijo', valor: 50 }), 'S/ 50.00 de descuento');
     assert.equal(campaignBenefitLabel({ tipo: 'porcentaje', valor: 30 }), '30% de descuento');
     assert.match(campaignContentError({ ...newCampaignForm(), titulo: 'Title', mensaje: 'Message', beneficio: { tipo: 'porcentaje', valor: 101, limite_usos_por_clinica: 1 } }), /valor/);
+    assert.equal(campaignContentError({ ...newCampaignForm(), titulo: 'Promo', cupon_id: 12, codigo_descuento: 'AFX-TEST', beneficio: { tipo: 'monto_fijo', valor: 50 } }), '');
+    assert.equal(campaignContentError({ ...newCampaignForm(), titulo: 'Promo', beneficio: { tipo: 'monto_fijo', valor: 50 } }), '');
 });
 test('provider metrics never use delivered or reached language', () => {
     const lines = campaignReceiptLines({ metricas: { cuentas_objetivo: 3, clinicas_objetivo: 2, avisos_portal: 3, push_aceptados: 1, push_inciertos: 2 } }).join('\n');

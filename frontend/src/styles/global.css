@@ -929,7 +929,31 @@ h4 {
 
 /* Pestañas de Compras y Almacén (consistencia con Finanzas y el resto del sistema) */
 .almacen-section-tabs {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.almacen-tab-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .almacen-tab-actions {
+    justify-content: stretch;
+  }
+  .almacen-tab-actions > div {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 0.5rem;
+  }
+  .almacen-tab-actions button {
+    flex: 1 1 140px;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 640px) {
@@ -12863,6 +12887,25 @@ Rediseño UI: Nuevo Pedido Layout Base
   border-color: var(--express-accent-strong);
   background: #fff4e8;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--express-accent) 35%, transparent);
+}
+
+.order-wizard-express-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.order-wizard-express-subtitle {
+  font-size: 0.77rem;
+  color: var(--color-text-secondary);
+  line-height: 1.25;
+}
+
+.order-wizard-express.is-on .order-wizard-express-subtitle {
+  color: #9a3412;
+  font-weight: 500;
 }
 
 .order-wizard-express-copy {

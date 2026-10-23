@@ -430,22 +430,10 @@ const Equipo = () => {
                     </h1>
                     <p>Control de roles del equipo interno y otorgamiento de cuentas de portal a clientes</p>
                 </div>
-                <div>
-                    {activeTab === 'equipo' && canManageTeam && (
-                        <button className="btn btn-primary" onClick={() => openNew('tecnico')}>
-                            <i className="bi bi-person-plus-fill"></i> Nuevo Integrante de Equipo
-                        </button>
-                    )}
-                    {activeTab === 'clientes' && (
-                        <button className="btn btn-primary" onClick={() => openNew('cliente')} style={{ background: '#059669', borderColor: '#059669' }}>
-                            <i className="bi bi-key-fill"></i> Otorgar Cuenta a Clínica
-                        </button>
-                    )}
-                </div>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="section-tabs dashboard-view-switcher" role="group" aria-label="Secciones de usuarios" style={{ marginBottom: 'var(--space-6)' }}>
+            <div className="section-tabs dashboard-view-switcher" role="group" aria-label="Secciones de usuarios" style={{ marginBottom: 'var(--space-4)' }}>
                 {canManageTeam && (
                     <button
                         type="button"
@@ -557,9 +545,16 @@ const Equipo = () => {
                     </div>
                 )}
 
-                {/* Search box */}
-                <div style={{ marginBottom: 'var(--space-4)' }}>
-                    <div className="search-box">
+                {/* Toolbar: Buscador + Acciones contextuales */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 'var(--space-3)',
+                    flexWrap: 'wrap',
+                    marginBottom: 'var(--space-4)'
+                }}>
+                    <div className="search-box" style={{ flex: '1 1 280px', minWidth: '220px' }}>
                         <i className="bi bi-search"></i>
                         <input
                             className="form-input"
@@ -568,6 +563,21 @@ const Equipo = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
+
+                    {((activeTab === 'equipo' && canManageTeam) || activeTab === 'clientes') && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexShrink: 0 }}>
+                            {activeTab === 'equipo' && canManageTeam && (
+                                <button className="btn btn-primary" onClick={() => openNew('tecnico')}>
+                                    <i className="bi bi-person-plus-fill"></i> Nuevo Integrante de Equipo
+                                </button>
+                            )}
+                            {activeTab === 'clientes' && (
+                                <button className="btn btn-primary" onClick={() => openNew('cliente')} style={{ background: '#059669', borderColor: '#059669' }}>
+                                    <i className="bi bi-key-fill"></i> Otorgar Cuenta a Clínica
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {loading ? (

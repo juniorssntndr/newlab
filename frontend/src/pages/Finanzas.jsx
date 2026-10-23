@@ -278,7 +278,6 @@ const Finanzas = () => {
                     <h1>
                         <i className="bi bi-cash-stack text-primary" aria-hidden="true"></i> Gestión de Deudas y Cobranzas
                     </h1>
-                    <p>Monitoreo de cartera por clínica, alertas de morosidad y cobranza en cascada.</p>
                 </div>
             </div>
 
@@ -536,7 +535,6 @@ const Finanzas = () => {
                         <div className="card-header dashboard-card-header">
                             <div>
                                 <h3 className="card-title">Resumen de cartera y cobranzas</h3>
-                                <p className="card-subtitle">Seguimiento de deudas por clínica y alertas de antigüedad</p>
                             </div>
                         </div>
                         <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
@@ -636,7 +634,6 @@ const Finanzas = () => {
                         <div className="card-header dashboard-card-header dashboard-card-header--split">
                             <div>
                                 <h3 className="card-title">Deudas por Clínica</h3>
-                                <p className="card-subtitle">Gestión individual y liquidación de pedidos en cascada</p>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
                                 <div className="segmented-control" style={{ maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', display: 'flex', flex: '1 1 auto' }}>

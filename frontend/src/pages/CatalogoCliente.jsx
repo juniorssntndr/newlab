@@ -90,7 +90,6 @@ export default function CatalogoCliente() {
                     <h1>
                         <i className="bi bi-box-seam text-primary" aria-hidden="true"></i> Catálogo de Servicios
                     </h1>
-                    <p>Elige un tratamiento y continúa al pedido</p>
                 </div>
             </div>
 

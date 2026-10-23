@@ -54,7 +54,7 @@ export const CrmResumenPage = () => {
                                 </div>
                             </div>
 
-                            <div className="grid dashboard-kpi-grid-4 dashboard-staggered-grid">
+                            <div className="grid dashboard-kpi-grid-4 dashboard-staggered-grid crm-kpi-grid-salud">
                                 {/* Card 1: Clientes Verdes */}
                                 <div className="card kpi-card dashboard-kpi-card dashboard-kpi-card--success">
                                     <div className="dashboard-kpi-shell">

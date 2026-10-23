@@ -130,3 +130,23 @@
     border-color: var(--color-primary, #0284c7);
     font-weight: 600;
 }
+
+
+/* Acciones contextuales por pestaña */
+.equipo-tab-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+    .equipo-tab-actions {
+        justify-content: stretch;
+    }
+    .equipo-tab-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+}

@@ -36,16 +36,6 @@ export const CrmDoctoresPage = () => {
             <CrmNavigation
                 title="Directorio de Doctores"
                 subtitle="Gestión de relaciones personales con odontólogos, especialistas y consultorios asociados"
-                actions={
-                    <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        onClick={() => setModalDoctor({})}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
-                    >
-                        <i className="bi bi-person-plus-fill"></i> Nuevo Doctor
-                    </button>
-                }
             />
 
             <div>
@@ -60,6 +50,13 @@ export const CrmDoctoresPage = () => {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setModalDoctor({})}
+                    >
+                        <i className="bi bi-person-plus-fill"></i> Nuevo Doctor
+                    </button>
                 </div>
 
                 <div className="crm-table-container">

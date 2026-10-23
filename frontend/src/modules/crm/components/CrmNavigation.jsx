@@ -24,15 +24,13 @@ export const CrmNavigation = ({ title, subtitle, actions }) => {
 
     return (
         <div className="crm-nav-wrapper">
-            <div className="page-header crm-page-header" style={{ marginBottom: 'var(--space-4)' }}>
+            <div className="page-header crm-page-header" style={{ marginBottom: 'var(--space-3)' }}>
                 <div className="page-header-left">
                     <h1>
                         <i className="bi bi-person-lines-fill text-primary" aria-hidden="true"></i>
-                        {title || 'Gestión de Clientes'}
+                        Gestión de Clientes
                     </h1>
-                    {subtitle && <p>{subtitle}</p>}
                 </div>
-                {actions && <div className="page-header-right crm-page-header-actions">{actions}</div>}
             </div>
 
             <div
@@ -40,7 +38,7 @@ export const CrmNavigation = ({ title, subtitle, actions }) => {
                 className="section-tabs dashboard-view-switcher crm-section-tabs"
                 role="navigation"
                 aria-label="Secciones de Gestión de Clientes"
-                style={{ marginBottom: 'var(--space-5)' }}
+                style={{ marginBottom: actions ? 'var(--space-3)' : 'var(--space-4)' }}
             >
                 {CRM_TABS.map((tab) => (
                     <NavLink
@@ -55,6 +53,12 @@ export const CrmNavigation = ({ title, subtitle, actions }) => {
                     </NavLink>
                 ))}
             </div>
+
+            {actions && (
+                <div className="crm-tab-actions" style={{ marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {actions}
+                </div>
+            )}
         </div>
     );
 };

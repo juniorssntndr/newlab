@@ -176,7 +176,6 @@ const CalendarioCliente = () => {
                     <h1>
                         <i className="bi bi-calendar3 text-primary" aria-hidden="true"></i> Mi Calendario
                     </h1>
-                    <p>Fechas de entrega de tus pedidos activos</p>
                 </div>
             </div>
 

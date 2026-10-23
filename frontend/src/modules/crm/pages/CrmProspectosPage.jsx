@@ -90,28 +90,6 @@ export const CrmProspectosPage = () => {
             <CrmNavigation
                 title="Bandeja de Prospectos y Pre-clientes"
                 subtitle="Captación territorial, seguimiento en etapas comerciales y conversión a cartera activa"
-                actions={
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={() => setIsNewProspectOpen(true)}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
-                        >
-                            <i className="bi bi-plus-circle"></i> Nuevo Prospecto
-                        </button>
-                        {isAdmin && (
-                            <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => setIsImportOpen(true)}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
-                            >
-                                <i className="bi bi-cloud-upload"></i> Importar CSV
-                            </button>
-                        )}
-                    </div>
-                }
             />
 
             <div>
@@ -214,6 +192,23 @@ export const CrmProspectosPage = () => {
                             </div>
                         )}
                     </div>
+
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setIsNewProspectOpen(true)}
+                    >
+                        <i className="bi bi-plus-circle"></i> Nuevo Prospecto
+                    </button>
+                    {isAdmin && (
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => setIsImportOpen(true)}
+                        >
+                            <i className="bi bi-cloud-upload"></i> Importar CSV
+                        </button>
+                    )}
                 </div>
 
                 <div className="crm-table-container">

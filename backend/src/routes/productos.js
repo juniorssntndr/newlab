@@ -79,7 +79,7 @@ router.get('/', async (req, res, next) => {
 router.post('/', requireRole('admin'), upload.single('image'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible, admite_puente, modo_odontograma } = req.body;
+        const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible, admite_puente, modo_odontograma, permite_express } = req.body;
         const image_url = req.file ? await uploadProductImage(req.file) : null;
         const categoriaId = toNullableInt(categoria_id);
         const materialId = toNullableInt(material_id);
@@ -87,6 +87,7 @@ router.post('/', requireRole('admin'), upload.single('image'), async (req, res, 
         const tiempoEstimadoDias = toNullableInt(tiempo_estimado_dias) ?? 5;
         const visibleValue = toNullableBoolean(visible);
         const admitePuenteValue = toNullableBoolean(admite_puente);
+        const permiteExpressValue = toNullableBoolean(permite_express) ?? false;
         const modoOdontogramaValue = modo_odontograma || (admitePuenteValue ? 'puente' : 'unitario');
 
         if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'Nombre es requerido' });
@@ -94,9 +95,9 @@ router.post('/', requireRole('admin'), upload.single('image'), async (req, res, 
         if (tiempoEstimadoDias <= 0) return res.status(400).json({ error: 'El tiempo estimado debe ser mayor a 0' });
 
         const result = await pool.query(
-            `INSERT INTO nl_productos (nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, image_url, visible, admite_puente, modo_odontograma)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-            [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, image_url, visibleValue ?? true, admitePuenteValue ?? false, modoOdontogramaValue]
+            `INSERT INTO nl_productos (nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, image_url, visible, admite_puente, modo_odontograma, permite_express)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+            [nombre, descripcion, categoriaId, precioBase, materialId, tiempoEstimadoDias, image_url, visibleValue ?? true, admitePuenteValue ?? false, modoOdontogramaValue, permiteExpressValue]
         );
         const created = result.rows[0];
         await writeAuditEvent(req, {
@@ -217,7 +218,12 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
 
         if (hasOwn(req.body, 'orden_landing')) {
             params.push(toNullableInt(req.body.orden_landing) ?? 0);
-            updates.push(`orden_landing=$${params.length}`);
+            updates.push(`orden_landing=${params.length}`);
+        }
+
+        if (hasOwn(req.body, 'permite_express')) {
+            params.push(toNullableBoolean(req.body.permite_express) ?? false);
+            updates.push(`permite_express=${params.length}`);
         }
 
         if (updates.length === 0) {

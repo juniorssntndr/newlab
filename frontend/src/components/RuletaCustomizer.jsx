@@ -11,8 +11,7 @@ export default function RuletaCustomizer({
     totalPesoActivo = 0,
     onUpdateSectoresLocally,
     onReloadSectores,
-    getHeaders,
-    onLaunchKiosk
+    getHeaders
 }) {
     // Cálculo de peso y sectores activos para probabilidades en tiempo real
     const activeSectors = sectores.filter(s => s.activo && (!s.stock_disponible || s.stock_entregado < s.stock_disponible));
@@ -52,7 +51,10 @@ export default function RuletaCustomizer({
         stock_disponible: '',
         imagen_url: '',
         resultado_titulo: '',
-        resultado_descripcion: ''
+        resultado_descripcion: '',
+        subtitulo_badge: 'DESCUENTO',
+        modo_visual: 'texto_icono',
+        grafico_tipo: 'auto'
     });
     const [savingSector, setSavingSector] = useState(false);
 
@@ -80,6 +82,21 @@ export default function RuletaCustomizer({
         { value: 'sin_premio', label: 'Sin Premio ("Sigue Intentando")' }
     ];
 
+    // Opciones para Modo de Visualización del Sector
+    const visualModeOptions = [
+        { value: 'texto_icono', label: 'Texto + Ícono/Imagen' },
+        { value: 'solo_icono', label: 'Solo Ícono / Imagen (Estilo Piña)' },
+        { value: 'solo_texto', label: 'Solo Texto (Sin gráfico inferior)' }
+    ];
+
+    // Opciones para Tipo de Gráfico / Ilustración
+    const graphicTypeOptions = [
+        { value: 'auto', label: 'Ícono Automático (Trofeo / Regalo)' },
+        { value: 'pina', label: '🍍 Piña AFINIX (Vector Oficial)' },
+        { value: 'imagen', label: '🖼 Imagen Personalizada' },
+        { value: 'ninguno', label: '🚫 Sin Gráfico' }
+    ];
+
     // Presets de Probabilidad estilo Interacty
     const probabilityPresets = [
         { label: 'Baja (5%)', weight: 5 },
@@ -91,6 +108,7 @@ export default function RuletaCustomizer({
     // Paleta oficial de colores AFINIX LAB
     const afinixPalette = [
         { hex: '#0284c7', label: 'Azul AFINIX' },
+        { hex: '#ffffff', label: 'Blanco Puro' },
         { hex: '#0f172a', label: 'Azul Marino Oscuro' },
         { hex: '#024873', label: 'Azul Zafiro' },
         { hex: '#38bdf8', label: 'Celeste Brillante' },
@@ -137,19 +155,23 @@ export default function RuletaCustomizer({
     const handleSelectSector = (sector) => {
         setIsCreatingNew(false);
         setSelectedSectorId(sector.id);
+        const isPinaFallback = sector.tipo_premio === 'sin_premio' || (sector.titulo && sector.titulo.toUpperCase().includes('PIÑA'));
         setSectorForm({
             id: sector.id,
             titulo: sector.titulo || '',
             tipo_premio: sector.tipo_premio || 'porcentaje',
             valor: sector.valor !== null && sector.valor !== undefined ? String(sector.valor) : '',
             descripcion: sector.descripcion || '',
-            color_hex: sector.color_hex || '#0284c7',
+            color_hex: sector.color_hex || (isPinaFallback ? '#ffffff' : '#0284c7'),
             texto_color: sector.texto_color || '#ffffff',
             probabilidad_peso: String(sector.probabilidad_peso || 10),
             stock_disponible: sector.stock_disponible !== null && sector.stock_disponible !== undefined ? String(sector.stock_disponible) : '',
             imagen_url: sector.imagen_url || '',
             resultado_titulo: sector.resultado_titulo || '',
-            resultado_descripcion: sector.resultado_descripcion || ''
+            resultado_descripcion: sector.resultado_descripcion || '',
+            subtitulo_badge: sector.subtitulo_badge !== undefined && sector.subtitulo_badge !== null ? sector.subtitulo_badge : (sector.tipo_premio === 'porcentaje' || sector.tipo_premio === 'monto_fijo' ? 'DESCUENTO' : ''),
+            modo_visual: sector.modo_visual || (isPinaFallback ? 'solo_icono' : 'texto_icono'),
+            grafico_tipo: sector.grafico_tipo || (isPinaFallback ? 'pina' : (sector.imagen_url ? 'imagen' : 'auto'))
         });
     };
 
@@ -170,7 +192,10 @@ export default function RuletaCustomizer({
             stock_disponible: '',
             imagen_url: '',
             resultado_titulo: '',
-            resultado_descripcion: ''
+            resultado_descripcion: '',
+            subtitulo_badge: 'DESCUENTO',
+            modo_visual: 'texto_icono',
+            grafico_tipo: 'auto'
         });
     };
 
@@ -189,10 +214,10 @@ export default function RuletaCustomizer({
                 headers: { ...headers }
             });
             if (res?.imagen_url) {
-                setSectorForm((prev) => ({ ...prev, imagen_url: res.imagen_url }));
+                setSectorForm((prev) => ({ ...prev, imagen_url: res.imagen_url, grafico_tipo: 'imagen' }));
                 // Si estamos editando un sector existente, reflejar optimistamente en la lista
                 if (!isCreatingNew && selectedSectorId && onUpdateSectoresLocally) {
-                    onUpdateSectoresLocally(prev => prev.map(s => s.id === selectedSectorId ? { ...s, imagen_url: res.imagen_url } : s));
+                    onUpdateSectoresLocally(prev => prev.map(s => s.id === selectedSectorId ? { ...s, imagen_url: res.imagen_url, grafico_tipo: 'imagen' } : s));
                 }
                 toast.success('Imagen del sector subida exitosamente');
             }
@@ -306,6 +331,9 @@ export default function RuletaCustomizer({
                 imagen_url: sector.imagen_url,
                 resultado_titulo: sector.resultado_titulo,
                 resultado_descripcion: sector.resultado_descripcion,
+                subtitulo_badge: sector.subtitulo_badge,
+                modo_visual: sector.modo_visual || 'texto_icono',
+                grafico_tipo: sector.grafico_tipo || 'auto',
                 orden: sectores.length
             };
             const res = await apiClient.post('/marketing/ruleta/premios', payload, { headers: getHeaders?.() });
@@ -632,12 +660,13 @@ export default function RuletaCustomizer({
             c.restore();
         };
 
-        // Dibujar sectores alternados (Azul AFINIX y Blanco)
+        // Dibujar sectores
         previewSlices.forEach((slice, i) => {
             const startAngle = angle + i * arc;
             const endAngle = startAngle + arc;
 
-            const isPina = slice.tipo_premio === 'sin_premio' || (slice.titulo && slice.titulo.toUpperCase().includes('PIÑA'));
+            const baseColor = slice.color_hex || (slice.tipo_premio === 'sin_premio' ? '#ffffff' : '#0284c7');
+            const isLightBg = ['#ffffff', '#fff', '#f8fafc', '#f1f5f9'].includes(baseColor.toLowerCase());
 
             ctx.save();
             ctx.beginPath();
@@ -645,17 +674,18 @@ export default function RuletaCustomizer({
             ctx.arc(centerX, centerY, radius, startAngle, endAngle);
             ctx.closePath();
 
-            if (!isPina) {
-                const grad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
+            const grad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
+            if (isLightBg) {
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(1, '#f1f5f9');
+            } else if (baseColor.toLowerCase() === '#0284c7') {
                 grad.addColorStop(0, '#0284c7');
                 grad.addColorStop(1, '#0369a1');
-                ctx.fillStyle = grad;
             } else {
-                const grad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
-                grad.addColorStop(0, '#ffffff');
-                grad.addColorStop(1, '#f8fafc');
-                ctx.fillStyle = grad;
+                grad.addColorStop(0, baseColor);
+                grad.addColorStop(1, baseColor);
             }
+            ctx.fillStyle = grad;
             ctx.fill();
             ctx.lineWidth = 2;
             ctx.strokeStyle = '#ffffff'; // divisor blanco limpio
@@ -666,89 +696,111 @@ export default function RuletaCustomizer({
             ctx.rotate(startAngle + arc / 2);
 
             const sliceImg = getImage(slice.imagen_url);
+            const modoVisual = slice.modo_visual || (slice.tipo_premio === 'sin_premio' || (slice.titulo && slice.titulo.toUpperCase().includes('PIÑA')) ? 'solo_icono' : 'texto_icono');
+            const graficoTipo = slice.grafico_tipo || (slice.tipo_premio === 'sin_premio' || (slice.titulo && slice.titulo.toUpperCase().includes('PIÑA')) ? 'pina' : (slice.imagen_url ? 'imagen' : 'auto'));
 
-            if (!isPina) {
-                // SECTOR CON PREMIO: Descuento explícito en alto contraste
+            if (modoVisual === 'solo_icono') {
+                // Modo SOLO ÍCONO (como la Piña clásica): centrado en el tercio exterior sin texto
+                const dist = radius * 0.73;
+                ctx.translate(dist, 0);
+
+                if (graficoTipo === 'pina') {
+                    ctx.rotate(Math.PI);
+                    const pinaSize = Math.max(26, Math.round(radius * 0.20));
+                    drawSymmetricPineapple(ctx, pinaSize);
+                } else if (graficoTipo === 'imagen' && sliceImg) {
+                    ctx.rotate(Math.PI / 2);
+                    const imgSize = Math.max(26, Math.round(radius * 0.22));
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, imgSize / 2, 0, 2 * Math.PI);
+                    ctx.clip();
+                    ctx.drawImage(sliceImg, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+                    ctx.restore();
+                } else {
+                    ctx.rotate(Math.PI / 2);
+                    const iconSize = Math.max(20, Math.round(radius * 0.18));
+                    ctx.font = `${iconSize}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🎁', 0, 0);
+                }
+            } else {
+                // Modo TEXTO + ÍCONO o SOLO TEXTO
                 const dist = radius * 0.77;
                 ctx.translate(dist, 0);
                 ctx.rotate(Math.PI / 2); // perpendicular al radio
 
-                // Extraer el monto limpio para jerarquía visual
+                // 1. Título / Monto grande y destacado
                 const rawTitle = (slice.titulo || '').trim();
-                let amountText = rawTitle;
-                if (rawTitle.toUpperCase().includes('DCTO')) {
-                    amountText = rawTitle.replace(/DCTO\.?/i, '').trim();
-                } else if (rawTitle.toUpperCase().includes('DESCUENTO')) {
-                    amountText = rawTitle.replace(/DESCUENTO/i, '').trim();
-                }
-                if (!amountText) amountText = `S/. ${slice.valor || 0}`;
-
-                // 1. Monto grande y destacado
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const fontSize = Math.max(11, Math.round(radius * 0.082));
                 ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
-                ctx.fillStyle = '#ffffff';
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-                ctx.shadowBlur = 4;
-                ctx.fillText(amountText, 0, -fontSize * 0.88);
-
-                // 2. Badge cápsula "DESCUENTO" (aclara 100% que no es dinero regalado)
+                ctx.fillStyle = slice.texto_color || (isLightBg ? '#0f172a' : '#ffffff');
+                ctx.shadowColor = isLightBg ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.55)';
+                ctx.shadowBlur = isLightBg ? 0 : 4;
+                ctx.fillText(rawTitle, 0, -fontSize * 0.88);
                 ctx.shadowBlur = 0;
-                const badgeW = Math.max(50, Math.round(fontSize * 3.4));
-                const badgeH = Math.max(12, Math.round(fontSize * 0.78));
-                const bx = -badgeW / 2;
-                const by = -badgeH * 0.35;
 
-                ctx.save();
-                ctx.beginPath();
-                if (ctx.roundRect) {
-                    ctx.roundRect(bx, by, badgeW, badgeH, badgeH / 2);
-                } else {
-                    ctx.rect(bx, by, badgeW, badgeH);
-                }
-                ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-                ctx.fill();
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = '#38bdf8';
-                ctx.stroke();
+                // 2. Badge cápsula (si tiene subtítulo configurado)
+                const badgeText = slice.subtitulo_badge ? String(slice.subtitulo_badge).trim().toUpperCase() : null;
+                if (badgeText) {
+                    const badgeW = Math.max(50, Math.round(fontSize * 3.4));
+                    const badgeH = Math.max(12, Math.round(fontSize * 0.78));
+                    const bx = -badgeW / 2;
+                    const by = -badgeH * 0.35;
 
-                ctx.font = `800 ${Math.max(7, Math.round(fontSize * 0.44))}px system-ui, sans-serif`;
-                ctx.fillStyle = '#e0f2fe';
-                ctx.letterSpacing = '0.05em';
-                ctx.fillText('DESCUENTO', 0, by + badgeH / 2 + 0.5);
-                ctx.restore();
-
-                // 3. Ícono abajo hacia el centro
-                if (sliceImg) {
-                    const imgSize = Math.max(18, Math.round(radius * 0.15));
                     ctx.save();
                     ctx.beginPath();
-                    ctx.arc(0, imgSize * 0.85, imgSize / 2, 0, 2 * Math.PI);
-                    ctx.clip();
-                    ctx.drawImage(sliceImg, -imgSize / 2, imgSize * 0.35, imgSize, imgSize);
+                    if (ctx.roundRect) {
+                        ctx.roundRect(bx, by, badgeW, badgeH, badgeH / 2);
+                    } else {
+                        ctx.rect(bx, by, badgeW, badgeH);
+                    }
+                    ctx.fillStyle = isLightBg ? 'rgba(2, 132, 199, 0.15)' : 'rgba(56, 189, 248, 0.25)';
+                    ctx.fill();
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = isLightBg ? '#0284c7' : '#38bdf8';
+                    ctx.stroke();
+
+                    ctx.font = `800 ${Math.max(7, Math.round(fontSize * 0.44))}px system-ui, sans-serif`;
+                    ctx.fillStyle = isLightBg ? '#0284c7' : '#e0f2fe';
+                    ctx.letterSpacing = '0.05em';
+                    ctx.fillText(badgeText, 0, by + badgeH / 2 + 0.5);
                     ctx.restore();
-                } else {
-                    const val = Number(slice.valor) || 0;
-                    let icon = '💰';
-                    if (val >= 100) icon = '🏆';
-                    else if (val >= 50) icon = '🎉';
-                    else if (val >= 30) icon = '💰';
-                    else icon = '⭐';
-
-                    const iconSize = Math.max(14, Math.round(radius * 0.12));
-                    ctx.font = `${iconSize}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
-                    ctx.fillText(icon, 0, iconSize * 1.15);
                 }
-            } else {
-                // SECTOR PIÑA: 100% alineada en su eje central con el centro de la ruleta y situada en el tercio exterior
-                const dist = radius * 0.73;
-                ctx.translate(dist, 0);
-                // Invertimos para que las hojas apunten hacia el exterior y la base al centro
-                ctx.rotate(Math.PI);
 
-                const pinaSize = Math.max(26, Math.round(radius * 0.20));
-                drawSymmetricPineapple(ctx, pinaSize);
+                // 3. Gráfico inferior (solo si modoVisual === 'texto_icono')
+                if (modoVisual === 'texto_icono' && graficoTipo !== 'ninguno') {
+                    if (graficoTipo === 'pina') {
+                        const pinaSize = Math.max(16, Math.round(radius * 0.13));
+                        ctx.save();
+                        ctx.translate(0, pinaSize * 0.95);
+                        ctx.rotate(Math.PI);
+                        drawSymmetricPineapple(ctx, pinaSize);
+                        ctx.restore();
+                    } else if (graficoTipo === 'imagen' && sliceImg) {
+                        const imgSize = Math.max(18, Math.round(radius * 0.15));
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(0, imgSize * 0.85, imgSize / 2, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(sliceImg, -imgSize / 2, imgSize * 0.35, imgSize, imgSize);
+                        ctx.restore();
+                    } else {
+                        const val = Number(slice.valor) || 0;
+                        let icon = '💰';
+                        if (val >= 100) icon = '🏆';
+                        else if (val >= 50) icon = '🎉';
+                        else if (val >= 30) icon = '💰';
+                        else icon = '⭐';
+
+                        const iconSize = Math.max(14, Math.round(radius * 0.12));
+                        ctx.font = `${iconSize}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+                        ctx.fillText(icon, 0, iconSize * 1.15);
+                    }
+                }
             }
 
             ctx.restore();
@@ -854,36 +906,32 @@ export default function RuletaCustomizer({
             <div className="ruleta-customizer-controls card" style={{
                 padding: '1.25rem',
                 borderRadius: '16px',
-                background: 'var(--color-bg)',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
                 boxShadow: 'var(--shadow-sm)'
             }}>
-                {/* Pestañas de configuración estilo Interacty */}
-                <div style={{
-                    display: 'flex',
-                    gap: '0.5rem',
-                    borderBottom: '1px solid var(--color-border)',
-                    paddingBottom: '0.75rem',
-                    marginBottom: '1.25rem'
-                }}>
-                    <button
-                        type="button"
-                        className={`btn btn-sm ${activeTab === 'sectores' ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => setActiveTab('sectores')}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
-                    >
-                        <i className="bi bi-pie-chart-fill" aria-hidden="true"></i>
-                        Sectores de la Ruleta ({sectores.length})
-                    </button>
-                    <button
-                        type="button"
-                        className={`btn btn-sm ${activeTab === 'general' ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => setActiveTab('general')}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
-                    >
-                        <i className="bi bi-palette-fill" aria-hidden="true"></i>
-                        Diseño & Animación
-                    </button>
+                {/* Pestañas de configuración con estilo segmented-control */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                    <div className="segmented-control" role="group" aria-label="Configuración de ruleta">
+                        <button
+                            type="button"
+                            className={`segmented-control__btn${activeTab === 'sectores' ? ' is-active' : ''}`}
+                            onClick={() => setActiveTab('sectores')}
+                            aria-pressed={activeTab === 'sectores'}
+                        >
+                            <i className="bi bi-pie-chart-fill" aria-hidden="true"></i>
+                            Sectores
+                        </button>
+                        <button
+                            type="button"
+                            className={`segmented-control__btn${activeTab === 'general' ? ' is-active' : ''}`}
+                            onClick={() => setActiveTab('general')}
+                            aria-pressed={activeTab === 'general'}
+                        >
+                            <i className="bi bi-palette-fill" aria-hidden="true"></i>
+                            Diseño
+                        </button>
+                    </div>
                 </div>
 
                 {/* ==================================================== */}
@@ -893,45 +941,49 @@ export default function RuletaCustomizer({
                     <div>
                         {/* Selector / Lista ordenable de sectores (Top bar) */}
                         <div style={{ marginBottom: '1.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                                <label className="form-label" style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                    Lista de Sectores (Orden en Ruleta)
-                                </label>
+                            {/* Cabecera unificada: título con contador y botón de añadir */}
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '0.75rem'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                        Sectores de la Ruleta
+                                    </span>
+                                    <span className="badge" style={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 600,
+                                        background: 'var(--color-bg-alt)',
+                                        color: 'var(--color-text-secondary)',
+                                        padding: '2px 8px',
+                                        borderRadius: '999px',
+                                        border: '1px solid var(--color-border)'
+                                    }}>
+                                        {activeSectors.length === sectores.length
+                                            ? `${sectores.length} activos`
+                                            : `${activeSectors.length} de ${sectores.length} activos`}
+                                    </span>
+                                </div>
+
                                 <button
                                     type="button"
                                     className="btn btn-sm btn-outline-primary"
                                     onClick={handleStartNewSector}
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', padding: '0.2rem 0.55rem' }}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 600,
+                                        padding: '0.25rem 0.65rem',
+                                        borderRadius: '8px'
+                                    }}
                                 >
                                     <i className="bi bi-plus-lg" aria-hidden="true"></i>
-                                    Añadir Sector
+                                    Añadir sector
                                 </button>
-                            </div>
-
-                            {/* Resumen de probabilidad activa */}
-                            <div style={{
-                                display: 'flex',
-                                gap: '0.85rem',
-                                flexWrap: 'wrap',
-                                background: 'var(--color-bg-alt)',
-                                padding: '0.55rem 0.85rem',
-                                borderRadius: '8px',
-                                marginBottom: '0.75rem',
-                                border: '1px solid var(--color-border)',
-                                fontSize: '0.8rem'
-                            }}>
-                                <div>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>Sectores Totales:</span>{' '}
-                                    <strong>{sectores.length}</strong>
-                                </div>
-                                <div>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>En Giro Activo:</span>{' '}
-                                    <strong style={{ color: 'var(--color-primary)' }}>{activeSectors.length}</strong>
-                                </div>
-                                <div>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>Peso Total Acumulado:</span>{' '}
-                                    <strong>{effectiveTotalPeso} pts</strong>
-                                </div>
                             </div>
 
                             {/* Mini tarjetas horizontales de cada sector */}
@@ -960,7 +1012,7 @@ export default function RuletaCustomizer({
                                                 justifyContent: 'space-between',
                                                 padding: '0.45rem 0.65rem',
                                                 borderRadius: '8px',
-                                                background: isSelected ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                                                background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
                                                 border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.15s ease'
@@ -1135,60 +1187,101 @@ export default function RuletaCustomizer({
                                     </div>
                                 )}
 
-                                {/* Imagen del Sector (Interacty Style) */}
-                                <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-                                    <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>Imagen del Sector (Ícono / Regalo)</span>
-                                        {sectorForm.imagen_url && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-link btn-sm"
-                                                onClick={() => setSectorForm(prev => ({ ...prev, imagen_url: '' }))}
-                                                style={{ padding: 0, fontSize: '0.72rem', color: 'var(--color-error)' }}
-                                            >
-                                                Quitar imagen
-                                            </button>
-                                        )}
-                                    </label>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        {sectorForm.imagen_url ? (
-                                            <div style={{
-                                                width: '42px',
-                                                height: '42px',
-                                                borderRadius: '8px',
-                                                border: '1px solid var(--color-border)',
-                                                overflow: 'hidden',
-                                                background: '#000',
-                                                flexShrink: 0
-                                            }}>
-                                                <img src={resolveImageUrl(sectorForm.imagen_url)} alt="Premio" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                            </div>
-                                        ) : (
-                                            <div style={{
-                                                width: '42px',
-                                                height: '42px',
-                                                borderRadius: '8px',
-                                                border: '1px dashed var(--color-border)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: 'var(--color-text-secondary)',
-                                                fontSize: '1.1rem',
-                                                flexShrink: 0
-                                            }}>
-                                                <i className="bi bi-image"></i>
-                                            </div>
-                                        )}
-                                        <label className={`btn btn-sm btn-secondary ${uploadingSectorImg ? 'disabled' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>
-                                            <i className="bi bi-upload" style={{ marginRight: '4px' }}></i>
-                                            {uploadingSectorImg ? 'Subiendo...' : sectorForm.imagen_url ? 'Cambiar Imagen' : 'Subir Imagen'}
-                                            <input type="file" accept="image/*" onChange={handleUploadSectorImage} style={{ display: 'none' }} disabled={uploadingSectorImg} />
+                                {/* Modo Visual y Subtítulo / Badge */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                                            Modo de Visualización
                                         </label>
+                                        <CustomSelect
+                                            options={visualModeOptions}
+                                            value={sectorForm.modo_visual}
+                                            onChange={(_, val) => setSectorForm(prev => ({ ...prev, modo_visual: val }))}
+                                        />
                                     </div>
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginTop: '3px', display: 'block' }}>
-                                        Aparecerá centrada en la rebanada de la ruleta (PNG transparente recomendado).
-                                    </span>
+
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                                            Subtítulo / Badge Cápsula
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Ej. DESCUENTO, PREMIO (o vacío)"
+                                            value={sectorForm.subtitulo_badge || ''}
+                                            onChange={(e) => setSectorForm(prev => ({ ...prev, subtitulo_badge: e.target.value }))}
+                                            disabled={sectorForm.modo_visual === 'solo_icono'}
+                                        />
+                                    </div>
                                 </div>
+
+                                {/* Gráfico / Ilustración del Sector */}
+                                {sectorForm.modo_visual !== 'solo_texto' && (
+                                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                                        <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                                            Tipo de Gráfico en la Rebanada
+                                        </label>
+                                        <CustomSelect
+                                            options={graphicTypeOptions}
+                                            value={sectorForm.grafico_tipo}
+                                            onChange={(_, val) => setSectorForm(prev => ({ ...prev, grafico_tipo: val }))}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Subida de Imagen (si seleccionó imagen personalizada o para tenerla disponible) */}
+                                {sectorForm.modo_visual !== 'solo_texto' && sectorForm.grafico_tipo === 'imagen' && (
+                                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                                        <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                                            <span>Imagen Personalizada (PNG Recomendado)</span>
+                                            {sectorForm.imagen_url && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-link btn-sm"
+                                                    onClick={() => setSectorForm(prev => ({ ...prev, imagen_url: '', grafico_tipo: 'auto' }))}
+                                                    style={{ padding: 0, fontSize: '0.72rem', color: 'var(--color-error)' }}
+                                                >
+                                                    Quitar imagen
+                                                </button>
+                                            )}
+                                        </label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            {sectorForm.imagen_url ? (
+                                                <div style={{
+                                                    width: '42px',
+                                                    height: '42px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid var(--color-border)',
+                                                    overflow: 'hidden',
+                                                    background: '#000',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <img src={resolveImageUrl(sectorForm.imagen_url)} alt="Premio" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                </div>
+                                            ) : (
+                                                <div style={{
+                                                    width: '42px',
+                                                    height: '42px',
+                                                    borderRadius: '8px',
+                                                    border: '1px dashed var(--color-border)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: 'var(--color-text-secondary)',
+                                                    fontSize: '1.1rem',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <i className="bi bi-image"></i>
+                                                </div>
+                                            )}
+                                            <label className={`btn btn-sm btn-secondary ${uploadingSectorImg ? 'disabled' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>
+                                                <i className="bi bi-upload" style={{ marginRight: '4px' }}></i>
+                                                {uploadingSectorImg ? 'Subiendo...' : sectorForm.imagen_url ? 'Cambiar Imagen' : 'Subir Imagen'}
+                                                <input type="file" accept="image/*" onChange={handleUploadSectorImage} style={{ display: 'none' }} disabled={uploadingSectorImg} />
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Probabilidad (Presets rápidos estilo Interacty) */}
                                 <div className="form-group" style={{ marginBottom: '0.85rem' }}>
@@ -1467,33 +1560,9 @@ export default function RuletaCustomizer({
                     />
                 </div>
 
-                <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
                     {sectores.length} sectores · Rotación en tiempo real
                 </div>
-
-                {/* Botón de Lanzamiento de Pantalla Completa (Kiosco) */}
-                <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={onLaunchKiosk}
-                    style={{
-                        width: '100%',
-                        padding: '0.85rem',
-                        fontWeight: 800,
-                        fontSize: '0.95rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        borderRadius: '12px',
-                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                        boxShadow: '0 4px 15px rgba(2, 132, 199, 0.45)',
-                        border: '1px solid #38bdf8'
-                    }}
-                >
-                    <i className="bi bi-fullscreen" aria-hidden="true"></i>
-                    Abrir Ruleta en Pantalla Completa
-                </button>
             </div>
 
             {/* Modal de confirmación para eliminar sector */}
