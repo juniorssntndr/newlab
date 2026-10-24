@@ -218,12 +218,12 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
 
         if (hasOwn(req.body, 'orden_landing')) {
             params.push(toNullableInt(req.body.orden_landing) ?? 0);
-            updates.push(`orden_landing=${params.length}`);
+            updates.push(`orden_landing=$${params.length}`);
         }
 
         if (hasOwn(req.body, 'permite_express')) {
             params.push(toNullableBoolean(req.body.permite_express) ?? false);
-            updates.push(`permite_express=${params.length}`);
+            updates.push(`permite_express=$${params.length}`);
         }
 
         if (updates.length === 0) {
