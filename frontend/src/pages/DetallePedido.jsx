@@ -939,13 +939,9 @@ const DetallePedido = () => {
                                     <span>Diseño 3D</span>
                                 </h3>
                             </div>
-                            {hasDesignFile ? (
+                            {hasDesignFile && (
                                 <span className={`approval-review-status ${approvalBadgeClass}`}>
                                     {approvalStatusLabels[approvalEstado] || approvalEstado.replace(/_/g, ' ')}
-                                </span>
-                            ) : (
-                                <span className="badge badge-secondary" style={{ fontSize: '0.72rem', fontWeight: 600 }}>
-                                    No subido
                                 </span>
                             )}
                         </div>
@@ -1008,37 +1004,17 @@ const DetallePedido = () => {
                                     )}
                                 </div>
                             ) : (
-                                <div className="approval-review-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', width: '100%', boxSizing: 'border-box' }}>
-                                    {isApproval ? (
-                                        <div
-                                            style={{
-                                                padding: '0.5rem 0.75rem',
-                                                borderRadius: '8px',
-                                                backgroundColor: isClient ? 'rgba(234, 179, 8, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                                border: `1px solid ${isClient ? 'rgba(234, 179, 8, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
-                                                width: '100%',
-                                                boxSizing: 'border-box'
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                <i
-                                                    className={`bi ${isClient ? 'bi-clock-history text-warning' : 'bi-exclamation-triangle-fill text-danger'}`}
-                                                    style={{ fontSize: '1.05rem', flexShrink: 0 }}
-                                                    aria-hidden="true"
-                                                ></i>
-                                                <strong style={{ fontSize: '0.86rem', color: isClient ? '#eab308' : '#ef4444' }}>
-                                                    {isClient ? 'Diseño 3D en preparación' : 'Falta archivo 3D'}
-                                                </strong>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="approval-empty-copy" style={{ justifyContent: 'center' }}>
-                                            <i className="bi bi-box" aria-hidden="true"></i>
-                                            <span>Diseño 3D no subido</span>
-                                        </div>
-                                    )}
+                                <div className="approval-review-empty">
+                                    <div className="approval-empty-copy">
+                                        <i className={`bi ${isApproval ? (isClient ? 'bi-clock-history text-warning' : 'bi-exclamation-triangle-fill text-danger') : 'bi-box'}`} aria-hidden="true" />
+                                        <span>
+                                            {isApproval
+                                                ? (isClient ? 'Diseño 3D en preparación' : 'Falta archivo 3D')
+                                                : 'Diseño 3D no subido'}
+                                        </span>
+                                    </div>
                                     {isClient && (
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', width: '100%' }}>
+                                        <div className="approval-empty-actions">
                                             <button
                                                 type="button"
                                                 className="btn btn-primary btn-sm"
@@ -1049,7 +1025,7 @@ const DetallePedido = () => {
                                                 <i
                                                     className={`bi ${requestingDesign ? 'bi-hourglass-split' : designRequested ? 'bi-check2' : 'bi-bell'}`}
                                                     style={{ marginRight: '0.35rem' }}
-                                                ></i>
+                                                />
                                                 <span>
                                                     {requestingDesign
                                                         ? 'Solicitando...'
@@ -1065,21 +1041,21 @@ const DetallePedido = () => {
                                                     onClick={() => setWhatsAppModalOpen(true)}
                                                     aria-label="Consultar por WhatsApp"
                                                 >
-                                                    <i className="bi bi-whatsapp" style={{ color: '#25D366', marginRight: '0.35rem' }}></i>
+                                                    <i className="bi bi-whatsapp" style={{ color: '#25D366', marginRight: '0.35rem' }} />
                                                     <span>Consultar estado</span>
                                                 </button>
                                             )}
                                         </div>
                                     )}
                                     {isLab && ['pendiente', 'en_diseno', 'esperando_aprobacion'].includes(pedido.estado) && (
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', width: '100%' }}>
+                                        <div className="approval-empty-actions">
                                             <button
                                                 type="button"
                                                 className="btn btn-primary btn-sm"
                                                 onClick={() => setApprovalModalOpen(true)}
                                                 aria-label="Subir diseño 3D interactivo"
                                             >
-                                                <i className="bi bi-cloud-arrow-up" style={{ marginRight: '0.35rem' }}></i>
+                                                <i className="bi bi-cloud-arrow-up" style={{ marginRight: '0.35rem' }} />
                                                 <span>Subir diseño 3D</span>
                                             </button>
                                             {isApproval && (
@@ -1094,7 +1070,7 @@ const DetallePedido = () => {
                                                     aria-label="Devolver a diseño"
                                                     title="Regresar a fase de diseño"
                                                 >
-                                                    <i className="bi bi-arrow-counterclockwise" style={{ marginRight: '0.35rem' }}></i>
+                                                    <i className="bi bi-arrow-counterclockwise" style={{ marginRight: '0.35rem' }} />
                                                     <span>Regresar a Diseño</span>
                                                 </button>
                                             )}

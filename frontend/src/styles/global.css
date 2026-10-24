@@ -5176,6 +5176,13 @@ div.pedidos-desktop-filters.desktop-only {
   box-sizing: border-box;
 }
 
+.pedido-detail-design .approval-empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
 .pedido-detail-design .approval-review-empty .approval-empty-copy {
   display: flex;
   align-items: center;
