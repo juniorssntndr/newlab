@@ -12832,6 +12832,24 @@ Rediseño UI: Nuevo Pedido Layout Base
 
 .order-wizard-sexo-btn i {
   font-size: 0.95rem;
+  line-height: 1;
+}
+
+.order-wizard-sexo-text-short {
+  display: inline;
+}
+
+.order-wizard-sexo-text-full {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .order-wizard-sexo-text-short {
+    display: none;
+  }
+  .order-wizard-sexo-text-full {
+    display: inline;
+  }
 }
 
 .order-wizard-sexo-btn:hover {

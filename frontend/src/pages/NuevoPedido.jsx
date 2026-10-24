@@ -794,7 +794,8 @@ const NuevoPedido = () => {
                                                     aria-describedby={patientSexInvalid ? 'wizard-paciente-error' : undefined}
                                                 >
                                                     <i className="bi bi-gender-female" aria-hidden="true"></i>
-                                                    <span>Femenino</span>
+                                                    <span className="order-wizard-sexo-text-full">Femenino</span>
+                                                    <span className="order-wizard-sexo-text-short">F</span>
                                                 </button>
                                                 <button
                                                     type="button"
@@ -806,7 +807,8 @@ const NuevoPedido = () => {
                                                     aria-describedby={patientSexInvalid ? 'wizard-paciente-error' : undefined}
                                                 >
                                                     <i className="bi bi-gender-male" aria-hidden="true"></i>
-                                                    <span>Masculino</span>
+                                                    <span className="order-wizard-sexo-text-full">Masculino</span>
+                                                    <span className="order-wizard-sexo-text-short">M</span>
                                                 </button>
                                             </div>
                                         </div>
