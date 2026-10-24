@@ -954,20 +954,26 @@ const NuevoPedido = () => {
                                                 <i className="bi bi-person" aria-hidden="true"></i>
                                                 Paciente
                                             </span>
-                                            <strong>{form.paciente_nombre}</strong>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                                                {!isClient && selectedClinic?.nombre ? (
-                                                    <em className="order-wizard-confirm-meta">{selectedClinic.nombre}</em>
-                                                ) : null}
-                                                {form.paciente_sexo || form.paciente_edad ? (
+                                            <div className="order-wizard-confirm-patient-row">
+                                                <strong>{form.paciente_nombre}</strong>
+                                                {(form.paciente_sexo || form.paciente_edad) && (
                                                     <span className="order-wizard-confirm-meta-badge">
+                                                        {form.paciente_sexo && (
+                                                            <i className={`bi ${form.paciente_sexo === 'femenino' ? 'bi-gender-female' : 'bi-gender-male'}`} aria-hidden="true" />
+                                                        )}
                                                         {[
                                                             form.paciente_sexo ? (form.paciente_sexo === 'femenino' ? 'Femenino' : 'Masculino') : null,
                                                             form.paciente_edad ? `${form.paciente_edad} años` : null
                                                         ].filter(Boolean).join(' · ')}
                                                     </span>
-                                                ) : null}
+                                                )}
                                             </div>
+                                            {!isClient && selectedClinic?.nombre && (
+                                                <div className="order-wizard-confirm-clinic-row">
+                                                    <i className="bi bi-hospital" aria-hidden="true" />
+                                                    <span>{selectedClinic.nombre}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 

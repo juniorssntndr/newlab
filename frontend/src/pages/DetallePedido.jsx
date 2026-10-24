@@ -753,20 +753,26 @@ const DetallePedido = () => {
                                 <i className="bi bi-person" aria-hidden="true"></i>
                                 Paciente
                             </span>
-                            <strong>{pedido.paciente_nombre}</strong>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                                {!isClient && pedido.clinica_nombre ? (
-                                    <em className="order-wizard-confirm-meta">{pedido.clinica_nombre}</em>
-                                ) : null}
-                                {pedido.paciente_sexo || pedido.paciente_edad ? (
+                            <div className="order-wizard-confirm-patient-row">
+                                <strong>{pedido.paciente_nombre}</strong>
+                                {(pedido.paciente_sexo || pedido.paciente_edad) && (
                                     <span className="order-wizard-confirm-meta-badge">
+                                        {pedido.paciente_sexo && (
+                                            <i className={`bi ${pedido.paciente_sexo === 'femenino' ? 'bi-gender-female' : 'bi-gender-male'}`} aria-hidden="true" />
+                                        )}
                                         {[
                                             pedido.paciente_sexo ? (pedido.paciente_sexo === 'femenino' ? 'Femenino' : pedido.paciente_sexo === 'masculino' ? 'Masculino' : pedido.paciente_sexo) : null,
                                             pedido.paciente_edad ? `${pedido.paciente_edad} años` : null
                                         ].filter(Boolean).join(' · ')}
                                     </span>
-                                ) : null}
+                                )}
                             </div>
+                            {!isClient && pedido.clinica_nombre && (
+                                <div className="order-wizard-confirm-clinic-row">
+                                    <i className="bi bi-hospital" aria-hidden="true" />
+                                    <span>{pedido.clinica_nombre}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="order-wizard-confirm-stat pedido-detail-stat-ingreso">
