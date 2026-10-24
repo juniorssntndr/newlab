@@ -12818,6 +12818,7 @@ Rediseño UI: Nuevo Pedido Layout Base
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
@@ -12827,6 +12828,10 @@ Rediseño UI: Nuevo Pedido Layout Base
   font-weight: 600;
   cursor: pointer;
   transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.order-wizard-sexo-btn i {
+  font-size: 0.95rem;
 }
 
 .order-wizard-sexo-btn:hover {
