@@ -754,9 +754,19 @@ const DetallePedido = () => {
                                 Paciente
                             </span>
                             <strong>{pedido.paciente_nombre}</strong>
-                            {!isClient && pedido.clinica_nombre ? (
-                                <em className="order-wizard-confirm-meta">{pedido.clinica_nombre}</em>
-                            ) : null}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                {!isClient && pedido.clinica_nombre ? (
+                                    <em className="order-wizard-confirm-meta">{pedido.clinica_nombre}</em>
+                                ) : null}
+                                {pedido.paciente_sexo || pedido.paciente_edad ? (
+                                    <span className="order-wizard-confirm-meta-badge">
+                                        {[
+                                            pedido.paciente_sexo ? (pedido.paciente_sexo === 'femenino' ? 'Femenino' : pedido.paciente_sexo === 'masculino' ? 'Masculino' : pedido.paciente_sexo) : null,
+                                            pedido.paciente_edad ? `${pedido.paciente_edad} años` : null
+                                        ].filter(Boolean).join(' · ')}
+                                    </span>
+                                ) : null}
+                            </div>
                         </div>
                     </div>
                     <div className="order-wizard-confirm-stat pedido-detail-stat-ingreso">

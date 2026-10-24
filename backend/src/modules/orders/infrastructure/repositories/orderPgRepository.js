@@ -225,6 +225,8 @@ export const makeOrderPgRepository = ({ pool }) => ({
         const {
             clinica_id,
             paciente_nombre,
+            paciente_sexo,
+            paciente_edad,
             fecha_entrega,
             observaciones,
             archivos_urls,
@@ -303,18 +305,27 @@ export const makeOrderPgRepository = ({ pool }) => ({
                 }
             }
 
+            const sanitizedEdad = paciente_edad !== undefined && paciente_edad !== null && paciente_edad !== '' && !isNaN(Number(paciente_edad))
+                ? Math.trunc(Number(paciente_edad))
+                : null;
+            const sanitizedSexo = paciente_sexo && typeof paciente_sexo === 'string' && paciente_sexo.trim()
+                ? paciente_sexo.trim()
+                : null;
+
             const pedidoResult = await client.query(
                 `INSERT INTO nl_pedidos (
-                    id, codigo, clinica_id, paciente_nombre, fecha_entrega, observaciones, archivos_urls,
+                    id, codigo, clinica_id, paciente_nombre, paciente_sexo, paciente_edad, fecha_entrega, observaciones, archivos_urls,
                     subtotal, igv, total, created_by,
                     descuento_id, descuento_codigo, descuento_monto
                  )
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
                 [
                     nextPedidoId,
                     codigo,
                     clinica_id,
                     paciente_nombre,
+                    sanitizedSexo,
+                    sanitizedEdad,
                     fecha_entrega,
                     observaciones,
                     archivos_urls,

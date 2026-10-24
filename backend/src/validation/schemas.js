@@ -34,6 +34,8 @@ export const pedidoItemSchema = itemsSchema;
 export const createPedidoSchema = z.object({
     clinica_id: z.coerce.number().int().positive(),
     paciente_nombre: z.string().trim().min(2).max(180),
+    paciente_sexo: z.string().trim().max(20).optional().nullable(),
+    paciente_edad: z.coerce.number().int().min(0).max(150).optional().nullable(),
     fecha_entrega: z.string().min(8).max(30),
     observaciones: z.string().trim().max(5000).optional().nullable(),
     archivos_urls: z.array(z.string().trim().max(2000)).optional().default([]),

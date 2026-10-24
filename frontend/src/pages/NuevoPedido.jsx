@@ -94,6 +94,8 @@ const NuevoPedido = () => {
     const [form, setForm] = useState({
         clinica_id: user?.clinica_id || '',
         paciente_nombre: '',
+        paciente_sexo: '',
+        paciente_edad: '',
         fecha_entrega: '',
         observaciones: '',
     });
@@ -101,6 +103,7 @@ const NuevoPedido = () => {
     const [intakeNote, setIntakeNote] = useState('');
     const [isExpressOrder, setIsExpressOrder] = useState(false);
     const [error, setError] = useState('');
+    const [patientAdvanceAttempted, setPatientAdvanceAttempted] = useState(false);
     const [saving, setSaving] = useState(false);
     /** @type {['paciente'|'piezas'|'confirmar', Function]} */
     const [macroStep, setMacroStep] = useState('paciente');
@@ -526,8 +529,28 @@ const NuevoPedido = () => {
         setMacroStep('paciente');
     };
 
+    const patientAge = String(form.paciente_edad ?? '').trim();
+    const patientAgeValid = /^\d{1,3}$/.test(patientAge) && Number(patientAge) <= 120;
+    const patientNameValid = Boolean(form.paciente_nombre?.trim());
+    const patientSexValid = ['femenino', 'masculino'].includes(form.paciente_sexo);
+    const patientClinicValid = Boolean(form.clinica_id);
+    const patientNameInvalid = patientAdvanceAttempted && !patientNameValid;
+    const patientSexInvalid = patientAdvanceAttempted && !patientSexValid;
+    const patientAgeInvalid = patientAdvanceAttempted && !patientAgeValid;
+    const patientClinicInvalid = patientAdvanceAttempted && !patientClinicValid;
+    const showPatientError = patientNameInvalid || patientSexInvalid || patientAgeInvalid || patientClinicInvalid;
+
     const continueFromPaciente = () => {
-        if (!form.clinica_id || !form.paciente_nombre?.trim()) {
+        if (!patientClinicValid || !patientNameValid || !patientSexValid || !patientAgeValid) {
+            setPatientAdvanceAttempted(true);
+            const firstInvalidId = !patientClinicValid
+                ? 'wizard-clinica'
+                : !patientNameValid
+                    ? 'wizard-paciente'
+                    : !patientSexValid
+                        ? 'wizard-paciente-sexo-femenino'
+                        : 'wizard-paciente-edad';
+            requestAnimationFrame(() => document.getElementById(firstInvalidId)?.focus());
             return;
         }
         if (!items.length) {
@@ -535,6 +558,7 @@ const NuevoPedido = () => {
             goToProductSelection();
             return;
         }
+        setPatientAdvanceAttempted(false);
         setError('');
         setMacroStep('piezas');
     };
@@ -716,7 +740,7 @@ const NuevoPedido = () => {
                             <div className="order-wizard-paciente-body">
                                 <div className="order-wizard-paciente-fields">
                                     {!isClient ? (
-                                        <div className="form-group order-wizard-clinic-field">
+                                        <div className={`form-group order-wizard-clinic-field${patientClinicInvalid ? ' is-invalid' : ''}`}>
                                             <label className="form-label" htmlFor="wizard-clinica">
                                                 <i className="bi bi-hospital" aria-hidden="true" style={{ marginRight: '0.4rem', color: 'var(--color-primary)' }}></i>
                                                 <span>Clínica <span className="order-wizard-required" aria-hidden="true">*</span></span>
@@ -734,24 +758,85 @@ const NuevoPedido = () => {
                                     ) : null}
 
                                     <div className="form-group order-wizard-paciente-name-field">
-                                        <label className="form-label order-wizard-paciente-name-label" htmlFor="wizard-paciente">
-                                            <i className="bi bi-person-fill" aria-hidden="true"></i>
+                                        <label className="form-label order-wizard-paciente-label" htmlFor="wizard-paciente">
+                                            <i className="bi bi-person" aria-hidden="true"></i>
                                             <span>Nombre del paciente <span className="order-wizard-required" aria-hidden="true">*</span></span>
                                         </label>
                                         <input
                                             id="wizard-paciente"
-                                            className="form-input"
+                                            className="form-input order-wizard-paciente-control"
                                             value={form.paciente_nombre}
                                             onChange={(e) => setForm((prev) => ({ ...prev, paciente_nombre: e.target.value }))}
                                             placeholder="Nombre del paciente"
                                             autoComplete="name"
                                             required
                                             aria-required="true"
+                                            aria-invalid={patientNameInvalid}
+                                            aria-describedby={patientNameInvalid ? 'wizard-paciente-error' : undefined}
                                         />
-                                        {!String(form.paciente_nombre || '').trim() ? (
-                                            <span className="order-wizard-paciente-name-hint">Escribe el nombre para continuar.</span>
-                                        ) : null}
                                     </div>
+
+                                    <div className="order-wizard-paciente-meta-row">
+                                        <div className="form-group">
+                                            <span className="form-label order-wizard-paciente-label" id="wizard-paciente-sexo-label">
+                                                <i className="bi bi-gender-ambiguous" aria-hidden="true"></i>
+                                                <span>Sexo <span className="order-wizard-required" aria-hidden="true">*</span></span>
+                                            </span>
+                                            <div className="order-wizard-sexo-toggle" role="group" aria-labelledby="wizard-paciente-sexo-label" aria-invalid={patientSexInvalid} aria-describedby={patientSexInvalid ? 'wizard-paciente-error' : undefined}>
+                                                <button
+                                                    id="wizard-paciente-sexo-femenino"
+                                                    type="button"
+                                                    className={`order-wizard-sexo-btn${form.paciente_sexo === 'femenino' ? ' is-active' : ''}`}
+                                                    onClick={() => setForm((prev) => ({ ...prev, paciente_sexo: prev.paciente_sexo === 'femenino' ? '' : 'femenino' }))}
+                                                    aria-pressed={form.paciente_sexo === 'femenino'}
+                                                    aria-label="Femenino"
+                                                    aria-invalid={patientSexInvalid}
+                                                    aria-describedby={patientSexInvalid ? 'wizard-paciente-error' : undefined}
+                                                >
+                                                    F
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`order-wizard-sexo-btn${form.paciente_sexo === 'masculino' ? ' is-active' : ''}`}
+                                                    onClick={() => setForm((prev) => ({ ...prev, paciente_sexo: prev.paciente_sexo === 'masculino' ? '' : 'masculino' }))}
+                                                    aria-pressed={form.paciente_sexo === 'masculino'}
+                                                    aria-label="Masculino"
+                                                    aria-invalid={patientSexInvalid}
+                                                    aria-describedby={patientSexInvalid ? 'wizard-paciente-error' : undefined}
+                                                >
+                                                    M
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label order-wizard-paciente-label" htmlFor="wizard-paciente-edad">
+                                                <i className="bi bi-calendar2-week" aria-hidden="true"></i>
+                                                <span>Edad <span className="order-wizard-required" aria-hidden="true">*</span></span>
+                                            </label>
+                                            <input
+                                                id="wizard-paciente-edad"
+                                                type="number"
+                                                min="0"
+                                                max="120"
+                                                className="form-input order-wizard-paciente-control"
+                                                value={form.paciente_edad}
+                                                onChange={(e) => setForm((prev) => ({ ...prev, paciente_edad: e.target.value }))}
+                                                placeholder="Ej. 34"
+                                                inputMode="numeric"
+                                                required
+                                                aria-required="true"
+                                                aria-invalid={patientAgeInvalid}
+                                                aria-describedby={patientAgeInvalid ? 'wizard-paciente-error' : undefined}
+                                            />
+                                        </div>
+                                    </div>
+                                    {showPatientError ? (
+                                        <div id="wizard-paciente-error" className="order-wizard-paciente-error" role="alert">
+                                            <i className="bi bi-exclamation-circle" aria-hidden="true"></i>
+                                            Introduce los datos para continuar.
+                                        </div>
+                                    ) : null}
                                 </div>
                             </div>
 
@@ -804,7 +889,6 @@ const NuevoPedido = () => {
                                     type="button"
                                     className="btn btn-primary order-wizard-paciente-cta"
                                     onClick={continueFromPaciente}
-                                    disabled={!String(form.paciente_nombre || '').trim() || !form.clinica_id}
                                 >
                                     Continuar a piezas
                                 </button>
@@ -867,9 +951,19 @@ const NuevoPedido = () => {
                                                 Paciente
                                             </span>
                                             <strong>{form.paciente_nombre}</strong>
-                                            {!isClient && selectedClinic?.nombre ? (
-                                                <em className="order-wizard-confirm-meta">{selectedClinic.nombre}</em>
-                                            ) : null}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                                {!isClient && selectedClinic?.nombre ? (
+                                                    <em className="order-wizard-confirm-meta">{selectedClinic.nombre}</em>
+                                                ) : null}
+                                                {form.paciente_sexo || form.paciente_edad ? (
+                                                    <span className="order-wizard-confirm-meta-badge">
+                                                        {[
+                                                            form.paciente_sexo ? (form.paciente_sexo === 'femenino' ? 'Femenino' : 'Masculino') : null,
+                                                            form.paciente_edad ? `${form.paciente_edad} años` : null
+                                                        ].filter(Boolean).join(' · ')}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
 
