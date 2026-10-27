@@ -23,6 +23,7 @@ import { makeCrmPgRepository } from '../modules/crm/infrastructure/repositories/
 import { makeCrmService } from '../modules/crm/application/services/crmService.js';
 import { makeCrmController } from '../modules/crm/application/controllers/crmController.js';
 import { makeCrmRoutes } from '../modules/crm/transport/http/crmRoutes.js';
+import { syncMissingClinicEstablishments } from '../modules/crm/application/services/clinicCrmIntegration.js';
 
 const { Pool } = pg;
 
@@ -31,6 +32,7 @@ export const createCompositionRoot = () => {
     pool.on('error', (err) => {
         console.error('Unexpected error on idle pg client', err);
     });
+    syncMissingClinicEstablishments(pool).catch(() => {});
     const orderRepository = makeOrderPgRepository({ pool });
     const repeatRepository = makeOrderRepeatPgRepository({ pool, igvFactor: getIgvFactor() });
     const orderService = makeOrderService({ orderRepository, repeatRepository, pool });

@@ -11,6 +11,7 @@ import OrderSelectedProductCard from '../components/orders/wizard/OrderSelectedP
 import DeliveryDateCoordModal from '../components/orders/wizard/DeliveryDateCoordModal.jsx';
 import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
 import CustomSelect from '../components/CustomSelect.jsx';
+import QuickClinicModal from '../components/orders/QuickClinicModal.jsx';
 import { useCreateOrderMutation } from '../modules/orders/mutations/useCreateOrderMutation.js';
 import { useOrderComposerState } from '../modules/orders/composer/useOrderComposerState.js';
 import { fetchVisibleCatalog, peekVisibleCatalog } from '../modules/orders/catalog/visibleCatalogCache.js';
@@ -87,6 +88,7 @@ const NuevoPedido = () => {
     }, [user, navigate]);
 
     const [clinicas, setClinicas] = useState([]);
+    const [quickClinicModalOpen, setQuickClinicModalOpen] = useState(false);
     const [productos, setProductos] = useState(() => warmCatalog?.products || []);
     const [categorias, setCategorias] = useState(() => warmCatalog?.categories || []);
     const [categoryFilter, setCategoryFilter] = useState('all');
@@ -311,6 +313,12 @@ const NuevoPedido = () => {
         ));
     }, [user?.clinica_id]);
 
+    const handleQuickClinicCreated = (newClinic) => {
+        if (!newClinic?.id) return;
+        setClinicas((prev) => [newClinic, ...prev.filter((c) => String(c.id) !== String(newClinic.id))]);
+        setForm((prev) => ({ ...prev, clinica_id: String(newClinic.id) }));
+    };
+
     // Rescatar dirección del consultorio si la sesión local aún no la traía en memoria
     useEffect(() => {
         if (isClient && user && !user.clinica_direccion && typeof refreshUser === 'function') {
@@ -332,6 +340,8 @@ const NuevoPedido = () => {
         if (typeof draft.intakeNote === 'string') setIntakeNote(draft.intakeNote);
         if (typeof draft.isExpressOrder === 'boolean') setIsExpressOrder(draft.isExpressOrder);
     }, [user?.clinica_id]);
+
+
 
     useEffect(() => {
         if (!preselectProductId || productos.length === 0) return;
@@ -741,10 +751,23 @@ const NuevoPedido = () => {
                                 <div className="order-wizard-paciente-fields">
                                     {!isClient ? (
                                         <div className={`form-group order-wizard-clinic-field${patientClinicInvalid ? ' is-invalid' : ''}`}>
-                                            <label className="form-label" htmlFor="wizard-clinica">
-                                                <i className="bi bi-hospital" aria-hidden="true" style={{ marginRight: '0.4rem', color: 'var(--color-primary)' }}></i>
-                                                <span>Clínica <span className="order-wizard-required" aria-hidden="true">*</span></span>
-                                            </label>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                                <label className="form-label" htmlFor="wizard-clinica" style={{ margin: 0 }}>
+                                                    <i className="bi bi-hospital" aria-hidden="true" style={{ marginRight: '0.4rem', color: 'var(--color-primary)' }}></i>
+                                                    <span>Clínica <span className="order-wizard-required" aria-hidden="true">*</span></span>
+                                                </label>
+                                                {!user?.clinica_id && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-ghost btn-xs"
+                                                        onClick={() => setQuickClinicModalOpen(true)}
+                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-primary, #0284c7)', fontWeight: 650, fontSize: '0.8rem', padding: '0.15rem 0.5rem' }}
+                                                    >
+                                                        <i className="bi bi-plus-circle-fill" />
+                                                        <span>+ Nueva Clínica / Doctor</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                             <CustomSelect
                                                 id="wizard-clinica"
                                                 options={clinicOptions}
@@ -1223,6 +1246,12 @@ const NuevoPedido = () => {
                     ) : null}
                 </section>
             </div>
+            <QuickClinicModal
+                open={quickClinicModalOpen}
+                onClose={() => setQuickClinicModalOpen(false)}
+                onCreated={handleQuickClinicCreated}
+                headers={getHeaders()}
+            />
         </OrderWizardShell>
     );
 };

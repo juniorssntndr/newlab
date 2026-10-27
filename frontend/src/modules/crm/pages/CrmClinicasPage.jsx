@@ -24,6 +24,7 @@ export const CrmClinicasPage = () => {
     const [visitModalTarget, setVisitModalTarget] = useState(null);
     const [complaintModalTarget, setComplaintModalTarget] = useState(null);
     const [editingEstablishment, setEditingEstablishment] = useState(null);
+    const [createModalOpen, setCreateModalOpen] = useState(false);
 
     const { data, isLoading, refetch } = useCrmEstablecimientosQuery({
         tipo: 'clinica',
@@ -81,6 +82,17 @@ export const CrmClinicasPage = () => {
                             ]}
                         />
                     </div>
+
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setCreateModalOpen(true)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', whiteSpace: 'nowrap', fontWeight: 650, height: '42px' }}
+                        title="Registrar nueva clínica cliente"
+                    >
+                        <i className="bi bi-plus-lg"></i>
+                        <span>Nueva Clínica</span>
+                    </button>
                 </div>
 
                 {/* Clinics Table */}
@@ -339,13 +351,21 @@ export const CrmClinicasPage = () => {
                 />
             )}
 
-            {editingEstablishment && (
+            {(editingEstablishment || createModalOpen) && (
                 <EstablishmentModal
                     establishment={editingEstablishment}
-                    onClose={() => setEditingEstablishment(null)}
+                    onClose={() => {
+                        setEditingEstablishment(null);
+                        setCreateModalOpen(false);
+                    }}
                     onSaved={() => {
                         refetch();
                         setEditingEstablishment(null);
+                        setCreateModalOpen(false);
+                    }}
+                    onCreated={() => {
+                        refetch();
+                        setCreateModalOpen(false);
                     }}
                 />
             )}
