@@ -14,6 +14,7 @@ import consultasRoutes from '../routes/consultas.js';
 import doctoresRoutes from '../routes/doctores.js';
 import proveedoresRoutes from '../routes/proveedores.js';
 import marketingRoutes from '../routes/marketing.js';
+import trackingRoutes from '../routes/tracking.js';
 
 export const registerRoutes = (app, compositionRoot) => {
     app.use('/api/auth', authRoutes);
@@ -32,6 +33,8 @@ export const registerRoutes = (app, compositionRoot) => {
     app.use('/api/audit', auditRoutes);
     app.use('/api/facturacion', facturacionRoutes);
     app.use('/api/consultas', consultasRoutes);
+    app.use('/api/public/tracking', trackingRoutes);
+    app.use('/api/tracking', trackingRoutes);
 
     if (compositionRoot?.modules?.crm?.crmRoutes) {
         app.use('/api/crm', compositionRoot.modules.crm.crmRoutes);

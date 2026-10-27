@@ -352,6 +352,17 @@ export const makeOrderController = ({ orderService }) => ({
             next(error);
         }
     },
+    getOrderTrackingLink: async (req, res, next) => {
+        try {
+            const result = await orderService.getOrderTrackingLink({
+                user: req.user,
+                orderId: req.params.id
+            });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
     requestDesign: async (req, res, next) => {
         try {
             const result = await orderService.requestDesign({

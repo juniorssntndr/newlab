@@ -77,9 +77,9 @@ export const OrderWhatsAppModal = ({
     const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://afinixlab.com';
     const linkSeguimiento = `${appOrigin}/pedidos/${pedido?.id}`;
     const finalLink = magicLink || linkSeguimiento;
-    const linkParaAprobacion = isDirectExternalWebLink ? candidateLink : finalLink;
+    const linkParaAprobacion = finalLink;
 
-    // Obtener enlace mágico de acceso directo sin contraseña para el cliente
+    // Obtener enlace de seguimiento directo sin contraseña para el cliente
     useEffect(() => {
         if (!isModalOpen || !pedido?.id) return;
         let isCurrent = true;
@@ -88,13 +88,14 @@ export const OrderWhatsAppModal = ({
         const fetchMagic = async () => {
             try {
                 const token = localStorage.getItem('nl_token');
-                const res = await fetch(`${API_URL}/pedidos/${pedido.id}/magic-link`, {
+                const res = await fetch(`${API_URL}/pedidos/${pedido.id}/tracking-link`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    if (isCurrent && data.urlPath) {
-                        setMagicLink(`${appOrigin}${data.urlPath}`);
+                    const linkPath = data.trackingUrlPath || data.urlPath;
+                    if (isCurrent && linkPath) {
+                        setMagicLink(`${appOrigin}${linkPath}`);
                     }
                 }
             } catch {
@@ -137,10 +138,10 @@ export const OrderWhatsAppModal = ({
         if (tipoPlantilla === 'aprobacion') {
             msg = `¡Hola equipo de *${clinicaNombre}*! 👋\n\nEl diseño 3D de *${productosTexto}* para el paciente *${pacienteNombre}* ya está listo para su aprobación.\n\nPueden revisarlo aquí:\n${linkParaAprobacion}\n\n¡Quedamos atentos a sus comentarios!\n*AFINIX Dental Lab*`;
         } else if (tipoPlantilla === 'terminado') {
-            msg = `¡Hola equipo de *${clinicaNombre}*! 🚀\n\nEl trabajo de *${productosTexto}* para el paciente *${pacienteNombre}* ya está terminado y listo para entrega.\n\n¡Muchas gracias por su preferencia!\n*AFINIX Dental Lab*`;
+            msg = `¡Hola equipo de *${clinicaNombre}*! 🚀\n\nEl trabajo de *${productosTexto}* para el paciente *${pacienteNombre}* ya está terminado y listo para entrega.\n\nSeguimiento en línea:\n${finalLink}\n\n¡Muchas gracias por su preferencia!\n*AFINIX Dental Lab*`;
         } else if (tipoPlantilla === 'produccion') {
             const extraFecha = fechaEntregaTexto ? ` Entrega estimada: *${fechaEntregaTexto}*.` : '';
-            msg = `¡Hola equipo de *${clinicaNombre}*! ⚙️\n\nEl trabajo de *${productosTexto}* para el paciente *${pacienteNombre}* ya ingresó a fase de producción.${extraFecha}\n\n*AFINIX Dental Lab*`;
+            msg = `¡Hola equipo de *${clinicaNombre}*! ⚙️\n\nEl trabajo de *${productosTexto}* para el paciente *${pacienteNombre}* ya ingresó a fase de producción.${extraFecha}\n\nSeguimiento en vivo:\n${finalLink}\n\n*AFINIX Dental Lab*`;
         }
         setMensajeCustom(msg);
     }, [tipoPlantilla, clinicaNombre, productosTexto, pacienteNombre, linkParaAprobacion, finalLink, fechaEntregaTexto]);

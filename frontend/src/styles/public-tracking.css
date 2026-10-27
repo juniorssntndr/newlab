@@ -1,0 +1,601 @@
+/* AFINIX Dental Lab - Public Tracking & 3D Viewer Styles */
+
+.public-track-page {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0b1329 0%, #0f172a 100%);
+    color: #f1f5f9;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.public-track-header {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: 0.85rem 1.25rem;
+}
+
+.public-track-header-content {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.public-track-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.public-track-logo-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+}
+
+.public-track-brand-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.public-track-brand-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    line-height: 1.2;
+}
+
+.public-track-brand-subtitle {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.public-track-help-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(37, 211, 102, 0.15);
+    color: #25d366;
+    border: 1px solid rgba(37, 211, 102, 0.3);
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.public-track-help-btn:hover {
+    background: rgba(37, 211, 102, 0.25);
+    color: #4ade80;
+    transform: translateY(-1px);
+}
+
+.public-track-main {
+    flex: 1;
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Status hero card */
+.public-track-hero {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.public-track-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.public-track-code-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.public-track-code-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.public-track-code {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #38bdf8;
+    letter-spacing: -0.02em;
+}
+
+.public-track-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.public-track-badge.tone-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.public-track-badge.tone-info {
+    background: rgba(2, 132, 199, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+.public-track-badge.tone-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.public-track-badge.tone-neutral {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+/* Stepper / Timeline */
+.public-track-stepper {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    margin: 2rem 0 1rem;
+    padding: 0 0.5rem;
+}
+
+.public-track-stepper-progress {
+    position: absolute;
+    top: 18px;
+    left: 24px;
+    right: 24px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    z-index: 1;
+    border-radius: 2px;
+}
+
+.public-track-stepper-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+.public-track-step {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.public-track-step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    transition: all 0.3s ease;
+}
+
+.public-track-step.active .public-track-step-circle {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
+}
+
+.public-track-step.completed .public-track-step-circle {
+    background: #0369a1;
+    border-color: #38bdf8;
+    color: #ffffff;
+}
+
+.public-track-step-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.public-track-step.active .public-track-step-label {
+    color: #38bdf8;
+    font-weight: 700;
+}
+
+/* Info grid */
+.public-track-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.public-track-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.public-track-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 0.6rem;
+}
+
+.public-track-card-header i {
+    color: #38bdf8;
+    font-size: 1.1rem;
+}
+
+.public-track-field-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.public-track-field {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.88rem;
+    gap: 1rem;
+}
+
+.public-track-field-label {
+    color: #94a3b8;
+}
+
+.public-track-field-value {
+    color: #f8fafc;
+    font-weight: 600;
+    text-align: right;
+}
+
+.public-track-teeth-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+}
+
+.public-track-tooth-tag {
+    background: rgba(2, 132, 199, 0.2);
+    color: #38bdf8;
+    border: 1px solid rgba(2, 132, 199, 0.4);
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* 3D Design Approval Banner */
+.public-track-approval-panel {
+    background: linear-gradient(135deg, rgba(14, 116, 144, 0.25) 0%, rgba(2, 132, 199, 0.15) 100%);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 14px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.public-track-approval-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.public-track-approval-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #38bdf8;
+}
+
+.public-track-approval-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.btn-track-primary {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.65rem 1.25rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+    transition: all 0.2s ease;
+}
+
+.btn-track-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.45);
+}
+
+.btn-track-success {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.65rem 1.25rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+    transition: all 0.2s ease;
+}
+
+.btn-track-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, #047857 0%, #059669 100%);
+    transform: translateY(-1px);
+}
+
+.btn-track-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 10px;
+    padding: 0.65rem 1.25rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-track-warning:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.25);
+    transform: translateY(-1px);
+}
+
+/* Adjustment prompt drawer / modal */
+.public-track-adjust-box {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.public-track-adjust-box textarea {
+    width: 100%;
+    min-height: 90px;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: #ffffff;
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+.public-track-adjust-box textarea:focus {
+    outline: none;
+    border-color: #38bdf8;
+}
+
+/* 3D Viewer Fullscreen Modal */
+.public-track-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.2s ease;
+}
+
+.public-track-modal-header {
+    background: #0f172a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.public-track-modal-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.public-track-modal-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #ffffff;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: background 0.2s ease;
+}
+
+.public-track-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.public-track-modal-body {
+    flex: 1;
+    position: relative;
+    background: #000000;
+}
+
+.public-track-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.public-track-iframe-loader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: rgba(15, 23, 42, 0.95);
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+
+/* Conversion callout banner */
+.public-track-conversion-banner {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
+    border: 1px dashed rgba(56, 189, 248, 0.4);
+    border-radius: 14px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.public-track-conversion-content {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.public-track-conversion-icon {
+    font-size: 1.8rem;
+    color: #38bdf8;
+}
+
+.public-track-conversion-text h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.public-track-conversion-text p {
+    margin: 0.2rem 0 0;
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.public-track-footer {
+    background: #090e1a;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1.5rem 1rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: #64748b;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (max-width: 640px) {
+    .public-track-stepper-progress {
+        display: none;
+    }
+    .public-track-stepper {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start;
+        padding-left: 1rem;
+        border-left: 2px solid rgba(255, 255, 255, 0.1);
+    }
+    .public-track-step {
+        flex-direction: row;
+        gap: 0.85rem;
+        align-items: center;
+        width: 100%;
+    }
+    .public-track-step-label {
+        text-align: left;
+        font-size: 0.82rem;
+    }
+}

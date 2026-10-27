@@ -31,6 +31,7 @@ import Cuenta from './pages/Cuenta.jsx';
 import Equipo from './pages/Equipo.jsx';
 import Marketing from './pages/Marketing.jsx';
 import RuletaKioskoPage from './pages/RuletaKioskoPage.jsx';
+import PublicTrackingPage from './pages/PublicTrackingPage.jsx';
 
 import Almacen from './pages/Almacen.jsx';
 import CalendarioCliente from './pages/CalendarioCliente.jsx';
@@ -106,6 +107,8 @@ const App = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/registro" element={<RegistroCliente />} />
                 <Route path="/acceso" element={<MagicAccessPage />} />
+                <Route path="/t/:token" element={<PublicTrackingPage />} />
+                <Route path="/seguimiento/:token" element={<PublicTrackingPage />} />
                 <Route path="/ruleta-evento" element={<ProtectedRoute><ModuleRoute module="marketing"><RuletaKioskoPage /></ModuleRoute></ProtectedRoute>} />
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="dashboard" element={<ModuleRoute module="dashboard"><Dashboard /></ModuleRoute>} />

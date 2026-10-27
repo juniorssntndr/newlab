@@ -882,6 +882,16 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             { expiresIn: '7d' }
         );
 
+        const trackingToken = jwt.sign(
+            {
+                typ: 'order-tracking',
+                orderId: String(orderId),
+                clinicaId: order.clinica_id
+            },
+            JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
         return {
             ok: true,
             type: 'SUCCESS',
@@ -889,7 +899,46 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
                 token: magicToken,
                 orderId,
                 clientName: clientUser.nombre,
-                urlPath: `/acceso?token=${encodeURIComponent(magicToken)}`
+                urlPath: `/acceso?token=${encodeURIComponent(magicToken)}`,
+                trackingToken,
+                trackingUrlPath: `/t/${encodeURIComponent(trackingToken)}`
+            }
+        };
+    },
+    getOrderTrackingLink: async ({ user, orderId }) => {
+        if (user?.tipo === 'cliente') {
+            return { ok: false, type: 'FORBIDDEN', error: 'No autorizado' };
+        }
+
+        const order = await orderRepository.getOrderBaseById({ orderId });
+        if (!order) {
+            return { ok: false, type: 'NOT_FOUND', error: 'Pedido no encontrado' };
+        }
+
+        if (!order.clinica_id) {
+            return { ok: false, type: 'BAD_REQUEST', error: 'El pedido no tiene clínica asociada' };
+        }
+
+        const JWT_SECRET = getJwtSecret();
+        const trackingToken = jwt.sign(
+            {
+                typ: 'order-tracking',
+                orderId: String(orderId),
+                clinicaId: order.clinica_id
+            },
+            JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
+        return {
+            ok: true,
+            type: 'SUCCESS',
+            data: {
+                token: trackingToken,
+                orderId,
+                clientName: order.clinica_contacto_nombre || order.clinica_nombre || 'Doctor',
+                urlPath: `/t/${encodeURIComponent(trackingToken)}`,
+                trackingUrlPath: `/t/${encodeURIComponent(trackingToken)}`
             }
         };
     },

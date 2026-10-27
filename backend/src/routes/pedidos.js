@@ -53,6 +53,7 @@ router.get('/:id/repeticion/cotizacion', requireOrderRepeatStaff, delegateToOrde
 router.post('/:id/repeticion', requireOrderRepeatStaff, uploadRepeatPhotos, delegateToOrders('createOrderRepeat'));
 router.get('/:id/repeticion/fotos/:photoId', requireOrderRepeatStaff, delegateToOrders('getOrderRepeatPhoto'));
 router.get('/:id/magic-link', delegateToOrders('getOrderMagicLink'));
+router.get('/:id/tracking-link', delegateToOrders('getOrderTrackingLink'));
 router.patch('/:id/estado', delegateToOrders('updateOrderStatus'));
 router.post('/:id/aprobacion', handleOptionalApprovalUpload, delegateToOrders('createOrderApprovalLink'));
 router.post('/:id/aprobacion/:aprobacionId/visor', delegateToOrders('createViewerSession'));
