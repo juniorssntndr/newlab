@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { computeCartTotals, normalizeOrderItem } from './orderItemNormalizer.js';
+import { calculateClinicalQuantity } from '../../../utils/odontograma.js';
 
 const mergeContractRawState = (item, patch) => {
     const nextRawState = {
@@ -28,7 +29,12 @@ const mergeContractRawState = (item, patch) => {
     }
     if (Object.prototype.hasOwnProperty.call(patch, 'piezas_dentales')) {
         nextRawState.piezas_dentales = patch.piezas_dentales;
-        nextRawState.cantidad = Array.isArray(patch.piezas_dentales) ? patch.piezas_dentales.length : 0;
+        const productRef = item.product || item;
+        const modo = patch.modo_odontograma || item.modo_odontograma || productRef.modo_odontograma;
+        const productWithModo = { ...(typeof productRef === 'object' ? productRef : {}), modo_odontograma: modo };
+        nextRawState.cantidad = Object.prototype.hasOwnProperty.call(patch, 'cantidad')
+            ? patch.cantidad
+            : calculateClinicalQuantity(productWithModo, patch.piezas_dentales, nextRawState.cantidadManual || 1);
     }
     if (Object.prototype.hasOwnProperty.call(patch, 'pilares_dentales')) {
         nextRawState.pilares_dentales = patch.pilares_dentales;
@@ -44,6 +50,9 @@ const mergeContractRawState = (item, patch) => {
     }
     if (Object.prototype.hasOwnProperty.call(patch, 'requiresDentalSelection')) {
         nextRawState.requiresDentalSelection = patch.requiresDentalSelection;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'modo_odontograma')) {
+        nextRawState.modo_odontograma = patch.modo_odontograma;
     }
 
     return nextRawState;

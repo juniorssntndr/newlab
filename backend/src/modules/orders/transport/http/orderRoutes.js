@@ -16,7 +16,7 @@ export const makeOrderRoutes = ({ orderController }) => {
     router.get('/:id/repeticion/cotizacion', requireOrderRepeatStaff, orderController.getOrderRepeatQuote);
     router.post('/:id/repeticion', requireOrderRepeatStaff, uploadRepeatPhotos, orderController.createOrderRepeat);
     router.get('/:id/repeticion/fotos/:photoId', requireOrderRepeatStaff, orderController.getOrderRepeatPhoto);
-    router.patch('/:id/estado', orderController.updateOrderStatus);
+    router.patch('/:id/estado', handleOptionalApprovalUpload, orderController.updateOrderStatus);
     router.post('/:id/aprobacion', handleOptionalApprovalUpload, orderController.createOrderApprovalLink);
     router.patch('/:id/responsable', orderController.updateOrderResponsible);
     router.patch('/:id/fecha-entrega', orderController.updateOrderDeliveryDate);

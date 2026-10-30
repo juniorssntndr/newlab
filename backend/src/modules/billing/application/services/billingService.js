@@ -1,4 +1,5 @@
-import { billingResultSchema, comprobanteDraftSchema, pedidoBillingSnapshotSchema } from '@newlab/contracts';
+import { billingResultSchema, comprobanteDraftSchema, InvoiceStatus, pedidoBillingSnapshotSchema } from '@newlab/contracts';
+import { splitTotalIntoTax } from '../../../pricing/pricingCanonical.js';
 
 const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
@@ -20,23 +21,23 @@ const assertValidCurrency = (lines, fallbackCurrency) => {
 
 const buildDraftFromSnapshot = (snapshot, serie, nowDate) => {
     const lines = Array.isArray(snapshot.lines) ? snapshot.lines : [];
-    const currency = assertValidCurrency(lines, snapshot.total.currency);
+    const currency = assertValidCurrency(lines, snapshot.total?.currency || 'PEN');
 
-    const subtotalAmount = roundMoney(lines.reduce((sum, line) => {
+    const linesSubtotal = roundMoney(lines.reduce((sum, line) => {
         const qty = Number(line.qty) || 0;
         const unit = Number(line.unitPrice?.amount) || 0;
         return sum + (qty * unit);
     }, 0));
 
-    const igvAmount = roundMoney(lines.reduce((sum, line) => {
+    const linesIgv = roundMoney(lines.reduce((sum, line) => {
         const qty = Number(line.qty) || 0;
         const unit = Number(line.unitPrice?.amount) || 0;
         const taxRate = Number(line.taxRate) || 0;
         return sum + (qty * unit * taxRate);
     }, 0));
 
-    const fallbackTotal = roundMoney(subtotalAmount + igvAmount);
-    const totalAmount = roundMoney(Number(snapshot.total.amount) || fallbackTotal);
+    const totalAmount = roundMoney(Number(snapshot.total?.amount) || (linesSubtotal + linesIgv));
+    const { total, subtotal, igv } = splitTotalIntoTax(totalAmount);
 
     const normalizedDoc = String(snapshot.customerDocument || '').replace(/\D/g, '');
 
@@ -45,15 +46,15 @@ const buildDraftFromSnapshot = (snapshot, serie, nowDate) => {
         serie,
         issueDateIso: nowDate.toISOString(),
         subtotal: {
-            amount: subtotalAmount,
+            amount: subtotal,
             currency
         },
         igv: {
-            amount: igvAmount,
+            amount: igv,
             currency
         },
         total: {
-            amount: totalAmount,
+            amount: total,
             currency
         },
         lines,
@@ -156,6 +157,26 @@ export const makeBillingService = ({ billingRepository, billingProviderAcl, now 
                 });
                 if (!savedDraft?.draftId) {
                     throw new BillingServiceError('DRAFT_NOT_PERSISTED', 'No se pudo guardar el borrador de facturacion', 500);
+                }
+
+                // IDEMPOTENCY: If the invoice was already successfully issued/accepted, return it directly!
+                if (savedDraft.alreadyIssued && savedDraft.invoiceRecord) {
+                    const row = savedDraft.invoiceRecord;
+                    return parseContract(
+                        billingResultSchema,
+                        {
+                            invoiceId: String(row.id),
+                            invoiceStatus: InvoiceStatus.SENT,
+                            pdfUrl: row.pdf_url || undefined,
+                            xmlUrl: row.xml_url || undefined,
+                            cdrUrl: row.cdr_url || undefined,
+                            hash: row.hash_cpe || undefined,
+                            cdrCode: row.cdr_code || undefined,
+                            cdrDescription: row.cdr_description || 'Comprobante ya emitido y aceptado previamente'
+                        },
+                        'INVALID_PROVIDER_RESULT',
+                        'Respuesta de facturacion previa invalida'
+                    );
                 }
 
                 persistedInvoiceId = String(savedDraft.draftId);

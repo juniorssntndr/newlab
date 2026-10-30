@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../../../../config/env.js';
 import { getIgvFactor } from '../../../../config/env.js';
+import { splitTotalIntoTax } from '../../../pricing/pricingCanonical.js';
 import { sendPushNotificationToMany } from '../../../notifications/pushNotificationService.js';
 import { makeOrderRepeatService } from './orderRepeatService.js';
 import { canManageOrderRepeats } from '../../domain/orderRepeat.js';
@@ -180,30 +181,40 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             };
         }
 
+        const isExpress = Boolean(body?.es_urgente || body?.es_express || items?.some(it => it.es_urgente || it.es_express));
+
         if (user?.tipo === 'cliente' && pool) {
             const firstItem = items[0];
             if (firstItem?.producto_id) {
                 const prodRes = await pool.query('SELECT id, precio_base FROM nl_productos WHERE id = $1', [firstItem.producto_id]);
                 if (prodRes.rows.length > 0) {
-                    const officialPrice = Number(prodRes.rows[0].precio_base) || 0;
+                    const officialBasePrice = Number(prodRes.rows[0].precio_base) || 0;
                     items = items.map(it => ({
                         ...it,
-                        precio_unitario: officialPrice
+                        es_urgente: isExpress,
+                        precio_base: officialBasePrice,
+                        precio_unitario: isExpress
+                            ? Math.round(officialBasePrice * 1.25 * 100) / 100
+                            : officialBasePrice
                     }));
                 }
             }
         }
 
-        const total = Array.isArray(items)
-            ? items.reduce((sum, item) => sum + ((item.precio_unitario || 0) * (item.cantidad || 1)), 0)
-            : 0;
-        const subtotal = Number((total / igvFactor).toFixed(2));
-        const igv = Number((total - subtotal).toFixed(2));
-
         const effectiveDiscountCode = descuento_codigo || discountCode || null;
 
+        // Canonical pricing calculation
+        const totalBase = items.reduce((sum, it) => {
+            const q = Number(it.cantidad) || 1;
+            const bp = Number(it.precio_base) || (isExpress ? Number(it.precio_unitario) / 1.25 : Number(it.precio_unitario)) || 0;
+            return sum + (bp * q);
+        }, 0);
+        const totalExpress = isExpress ? Math.round(totalBase * 0.25 * 100) / 100 : 0;
+        const initialTotal = Math.round((totalBase + totalExpress) * 100) / 100;
+        const { total, subtotal, igv } = splitTotalIntoTax(initialTotal);
+
         const created = await orderRepository.createOrder({
-            orderInput: { ...body, clinica_id, items, descuento_codigo: effectiveDiscountCode },
+            orderInput: { ...body, clinica_id, items, descuento_codigo: effectiveDiscountCode, es_urgente: isExpress },
             totals: { total, subtotal, igv },
             actorUserId
         });
@@ -227,16 +238,19 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
         return {
             ok: true,
             type: 'CREATED',
-            data: created.pedido,
+            data: {
+                ...created.pedido,
+                totals: created.totals || { total, subtotal, igv }
+            },
             meta: {
-                total,
+                total: created.totals?.total ?? total,
                 clinica_id,
                 paciente_nombre,
                 codigo: created.pedido.codigo
             }
         };
     },
-    updateOrderStatus: async ({ user, orderId, body }) => {
+    updateOrderStatus: async ({ user, orderId, body, file }) => {
         if (user?.tipo === 'cliente') {
             return {
                 ok: false,
@@ -245,7 +259,7 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             };
         }
 
-        const { estado, sub_estado, comentario, responsable_id, link_exocad, forzar } = body || {};
+        let { estado, sub_estado, comentario, responsable_id, link_exocad, forzar } = body || {};
         if (!estado) {
             return {
                 ok: false,
@@ -279,7 +293,7 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             return { ok: false, type: 'BAD_REQUEST', error: 'Un pedido enviado no retrocede. Crea una repetición vinculada.' };
         }
 
-        if (isSameState && !(estado === 'esperando_aprobacion' && link_exocad)) {
+        if (isSameState && !(estado === 'esperando_aprobacion' && (link_exocad || file))) {
             return {
                 ok: false,
                 type: 'BAD_REQUEST',
@@ -291,9 +305,21 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             pendiente: ['en_diseno'],
             en_diseno: ['esperando_aprobacion'],
             esperando_aprobacion: ['en_produccion', 'en_diseno'],
-            en_produccion: ['terminado'],
+            en_produccion: ['esperando_aprobacion', 'terminado'],
             terminado: ['enviado']
         };
+
+        const isProductionToApproval = current.estado === 'en_produccion' && estado === 'esperando_aprobacion';
+        let effectiveComment = typeof comentario === 'string' ? comentario.trim() : '';
+        if (isProductionToApproval && !effectiveComment) {
+            effectiveComment = 'Prueba clínica intermedia enviada a aprobación';
+        }
+
+        if (file && !link_exocad) {
+            const approvals = await orderRepository.listOrderApprovals({ orderId });
+            const nextVersion = (approvals?.length || 0) + 1;
+            link_exocad = await uploadOrderApprovalHtml({ file, orderId, version: nextVersion });
+        }
 
         if (nextIdx > currentIdx) {
             const isForced = !!forzar && estado === 'en_produccion' && ['en_diseno', 'esperando_aprobacion'].includes(current.estado);
@@ -316,7 +342,7 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
                 }
             }
 
-            if (isForced && (!comentario || !comentario.trim())) {
+            if (isForced && (!effectiveComment || !effectiveComment.trim())) {
                 return {
                     ok: false,
                     type: 'BAD_REQUEST',
@@ -324,7 +350,7 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
                 };
             }
         } else if (nextIdx < currentIdx) {
-            if (!comentario || !comentario.trim()) {
+            if (!isProductionToApproval && (!effectiveComment || !effectiveComment.trim())) {
                 return {
                     ok: false,
                     type: 'BAD_REQUEST',
@@ -352,12 +378,23 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             return { ok: false, type: 'CONFLICT', error: 'El pedido ya fue enviado. Crea una repetición vinculada.' };
         }
 
-        // If transitioning to "esperando_aprobacion", we must create the approval link
-        if (estado === 'esperando_aprobacion' && link_exocad) {
-            await orderRepository.createOrderApprovalLink({
-                orderId,
-                link_exocad
-            });
+        // If transitioning to "esperando_aprobacion", create approval link if provided or reuse existing on production trial iteration
+        if (estado === 'esperando_aprobacion') {
+            if (link_exocad) {
+                await orderRepository.createOrderApprovalLink({
+                    orderId,
+                    link_exocad
+                });
+            } else if (isProductionToApproval) {
+                const existingApprovals = await orderRepository.listOrderApprovals({ orderId });
+                const latestApproval = existingApprovals?.[0];
+                if (latestApproval?.link_exocad) {
+                    await orderRepository.createOrderApprovalLink({
+                        orderId,
+                        link_exocad: latestApproval.link_exocad
+                    });
+                }
+            }
         }
 
         // Add timeline entry
@@ -366,13 +403,15 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             previousStatus: updated.previousOrder.estado,
             nextStatus: estado,
             userId: user.id,
-            comment: comentario || (isSameState ? 'Actualización de diseño' : `Cambio a ${estado}`)
+            comment: effectiveComment || (isSameState ? 'Actualización de diseño' : `Cambio a ${estado}`)
         });
 
         // Notifications
         const clientNotifMap = {
             en_diseno: { tipo: 'estado_diseno', titulo: 'Pedido en Diseño', mensaje: `Tu pedido ${current.codigo} ha comenzado el proceso de diseño.` },
-            esperando_aprobacion: { tipo: 'aprobacion', titulo: '⭐ Diseño listo para aprobar', mensaje: `Pedido ${current.codigo} tiene un diseño listo para que lo revises.` },
+            esperando_aprobacion: isProductionToApproval
+                ? { tipo: 'aprobacion', titulo: '⭐ Prueba clínica lista para aprobación', mensaje: `Pedido ${current.codigo} tiene una prueba clínica lista para que la revises.` }
+                : { tipo: 'aprobacion', titulo: '⭐ Diseño listo para aprobar', mensaje: `Pedido ${current.codigo} tiene un diseño listo para que lo revises.` },
             en_produccion: { tipo: 'estado_produccion', titulo: 'Pedido en Producción', mensaje: `Tu pedido ${current.codigo} ha pasado a la etapa de producción.` },
             terminado: { tipo: 'estado_terminado', titulo: '✅ Pedido Terminado', mensaje: `Tu pedido ${current.codigo} está listo. Pronto será enviado.` },
             enviado: { tipo: 'enviado', titulo: '🚀 Pedido Enviado', mensaje: `Tu pedido ${current.codigo} ha sido enviado. ¡Gracias por confiar en nosotros!` }
@@ -390,7 +429,7 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             meta: {
                 estado_anterior: updated.previousOrder.estado,
                 estado_nuevo: estado,
-                comentario: comentario || null,
+                comentario: effectiveComment || null,
                 forzar: !!forzar
             }
         };
@@ -447,7 +486,8 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             };
         }
 
-        const isTransition = order.estado !== 'esperando_aprobacion';
+        const initialStatus = order.estado;
+        const isTransition = initialStatus !== 'esperando_aprobacion';
         if (isTransition) {
             await orderRepository.updateOrderStatus({
                 orderId,
@@ -456,18 +496,20 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             await notifyClinicUsers(
                 order.clinica_id,
                 'aprobacion',
-                '⭐ Diseño listo para aprobar',
-                `Pedido ${order.codigo} tiene un nuevo diseño 3D listo para que lo revises.`,
+                initialStatus === 'en_produccion' ? '⭐ Prueba clínica lista para aprobación' : '⭐ Diseño listo para aprobar',
+                initialStatus === 'en_produccion'
+                    ? `Pedido ${order.codigo} tiene una nueva prueba clínica lista para que la revises.`
+                    : `Pedido ${order.codigo} tiene un nuevo diseño 3D listo para que lo revises.`,
                 `/pedidos/${orderId}`
             );
         }
 
         await orderRepository.addTimelineEntry({
             orderId,
-            previousStatus: order.estado,
+            previousStatus: initialStatus,
             nextStatus: 'esperando_aprobacion',
             userId: user.id,
-            comment: comentario || (isTransition ? 'Diseño enviado a aprobación' : 'Nueva versión de diseño 3D subida')
+            comment: comentario || (initialStatus === 'en_produccion' ? 'Prueba clínica intermedia enviada a aprobación' : (isTransition ? 'Diseño enviado a aprobación' : 'Nueva versión de diseño 3D subida'))
         });
 
         return {
@@ -744,8 +786,9 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             });
         }
 
-        let nextStatus = order.estado;
-        if (order.estado === 'esperando_aprobacion') {
+        const initialStatus = order.estado;
+        let nextStatus = initialStatus;
+        if (initialStatus === 'esperando_aprobacion') {
             if (estado === 'aprobado') {
                 nextStatus = 'en_produccion';
             } else if (estado === 'ajuste_solicitado') {
@@ -753,14 +796,14 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             }
         }
 
-        if (nextStatus !== order.estado) {
+        if (nextStatus !== initialStatus) {
             await orderRepository.updateOrderStatus({ orderId, estado: nextStatus });
         }
 
         // Add timeline entry
         await orderRepository.addTimelineEntry({
             orderId,
-            previousStatus: order.estado,
+            previousStatus: initialStatus,
             nextStatus,
             userId: user.id,
             comment: `Diseño ${estado === 'aprobado' ? 'APROBADO' : 'CON AJUSTES'}. ${comentarioCliente}`

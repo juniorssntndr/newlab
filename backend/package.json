@@ -13,7 +13,7 @@
         "seed:small": "node src/db/seed_small.js",
         "seed": "node src/db/seed.js",
         "smoke": "node scripts/smoke.js",
-        "test": "node --test src/services/__tests__/audit.test.js src/modules/identity/rolesMatrix.test.js src/modules/finance/gastosSustentos.test.js src/modules/finance/saldosFavor.test.js src/modules/finance/cajaDiaria.test.js src/modules/finance/cobranzas.test.js src/modules/crm/domain/commercialHealth.test.js src/modules/crm/application/services/crmService.test.js src/modules/crm/application/services/clinicCrmIntegration.test.js src/modules/crm/infrastructure/repositories/crmPgRepository.test.js src/modules/crm/transport/http/crmRoutes.test.js",
+        "test": "node --test src/services/__tests__/audit.test.js src/modules/identity/rolesMatrix.test.js src/modules/finance/gastosSustentos.test.js src/modules/finance/saldosFavor.test.js src/modules/finance/cajaDiaria.test.js src/modules/finance/cobranzas.test.js src/modules/crm/domain/commercialHealth.test.js src/modules/crm/application/services/crmService.test.js src/modules/crm/application/services/clinicCrmIntegration.test.js src/modules/crm/infrastructure/repositories/crmPgRepository.test.js src/modules/crm/transport/http/crmRoutes.test.js src/modules/pricing/pricingCanonical.test.js src/modules/billing/__tests__/billingPreflightValidator.test.js src/modules/billing/__tests__/billingIdempotency.test.js src/modules/orders/application/services/orderServicePricing.test.js",
         "test:audit": "node --test src/services/__tests__/audit.test.js",
         "test:cobranzas": "node --test src/modules/finance/cobranzas.test.js",
 
@@ -23,6 +23,7 @@
         "test:roles": "node --test src/modules/identity/rolesMatrix.test.js",
         "test:billing-acl": "node --test src/modules/billing/__tests__/acl.contract.test.js",
         "test:billing-phase2": "node --test src/modules/billing/__tests__/phase2.service.test.js",
+        "test:billing-integrity": "node --test src/modules/pricing/pricingCanonical.test.js src/modules/billing/__tests__/billingPreflightValidator.test.js src/modules/billing/__tests__/billingIdempotency.test.js src/modules/orders/application/services/orderServicePricing.test.js",
         "test:billing-acl:coverage": "node scripts/check-billing-acl-coverage.mjs",
         "test:order-payment-invoice-e2e": "node --test src/routes/__tests__/order-payment-invoice-http.e2e.test.js",
         "test:crm": "node --test src/modules/crm/domain/commercialHealth.test.js src/modules/crm/application/services/crmService.test.js src/modules/crm/application/services/clinicCrmIntegration.test.js src/modules/crm/infrastructure/repositories/crmPgRepository.test.js src/modules/crm/transport/http/crmRoutes.test.js",

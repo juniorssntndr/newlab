@@ -9,6 +9,8 @@
  */
 
 import { logger } from '../lib/logger.js';
+import { splitTotalIntoTax } from '../modules/pricing/pricingCanonical.js';
+import { validateAndReconcileApisperuPayload } from '../modules/billing/domain/billingPreflightValidator.js';
 
 // ─── Ubigeo → Jurisdiction lookup ───────────────────────────────────────────
 // SUNAT requires provincia/departamento/distrito, not just the 6-digit code.
@@ -196,14 +198,34 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
     const pedido = pedRes.rows[0];
     const esFactura = tipoComprobante === '01';
 
-    // 3. Serie y correlativo (thread-safe via MAX)
+    // Idempotency: verify if order already has an active comprobante
+    const existingComp = await pool.query(`
+        SELECT * FROM nl_comprobantes
+        WHERE pedido_id = $1 AND estado_sunat != 'anulado'
+        ORDER BY created_at DESC LIMIT 1
+    `, [pedidoId]);
+    if (existingComp.rows.length > 0) {
+        const comp = existingComp.rows[0];
+        if (comp.estado_sunat === 'aceptado') {
+            return comp;
+        }
+    }
+
+    // 3. Serie y correlativo (thread-safe via MAX o reuso de draft generado)
     const serie = esFactura ? empresa.serie_factura : empresa.serie_boleta;
-    const corrRes = await pool.query(`
-        SELECT COALESCE(MAX(correlativo), 0) + 1 AS next_corr
-        FROM nl_comprobantes
-        WHERE tipo_comprobante = $1 AND serie = $2 AND estado_sunat != 'anulado'
-    `, [tipoComprobante, serie]);
-    const correlativo = corrRes.rows[0].next_corr;
+    let correlativo;
+    let reusingDraftId = null;
+    if (existingComp.rows.length > 0 && ['generado', 'error'].includes(existingComp.rows[0].estado_sunat)) {
+        correlativo = existingComp.rows[0].correlativo;
+        reusingDraftId = existingComp.rows[0].id;
+    } else {
+        const corrRes = await pool.query(`
+            SELECT COALESCE(MAX(correlativo), 0) + 1 AS next_corr
+            FROM nl_comprobantes
+            WHERE tipo_comprobante = $1 AND serie = $2 AND estado_sunat != 'anulado'
+        `, [tipoComprobante, serie]);
+        correlativo = corrRes.rows[0].next_corr;
+    }
 
     // 4. Construir datos del cliente y detalle
     let clientData, documentDetails, mtoOperGravadas, mtoIGV, mtoImpVenta;
@@ -243,30 +265,35 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
         const items = itemsRes.rows;
         if (items.length === 0) throw new Error('El pedido no tiene ítems para facturar.');
 
+        const totalAmount = parseFloat(pedido.total) || 0;
+        const { total: mtoImpVentaCanonical, subtotal: mtoOperGravadasCanonical, igv: mtoIGVCanonical } = splitTotalIntoTax(totalAmount);
+        mtoOperGravadas = mtoOperGravadasCanonical;
+        mtoIGV = mtoIGVCanonical;
+        mtoImpVenta = mtoImpVentaCanonical;
+
+        const totalQty = items.reduce((sum, it) => sum + (parseFloat(it.cantidad) || 1), 0);
         documentDetails = items.map(item => {
             const cantidad = parseFloat(item.cantidad) || 1;
-            const valorUnitario = parseFloat(item.subtotal) / cantidad;
-            const precioUnitario = valorUnitario * 1.18;
-            const igvItem = +(precioUnitario * cantidad - valorUnitario * cantidad).toFixed(2);
+            const lineShare = totalQty > 0 ? cantidad / totalQty : 1;
+            const lineValorVenta = +(mtoOperGravadas * lineShare).toFixed(2);
+            const lineIgv = +(mtoIGV * lineShare).toFixed(2);
+            const valorUnitario = lineValorVenta / cantidad;
+            const precioUnitario = (lineValorVenta + lineIgv) / cantidad;
             return {
                 codProducto: item.producto_id ? String(item.producto_id) : 'SRV001',
                 unidad: 'ZZ',
                 descripcion: item.producto_nombre || item.material || 'Servicio Odontológico',
                 cantidad,
                 mtoValorUnitario: +valorUnitario.toFixed(6),
-                mtoValorVenta: +parseFloat(item.subtotal).toFixed(2),
-                mtoBaseIgv: +parseFloat(item.subtotal).toFixed(2),
+                mtoValorVenta: lineValorVenta,
+                mtoBaseIgv: lineValorVenta,
                 porcentajeIgv: 18,
-                igv: igvItem,
+                igv: lineIgv,
                 tipAfeIgv: 10,
-                totalImpuestos: igvItem,
+                totalImpuestos: lineIgv,
                 mtoPrecioUnitario: +precioUnitario.toFixed(6),
             };
         });
-
-        mtoOperGravadas = +parseFloat(pedido.subtotal).toFixed(2);
-        mtoIGV = +parseFloat(pedido.igv).toFixed(2);
-        mtoImpVenta = +parseFloat(pedido.total).toFixed(2);
 
         clientData = {
             tipoDoc: esFactura ? '6' : (pedido.tipo_doc || (pedido.ruc ? '6' : '1')),
@@ -312,6 +339,9 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
         }],
     };
 
+    // Preflight validator & reconciliation for SUNAT / APISPERU
+    validateAndReconcileApisperuPayload(payload);
+
     // 6. Envío a APISPERU (o DEMO)
     let responseData;
     const isDemo = empresa.entorno === 'beta' || proceso?.env?.ENTORNO === 'demo';
@@ -332,23 +362,45 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
         responseData = await callApisperu(empresa.token_apisperu, 'POST', endpoint, payload);
     }
 
-    // 7. Guardar en BD
-    const result = await pool.query(`
-        INSERT INTO nl_comprobantes
-            (pedido_id, tipo_comprobante, serie, correlativo, fecha_emision,
-             total_gravada, total_igv, total_venta, estado_sunat,
-             xml_url, pdf_url, cdr_url, external_id)
-        VALUES ($1,$2,$3,$4,CURRENT_DATE,$5,$6,$7,$8,$9,$10,$11,$12)
-        RETURNING *
-    `, [
-        pedidoId, tipoComprobante, serie, correlativo,
-        mtoOperGravadas, mtoIGV, mtoImpVenta,
-        responseData.sunatResponse?.success ? 'aceptado' : 'generado',
-        responseData.links?.xml || null,
-        responseData.links?.pdf || null,
-        responseData.links?.cdr || null,
-        responseData.sunatResponse?.cdrResponse?.id || null,
-    ]);
+    // 7. Guardar en BD (insertar o actualizar draft reutilizado)
+    let result;
+    if (reusingDraftId) {
+        result = await pool.query(`
+            UPDATE nl_comprobantes
+            SET total_gravada = $1, total_igv = $2, total_venta = $3,
+                estado_sunat = $4, xml_url = $5, pdf_url = $6, cdr_url = $7,
+                external_id = $8, updated_at = NOW()
+            WHERE id = $9
+            RETURNING *
+        `, [
+            payload.mtoOperGravadas, payload.mtoIGV, payload.mtoImpVenta,
+            responseData.sunatResponse?.success ? 'aceptado' : 'generado',
+            responseData.links?.xml || null,
+            responseData.links?.pdf || null,
+            responseData.links?.cdr || null,
+            responseData.sunatResponse?.cdrResponse?.id || null,
+            reusingDraftId
+        ]);
+    } else {
+        result = await pool.query(`
+            INSERT INTO nl_comprobantes
+                (pedido_id, tipo_comprobante, serie, correlativo, fecha_emision,
+                 total_gravada, total_igv, total_venta, estado_sunat,
+                 xml_url, pdf_url, cdr_url, external_id)
+            VALUES ($1,$2,$3,$4,CURRENT_DATE,$5,$6,$7,$8,$9,$10,$11,$12)
+            RETURNING *
+        `, [
+            pedidoId, tipoComprobante, serie, correlativo,
+            payload.mtoOperGravadas, payload.mtoIGV, payload.mtoImpVenta,
+            responseData.sunatResponse?.success ? 'aceptado' : 'generado',
+            responseData.links?.xml || null,
+            responseData.links?.pdf || null,
+            responseData.links?.cdr || null,
+            responseData.sunatResponse?.cdrResponse?.id || null,
+        ]);
+    }
+
+    return result.rows[0];
 
     return result.rows[0];
 }

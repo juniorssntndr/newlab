@@ -1,4 +1,5 @@
 import { numeroALetras, resolveUbigeoAddress } from '../../../services/apisperu.js';
+import { validateAndReconcileApisperuPayload } from '../../../modules/billing/domain/billingPreflightValidator.js';
 
 const resolveAddress = ({ ubigeo, direccion, clinicName, source } = {}) => (
     resolveUbigeoAddress(ubigeo, direccion, { clinicName, source })
@@ -41,7 +42,7 @@ export const mapDraftToApisperuPayload = ({ draft, snapshot, issuer, tipoComprob
         };
     });
 
-    return {
+    const payload = {
         ublVersion: '2.1',
         tipoOperacion: '0101',
         tipoDoc: tipoComprobante,
@@ -85,4 +86,6 @@ export const mapDraftToApisperuPayload = ({ draft, snapshot, issuer, tipoComprob
             }
         ]
     };
+
+    return validateAndReconcileApisperuPayload(payload);
 };

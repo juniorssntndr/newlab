@@ -163,17 +163,23 @@ router.post('/:pedidoId/emitir', async (req, res, next) => {
             : [Number(req.params.pedidoId)];
 
         const existing = await pool.query(
-            `SELECT c.id, c.estado_sunat, c.idempotency_key, p.codigo AS pedido_codigo
-             FROM nl_comprobante_pedidos cp
-             JOIN nl_comprobantes c ON c.id = cp.comprobante_id
-             JOIN nl_pedidos p ON p.id = cp.pedido_id
-             WHERE cp.pedido_id = ANY($1::int[])
+            `SELECT c.*, COALESCE(p.codigo, p2.codigo) AS pedido_codigo
+             FROM nl_comprobantes c
+             LEFT JOIN nl_comprobante_pedidos cp ON cp.comprobante_id = c.id
+             LEFT JOIN nl_pedidos p ON p.id = cp.pedido_id
+             LEFT JOIN nl_pedidos p2 ON p2.id = c.pedido_id
+             WHERE (c.pedido_id = ANY($1::int[]) OR cp.pedido_id = ANY($1::int[]))
                AND c.estado_sunat != 'anulado'
              ORDER BY c.created_at DESC LIMIT 1`,
             [orderIdsToCheck]
         );
         if (existing.rows.length > 0) {
             const current = existing.rows[0];
+            // If already accepted and client sends same idempotency key, return existing comprobante (idempotent success)
+            if (current.estado_sunat === 'aceptado' && req.body?.idempotencyKey && current.idempotency_key === req.body.idempotencyKey) {
+                return res.json(current);
+            }
+
             const sameRetry = req.body?.idempotencyKey
                 && current.idempotency_key === req.body.idempotencyKey
                 && ['generado', 'error'].includes(current.estado_sunat);

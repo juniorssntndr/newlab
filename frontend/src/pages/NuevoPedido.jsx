@@ -203,27 +203,30 @@ const NuevoPedido = () => {
         }
     }, []);
 
-    const baseOrderTotal = useMemo(() => {
-        const base = Number(total || 0);
-        if (!isExpressOrder || base <= 0) return base;
-        return Number((base * (1 + ORDER_EXPRESS_SURCHARGE_RATE)).toFixed(2));
-    }, [total, isExpressOrder]);
+    const baseProductTotal = useMemo(() => {
+        return Number(total || 0);
+    }, [total]);
+
+    const expressSurchargeTotal = useMemo(() => {
+        if (!isExpressOrder || baseProductTotal <= 0) return 0;
+        return Number((baseProductTotal * ORDER_EXPRESS_SURCHARGE_RATE).toFixed(2));
+    }, [baseProductTotal, isExpressOrder]);
 
     const discountAmount = useMemo(() => {
-        if (!appliedCoupon) return 0;
+        if (!appliedCoupon || baseProductTotal <= 0) return 0;
         if (appliedCoupon.tipo === 'porcentaje') {
-            let calc = (baseOrderTotal * Number(appliedCoupon.valor)) / 100;
+            let calc = (baseProductTotal * Number(appliedCoupon.valor)) / 100;
             if (appliedCoupon.tope_descuento_maximo && calc > Number(appliedCoupon.tope_descuento_maximo)) {
                 calc = Number(appliedCoupon.tope_descuento_maximo);
             }
-            return Math.min(calc, baseOrderTotal);
+            return Math.min(calc, baseProductTotal);
         }
-        return Math.min(Number(appliedCoupon.valor), baseOrderTotal);
-    }, [appliedCoupon, baseOrderTotal]);
+        return Math.min(Number(appliedCoupon.valor), baseProductTotal);
+    }, [appliedCoupon, baseProductTotal]);
 
     const displayTotal = useMemo(() => {
-        return Math.max(0, Number((baseOrderTotal - discountAmount).toFixed(2)));
-    }, [baseOrderTotal, discountAmount]);
+        return Math.max(0, Number((baseProductTotal - discountAmount + expressSurchargeTotal).toFixed(2)));
+    }, [baseProductTotal, discountAmount, expressSurchargeTotal]);
 
     const handleApplyCoupon = async () => {
         if (!couponInput.trim() || couponRequestRef.current) return;
@@ -234,7 +237,7 @@ const NuevoPedido = () => {
             const res = await apiClient.post('/marketing/cupones/validar', {
                 codigo: couponInput.trim(),
                 clinica_id: form.clinica_id || user?.clinica_id,
-                subtotal: baseOrderTotal
+                subtotal: baseProductTotal
             }, { headers: getHeaders() });
 
             const payload = res?.data !== undefined ? res.data : res;

@@ -1,6 +1,7 @@
 import { makeApisperuAdapter } from '../../../../infrastructure/apisperu/apisperuAdapter.js';
 import { mapDraftToApisperuPayload } from '../../../../infrastructure/apisperu/mappers/toProvider.js';
 import { mapIssueResponseToBillingResult, mapStatusResponseToBillingResult } from '../../../../infrastructure/apisperu/mappers/fromProvider.js';
+import { validateAndReconcileApisperuPayload } from '../../domain/billingPreflightValidator.js';
 
 const ensureMethod = (dependency, methodName, label) => {
     if (!dependency || typeof dependency[methodName] !== 'function') {
@@ -61,7 +62,7 @@ export const makeApisperuBillingAcl = ({
                     serieHint: draft.serie
                 });
 
-            const payload = toProviderMapper({
+            const rawPayload = toProviderMapper({
                 draft: {
                     ...draft,
                     serie: seriesResolution.serie
@@ -70,6 +71,9 @@ export const makeApisperuBillingAcl = ({
                 issuer,
                 tipoComprobante: seriesResolution.tipoComprobante
             });
+
+            // Preflight validation & reconciliation before dispatching to APISPERU
+            const payload = validateAndReconcileApisperuPayload(rawPayload);
 
             const providerResponse = await apisperuAdapter.sendInvoice({
                 token: issuer.token,

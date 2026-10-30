@@ -26,8 +26,25 @@ export const validateOrderPayloadContract = ({ items = [] } = {}) => {
     const errors = [];
 
     items.forEach((rawItem, index) => {
-        const item = normalizeOrderItem(rawItem);
         const contractRaw = readContractRawState(rawItem);
+        const productRef = contractRaw.product || rawItem.product || rawItem;
+        const modoOdontograma =
+            contractRaw.modo_odontograma ||
+            rawItem.modo_odontograma ||
+            productRef.modo_odontograma ||
+            null;
+
+        const productWithModo = {
+            ...(typeof productRef === 'object' ? productRef : {}),
+            modo_odontograma: modoOdontograma
+        };
+
+        const item = normalizeOrderItem({
+            ...rawItem,
+            product: productWithModo,
+            modo_odontograma: modoOdontograma
+        });
+
         const itemLabel = `Item ${index + 1}`;
         const rawPieces = Array.isArray(contractRaw.piezas_dentales) ? contractRaw.piezas_dentales : [];
         const rawBridgePillars = Array.isArray(contractRaw.pilares_dentales) ? contractRaw.pilares_dentales : [];
@@ -43,7 +60,7 @@ export const validateOrderPayloadContract = ({ items = [] } = {}) => {
             if (rawPieces.length < 1) {
                 errors.push(buildContractError(item, `${itemLabel}: requiere al menos una pieza dental seleccionada.`));
             }
-            const expectedCantidad = calculateClinicalQuantity(item.product || item, rawPieces, item.cantidadManual);
+            const expectedCantidad = calculateClinicalQuantity(productWithModo, rawPieces, item.cantidadManual);
             if (rawCantidad === null || rawCantidad !== expectedCantidad) {
                 errors.push(buildContractError(item, `${itemLabel}: cantidad dental inconsistente con piezas seleccionadas.`));
             }
@@ -120,7 +137,9 @@ export const buildOrderPayload = (draft = {}) => {
                     precio_unitario: rawState.precio_unitario,
                     subtotal: rawState.subtotal,
                     piezas_dentales: Array.isArray(rawState.piezas_dentales) ? rawState.piezas_dentales : piezas,
-                    pilares_dentales: Array.isArray(rawState.pilares_dentales) ? rawState.pilares_dentales : (item.pilares_dentales || [])
+                    pilares_dentales: Array.isArray(rawState.pilares_dentales) ? rawState.pilares_dentales : (item.pilares_dentales || []),
+                    product: item.product || item,
+                    modo_odontograma: item.modo_odontograma || item.product?.modo_odontograma || rawState.modo_odontograma || null
                 }
             };
         })

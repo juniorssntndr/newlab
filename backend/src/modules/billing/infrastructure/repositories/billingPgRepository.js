@@ -1,4 +1,5 @@
 import { InvoiceStatus, OrderStatus, PaymentStatus } from '@newlab/contracts';
+import { splitTotalIntoTax } from '../../../pricing/pricingCanonical.js';
 
 const IGV_RATE = 0.18;
 
@@ -124,28 +125,56 @@ export const makeBillingPgRepository = ({ pool }) => ({
             )
         ]);
 
-        const lines = itemsResult.rows.map((item) => {
-            const qty = Number(item.cantidad) || 1;
-            const itemSubtotal = Number(item.subtotal) || 0;
-            const fallbackUnitPrice = qty > 0 ? itemSubtotal / qty : 0;
-
-            return {
-                sku: item.producto_id ? String(item.producto_id) : `ITEM-${item.id}`,
-                description: item.material || 'Servicio dental',
-                qty,
-                unitPrice: {
-                    amount: roundMoney(Number(item.precio_unitario) || fallbackUnitPrice),
-                    currency: 'PEN'
-                },
-                taxRate: IGV_RATE
-            };
-        });
-
         const customerDocument = normalizeDoc(order.clinica_ruc || order.clinica_dni || '00000000');
-        const totalAmount = roundMoney(Number(order.total) || lines.reduce((sum, line) => {
-            const net = (Number(line.unitPrice?.amount) || 0) * (Number(line.qty) || 0);
-            return sum + net + (net * (Number(line.taxRate) || 0));
-        }, 0));
+        const rawTotal = Number(order.total);
+        const hasOrderTotal = Number.isFinite(rawTotal) && rawTotal > 0;
+
+        let lines;
+        let totalAmount;
+
+        if (hasOrderTotal) {
+            totalAmount = roundMoney(rawTotal);
+            const { subtotal: canonicalSubtotal } = splitTotalIntoTax(totalAmount);
+            const totalQty = itemsResult.rows.reduce((sum, it) => sum + (Number(it.cantidad) || 1), 0);
+            lines = itemsResult.rows.map((item) => {
+                const qty = Number(item.cantidad) || 1;
+                const lineShare = totalQty > 0 ? qty / totalQty : 1;
+                const netAmount = roundMoney(canonicalSubtotal * lineShare);
+                const netUnitPrice = qty > 0 ? roundMoney(netAmount / qty) : 0;
+                return {
+                    sku: item.producto_id ? String(item.producto_id) : `ITEM-${item.id}`,
+                    description: item.material || 'Servicio dental',
+                    qty,
+                    unitPrice: {
+                        amount: netUnitPrice,
+                        currency: 'PEN'
+                    },
+                    taxRate: IGV_RATE
+                };
+            });
+        } else {
+            lines = itemsResult.rows.map((item) => {
+                const qty = Number(item.cantidad) || 1;
+                const itemSubtotal = Number(item.subtotal) || 0;
+                const fallbackUnitPrice = qty > 0 ? itemSubtotal / qty : 0;
+
+                return {
+                    sku: item.producto_id ? String(item.producto_id) : `ITEM-${item.id}`,
+                    description: item.material || 'Servicio dental',
+                    qty,
+                    unitPrice: {
+                        amount: roundMoney(Number(item.precio_unitario) || fallbackUnitPrice),
+                        currency: 'PEN'
+                    },
+                    taxRate: IGV_RATE
+                };
+            });
+
+            totalAmount = roundMoney(lines.reduce((sum, line) => {
+                const net = (Number(line.unitPrice?.amount) || 0) * (Number(line.qty) || 0);
+                return sum + net + (net * (Number(line.taxRate) || 0));
+            }, 0));
+        }
 
         return {
             orderId: String(order.id),
@@ -198,23 +227,42 @@ export const makeBillingPgRepository = ({ pool }) => ({
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            if (options.idempotencyKey) {
-                await client.query(
-                    'SELECT pg_advisory_xact_lock(hashtext($1))',
-                    [options.idempotencyKey]
-                );
-                const existing = await client.query(
-                    `SELECT id, correlativo FROM nl_comprobantes WHERE idempotency_key = $1 LIMIT 1`,
-                    [options.idempotencyKey]
-                );
-                if (existing.rows.length > 0) {
-                    await client.query('COMMIT');
-                    return {
-                        draftId: String(existing.rows[0].id),
-                        correlativo: String(existing.rows[0].correlativo),
-                        reused: true
-                    };
-                }
+            const lockKey = options.idempotencyKey || `billing_order_lock_${draft.orderId}`;
+            await client.query(
+                'SELECT pg_advisory_xact_lock(hashtext($1))',
+                [lockKey]
+            );
+
+            // Check if active comprobante already exists for idempotency key or orderId
+            const existingQuery = options.idempotencyKey
+                ? `SELECT id, correlativo, estado_sunat, serie, tipo_comprobante, xml_url, pdf_url, cdr_url, hash_cpe, cdr_code, cdr_description
+                   FROM nl_comprobantes
+                   WHERE idempotency_key = $1 OR (pedido_id = $2 AND estado_sunat != 'anulado')
+                   ORDER BY created_at DESC LIMIT 1`
+                : `SELECT id, correlativo, estado_sunat, serie, tipo_comprobante, xml_url, pdf_url, cdr_url, hash_cpe, cdr_code, cdr_description
+                   FROM nl_comprobantes
+                   WHERE pedido_id = $1 AND estado_sunat != 'anulado'
+                   ORDER BY created_at DESC LIMIT 1`;
+
+            const existingParams = options.idempotencyKey
+                ? [options.idempotencyKey, Number(draft.orderId)]
+                : [Number(draft.orderId)];
+
+            const existing = await client.query(existingQuery, existingParams);
+
+            if (existing.rows.length > 0) {
+                const row = existing.rows[0];
+                await client.query('COMMIT');
+                const isAlreadyAccepted = row.estado_sunat === 'aceptado' || Boolean(row.xml_url || row.cdr_url);
+                return {
+                    draftId: String(row.id),
+                    correlativo: String(row.correlativo),
+                    serie: row.serie,
+                    tipoComprobante: row.tipo_comprobante,
+                    reused: true,
+                    alreadyIssued: isAlreadyAccepted,
+                    invoiceRecord: row
+                };
             }
 
             const correlativoResult = await client.query(

@@ -276,6 +276,25 @@ const DetallePedido = () => {
     };
 
     const submitApprovalDesign = async () => {
+        if (uploadMode === 'note') {
+            if (!approvalNote.trim()) {
+                alert('Por favor escribe la indicación o detalle de la prueba clínica');
+                return;
+            }
+            try {
+                await changeStatus('esperando_aprobacion', {
+                    comentario: approvalNote.trim()
+                });
+                setApprovalModalOpen(false);
+                setApprovalFile(null);
+                setExocadLink('');
+                setApprovalNote('');
+            } catch (err) {
+                alert(err.message || 'Error al enviar a prueba / aprobación');
+            }
+            return;
+        }
+
         if (uploadMode === 'file' && !approvalFile) {
             alert('Por favor selecciona o arrastra el archivo HTML exportado desde Exocad');
             return;
@@ -618,6 +637,22 @@ const DetallePedido = () => {
                         >
                             <i className="bi bi-whatsapp" style={{ color: '#25D366' }} aria-hidden="true"></i>
                         </button>
+
+                        {pedido.estado === 'en_produccion' && (
+                            <button
+                                type="button"
+                                className="btn btn-secondary pedido-action-icon-btn"
+                                onClick={() => {
+                                    setUploadMode('file');
+                                    setApprovalModalOpen(true);
+                                }}
+                                disabled={updating}
+                                title="Enviar a prueba clínica o aprobación"
+                                aria-label="Enviar a prueba o aprobación"
+                            >
+                                <i className="bi bi-patch-check" aria-hidden="true"></i>
+                            </button>
+                        )}
 
                         {nextStatus && (
                             <button
@@ -1369,10 +1404,10 @@ const DetallePedido = () => {
                     if (updating) return;
                     setApprovalModalOpen(false);
                 }}
-                title={approvalLink ? "Subir Nueva Versión del Diseño" : "Enviar a Aprobación"}
-                kicker="CAD / CAM • Diseño Digital"
-                subtitle="Carga el visor 3D interactivo para revisión y aprobación clínica"
-                icon="bi-box"
+                title={pedido.estado === 'en_produccion' ? "Enviar a Prueba / Aprobación Clínica" : (approvalLink ? "Subir Nueva Versión del Diseño" : "Enviar a Aprobación")}
+                kicker={pedido.estado === 'en_produccion' ? "Producción • Iteración Clínica" : "CAD / CAM • Diseño Digital"}
+                subtitle={pedido.estado === 'en_produccion' ? "Envía una prueba clínica física o nuevo archivo 3D para revisión y conformidad" : "Carga el visor 3D interactivo para revisión y aprobación clínica"}
+                icon={pedido.estado === 'en_produccion' ? "bi-patch-check" : "bi-box"}
                 footer={
                     <>
                         <button
@@ -1385,14 +1420,14 @@ const DetallePedido = () => {
                         <button
                             className="btn btn-primary"
                             onClick={submitApprovalDesign}
-                            disabled={updating || (uploadMode === 'file' ? !approvalFile : !exocadLink.trim())}
+                            disabled={updating || (uploadMode === 'file' ? !approvalFile : uploadMode === 'link' ? !exocadLink.trim() : !approvalNote.trim())}
                         >
-                            <i className="bi bi-send"></i> {updating ? 'Subiendo...' : 'Publicar Diseño 3D'}
+                            <i className="bi bi-send"></i> {updating ? 'Enviando...' : (uploadMode === 'note' ? 'Enviar Prueba Clínica' : (pedido.estado === 'en_produccion' ? 'Enviar a Aprobación' : 'Publicar Diseño 3D'))}
                         </button>
                     </>
                 }
             >
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
                     <button
                         type="button"
                         className={`btn btn-sm ${uploadMode === 'file' ? 'btn-primary' : 'btn-secondary'}`}
@@ -1407,94 +1442,122 @@ const DetallePedido = () => {
                     >
                         <i className="bi bi-link-45deg"></i> Enlace Web Externo
                     </button>
+                    {pedido.estado === 'en_produccion' && (
+                        <button
+                            type="button"
+                            className={`btn btn-sm ${uploadMode === 'note' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setUploadMode('note')}
+                        >
+                            <i className="bi bi-chat-left-text"></i> Nota de Prueba Clínica
+                        </button>
+                    )}
                 </div>
 
-                {uploadMode === 'file' ? (
+                {uploadMode === 'note' ? (
                     <div className="form-group">
-                        <label className="form-label">Archivo HTML exportado de Exocad *</label>
-                        <input
-                            ref={approvalFileInputRef}
-                            type="file"
-                            accept=".html,.htm"
-                            style={{ display: 'none' }}
-                            onChange={(e) => {
-                                if (e.target.files?.[0]) {
-                                    setApprovalFile(e.target.files[0]);
-                                }
-                            }}
+                        <label className="form-label">Detalle o indicación de la prueba clínica *</label>
+                        <textarea
+                            className="form-textarea"
+                            rows={4}
+                            placeholder="Ej.: Se envía prueba de estructura metálica / bizcocho para control y verificación en boca del paciente."
+                            value={approvalNote}
+                            onChange={e => setApprovalNote(e.target.value)}
+                            autoFocus
                         />
-                        {approvalFile ? (
-                            <div className="order-design-file-card">
-                                <div className="order-design-file-info">
-                                    <i className="bi bi-filetype-html" style={{ fontSize: '1.75rem', color: '#0284c7' }}></i>
-                                    <div>
-                                        <div className="order-design-file-name">{approvalFile.name}</div>
-                                        <div className="order-design-file-size">{formatFileSize(approvalFile.size)}</div>
+                        <small className="form-help">
+                            El pedido pasará a "Esperando Aprobación" para registrar la conformidad del doctor sin costo adicional.
+                        </small>
+                    </div>
+                ) : (
+                    <>
+                        {uploadMode === 'file' ? (
+                            <div className="form-group">
+                                <label className="form-label">Archivo HTML exportado de Exocad *</label>
+                                <input
+                                    ref={approvalFileInputRef}
+                                    type="file"
+                                    accept=".html,.htm"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => {
+                                        if (e.target.files?.[0]) {
+                                            setApprovalFile(e.target.files[0]);
+                                        }
+                                    }}
+                                />
+                                {approvalFile ? (
+                                    <div className="order-design-file-card">
+                                        <div className="order-design-file-info">
+                                            <i className="bi bi-filetype-html" style={{ fontSize: '1.75rem', color: '#0284c7' }}></i>
+                                            <div>
+                                                <div className="order-design-file-name">{approvalFile.name}</div>
+                                                <div className="order-design-file-size">{formatFileSize(approvalFile.size)}</div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="btn-icon"
+                                            onClick={() => setApprovalFile(null)}
+                                            title="Quitar archivo"
+                                        >
+                                            <i className="bi bi-trash"></i>
+                                        </button>
                                     </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    className="btn-icon"
-                                    onClick={() => setApprovalFile(null)}
-                                    title="Quitar archivo"
-                                >
-                                    <i className="bi bi-trash"></i>
-                                </button>
+                                ) : (
+                                    <div
+                                        className={`order-design-upload-dropzone ${isDraggingApproval ? 'is-active' : ''}`}
+                                        onClick={() => approvalFileInputRef.current?.click()}
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            setIsDraggingApproval(true);
+                                        }}
+                                        onDragLeave={() => setIsDraggingApproval(false)}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsDraggingApproval(false);
+                                            if (e.dataTransfer.files?.[0]) {
+                                                setApprovalFile(e.dataTransfer.files[0]);
+                                            }
+                                        }}
+                                    >
+                                        <i className="bi bi-cloud-arrow-up order-design-upload-icon"></i>
+                                        <div>
+                                            <strong>Arrastra aquí el archivo HTML de Exocad</strong>
+                                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                                o haz clic para explorar en tu equipo (hasta 50 MB)
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
-                            <div
-                                className={`order-design-upload-dropzone ${isDraggingApproval ? 'is-active' : ''}`}
-                                onClick={() => approvalFileInputRef.current?.click()}
-                                onDragOver={(e) => {
-                                    e.preventDefault();
-                                    setIsDraggingApproval(true);
-                                }}
-                                onDragLeave={() => setIsDraggingApproval(false)}
-                                onDrop={(e) => {
-                                    e.preventDefault();
-                                    setIsDraggingApproval(false);
-                                    if (e.dataTransfer.files?.[0]) {
-                                        setApprovalFile(e.dataTransfer.files[0]);
-                                    }
-                                }}
-                            >
-                                <i className="bi bi-cloud-arrow-up order-design-upload-icon"></i>
-                                <div>
-                                    <strong>Arrastra aquí el archivo HTML de Exocad</strong>
-                                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                                        o haz clic para explorar en tu equipo (hasta 50 MB)
-                                    </p>
+                            <div className="form-group">
+                                <label className="form-label">Link Exocad Viewer *</label>
+                                <div className="form-input-box has-lead">
+                                    <i className="bi bi-link-45deg form-input-lead" aria-hidden="true" />
+                                    <input
+                                        className="form-input"
+                                        type="url"
+                                        placeholder="https://viewer.exocad.com/..."
+                                        value={exocadLink}
+                                        onChange={e => setExocadLink(e.target.value)}
+                                        autoFocus
+                                    />
                                 </div>
                             </div>
                         )}
-                    </div>
-                ) : (
-                    <div className="form-group">
-                        <label className="form-label">Link Exocad Viewer *</label>
-                        <div className="form-input-box has-lead">
-                            <i className="bi bi-link-45deg form-input-lead" aria-hidden="true" />
-                            <input
-                                className="form-input"
-                                type="url"
-                                placeholder="https://viewer.exocad.com/..."
-                                value={exocadLink}
-                                onChange={e => setExocadLink(e.target.value)}
-                                autoFocus
+
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                            <label className="form-label">Nota o indicación clínica (opcional)</label>
+                            <textarea
+                                className="form-textarea"
+                                rows={3}
+                                placeholder="Ej.: Se realizó alivio cervical y ajuste de grosor oclusal a 1.2mm"
+                                value={approvalNote}
+                                onChange={e => setApprovalNote(e.target.value)}
                             />
                         </div>
-                    </div>
+                    </>
                 )}
-
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label className="form-label">Nota o indicación clínica (opcional)</label>
-                    <textarea
-                        className="form-textarea"
-                        rows={3}
-                        placeholder="Ej.: Se realizó alivio cervical y ajuste de grosor oclusal a 1.2mm"
-                        value={approvalNote}
-                        onChange={e => setApprovalNote(e.target.value)}
-                    />
-                </div>
             </Modal>
 
             <OrderDesignViewerModal

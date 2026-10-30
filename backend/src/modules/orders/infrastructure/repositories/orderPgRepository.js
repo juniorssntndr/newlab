@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { splitTotalIntoTax } from '../../../pricing/pricingCanonical.js';
 export const makeOrderPgRepository = ({ pool }) => ({
     pool,
     listOrders: async ({ user, filters = {} }) => {
@@ -243,9 +244,18 @@ export const makeOrderPgRepository = ({ pool }) => ({
 
         try {
             await client.query('BEGIN');
-            let finalTotal = total;
-            let finalSubtotal = subtotal;
-            let finalIgv = igv;
+            const isExpress = Boolean(orderInput.es_urgente || orderInput.es_express || items?.some(it => it.es_urgente || it.es_express));
+
+            const totalBase = (Array.isArray(items) ? items : []).reduce((sum, it) => {
+                const q = Number(it.cantidad) || 1;
+                let bp = Number(it.precio_base);
+                if (!bp) {
+                    bp = isExpress ? Math.round((Number(it.precio_unitario) / 1.25) * 100) / 100 : (Number(it.precio_unitario) || 0);
+                }
+                return sum + (bp * q);
+            }, 0);
+            const totalExpress = isExpress ? Math.round(totalBase * 0.25 * 100) / 100 : 0;
+
             let appliedDiscount = null;
             let appliedDiscountMonto = 0.00;
 
@@ -266,7 +276,7 @@ export const makeOrderPgRepository = ({ pool }) => ({
                                         (!discountRow.fecha_fin || new Date(discountRow.fecha_fin) >= now);
                     const isClinicAllowed = !discountRow.clinica_id || Number(discountRow.clinica_id) === Number(clinica_id);
                     const hasUsesLeft = discountRow.limite_usos_total === null || discountRow.usos_actuales < discountRow.limite_usos_total;
-                    const meetsMinAmount = !discountRow.monto_minimo_pedido || total >= Number(discountRow.monto_minimo_pedido);
+                    const meetsMinAmount = !discountRow.monto_minimo_pedido || totalBase >= Number(discountRow.monto_minimo_pedido);
 
                     let clinicUsageAllowed = true;
                     if (discountRow.limite_usos_por_doctor && clinica_id) {
@@ -280,19 +290,19 @@ export const makeOrderPgRepository = ({ pool }) => ({
                     }
 
                     if (isValidDate && isClinicAllowed && hasUsesLeft && meetsMinAmount && clinicUsageAllowed) {
+                        const totalBaseCents = Math.round(totalBase * 100);
+                        let appliedDiscountCents = 0;
                         if (discountRow.tipo === 'porcentaje') {
-                            let calc = (total * Number(discountRow.valor)) / 100;
-                            if (discountRow.tope_descuento_maximo && calc > Number(discountRow.tope_descuento_maximo)) {
-                                calc = Number(discountRow.tope_descuento_maximo);
+                            let calcCents = Math.round((totalBaseCents * Number(discountRow.valor)) / 100);
+                            if (discountRow.tope_descuento_maximo) {
+                                const topeCents = Math.round(Number(discountRow.tope_descuento_maximo) * 100);
+                                calcCents = Math.min(calcCents, topeCents);
                             }
-                            appliedDiscountMonto = Math.min(calc, total);
+                            appliedDiscountCents = Math.min(calcCents, totalBaseCents);
                         } else {
-                            appliedDiscountMonto = Math.min(Number(discountRow.valor), total);
+                            appliedDiscountCents = Math.min(Math.round(Number(discountRow.valor) * 100), totalBaseCents);
                         }
-                        appliedDiscountMonto = Number(appliedDiscountMonto.toFixed(2));
-                        finalTotal = Math.max(0, Number((total - appliedDiscountMonto).toFixed(2)));
-                        finalSubtotal = Number((finalTotal / 1.18).toFixed(2));
-                        finalIgv = Number((finalTotal - finalSubtotal).toFixed(2));
+                        appliedDiscountMonto = appliedDiscountCents / 100;
                         appliedDiscount = discountRow;
 
                         await client.query(
@@ -304,6 +314,13 @@ export const makeOrderPgRepository = ({ pool }) => ({
                     }
                 }
             }
+
+            const totalBaseCents = Math.round(totalBase * 100);
+            const totalExpressCents = Math.round(totalExpress * 100);
+            const appliedDiscountCents = Math.round(appliedDiscountMonto * 100);
+            const finalTotalCents = Math.max(0, totalBaseCents - appliedDiscountCents + totalExpressCents);
+            const finalTotal = finalTotalCents / 100;
+            const { subtotal: finalSubtotal, igv: finalIgv } = splitTotalIntoTax(finalTotal);
 
             const sanitizedEdad = paciente_edad !== undefined && paciente_edad !== null && paciente_edad !== '' && !isNaN(Number(paciente_edad))
                 ? Math.trunc(Number(paciente_edad))
@@ -396,9 +413,9 @@ export const makeOrderPgRepository = ({ pool }) => ({
             return {
                 pedido,
                 totals: {
-                    total,
-                    subtotal,
-                    igv
+                    total: finalTotal,
+                    subtotal: finalSubtotal,
+                    igv: finalIgv
                 }
             };
         } catch (error) {

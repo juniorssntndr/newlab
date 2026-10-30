@@ -150,7 +150,8 @@ export const makeOrderController = ({ orderService }) => ({
             const result = await orderService.updateOrderStatus({
                 user: req.user,
                 orderId: req.params.id,
-                body: req.body
+                body: req.body,
+                file: req.file
             });
 
             if (result.ok) {

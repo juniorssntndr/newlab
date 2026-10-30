@@ -100,7 +100,9 @@ export const buildContractRawState = (item = {}) => {
     const pilares_dentales = es_puente ? normalizeBridgePillars(piezas_dentales, rawBridgePillars) : [];
 
     const productRef = item.product || item;
-    const inferredRequiresOdontogram = checkRequiresOdontogram(productRef);
+    const modo_odontograma = item.modo_odontograma || productRef.modo_odontograma || existingRawState.modo_odontograma || null;
+    const productWithModo = { ...(typeof productRef === 'object' ? productRef : {}), modo_odontograma };
+    const inferredRequiresOdontogram = checkRequiresOdontogram(productWithModo);
     const requiresDentalSelection =
         typeof inferredRequiresOdontogram === 'boolean'
             ? inferredRequiresOdontogram
@@ -124,7 +126,7 @@ export const buildContractRawState = (item = {}) => {
     );
 
     const cantidadNormalizada = requiresDentalSelection
-        ? calculateClinicalQuantity(productRef, piezas_dentales, cantidadManualInput)
+        ? calculateClinicalQuantity(productWithModo, piezas_dentales, cantidadManualInput)
         : toPositiveInt(cantidadManualInput, 1);
     const subtotalNormalizado = Number((cantidadNormalizada * toPrice(precioUnitarioInput)).toFixed(2));
 
@@ -135,7 +137,9 @@ export const buildContractRawState = (item = {}) => {
         precio_unitario: precioUnitarioInput,
         piezas_dentales,
         pilares_dentales,
-        requiresDentalSelection
+        requiresDentalSelection,
+        product: productWithModo,
+        modo_odontograma
     };
 };
 
@@ -144,7 +148,9 @@ export const normalizeOrderItem = (item = {}) => {
     const unitPrice = toPrice(rawState.precio_unitario ?? item.precio_unitario ?? item.precio_base);
     const normalizedPieces = sortTeethByArchOrder(rawState.piezas_dentales || []);
     const productRef = item.product || item;
-    const inferredRequiresOdontogram = checkRequiresOdontogram(productRef);
+    const modo_odontograma = item.modo_odontograma || rawState.modo_odontograma || productRef.modo_odontograma || null;
+    const productWithModo = { ...(typeof productRef === 'object' ? productRef : {}), modo_odontograma };
+    const inferredRequiresOdontogram = checkRequiresOdontogram(productWithModo);
     const requiresDentalSelection =
         typeof inferredRequiresOdontogram === 'boolean'
             ? inferredRequiresOdontogram
@@ -154,12 +160,14 @@ export const normalizeOrderItem = (item = {}) => {
         : [];
     const cantidadManual = toPositiveInt(rawState.cantidadManual ?? item.cantidadManual ?? item.cantidad_manual ?? item.cantidad ?? 1, 1);
     const cantidad = requiresDentalSelection
-        ? calculateClinicalQuantity(productRef, normalizedPieces, cantidadManual)
+        ? calculateClinicalQuantity(productWithModo, normalizedPieces, cantidadManual)
         : cantidadManual;
     const subtotal = Number((cantidad * unitPrice).toFixed(2));
 
     return {
         ...item,
+        product: productWithModo,
+        modo_odontograma,
         rawState,
         piezas_dentales: normalizedPieces,
         pilares_dentales: normalizedBridgePillars,

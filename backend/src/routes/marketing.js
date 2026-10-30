@@ -192,7 +192,7 @@ router.post('/cupones/validar', async (req, res) => {
     }
 
     const cleanCode = String(codigo).trim().toUpperCase();
-    const orderTotal = Number(subtotal) || 0;
+    const orderTotal = Number(req.body?.subtotal_base || req.body?.base || subtotal) || 0;
     const clinicId = clinica_id || req.user?.clinica_id || null;
 
     try {
