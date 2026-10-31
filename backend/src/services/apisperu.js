@@ -344,9 +344,10 @@ export async function emitirComprobanteSunat(pool, pedidoId, tipoComprobante, bi
 
     // 6. Envío a APISPERU (o DEMO)
     let responseData;
-    const isDemo = empresa.entorno === 'beta' || proceso?.env?.ENTORNO === 'demo';
+    const isMock = String(process.env.APISPERU_MOCK || '').toLowerCase() === 'true';
+    const isDemo = isMock || process.env.ENTORNO === 'demo' || empresa.entorno === 'beta' || !empresa.token_apisperu || empresa.token_apisperu === 'TU_TOKEN_AQUI';
 
-    if (isDemo && (empresa.token_apisperu === 'TU_TOKEN_AQUI')) {
+    if (isDemo && (isMock || empresa.token_apisperu === 'TU_TOKEN_AQUI' || !empresa.token_apisperu)) {
         console.log('[DEMO] Simulando envío a SUNAT');
         responseData = {
             message: 'Aceptado por SUNAT (DEMO)',

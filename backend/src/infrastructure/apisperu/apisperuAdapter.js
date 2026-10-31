@@ -5,7 +5,11 @@ const apiHeaders = (token) => ({
     'Content-Type': 'application/json'
 });
 
-const isDemoMode = () => String(process.env.APISPERU_MOCK || '').toLowerCase() === 'true';
+const isDemoMode = ({ entorno, token } = {}) =>
+    String(process.env.APISPERU_MOCK || '').toLowerCase() === 'true' ||
+    process.env.ENTORNO === 'demo' ||
+    !token ||
+    token === 'TU_TOKEN_AQUI';
 
 const parseJsonSafely = async (response) => {
     try {
