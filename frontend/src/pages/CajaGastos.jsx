@@ -28,6 +28,7 @@ import {
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
 import AfinixLogo from '../components/AfinixLogo.jsx';
 import ComprobantePrintSheet from '../components/billing/ComprobantePrintSheet.jsx';
+import ComprobantePrintModal from '../components/billing/ComprobantePrintModal.jsx';
 import CajaCierrePrintSheet from '../components/billing/CajaCierrePrintSheet.jsx';
 import { generateReceiptHash } from '../utils/sunatReceipt.js';
 import { CATEGORIA_GASTO_LABELS, formatCategoriaGasto } from '../constants/financeCategories.js';
@@ -561,6 +562,7 @@ const CajaGastos = () => {
     // Modal de Impresión de Ticket de Cobro
     const [cobroExitosoTicket, setCobroExitosoTicket] = useState(null);
     const [ticketModalOpen, setTicketModalOpen] = useState(false);
+    const [activeComprobantePrintId, setActiveComprobantePrintId] = useState(null);
     const [ticketPrintFormat, setTicketPrintFormat] = useState('ticket80'); // 'ticket80' | 'a4' | 'a5'
     const ticketPrintRootRef = useRef(null);
     const [, setTicketPrinting] = useState(false);
@@ -1727,6 +1729,9 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                 ticketNumero: finalTicketNumero,
                 fecha: new Date(),
                 comprobanteTipo: ticketComprobanteTipo,
+                comprobanteId: comprobanteInfo.comprobanteId || null,
+                emitidoSunat: Boolean(comprobanteInfo.comprobanteId || (comprobanteInfo.numero && ['factura', 'boleta'].includes(ticketComprobanteTipo))),
+                pdfUrl: comprobanteInfo.pdfUrl || null,
                 docIdentidad: ticketDocIdentidad,
                 razonSocial: clientName,
                 tipoFondo: createForm.tipo_fondo,
@@ -3855,7 +3860,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                 <th>Receptor</th>
                                                 <th style={{ textAlign: 'right', whiteSpace: 'nowrap', minWidth: '115px' }}>Total</th>
                                                 <th>Estado SUNAT</th>
-                                                <th>Archivos</th>
+                                                <th>Comprobante / Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -3913,7 +3918,16 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                         )}
                                                     </td>
                                                     <td>
-                                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-secondary"
+                                                                onClick={() => setActiveComprobantePrintId(c.id)}
+                                                                title="Ver e Imprimir Comprobante (Ticketera 80mm / A4 / A5)"
+                                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', padding: '4px 9px' }}
+                                                            >
+                                                                <i className="bi bi-printer-fill" aria-hidden="true"></i> Imprimir
+                                                            </button>
                                                             {['error', 'generado'].includes(c.estado_sunat) && (
                                                                 <button
                                                                     type="button"
@@ -5293,16 +5307,22 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                         </button>
                         <div style={{ display: 'flex', gap: '8px' }}>
                             {['boleta', 'factura'].includes(cobroExitosoTicket?.comprobanteTipo) && (
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={() => {
-                                        setTicketModalOpen(false);
-                                        handleTabChange('facturacion');
-                                    }}
-                                >
-                                    <i className="bi bi-file-earmark-text"></i> Facturar SUNAT
-                                </button>
+                                (cobroExitosoTicket?.emitidoSunat || cobroExitosoTicket?.comprobanteId) ? (
+                                    <span className="badge" style={{ background: '#e6f4ea', color: '#137333', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 10px', fontWeight: 600 }}>
+                                        <i className="bi bi-check-circle-fill"></i> Emitido a SUNAT
+                                    </span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => {
+                                            setTicketModalOpen(false);
+                                            handleTabChange('facturacion');
+                                        }}
+                                    >
+                                        <i className="bi bi-file-earmark-text"></i> Facturar SUNAT
+                                    </button>
+                                )
                             )}
                             <button
                                 type="button"
@@ -5374,6 +5394,12 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                 </div>,
                 document.body
             )}
+
+            <ComprobantePrintModal
+                open={Boolean(activeComprobantePrintId)}
+                onClose={() => setActiveComprobantePrintId(null)}
+                comprobanteId={activeComprobantePrintId}
+            />
 
             {/* Portal para impresión oficial del Reporte de Cierre y Arqueo A4 */}
             {cierreReportPrintData && createPortal(
