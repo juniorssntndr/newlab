@@ -37,6 +37,19 @@
     align-items: center;
 }
 
+.public-track-brand-group {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.public-track-brand-divider {
+    display: inline-block;
+    width: 1px;
+    height: 22px;
+    background: var(--color-border, #cbd5e1);
+}
+
 .public-track-brand {
     display: flex;
     flex-direction: column;
@@ -57,6 +70,13 @@
     color: var(--color-text-muted, #64748b);
     font-weight: 600;
     margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+    .public-track-brand-divider,
+    .public-track-brand-sub {
+        display: none;
+    }
 }
 
 .public-track-whatsapp-btn {

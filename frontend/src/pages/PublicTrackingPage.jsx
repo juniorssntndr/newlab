@@ -4,8 +4,10 @@ import { motion } from 'framer-motion';
 import { API_URL } from '../config.js';
 import { ORDER_STATUS_FLOW, getOrderStatusLabel } from '../utils/orderStatusLabels.js';
 import AnimatedCheck from '../components/icons/animated/AnimatedCheck.jsx';
+import AfinixLogo from '../components/AfinixLogo.jsx';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
 import OrderDesignViewerModal from '../components/orders/OrderDesignViewerModal.jsx';
+import { sortTeethByArchOrder, getToothRole } from '../utils/odontograma.js';
 import { AFINIX_LAB_ADDRESS } from '../constants/labInfo.js';
 import '../styles/public-tracking.css';
 
@@ -185,8 +187,9 @@ export const PublicTrackingPage = () => {
             <div className="public-track-page">
                 <header className="public-track-navbar">
                     <div className="public-track-container public-track-navbar-inner">
-                        <div className="public-track-brand">
-                            <span className="public-track-brand-name">AFINIX Dental Lab</span>
+                        <div className="public-track-brand-group">
+                            <AfinixLogo size={36} showText={true} theme="light" />
+                            <span className="public-track-brand-divider" aria-hidden="true" />
                             <span className="public-track-brand-sub">Rastreo Clínico en Tiempo Real</span>
                         </div>
                     </div>
@@ -208,8 +211,9 @@ export const PublicTrackingPage = () => {
             <div className="public-track-page">
                 <header className="public-track-navbar">
                     <div className="public-track-container public-track-navbar-inner">
-                        <div className="public-track-brand">
-                            <span className="public-track-brand-name">AFINIX Dental Lab</span>
+                        <div className="public-track-brand-group">
+                            <AfinixLogo size={36} showText={true} theme="light" />
+                            <span className="public-track-brand-divider" aria-hidden="true" />
                             <span className="public-track-brand-sub">Rastreo Clínico en Tiempo Real</span>
                         </div>
                     </div>
@@ -245,8 +249,9 @@ export const PublicTrackingPage = () => {
             {/* Top Navbar */}
             <header className="public-track-navbar">
                 <div className="public-track-container public-track-navbar-inner">
-                    <div className="public-track-brand">
-                        <span className="public-track-brand-name">AFINIX Dental Lab</span>
+                    <div className="public-track-brand-group">
+                        <AfinixLogo size={36} showText={true} theme="light" />
+                        <span className="public-track-brand-divider" aria-hidden="true" />
                         <span className="public-track-brand-sub">Rastreo Clínico en Tiempo Real</span>
                     </div>
                     <button type="button" className="public-track-whatsapp-btn" onClick={handleWhatsAppHelp} title="Soporte por WhatsApp">
@@ -421,7 +426,7 @@ export const PublicTrackingPage = () => {
                 {/* Main 2-Column Grid: Left (Datos del caso), Right (Diseño 3D) */}
                 <div className="public-track-grid-layout">
                     {/* Left Column: Datos del Caso */}
-                    <div className="card public-track-card">
+                    <div className="card public-track-card pedido-detail-items">
                         <div className="card-header">
                             <h3 className="card-title">
                                 <i className="bi bi-card-checklist text-primary" style={{ marginRight: '0.5rem' }} />
@@ -430,13 +435,24 @@ export const PublicTrackingPage = () => {
                         </div>
                         <ul className="order-wizard-confirm-items pedido-detail-confirm-items">
                             {(order.items || []).map((item, i) => {
-                                const tone = String(item.color || '').trim();
+                                const tone = String(item.color_vita || item.color || '').trim();
                                 const material = String(item.material || '').trim();
+                                const teeth = sortTeethByArchOrder(item.piezas_dentales || []);
+                                const teethDenseClass = teeth.length > 24
+                                    ? 'is-dense-xl'
+                                    : teeth.length > 16
+                                        ? 'is-dense-lg'
+                                        : teeth.length > 8
+                                            ? 'is-dense-md'
+                                            : '';
                                 const product = {
-                                    id: item.id,
+                                    id: item.producto_id || item.id,
                                     nombre: item.producto_nombre || 'Producto Odontológico',
                                     image_url: item.producto_image_url || ''
                                 };
+                                const itemSubtotal = parseFloat(item.subtotal) || (parseFloat(item.cantidad || 1) * parseFloat(item.precio_unitario || 0));
+                                const hasDiscount = Number(order.descuento_monto || 0) > 0;
+                                const hasPricing = order.total != null && Number(order.total) >= 0;
 
                                 return (
                                     <li key={i} className="order-wizard-confirm-item">
@@ -449,11 +465,34 @@ export const PublicTrackingPage = () => {
                                                     <strong>{product.nombre}</strong>
                                                 </div>
                                                 <div className="order-wizard-confirm-clinical">
-                                                    {item.cantidad && (
+                                                    {teeth.length > 0 ? (
+                                                        <div
+                                                            className={[
+                                                                'order-wizard-confirm-teeth',
+                                                                teethDenseClass,
+                                                            ].filter(Boolean).join(' ')}
+                                                            data-count={teeth.length}
+                                                            aria-label="Piezas seleccionadas"
+                                                        >
+                                                            {teeth.map((tooth) => {
+                                                                const role = getToothRole(tooth, item);
+                                                                const roleLabel = role === 'pilar' ? 'Pilar' : role === 'pontico' ? 'Póntico' : 'Unitaria';
+                                                                return (
+                                                                    <span
+                                                                        key={`${i}-${tooth}`}
+                                                                        className={`order-wizard-confirm-tooth is-${role}`}
+                                                                        title={`Pieza ${tooth} (${roleLabel})`}
+                                                                    >
+                                                                        {tooth}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : item.cantidad ? (
                                                         <span className="order-wizard-confirm-qty">
                                                             {parseFloat(item.cantidad)} {parseFloat(item.cantidad) === 1 ? 'unidad' : 'unidades'}
                                                         </span>
-                                                    )}
+                                                    ) : null}
                                                     {tone && (
                                                         <span className="order-wizard-confirm-tone">Tono {tone}</span>
                                                     )}
@@ -464,6 +503,24 @@ export const PublicTrackingPage = () => {
                                                         </span>
                                                     )}
                                                 </div>
+                                                {hasPricing && (
+                                                    <div className="public-track-item-pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                        {hasDiscount && (
+                                                            <span style={{ textDecoration: 'line-through', opacity: 0.55, fontSize: '0.85rem' }}>
+                                                                S/. {Number(order.subtotal || itemSubtotal || 0).toFixed(2)}
+                                                            </span>
+                                                        )}
+                                                        {hasDiscount && (
+                                                            <span className="badge" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
+                                                                <i className="bi bi-tag-fill me-1" style={{ fontSize: '0.7rem' }} />
+                                                                -S/. {Number(order.descuento_monto).toFixed(2)} ({order.descuento_codigo})
+                                                            </span>
+                                                        )}
+                                                        <span className="pedido-detail-item-subtotal" style={{ fontWeight: 700, color: 'var(--color-text, #1e293b)' }}>
+                                                            S/. {Number(order.total != null ? order.total : itemSubtotal).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </li>

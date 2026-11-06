@@ -69,14 +69,27 @@ router.get('/:token', async (req, res) => {
             fecha_entrega: order.fecha_entrega,
             paciente_nombre: order.paciente_nombre,
             clinica_nombre: order.clinica_nombre || order.clinica_razon_social || 'Clínica',
+            clinica_direccion: order.clinica_direccion || '',
             observaciones: order.observaciones || '',
+            subtotal: order.subtotal,
+            total: order.total,
+            descuento_codigo: order.descuento_codigo,
+            descuento_monto: order.descuento_monto,
             items: items.map((it) => ({
                 id: it.id,
+                producto_id: it.producto_id,
                 producto_nombre: it.producto_nombre,
+                producto_image_url: it.producto_image_url,
                 cantidad: it.cantidad,
-                dientes: it.dientes,
-                color: it.color,
-                material: it.material
+                piezas_dentales: it.piezas_dentales || it.dientes || [],
+                es_puente: it.es_puente,
+                pieza_inicio: it.pieza_inicio,
+                pieza_fin: it.pieza_fin,
+                color_vita: it.color_vita,
+                color: it.color_vita || it.color,
+                material: it.material,
+                precio_unitario: it.precio_unitario,
+                subtotal: it.subtotal
             })),
             approval: currentApproval
                 ? {
