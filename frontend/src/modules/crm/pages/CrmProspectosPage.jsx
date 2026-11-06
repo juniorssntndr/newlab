@@ -592,15 +592,16 @@ export const CrmProspectosPage = () => {
                 />
             )}
             <ConfirmDialog
-                isOpen={Boolean(prospectToDelete)}
-                title="Eliminar Prospecto"
-                message={`¿Estás seguro de eliminar al prospecto "${prospectToDelete?.nombre}"?`}
-                description="Esta acción quitará el prospecto del embudo comercial."
-                confirmText={isDeletingProspect ? 'Eliminando...' : 'Eliminar Prospecto'}
-                confirmVariant="danger"
-                isLoading={isDeletingProspect}
+                open={Boolean(prospectToDelete)}
+                onClose={() => !isDeletingProspect && setProspectToDelete(null)}
                 onConfirm={handleConfirmDeleteProspect}
-                onCancel={() => setProspectToDelete(null)}
+                title="Eliminar Prospecto"
+                message={prospectToDelete ? `¿Estás seguro de eliminar al prospecto "${prospectToDelete.nombre}"?` : ''}
+                description="Esta acción quitará el prospecto del embudo comercial."
+                confirmLabel="Eliminar Prospecto"
+                confirming={isDeletingProspect}
+                variant="danger"
+                icon="bi-trash3"
             />
         </div>
     );

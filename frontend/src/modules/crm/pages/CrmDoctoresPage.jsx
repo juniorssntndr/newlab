@@ -295,15 +295,16 @@ export const CrmDoctoresPage = () => {
                 />
             )}
             <ConfirmDialog
-                isOpen={Boolean(doctorToDelete)}
-                title="Dar de Baja Doctor(a)"
-                message={`¿Estás seguro de dar de baja al Dr(a). "${doctorToDelete?.nombre_completo}"?`}
-                description="Esta acción cambiará su estado a inactivo en el sistema y lo removerá del directorio activo."
-                confirmText={isDeletingDoctor ? 'Dando de baja...' : 'Dar de Baja'}
-                confirmVariant="danger"
-                isLoading={isDeletingDoctor}
+                open={Boolean(doctorToDelete)}
+                onClose={() => !isDeletingDoctor && setDoctorToDelete(null)}
                 onConfirm={handleConfirmDeleteDoctor}
-                onCancel={() => setDoctorToDelete(null)}
+                title="Dar de Baja Doctor(a)"
+                message={doctorToDelete ? `¿Estás seguro de dar de baja al Dr(a). "${doctorToDelete.nombre_completo}"?` : ''}
+                description="Esta acción cambiará su estado a inactivo en el sistema y lo removerá del directorio activo."
+                confirmLabel="Dar de Baja"
+                confirming={isDeletingDoctor}
+                variant="danger"
+                icon="bi-person-dash"
             />
         </div>
     );
