@@ -8,6 +8,7 @@ import AfinixLogo from '../components/AfinixLogo.jsx';
 import OrderProductThumb from '../components/orders/OrderProductThumb.jsx';
 import OrderDesignViewerModal from '../components/orders/OrderDesignViewerModal.jsx';
 import { sortTeethByArchOrder, getToothRole } from '../utils/odontograma.js';
+import { parseIntakeFromObservaciones } from '../modules/orders/wizard/orderWizardConstants.js';
 import { AFINIX_LAB_ADDRESS } from '../constants/labInfo.js';
 import '../styles/public-tracking.css';
 
@@ -21,7 +22,7 @@ const STATUS_ICONS = {
 };
 
 const approvalStatusLabels = {
-    pendiente: 'Por Aprobar',
+    pendiente: 'Pendiente',
     aprobado: 'Diseño Aprobado',
     ajuste_solicitado: 'Ajuste Solicitado'
 };
@@ -174,6 +175,11 @@ export const PublicTrackingPage = () => {
             detail: 'Portal Oficial AFINIX Lab'
         };
     }, [order?.observaciones, order?.clinica_direccion]);
+
+    const coordinationNotes = useMemo(() => {
+        const { notes } = parseIntakeFromObservaciones(order?.observaciones);
+        return notes;
+    }, [order?.observaciones]);
 
     const handleWhatsAppHelp = () => {
         const phone = '51910707060';
@@ -428,10 +434,7 @@ export const PublicTrackingPage = () => {
                     {/* Left Column: Datos del Caso */}
                     <div className="card public-track-card public-track-case-data">
                         <div className="card-header">
-                            <h3 className="card-title">
-                                <i className="bi bi-card-checklist text-primary" style={{ marginRight: '0.5rem' }} />
-                                Datos del caso
-                            </h3>
+                            <h3 className="card-title">Datos del caso</h3>
                         </div>
                         <ul className="order-wizard-confirm-items pedido-detail-confirm-items">
                             {(order.items || []).map((item, i) => {
@@ -525,43 +528,61 @@ export const PublicTrackingPage = () => {
                         </ul>
                     </div>
 
-                    {/* Right Column: Diseño 3D Card (Identical to DetallePedido.jsx) */}
-                    <div className="card public-track-card public-track-design-card">
-                        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 className="card-title">
-                                <i className="bi bi-badge-3d text-primary" style={{ marginRight: '0.5rem' }} aria-hidden="true" />
-                                Diseño 3D
-                            </h3>
-                            {hasDesignFile && (
-                                <span className={`approval-review-status ${currentApproval?.estado === 'aprobado' ? 'status-approved' : currentApproval?.estado === 'ajuste_solicitado' ? 'status-adjusted' : 'status-pending'}`}>
-                                    {approvalStatusLabels[currentApproval?.estado] || 'Diseño Disponible'}
-                                </span>
-                            )}
+                    {/* Right Column: Stacked Diseño 3D & Nota de coordinación */}
+                    <div className="public-track-side-column">
+                        <div className="card public-track-card public-track-design-card">
+                            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 className="card-title">
+                                    <i className="bi bi-badge-3d text-primary" style={{ marginRight: '0.5rem' }} aria-hidden="true" />
+                                    <span>Diseño 3D</span>
+                                </h3>
+                                {hasDesignFile && (
+                                    <span className={`approval-review-status ${currentApproval?.estado === 'aprobado' ? 'status-approved' : currentApproval?.estado === 'ajuste_solicitado' ? 'status-adjusted' : 'status-pending'}`}>
+                                        {approvalStatusLabels[currentApproval?.estado] || 'Pendiente'}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="card-body">
+                                {hasDesignFile ? (
+                                    <div className="public-track-design-actions">
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={() => setViewerModalOpen(true)}
+                                            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                        >
+                                            <i className="bi bi-box" />
+                                            <span>Ver diseño 3D</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: '0.75rem 0.5rem', color: 'var(--color-text-muted, #64748b)' }}>
+                                        <i className="bi bi-clock-history" style={{ fontSize: '1.5rem', color: '#f59e0b', display: 'block', marginBottom: '0.25rem' }} />
+                                        <strong style={{ display: 'block', color: 'var(--color-text, #1e293b)', fontSize: '0.85rem' }}>
+                                            Diseño 3D en preparación
+                                        </strong>
+                                        <span style={{ fontSize: '0.75rem', marginTop: '0.15rem', display: 'block' }}>
+                                            El equipo de diseño CAD está modelando el caso.
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div className="card-body">
-                            {hasDesignFile ? (
-                                <div className="public-track-design-actions">
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary btn-lg"
-                                        onClick={() => setViewerModalOpen(true)}
-                                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}
-                                    >
-                                        <i className="bi bi-box" style={{ fontSize: '1.25rem' }} />
-                                        <span>Ver diseño 3D interactivo</span>
-                                    </button>
-                                </div>
-                            ) : (
-                                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--color-text-muted, #64748b)' }}>
-                                    <i className="bi bi-clock-history" style={{ fontSize: '2.5rem', color: '#f59e0b', display: 'block', marginBottom: '0.75rem' }} />
-                                    <strong style={{ display: 'block', color: 'var(--color-text, #1e293b)', fontSize: '0.95rem' }}>
-                                        Diseño 3D en preparación
-                                    </strong>
-                                    <span style={{ fontSize: '0.82rem', marginTop: '0.25rem', display: 'block' }}>
-                                        El equipo de diseño CAD del laboratorio está modelando el caso. Te notificaremos apenas esté listo para revisión.
+
+                        <div className="card public-track-card public-track-notes-card">
+                            <div className="card-header">
+                                <h3 className="card-title">
+                                    <i className="bi bi-chat-left-text text-primary" style={{ marginRight: '0.5rem' }} aria-hidden="true" />
+                                    <span>Nota de coordinación</span>
+                                </h3>
+                            </div>
+                            <div className="card-body">
+                                <div className="pedido-detail-notes" style={{ margin: 0 }}>
+                                    <span style={!coordinationNotes ? { color: 'var(--color-muted, #94a3b8)', fontStyle: 'italic' } : undefined}>
+                                        {coordinationNotes || 'Sin notas ni observaciones adicionales registradas.'}
                                     </span>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
