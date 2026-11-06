@@ -36,6 +36,8 @@ import OrderRepeatLinks from '../components/orders/OrderRepeatLinks.jsx';
 import { canRepeatOrder } from '../modules/orders/orderRepeat.js';
 import '../styles/order-repeats.css';
 import OrderDesignViewerModal from '../components/orders/OrderDesignViewerModal.jsx';
+import { compressHtmlFile } from '../utils/fileCompressor.js';
+import { optimizeImageForUpload } from '../utils/imageOptimizer.js';
 
 const STATUS_ICONS = {
     pendiente: 'bi bi-inbox',
@@ -128,6 +130,7 @@ const DetallePedido = () => {
     const [forceReason, setForceReason] = useState('');
     const [isDragOver, setIsDragOver] = useState(false);
     const [uploadingFiles, setUploadingFiles] = useState(false);
+    const [uploadProgressStatus, setUploadProgressStatus] = useState('');
     const [meetModalOpen, setMeetModalOpen] = useState(false);
     const [meetUrl, setMeetUrl] = useState('');
     const [meetScheduledAt, setMeetScheduledAt] = useState('');
@@ -307,8 +310,11 @@ const DetallePedido = () => {
         try {
             let payload;
             if (uploadMode === 'file' && approvalFile) {
+                setUploadProgressStatus('Comprimiendo archivo 3D...');
+                const compressedFile = await compressHtmlFile(approvalFile);
+                setUploadProgressStatus('Subiendo al servidor...');
                 const formData = new FormData();
-                formData.append('file', approvalFile);
+                formData.append('file', compressedFile);
                 if (approvalNote.trim()) {
                     formData.append('comentario', approvalNote.trim());
                 }
@@ -331,6 +337,8 @@ const DetallePedido = () => {
             setApprovalNote('');
         } catch (err) {
             alert(err.message || 'Error al enviar diseño a aprobación');
+        } finally {
+            setUploadProgressStatus('');
         }
     };
 
@@ -339,10 +347,14 @@ const DetallePedido = () => {
         setUploadingFiles(true);
         try {
             const filesArray = Array.from(filesList);
-            for (const file of filesArray) {
+            for (let i = 0; i < filesArray.length; i++) {
+                let file = filesArray[i];
                 if (file.size > 50 * 1024 * 1024) {
                     alert(`"${file.name}" supera el límite de 50 MB.`);
                     continue;
+                }
+                if (file.type && file.type.startsWith('image/')) {
+                    file = await optimizeImageForUpload(file);
                 }
                 const detectedType = detectFileType(file);
                 const formData = new FormData();
@@ -1422,7 +1434,7 @@ const DetallePedido = () => {
                             onClick={submitApprovalDesign}
                             disabled={updating || (uploadMode === 'file' ? !approvalFile : uploadMode === 'link' ? !exocadLink.trim() : !approvalNote.trim())}
                         >
-                            <i className="bi bi-send"></i> {updating ? 'Enviando...' : (uploadMode === 'note' ? 'Enviar Prueba Clínica' : (pedido.estado === 'en_produccion' ? 'Enviar a Aprobación' : 'Publicar Diseño 3D'))}
+                            <i className="bi bi-send"></i> {uploadProgressStatus || (updating ? 'Enviando...' : (uploadMode === 'note' ? 'Enviar Prueba Clínica' : (pedido.estado === 'en_produccion' ? 'Enviar a Aprobación' : 'Publicar Diseño 3D')))}
                         </button>
                     </>
                 }
@@ -1484,13 +1496,24 @@ const DetallePedido = () => {
                                         }
                                     }}
                                 />
+                                {uploadProgressStatus && (
+                                    <div style={{ marginBottom: '1rem', padding: '0.5rem 0.75rem', borderRadius: '6px', background: 'rgba(2, 132, 199, 0.08)', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                                        <i className="bi bi-arrow-repeat spin"></i>
+                                        <span>{uploadProgressStatus}</span>
+                                    </div>
+                                )}
                                 {approvalFile ? (
                                     <div className="order-design-file-card">
                                         <div className="order-design-file-info">
                                             <i className="bi bi-filetype-html" style={{ fontSize: '1.75rem', color: '#0284c7' }}></i>
                                             <div>
                                                 <div className="order-design-file-name">{approvalFile.name}</div>
-                                                <div className="order-design-file-size">{formatFileSize(approvalFile.size)}</div>
+                                                <div className="order-design-file-size" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    <span>{formatFileSize(approvalFile.size)}</span>
+                                                    <span style={{ fontSize: '0.75rem', color: '#059669', background: '#ecfdf5', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
+                                                        <i className="bi bi-lightning-charge-fill"></i> Compresión 3D activa
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                         <button
