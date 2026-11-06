@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "migrate": "cd backend && npm run migrate",
     "server": "cd backend && npm run server",
     "server:dev": "cd backend && npm run dev",
     "dev": "cd frontend && npm run dev",
