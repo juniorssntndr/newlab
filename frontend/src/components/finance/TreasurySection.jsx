@@ -892,7 +892,7 @@ export default function TreasurySection() {
                                                 <th>Monto</th>
                                                 <th>Referencia / Motivo</th>
                                                 <th>Responsable</th>
-                                                {isAdmin && <th style={{ textAlign: 'center', width: '90px' }}>Acciones</th>}
+                                                <th style={{ textAlign: 'center', width: '90px' }}>Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -922,29 +922,27 @@ export default function TreasurySection() {
                                                     <td style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                                         {t.creado_por_nombre || 'Sistema'}
                                                     </td>
-                                                    {isAdmin && (
-                                                        <td style={{ textAlign: 'center' }}>
-                                                            <div style={{ display: 'inline-flex', gap: '4px' }}>
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-ghost btn-xs"
-                                                                    title="Editar transferencia"
-                                                                    onClick={() => handleOpenEditTransfer(t)}
-                                                                >
-                                                                    <i className="bi bi-pencil"></i>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-ghost btn-xs"
-                                                                    style={{ color: 'var(--color-danger, #ef4444)' }}
-                                                                    title="Eliminar transferencia"
-                                                                    onClick={() => handleDeleteTransfer(t)}
-                                                                >
-                                                                    <i className="bi bi-trash"></i>
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    )}
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-ghost btn-xs"
+                                                                title="Editar transferencia"
+                                                                onClick={() => handleOpenEditTransfer(t)}
+                                                            >
+                                                                <i className="bi bi-pencil"></i>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-ghost btn-xs"
+                                                                style={{ color: 'var(--color-danger, #ef4444)' }}
+                                                                title="Eliminar transferencia"
+                                                                onClick={() => handleDeleteTransfer(t)}
+                                                            >
+                                                                <i className="bi bi-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -985,25 +983,23 @@ export default function TreasurySection() {
                                                     </span>
                                                 </div>
                                             )}
-                                            {isAdmin && (
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-color, #e2e8f0)' }}>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-secondary btn-xs"
-                                                        onClick={() => handleOpenEditTransfer(t)}
-                                                    >
-                                                        <i className="bi bi-pencil" style={{ marginRight: '4px' }}></i> Editar
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-ghost btn-xs"
-                                                        style={{ color: 'var(--color-danger, #ef4444)' }}
-                                                        onClick={() => handleDeleteTransfer(t)}
-                                                    >
-                                                        <i className="bi bi-trash" style={{ marginRight: '4px' }}></i> Eliminar
-                                                    </button>
-                                                </div>
-                                            )}
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-color, #e2e8f0)' }}>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-xs"
+                                                    onClick={() => handleOpenEditTransfer(t)}
+                                                >
+                                                    <i className="bi bi-pencil" style={{ marginRight: '4px' }}></i> Editar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-xs"
+                                                    style={{ color: 'var(--color-danger, #ef4444)' }}
+                                                    onClick={() => handleDeleteTransfer(t)}
+                                                >
+                                                    <i className="bi bi-trash" style={{ marginRight: '4px' }}></i> Eliminar
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
