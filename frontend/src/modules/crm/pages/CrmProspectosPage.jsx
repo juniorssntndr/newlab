@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import CrmNavigation from '../components/CrmNavigation.jsx';
+import ConfirmDialog from '../../../components/ConfirmDialog.jsx';
 import EstablishmentDrawer from '../components/EstablishmentDrawer.jsx';
 import VisitModal from '../components/VisitModal.jsx';
 import ConversionModal from '../components/ConversionModal.jsx';
@@ -40,15 +41,21 @@ export const CrmProspectosPage = () => {
     const [isNewProspectOpen, setIsNewProspectOpen] = useState(false);
     const [editingEstablishment, setEditingEstablishment] = useState(null);
 
-    const handleDeleteProspect = async (p) => {
-        const confirmMsg = `¿Estás seguro de eliminar el prospecto "${p.nombre}"?\n\nEsta acción quitará el prospecto de la cartera activa.`;
-        if (!window.confirm(confirmMsg)) return;
+    const [prospectToDelete, setProspectToDelete] = useState(null);
+    const [isDeletingProspect, setIsDeletingProspect] = useState(false);
+
+    const handleConfirmDeleteProspect = async () => {
+        if (!prospectToDelete) return;
+        setIsDeletingProspect(true);
         try {
-            await deleteEstablecimiento(p.id);
-            toast.success(`Prospecto "${p.nombre}" eliminado exitosamente.`);
+            await deleteEstablecimiento(prospectToDelete.id);
+            toast.success(`Prospecto "${prospectToDelete.nombre}" eliminado exitosamente.`);
+            setProspectToDelete(null);
             refetch();
         } catch (err) {
             toast.error(err.message || 'Error al eliminar el prospecto');
+        } finally {
+            setIsDeletingProspect(false);
         }
     };
 
@@ -340,7 +347,7 @@ export const CrmProspectosPage = () => {
                                                                     label: 'Eliminar Prospecto',
                                                                     icon: 'bi bi-trash',
                                                                     danger: true,
-                                                                    onClick: () => handleDeleteProspect(p),
+                                                                    onClick: () => setProspectToDelete(p),
                                                                     hidden: !isAdmin,
                                                                 },
                                                             ]}
@@ -454,7 +461,7 @@ export const CrmProspectosPage = () => {
                                                         label: 'Eliminar Prospecto',
                                                         icon: 'bi bi-trash',
                                                         danger: true,
-                                                        onClick: () => handleDeleteProspect(p),
+                                                        onClick: () => setProspectToDelete(p),
                                                         hidden: !isAdmin,
                                                     },
                                                 ]}

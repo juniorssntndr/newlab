@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import CrmNavigation from '../components/CrmNavigation.jsx';
+import ConfirmDialog from '../../../components/ConfirmDialog.jsx';
 import CommercialHealthBadge from '../components/CommercialHealthBadge.jsx';
 import EstablishmentDrawer from '../components/EstablishmentDrawer.jsx';
 import EstablishmentModal from '../components/EstablishmentModal.jsx';
@@ -36,15 +37,21 @@ export const CrmClinicasPage = () => {
 
     const clinics = data?.rows || [];
 
-    const handleDeleteClinic = async (c) => {
-        const confirmMsg = `¿Estás seguro de dar de baja la clínica "${c.nombre}"?\n\nEsta acción quitará el establecimiento de la cartera activa.`;
-        if (!window.confirm(confirmMsg)) return;
+    const [clinicToDelete, setClinicToDelete] = useState(null);
+    const [isDeletingClinic, setIsDeletingClinic] = useState(false);
+
+    const handleConfirmDeleteClinic = async () => {
+        if (!clinicToDelete) return;
+        setIsDeletingClinic(true);
         try {
-            await deleteEstablecimiento(c.id);
-            toast.success(`Clínica "${c.nombre}" dada de baja exitosamente.`);
+            await deleteEstablecimiento(clinicToDelete.id);
+            toast.success(`Clínica "${clinicToDelete.nombre}" dada de baja exitosamente.`);
+            setClinicToDelete(null);
             refetch();
         } catch (err) {
             toast.error(err.message || 'Error al dar de baja la clínica');
+        } finally {
+            setIsDeletingClinic(false);
         }
     };
 
@@ -204,7 +211,7 @@ export const CrmClinicasPage = () => {
                                                                     label: 'Dar de Baja Clínica',
                                                                     icon: 'bi bi-trash',
                                                                     danger: true,
-                                                                    onClick: () => handleDeleteClinic(c),
+                                                                    onClick: () => setClinicToDelete(c),
                                                                     hidden: !isAdmin,
                                                                 },
                                                             ]}
@@ -311,7 +318,7 @@ export const CrmClinicasPage = () => {
                                                         label: 'Dar de Baja Clínica',
                                                         icon: 'bi bi-trash',
                                                         danger: true,
-                                                        onClick: () => handleDeleteClinic(c),
+                                                        onClick: () => setClinicToDelete(c),
                                                         hidden: !isAdmin,
                                                     },
                                                 ]}

@@ -5,6 +5,7 @@ import { useAuth } from '../../../state/AuthContext.jsx';
 import { isAdminRole } from '../../../utils/accessControl.js';
 import CustomSelect from '../../../components/CustomSelect.jsx';
 import EstablishmentModal from './EstablishmentModal.jsx';
+import ConfirmDialog from '../../../components/ConfirmDialog.jsx';
 import toast from 'react-hot-toast';
 
 export const EstablishmentDrawer = ({
@@ -24,6 +25,7 @@ export const EstablishmentDrawer = ({
     const [selectedResponsible, setSelectedResponsible] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
     if (!establishmentId) return null;
 
@@ -44,15 +46,12 @@ export const EstablishmentDrawer = ({
         }
     };
 
-    const handleDelete = async () => {
-        const entityLabel = e?.etapa === 'convertido' ? 'la clínica' : 'el prospecto';
-        const confirmMsg = `¿Estás seguro de dar de baja ${entityLabel} "${e?.nombre}"?\n\nEsta acción quitará el establecimiento de la cartera activa.`;
-        if (!window.confirm(confirmMsg)) return;
-
+    const handleConfirmDelete = async () => {
         setIsDeleting(true);
         try {
             await deleteEstablecimiento(e.id);
             toast.success(`"${e?.nombre}" ha sido dado de baja exitosamente.`);
+            setConfirmDeleteOpen(false);
             onClose();
         } catch (err) {
             toast.error(err.message || 'Error al eliminar establecimiento');
@@ -93,7 +92,7 @@ export const EstablishmentDrawer = ({
                                 <button
                                     type="button"
                                     className="crm-btn crm-btn-danger crm-btn-sm"
-                                    onClick={handleDelete}
+                                    onClick={() => setConfirmDeleteOpen(true)}
                                     disabled={isDeleting}
                                     title="Dar de baja o eliminar establecimiento"
                                     style={{ color: '#ef4444', borderColor: '#fca5a5', background: '#fef2f2' }}
@@ -466,6 +465,18 @@ export const EstablishmentDrawer = ({
                     }}
                 />
             )}
+
+            <ConfirmDialog
+                open={confirmDeleteOpen}
+                onClose={() => !isDeleting && setConfirmDeleteOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title={e?.etapa === 'convertido' ? 'Dar de baja clínica' : 'Eliminar prospecto'}
+                message={e ? `¿Estás seguro de dar de baja ${e.etapa === 'convertido' ? 'la clínica' : 'el prospecto'} "${e.nombre}"? Esta acción quitará el establecimiento de la cartera activa.` : ''}
+                confirmLabel="Dar de Baja"
+                confirming={isDeleting}
+                variant="danger"
+                icon="bi-building-dash"
+            />
         </div>,
         document.body
     );

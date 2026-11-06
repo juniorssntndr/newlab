@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import CrmNavigation from '../components/CrmNavigation.jsx';
+import ConfirmDialog from '../../../components/ConfirmDialog.jsx';
 import DoctorModal from '../components/DoctorModal.jsx';
 import { useCrmDoctoresQuery, useCrmMutations } from '../queries/useCrmQueries.js';
 import { useAuth } from '../../../state/AuthContext.jsx';
@@ -19,15 +20,21 @@ export const CrmDoctoresPage = () => {
         search: search || undefined,
     });
 
-    const handleDeleteDoctor = async (doc) => {
-        const confirmMsg = `¿Estás seguro de dar de baja al Dr(a). "${doc.nombre_completo}"?\n\nEsta acción cambiará su estado a inactivo en el sistema.`;
-        if (!window.confirm(confirmMsg)) return;
+    const [doctorToDelete, setDoctorToDelete] = useState(null);
+    const [isDeletingDoctor, setIsDeletingDoctor] = useState(false);
+
+    const handleConfirmDeleteDoctor = async () => {
+        if (!doctorToDelete) return;
+        setIsDeletingDoctor(true);
         try {
-            await deleteDoctor(doc.id);
-            toast.success(`Dr(a). "${doc.nombre_completo}" dado(a) de baja exitosamente.`);
+            await deleteDoctor(doctorToDelete.id);
+            toast.success(`Dr(a). "${doctorToDelete.nombre_completo}" dado(a) de baja exitosamente.`);
+            setDoctorToDelete(null);
             refetch();
         } catch (err) {
             toast.error(err.message || 'Error al dar de baja al doctor');
+        } finally {
+            setIsDeletingDoctor(false);
         }
     };
 
