@@ -11,6 +11,8 @@ import {
     updateTreasuryAccount,
     fetchTreasuryTransfers,
     registerTreasuryTransfer,
+    updateTreasuryTransfer,
+    deleteTreasuryTransfer,
     fetchSocios,
     createSocio,
     updateSocio,
@@ -94,10 +96,12 @@ export default function TreasurySection() {
     });
 
     const [transferModalOpen, setTransferModalOpen] = useState(false);
+    const [editingTransfer, setEditingTransfer] = useState(null);
     const [transferForm, setTransferForm] = useState({
         cuenta_origen_id: '',
         cuenta_destino_id: '',
         monto: '',
+        fecha: '',
         referencia: '',
         motivo: ''
     });
@@ -139,15 +143,31 @@ export default function TreasurySection() {
         onError: (err) => toast.error(err.message || 'Error al guardar cuenta')
     });
 
-    const transferMutation = useMutation({
-        mutationFn: (payload) => registerTreasuryTransfer({ payload, headers: getHeaders() }),
+    const saveTransferMutation = useMutation({
+        mutationFn: (payload) => {
+            if (editingTransfer) {
+                return updateTreasuryTransfer({ transferId: editingTransfer.id, payload, headers: getHeaders() });
+            }
+            return registerTreasuryTransfer({ payload, headers: getHeaders() });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treasury', 'accounts'] });
             queryClient.invalidateQueries({ queryKey: ['treasury', 'transfers'] });
-            toast.success('Transferencia entre cuentas realizada con éxito');
+            toast.success(editingTransfer ? 'Transferencia actualizada con éxito' : 'Transferencia entre cuentas realizada con éxito');
             setTransferModalOpen(false);
+            setEditingTransfer(null);
         },
-        onError: (err) => toast.error(err.message || 'Error al transferir')
+        onError: (err) => toast.error(err.message || 'Error al guardar transferencia')
+    });
+
+    const deleteTransferMutation = useMutation({
+        mutationFn: (transferId) => deleteTreasuryTransfer({ transferId, headers: getHeaders() }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['treasury', 'accounts'] });
+            queryClient.invalidateQueries({ queryKey: ['treasury', 'transfers'] });
+            toast.success('Transferencia eliminada correctamente');
+        },
+        onError: (err) => toast.error(err.message || 'Error al eliminar transferencia')
     });
 
     const saveSocioMutation = useMutation({
@@ -276,14 +296,36 @@ export default function TreasurySection() {
     };
 
     const handleOpenTransfer = (origenAccId = null) => {
+        setEditingTransfer(null);
         setTransferForm({
             cuenta_origen_id: origenAccId ? String(origenAccId) : (accounts[0]?.id ? String(accounts[0].id) : ''),
             cuenta_destino_id: accounts.find(a => String(a.id) !== String(origenAccId))?.id ? String(accounts.find(a => String(a.id) !== String(origenAccId)).id) : '',
             monto: '',
+            fecha: new Date().toISOString().split('T')[0],
             referencia: '',
             motivo: 'Transferencia operativa entre cuentas'
         });
         setTransferModalOpen(true);
+    };
+
+    const handleOpenEditTransfer = (t) => {
+        setEditingTransfer(t);
+        setTransferForm({
+            cuenta_origen_id: String(t.cuenta_origen_id || ''),
+            cuenta_destino_id: String(t.cuenta_destino_id || ''),
+            monto: String(t.monto || ''),
+            fecha: t.fecha ? String(t.fecha).split('T')[0] : '',
+            referencia: t.referencia || '',
+            motivo: t.motivo || ''
+        });
+        setTransferModalOpen(true);
+    };
+
+    const handleDeleteTransfer = (t) => {
+        if (!window.confirm(`¿Estás seguro de eliminar esta transferencia de ${formatCurrency(t.monto)}? Se revertirá su impacto en los saldos de ambas cuentas.`)) {
+            return;
+        }
+        deleteTransferMutation.mutate(t.id);
     };
 
     const handleOpenRetiro = (socioId = null) => {
@@ -849,6 +891,7 @@ export default function TreasurySection() {
                                                 <th>Monto</th>
                                                 <th>Referencia / Motivo</th>
                                                 <th>Responsable</th>
+                                                {isAdmin && <th style={{ textAlign: 'center', width: '90px' }}>Acciones</th>}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -878,6 +921,29 @@ export default function TreasurySection() {
                                                     <td style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                                         {t.creado_por_nombre || 'Sistema'}
                                                     </td>
+                                                    {isAdmin && (
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-ghost btn-xs"
+                                                                    title="Editar transferencia"
+                                                                    onClick={() => handleOpenEditTransfer(t)}
+                                                                >
+                                                                    <i className="bi bi-pencil"></i>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-ghost btn-xs"
+                                                                    style={{ color: 'var(--color-danger, #ef4444)' }}
+                                                                    title="Eliminar transferencia"
+                                                                    onClick={() => handleDeleteTransfer(t)}
+                                                                >
+                                                                    <i className="bi bi-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -916,6 +982,25 @@ export default function TreasurySection() {
                                                     <span className="treasury-mobile-author">
                                                         <i className="bi bi-person"></i> {t.creado_por_nombre || 'Sistema'}
                                                     </span>
+                                                </div>
+                                            )}
+                                            {isAdmin && (
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-color, #e2e8f0)' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary btn-xs"
+                                                        onClick={() => handleOpenEditTransfer(t)}
+                                                    >
+                                                        <i className="bi bi-pencil" style={{ marginRight: '4px' }}></i> Editar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-ghost btn-xs"
+                                                        style={{ color: 'var(--color-danger, #ef4444)' }}
+                                                        onClick={() => handleDeleteTransfer(t)}
+                                                    >
+                                                        <i className="bi bi-trash" style={{ marginRight: '4px' }}></i> Eliminar
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
@@ -1169,24 +1254,30 @@ export default function TreasurySection() {
             {/* MODAL: Transferencia entre Cuentas */}
             <Modal
                 open={transferModalOpen}
-                onClose={() => setTransferModalOpen(false)}
-                title="Transferir entre Cuentas"
+                onClose={() => {
+                    setTransferModalOpen(false);
+                    setEditingTransfer(null);
+                }}
+                title={editingTransfer ? 'Editar Transferencia' : 'Transferir entre Cuentas'}
                 kicker="Tesorería • Movimiento Interno de Fondos"
-                subtitle="Mueve dinero entre tus cuentas bancarias o cajas sin alterar ingresos por ventas ni gastos operativos"
+                subtitle={editingTransfer ? 'Modifica los datos de la transferencia registrada entre cuentas' : 'Mueve dinero entre tus cuentas bancarias o cajas sin alterar ingresos por ventas ni gastos operativos'}
                 icon="bi-arrow-left-right"
                 size="md"
                 footer={(
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                        <button type="button" className="btn btn-secondary" onClick={() => setTransferModalOpen(false)}>
+                        <button type="button" className="btn btn-secondary" onClick={() => {
+                            setTransferModalOpen(false);
+                            setEditingTransfer(null);
+                        }}>
                             Cancelar
                         </button>
                         <button
                             type="button"
                             className="btn btn-primary"
-                            disabled={transferMutation.isPending || !transferForm.cuenta_origen_id || !transferForm.cuenta_destino_id || parseFloat(transferForm.monto || 0) <= 0}
-                            onClick={() => transferMutation.mutate(transferForm)}
+                            disabled={saveTransferMutation.isPending || !transferForm.cuenta_origen_id || !transferForm.cuenta_destino_id || parseFloat(transferForm.monto || 0) <= 0}
+                            onClick={() => saveTransferMutation.mutate(transferForm)}
                         >
-                            {transferMutation.isPending ? 'Transfiriendo...' : 'Confirmar Transferencia'}
+                            {saveTransferMutation.isPending ? 'Guardando...' : (editingTransfer ? 'Guardar Cambios' : 'Confirmar Transferencia')}
                         </button>
                     </div>
                 )}
@@ -1245,6 +1336,18 @@ export default function TreasurySection() {
                         </div>
 
                         <div className="form-group">
+                            <label className="form-label">Fecha de Operación</label>
+                            <input
+                                type="date"
+                                className="form-input"
+                                value={transferForm.fecha}
+                                onChange={(e) => setTransferForm(p => ({ ...p, fecha: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="treasury-form-row">
+                        <div className="form-group">
                             <label className="form-label">N° Operación / Referencia</label>
                             <input
                                 type="text"
@@ -1254,17 +1357,17 @@ export default function TreasurySection() {
                                 onChange={(e) => setTransferForm(p => ({ ...p, referencia: e.target.value }))}
                             />
                         </div>
-                    </div>
 
-                    <div className="form-group">
-                        <label className="form-label">Motivo de la Transferencia</label>
-                        <input
-                            type="text"
-                            className="form-input"
-                            placeholder="Ej. Depósito de recaudación de caja a cuenta bancaria"
-                            value={transferForm.motivo}
-                            onChange={(e) => setTransferForm(p => ({ ...p, motivo: e.target.value }))}
-                        />
+                        <div className="form-group">
+                            <label className="form-label">Motivo de la Transferencia</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Ej. Depósito de recaudación de caja a cuenta bancaria"
+                                value={transferForm.motivo}
+                                onChange={(e) => setTransferForm(p => ({ ...p, motivo: e.target.value }))}
+                            />
+                        </div>
                     </div>
                 </div>
             </Modal>

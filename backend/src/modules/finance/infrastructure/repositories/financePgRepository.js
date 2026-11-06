@@ -1672,7 +1672,7 @@ export const makeFinancePgRepository = ({ pool }) => ({
         );
         return result.rows[0];
     },
-    updateAccount: async ({ id, nombre, tipo_cuenta, banco, numero_cuenta, cci, moneda, color, descripcion, activo }) => {
+    updateAccount: async ({ id, nombre, tipo_cuenta, banco, numero_cuenta, cci, moneda, color, descripcion, activo, saldo_inicial }) => {
         const result = await pool.query(
             `UPDATE nl_fin_cuentas
              SET nombre = COALESCE($2, nombre),
@@ -1683,10 +1683,33 @@ export const makeFinancePgRepository = ({ pool }) => ({
                  moneda = COALESCE($7, moneda),
                  color = COALESCE($8, color),
                  descripcion = COALESCE($9, descripcion),
-                 activo = COALESCE($10, activo)
+                 activo = COALESCE($10, activo),
+                 saldo_inicial = COALESCE($11, saldo_inicial)
              WHERE id = $1
              RETURNING *`,
-            [id, nombre, tipo_cuenta, banco, numero_cuenta, cci, moneda, color, descripcion, activo]
+            [id, nombre, tipo_cuenta, banco, numero_cuenta, cci, moneda, color, descripcion, activo, saldo_inicial]
+        );
+        return result.rows[0] || null;
+    },
+    updateTransfer: async ({ id, cuenta_origen_id, cuenta_destino_id, monto, fecha, referencia, motivo }) => {
+        const result = await pool.query(
+            `UPDATE nl_fin_transferencias
+             SET cuenta_origen_id = COALESCE($2, cuenta_origen_id),
+                 cuenta_destino_id = COALESCE($3, cuenta_destino_id),
+                 monto = COALESCE($4, monto),
+                 fecha = COALESCE($5, fecha),
+                 referencia = COALESCE($6, referencia),
+                 motivo = COALESCE($7, motivo)
+             WHERE id = $1
+             RETURNING *`,
+            [id, cuenta_origen_id, cuenta_destino_id, monto, fecha, referencia, motivo]
+        );
+        return result.rows[0] || null;
+    },
+    deleteTransfer: async ({ id }) => {
+        const result = await pool.query(
+            `DELETE FROM nl_fin_transferencias WHERE id = $1 RETURNING *`,
+            [id]
         );
         return result.rows[0] || null;
     },

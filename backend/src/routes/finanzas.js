@@ -50,6 +50,8 @@ router.post('/cuentas', requireRole('admin'), delegateToFinance('createAccount')
 router.put('/cuentas/:id', requireRole('admin'), delegateToFinance('updateAccount'));
 router.get('/transferencias', labPartnerRole, delegateToFinance('listTransfers'));
 router.post('/transferencias', labPartnerRole, delegateToFinance('registerTransfer'));
+router.put('/transferencias/:id', requireRole('admin'), delegateToFinance('updateTransfer'));
+router.delete('/transferencias/:id', requireRole('admin'), delegateToFinance('deleteTransfer'));
 router.get('/socios', labPartnerRole, delegateToFinance('listSocios'));
 router.post('/socios', requireRole('admin'), delegateToFinance('createSocio'));
 router.put('/socios/:id', requireRole('admin'), delegateToFinance('updateSocio'));

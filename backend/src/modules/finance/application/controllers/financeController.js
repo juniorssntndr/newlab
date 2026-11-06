@@ -457,6 +457,29 @@ export const makeFinanceController = ({ financeService }) => ({
             next(error);
         }
     },
+    updateTransfer: async (req, res, next) => {
+        try {
+            const result = await financeService.updateTransfer({
+                user: req.user,
+                transferId: req.params.id,
+                body: req.body
+            });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
+    deleteTransfer: async (req, res, next) => {
+        try {
+            const result = await financeService.deleteTransfer({
+                user: req.user,
+                transferId: req.params.id
+            });
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
+    },
     listTransfers: async (req, res, next) => {
         try {
             const result = await financeService.listTransfers({ user: req.user, query: req.query });

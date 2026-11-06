@@ -728,12 +728,77 @@ export const makeFinanceService = ({ financeRepository }) => ({
             moneda: body?.moneda,
             color: body?.color,
             descripcion: body?.descripcion?.trim(),
-            activo: body?.activo
+            activo: body?.activo,
+            saldo_inicial: body?.saldo_inicial !== undefined && body?.saldo_inicial !== null && body?.saldo_inicial !== '' ? parseFloat(body.saldo_inicial) : undefined
         });
         if (!account) {
             return { ok: false, status: 404, error: 'Cuenta no encontrada' };
         }
         return { ok: true, status: 200, data: account };
+    },
+    updateTransfer: async ({ user, transferId, body }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const id = Number(transferId);
+        if (!id) {
+            return { ok: false, status: 400, error: 'ID de transferencia inválido' };
+        }
+        const origenId = body?.cuenta_origen_id ? Number(body.cuenta_origen_id) : undefined;
+        const destinoId = body?.cuenta_destino_id ? Number(body.cuenta_destino_id) : undefined;
+        if (origenId && destinoId && origenId === destinoId) {
+            return { ok: false, status: 400, error: 'Las cuentas de origen y destino deben ser distintas' };
+        }
+        const monto = body?.monto !== undefined && body?.monto !== null && body?.monto !== '' ? parseFloat(body.monto) : undefined;
+        if (monto !== undefined && (Number.isNaN(monto) || monto <= 0)) {
+            return { ok: false, status: 400, error: 'El monto a transferir debe ser mayor a 0' };
+        }
+
+        const transfer = await financeRepository.updateTransfer({
+            id,
+            cuenta_origen_id: origenId,
+            cuenta_destino_id: destinoId,
+            monto,
+            fecha: body?.fecha || undefined,
+            referencia: body?.referencia !== undefined ? body.referencia.trim() : undefined,
+            motivo: body?.motivo !== undefined ? body.motivo.trim() : undefined
+        });
+
+        if (!transfer) {
+            return { ok: false, status: 404, error: 'Transferencia no encontrada' };
+        }
+
+        return {
+            ok: true,
+            status: 200,
+            data: {
+                message: 'Transferencia actualizada con éxito',
+                transfer
+            }
+        };
+    },
+    deleteTransfer: async ({ user, transferId }) => {
+        if (forbiddenForClient(user)) {
+            return { ok: false, status: 403, error: 'No autorizado' };
+        }
+        const id = Number(transferId);
+        if (!id) {
+            return { ok: false, status: 400, error: 'ID de transferencia inválido' };
+        }
+
+        const transfer = await financeRepository.deleteTransfer({ id });
+        if (!transfer) {
+            return { ok: false, status: 404, error: 'Transferencia no encontrada' };
+        }
+
+        return {
+            ok: true,
+            status: 200,
+            data: {
+                message: 'Transferencia eliminada correctamente',
+                transfer
+            }
+        };
     },
     registerTransfer: async ({ user, body }) => {
         if (forbiddenForClient(user)) {

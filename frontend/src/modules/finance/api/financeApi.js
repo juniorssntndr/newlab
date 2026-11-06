@@ -263,6 +263,17 @@ export const registerTreasuryTransfer = ({ payload, headers }) => apiClient('/fi
     body: payload
 });
 
+export const updateTreasuryTransfer = ({ transferId, payload, headers }) => apiClient(`/finanzas/transferencias/${transferId}`, {
+    method: 'PUT',
+    headers,
+    body: payload
+});
+
+export const deleteTreasuryTransfer = ({ transferId, headers }) => apiClient(`/finanzas/transferencias/${transferId}`, {
+    method: 'DELETE',
+    headers
+});
+
 export const fetchSocios = ({ headers } = {}) => apiClient('/finanzas/socios', {
     headers
 });
