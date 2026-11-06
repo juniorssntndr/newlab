@@ -103,11 +103,11 @@
 /* Main Flow */
 .public-track-main {
     flex: 1;
-    padding-top: 1.5rem;
-    padding-bottom: 3rem;
+    padding-top: 1rem;
+    padding-bottom: 2.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 0.85rem;
 }
 
 /* Order Top Bar */
@@ -117,14 +117,14 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 0.75rem;
-    padding: 0 0.25rem;
+    padding: 0 0.15rem;
 }
 
 .public-track-order-code {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     color: var(--color-text, #1e293b);
 }
 
@@ -137,9 +137,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.35rem 0.85rem;
+    padding: 0.3rem 0.8rem;
     border-radius: 9999px;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     font-weight: 600;
 }
 
@@ -173,32 +173,78 @@
     background: #ffffff;
     border: 1px solid var(--color-border, #e2e8f0);
     border-radius: var(--radius-lg, 12px);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.public-track-card .card-header {
+    padding: 0.75rem 1.15rem;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border-light, #e2e8f0);
+    background: transparent;
+}
+
+.public-track-card .card-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text, #1e293b);
+    display: flex;
+    align-items: center;
 }
 
 .public-track-hero {
     margin-top: 0;
+    margin-bottom: 0;
+    gap: 0.85rem;
 }
 
-/* Two-column layout */
+.public-track-hero .order-wizard-confirm-stat {
+    padding: 0.75rem 1rem;
+}
+
+/* Two-column layout with equal height stretch */
 .public-track-grid-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1.2fr);
-    gap: 1.25rem;
-    align-items: start;
+    grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1.2fr);
+    gap: 0.85rem;
+    align-items: stretch;
 }
 
 .public-track-case-data {
     grid-column: 1;
     grid-row: 1;
     grid-area: auto !important;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.public-track-case-data .pedido-detail-confirm-items {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0;
+    padding: 0.5rem 0.85rem;
+    list-style: none;
 }
 
 .public-track-case-data .order-wizard-confirm-item {
     display: grid;
-    grid-template-columns: minmax(140px, 32%) minmax(0, 1fr);
+    grid-template-columns: minmax(130px, 30%) minmax(0, 1fr);
     align-items: center;
-    gap: 1.25rem;
+    gap: 1.15rem;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    padding: 0.5rem;
+}
+
+.public-track-case-data .order-wizard-confirm-item-main {
+    padding: 0;
 }
 
 .public-track-case-data .order-wizard-confirm-item-media {
@@ -253,6 +299,31 @@
     grid-column: 2;
     grid-row: 1;
     grid-area: auto !important;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.public-track-design-card .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.15rem;
+}
+
+.public-track-design-actions {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+.public-track-design-actions .btn {
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
 }
 
 @media (max-width: 860px) {
@@ -262,10 +333,12 @@
     .public-track-case-data {
         grid-column: 1;
         grid-row: 1;
+        height: auto;
     }
     .public-track-design-card {
         grid-column: 1;
         grid-row: 2;
+        height: auto;
     }
     .public-track-case-data .order-wizard-confirm-item {
         grid-template-columns: 1fr;
