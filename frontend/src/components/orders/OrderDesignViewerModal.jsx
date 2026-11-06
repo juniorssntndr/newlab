@@ -255,12 +255,12 @@ export const OrderDesignViewerModal = ({
                         </div>
                     )}
                     {viewerError ? (
-                        <div className="order-design-viewer-loading" role="alert" style={{ maxWidth: 460, margin: '0 auto', textAlign: 'center', padding: '1.75rem', background: 'var(--color-bg, #0f172a)', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid var(--color-border, #1e293b)' }}>
-                            <i className="bi bi-box" aria-hidden="true" style={{ fontSize: '2.5rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem', display: 'block' }}></i>
-                            <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', color: 'var(--color-text, #fff)' }}>
+                        <div className="order-design-viewer-loading" role="alert" style={{ maxWidth: 460, margin: '0 auto', textAlign: 'center', padding: '1.75rem', background: '#ffffff', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid #e2e8f0' }}>
+                            <i className="bi bi-box" aria-hidden="true" style={{ fontSize: '2.5rem', color: '#64748b', marginBottom: '0.75rem', display: 'block' }}></i>
+                            <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', color: '#0f172a' }}>
                                 Diseño 3D no disponible
                             </h4>
-                            <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--color-text-muted, #94a3b8)', lineHeight: 1.4 }}>
+                            <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.4 }}>
                                 {viewerError}
                             </p>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -311,14 +311,14 @@ export const OrderDesignViewerModal = ({
                     {adjustDrawerOpen && (
                         <div className="order-design-viewer-adjust-drawer animate-fade-in" role="region" aria-label="Solicitar ajustes">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <strong style={{ color: '#f8fafc', fontSize: '0.875rem' }}>
-                                    <i className="bi bi-chat-dots" style={{ color: '#f59e0b', marginRight: '0.5rem' }}></i>
+                                <strong style={{ color: '#0f172a', fontSize: '0.875rem' }}>
+                                    <i className="bi bi-chat-dots" style={{ color: '#d97706', marginRight: '0.5rem' }}></i>
                                     Solicitar ajustes al laboratorio
                                 </strong>
                                 <button
                                     type="button"
                                     onClick={() => setAdjustDrawerOpen(false)}
-                                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                                    style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
                                 >
                                     <i className="bi bi-x"></i>
                                 </button>

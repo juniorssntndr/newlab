@@ -551,31 +551,6 @@ export const PublicTrackingPage = () => {
                                         <span>Ver diseño 3D interactivo</span>
                                     </button>
 
-                                    {isApprovalPending && (
-                                        <div className="public-track-approval-buttons-row">
-                                            <button
-                                                type="button"
-                                                className="btn btn-success"
-                                                onClick={() => handleRespondApproval('aprobado')}
-                                                disabled={submittingAction}
-                                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
-                                            >
-                                                <i className="bi bi-check2-circle" />
-                                                <span>Aprobar Diseño</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-warning"
-                                                onClick={() => setViewerModalOpen(true)}
-                                                disabled={submittingAction}
-                                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
-                                            >
-                                                <i className="bi bi-pencil" />
-                                                <span>Solicitar Ajustes</span>
-                                            </button>
-                                        </div>
-                                    )}
-
                                     <p style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted, #64748b)', textAlign: 'center' }}>
                                         Puedes rotar, medir y explorar el diseño en 3D en tiempo real desde tu navegador.
                                     </p>
