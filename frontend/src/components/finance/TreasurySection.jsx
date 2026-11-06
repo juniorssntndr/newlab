@@ -53,7 +53,8 @@ const DOC_TIPO_OPTIONS = [
 
 export default function TreasurySection() {
     const { getHeaders, user } = useAuth();
-    const canManage = isAdminRole(user) || isPartnerRole(user);
+    const isAdmin = isAdminRole(user);
+    const canManage = isAdmin || isPartnerRole(user);
     const queryClient = useQueryClient();
 
     // Queries
