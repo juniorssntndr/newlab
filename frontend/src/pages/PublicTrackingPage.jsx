@@ -506,18 +506,13 @@ export const PublicTrackingPage = () => {
                                                     )}
                                                 </div>
                                                 {hasPricing && (
-                                                    <div className="public-track-item-pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                    <div className="pedido-detail-item-pricing public-track-item-pricing">
                                                         {hasDiscount && (
-                                                            <span style={{ textDecoration: 'line-through', opacity: 0.55, fontSize: '0.85rem' }}>
+                                                            <span className="pedido-detail-price-original">
                                                                 S/. {originalAmount.toFixed(2)}
                                                             </span>
                                                         )}
-                                                        {hasDiscount && (
-                                                            <span className="badge" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
-                                                                -S/. {Number(order.descuento_monto).toFixed(2)}
-                                                            </span>
-                                                        )}
-                                                        <span className="pedido-detail-item-subtotal" style={{ fontWeight: 700, color: 'var(--color-primary, #0284c7)' }}>
+                                                        <span className="pedido-detail-item-subtotal">
                                                             S/. {finalAmount.toFixed(2)}
                                                         </span>
                                                     </div>

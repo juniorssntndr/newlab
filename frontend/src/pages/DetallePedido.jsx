@@ -963,18 +963,13 @@ const DetallePedido = () => {
                                                     ) : null}
                                                 </div>
                                                 {!isTechnician && (
-                                                    <div className="pedido-detail-item-pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                                    <div className="pedido-detail-item-pricing">
                                                         {hasDiscount && (
-                                                            <span style={{ textDecoration: 'line-through', opacity: 0.55, fontSize: '0.85rem' }}>
+                                                            <span className="pedido-detail-price-original">
                                                                 S/. {(Number(finalTotal) + Number(pedido.descuento_monto || 0)).toFixed(2)}
                                                             </span>
                                                         )}
-                                                        {hasDiscount && (
-                                                            <span className="badge" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
-                                                                -S/. {Number(pedido.descuento_monto).toFixed(2)}
-                                                            </span>
-                                                        )}
-                                                        <span className="pedido-detail-item-subtotal" style={{ fontWeight: 700 }}>
+                                                        <span className="pedido-detail-item-subtotal">
                                                             S/. {Number(finalTotal).toFixed(2)}
                                                         </span>
                                                     </div>
