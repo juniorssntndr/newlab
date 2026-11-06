@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../state/AuthContext.jsx';
 import Modal from '../Modal.jsx';
+import ConfirmDialog from '../ConfirmDialog.jsx';
 import CustomSelect from '../CustomSelect.jsx';
 import { isAdminRole, isPartnerRole } from '../../utils/accessControl.js';
 import {
@@ -98,6 +99,8 @@ export default function TreasurySection() {
 
     const [transferModalOpen, setTransferModalOpen] = useState(false);
     const [editingTransfer, setEditingTransfer] = useState(null);
+    const [transferToDelete, setTransferToDelete] = useState(null);
+    const [socioToDelete, setSocioToDelete] = useState(null);
     const [transferForm, setTransferForm] = useState({
         cuenta_origen_id: '',
         cuenta_destino_id: '',
@@ -167,6 +170,7 @@ export default function TreasurySection() {
             queryClient.invalidateQueries({ queryKey: ['treasury', 'accounts'] });
             queryClient.invalidateQueries({ queryKey: ['treasury', 'transfers'] });
             toast.success('Transferencia eliminada correctamente');
+            setTransferToDelete(null);
         },
         onError: (err) => toast.error(err.message || 'Error al eliminar transferencia')
     });
@@ -196,15 +200,13 @@ export default function TreasurySection() {
             } else {
                 toast.success('Socio eliminado correctamente');
             }
+            setSocioToDelete(null);
         },
         onError: (err) => toast.error(err.message || 'Error al eliminar socio')
     });
 
     const handleDeleteSocio = (s) => {
-        if (!window.confirm(`¿Estás seguro de eliminar al socio "${s.nombre}"? Si tiene retiros históricos se inactivará para no desbalancear la contabilidad.`)) {
-            return;
-        }
-        deleteSocioMutation.mutate(s.id);
+        setSocioToDelete(s);
     };
 
     const retiroMutation = useMutation({
@@ -323,10 +325,7 @@ export default function TreasurySection() {
     };
 
     const handleDeleteTransfer = (t) => {
-        if (!window.confirm(`¿Estás seguro de eliminar esta transferencia de ${formatCurrency(t.monto)}? Se revertirá su impacto en los saldos de ambas cuentas.`)) {
-            return;
-        }
-        deleteTransferMutation.mutate(t.id);
+        setTransferToDelete(t);
     };
 
     const handleOpenRetiro = (socioId = null) => {
@@ -1564,6 +1563,32 @@ export default function TreasurySection() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Diálogo de Confirmación Estilo AFINIX - Transferencias */}
+            <ConfirmDialog
+                open={Boolean(transferToDelete)}
+                onClose={() => setTransferToDelete(null)}
+                onConfirm={() => transferToDelete && deleteTransferMutation.mutate(transferToDelete.id)}
+                title="Eliminar Transferencia"
+                message={transferToDelete ? `¿Estás seguro de eliminar la transferencia de ${formatCurrency(transferToDelete.monto)} entre ${transferToDelete.cuenta_origen_nombre} y ${transferToDelete.cuenta_destino_nombre}? Se revertirá automáticamente su impacto en los saldos de ambas cuentas.` : ''}
+                confirmLabel="Eliminar Transferencia"
+                confirming={deleteTransferMutation.isPending}
+                variant="danger"
+                icon="bi-trash3"
+            />
+
+            {/* Diálogo de Confirmación Estilo AFINIX - Socios */}
+            <ConfirmDialog
+                open={Boolean(socioToDelete)}
+                onClose={() => setSocioToDelete(null)}
+                onConfirm={() => socioToDelete && deleteSocioMutation.mutate(socioToDelete.id)}
+                title="Eliminar Socio"
+                message={socioToDelete ? `¿Estás seguro de eliminar al socio "${socioToDelete.nombre}"? Si cuenta con retiros históricos asociados se inactivará de forma segura para no desbalancear los balances contables.` : ''}
+                confirmLabel="Eliminar Socio"
+                confirming={deleteSocioMutation.isPending}
+                variant="danger"
+                icon="bi-person-x"
+            />
         </div>
     );
 }
