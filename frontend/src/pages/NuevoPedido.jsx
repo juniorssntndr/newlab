@@ -224,6 +224,10 @@ const NuevoPedido = () => {
         return Math.min(Number(appliedCoupon.valor), baseProductTotal);
     }, [appliedCoupon, baseProductTotal]);
 
+    const baseOrderTotal = useMemo(() => {
+        return Number((baseProductTotal + expressSurchargeTotal).toFixed(2));
+    }, [baseProductTotal, expressSurchargeTotal]);
+
     const displayTotal = useMemo(() => {
         return Math.max(0, Number((baseProductTotal - discountAmount + expressSurchargeTotal).toFixed(2)));
     }, [baseProductTotal, discountAmount, expressSurchargeTotal]);
