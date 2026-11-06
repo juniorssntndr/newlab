@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { createOrderViewerSession } from '../../modules/orders/api/ordersApi.js';
+import { API_URL } from '../../config.js';
 import '../../styles/order-design-viewer.css';
 
 const QUICK_TAGS = [
@@ -22,7 +23,8 @@ export const OrderDesignViewerModal = ({
     onApprove,
     onReject,
     updating,
-    onOpenUploadModal
+    onOpenUploadModal,
+    publicToken
 }) => {
     const [iframeLoading, setIframeLoading] = useState(true);
     const [viewerUrl, setViewerUrl] = useState('');
@@ -66,21 +68,43 @@ export const OrderDesignViewerModal = ({
     }, [open, adjustDrawerOpen, onClose]);
 
     useEffect(() => {
-        if (!open || !order?.id || !approvalId) return undefined;
+        if (!open || (!order?.id && !publicToken) || !approvalId) return undefined;
         let active = true;
         setIframeLoading(true);
         setViewerError('');
         setViewerUrl('');
-        createOrderViewerSession({ orderId: order.id, approvalId })
-            .then((result) => { if (active) setViewerUrl(result.url); })
-            .catch((error) => { if (active) { setIframeLoading(false); setViewerError(error.message || 'No se pudo iniciar el visor seguro.'); } });
+
+        if (approval?.directWebLink || approval?.isDirectWebLink) {
+            setViewerUrl(approval.directWebLink || approval.link_exocad);
+            setIframeLoading(false);
+            return () => { active = false; };
+        }
+
+        if (publicToken) {
+            fetch(`${API_URL}/public/tracking/${encodeURIComponent(publicToken)}/visor`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ approvalId })
+            })
+                .then(async (res) => {
+                    const data = await res.json();
+                    if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo iniciar el visor.');
+                    return data;
+                })
+                .then((result) => { if (active) setViewerUrl(result.url); })
+                .catch((error) => { if (active) { setIframeLoading(false); setViewerError(error.message || 'No se pudo iniciar el visor seguro.'); } });
+        } else {
+            createOrderViewerSession({ orderId: order.id, approvalId })
+                .then((result) => { if (active) setViewerUrl(result.url); })
+                .catch((error) => { if (active) { setIframeLoading(false); setViewerError(error.message || 'No se pudo iniciar el visor seguro.'); } });
+        }
         return () => {
             active = false;
             if (viewerFrameRef.current) {
                 viewerFrameRef.current.src = 'about:blank';
             }
         };
-    }, [open, order?.id, approvalId, viewerAttempt]);
+    }, [open, order?.id, approvalId, viewerAttempt, publicToken, approval?.directWebLink, approval?.isDirectWebLink]);
 
     useEffect(() => {
         if (!iframeLoading || !viewerUrl) return undefined;

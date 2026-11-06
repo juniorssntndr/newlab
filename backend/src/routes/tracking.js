@@ -122,7 +122,8 @@ router.post('/:token/visor', async (req, res) => {
     }
 
     const { orderId, clinicaId } = decoded;
-    const { orderRepository, orderViewerService } = req.app.locals.modules?.orders || {};
+    const { orderRepository, orderService, orderViewerService: explicitViewerService } = req.app.locals.modules?.orders || {};
+    const orderViewerService = explicitViewerService || orderService;
     if (!orderRepository || !orderViewerService) {
         return res.status(503).json({ ok: false, error: 'Servicio de visor 3D no disponible' });
     }

@@ -65,6 +65,7 @@ export const createCompositionRoot = () => {
             orders: {
                 orderRepository,
                 orderService,
+                orderViewerService: orderService,
                 orderController,
                 orderRoutes
             },
