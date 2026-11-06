@@ -35,9 +35,11 @@ router.get('/', async (req, res, next) => {
             params.push(`%${search}%`);
             query += ` AND (c.nombre ILIKE $${params.length} OR c.razon_social ILIKE $${params.length} OR c.ruc ILIKE $${params.length})`;
         }
-        if (estado) {
+        if (estado && estado !== 'all') {
             params.push(estado);
             query += ` AND c.estado = $${params.length}`;
+        } else if (!estado) {
+            query += ` AND c.estado = 'activo'`;
         }
         query += ' ORDER BY c.nombre ASC';
 

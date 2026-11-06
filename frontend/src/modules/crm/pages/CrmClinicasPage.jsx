@@ -376,6 +376,17 @@ export const CrmClinicasPage = () => {
                     }}
                 />
             )}
+            <ConfirmDialog
+                isOpen={Boolean(clinicToDelete)}
+                title="Dar de Baja Clínica"
+                message={`¿Estás seguro de dar de baja la clínica "${clinicToDelete?.nombre}"?`}
+                description="Esta acción quitará el establecimiento de la cartera activa y de los selectores de pedidos."
+                confirmText={isDeletingClinic ? 'Dando de baja...' : 'Dar de Baja'}
+                confirmVariant="danger"
+                isLoading={isDeletingClinic}
+                onConfirm={handleConfirmDeleteClinic}
+                onCancel={() => setClinicToDelete(null)}
+            />
         </div>
     );
 };

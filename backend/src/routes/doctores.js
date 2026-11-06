@@ -51,12 +51,12 @@ function normalizeFechaNacimiento(value) {
 router.get('/', async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
-        const { nombre, dni, search } = req.query;
+        const { nombre, dni, search, estado } = req.query;
         let query = `SELECT d.*,
           COALESCE((
             SELECT json_agg(json_build_object('id', c.id, 'nombre', c.nombre, 'es_principal', cd.es_principal) ORDER BY cd.es_principal DESC, c.nombre)
             FROM nl_clinica_doctores cd JOIN nl_clinicas c ON c.id=cd.clinica_id
-            WHERE cd.doctor_id=d.id
+            WHERE cd.doctor_id=d.id AND c.estado = 'activo'
           ), '[]'::json) AS clinicas
           FROM nl_doctores d WHERE 1=1`;
         const params = [];
@@ -69,6 +69,12 @@ router.get('/', async (req, res, next) => {
         if (dni) {
             params.push(dni);
             query += ` AND d.dni = $${params.length}`;
+        }
+        if (estado && estado !== 'all') {
+            params.push(estado);
+            query += ` AND d.estado = $${params.length}`;
+        } else if (!estado) {
+            query += ` AND d.estado = 'activo'`;
         }
         query += ' ORDER BY d.nombre_completo ASC';
 

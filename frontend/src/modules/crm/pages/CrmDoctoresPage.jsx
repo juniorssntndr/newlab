@@ -21,6 +21,7 @@ export const CrmDoctoresPage = () => {
     });
 
     const [doctorToDelete, setDoctorToDelete] = useState(null);
+    const handleDeleteDoctor = (doc) => setDoctorToDelete(doc);
     const [isDeletingDoctor, setIsDeletingDoctor] = useState(false);
 
     const handleConfirmDeleteDoctor = async () => {
@@ -293,6 +294,17 @@ export const CrmDoctoresPage = () => {
                     onSaved={refetch}
                 />
             )}
+            <ConfirmDialog
+                isOpen={Boolean(doctorToDelete)}
+                title="Dar de Baja Doctor(a)"
+                message={`¿Estás seguro de dar de baja al Dr(a). "${doctorToDelete?.nombre_completo}"?`}
+                description="Esta acción cambiará su estado a inactivo en el sistema y lo removerá del directorio activo."
+                confirmText={isDeletingDoctor ? 'Dando de baja...' : 'Dar de Baja'}
+                confirmVariant="danger"
+                isLoading={isDeletingDoctor}
+                onConfirm={handleConfirmDeleteDoctor}
+                onCancel={() => setDoctorToDelete(null)}
+            />
         </div>
     );
 };
