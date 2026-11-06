@@ -7,6 +7,7 @@ import { resolveImageUrl, resolveProductImageUrl } from '../utils/resolveImageUr
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
 import CustomSelect from '../components/CustomSelect.jsx';
+import { optimizeImageForUpload } from '../utils/imageOptimizer.js';
 
 const Productos = () => {
     const { getHeaders, user } = useAuth();
@@ -187,7 +188,7 @@ const Productos = () => {
         setModalOpen(true);
     };
 
-    const handleImageChange = (file) => {
+    const handleImageChange = async (file) => {
         if (!file) {
             setForm((prev) => ({ ...prev, image: null }));
             setImagePreviewUrl(resolveImageUrl(form.image_url));
@@ -200,7 +201,12 @@ const Productos = () => {
         };
         reader.readAsDataURL(file);
 
-        setForm((prev) => ({ ...prev, image: file }));
+        try {
+            const optimized = await optimizeImageForUpload(file);
+            setForm((prev) => ({ ...prev, image: optimized }));
+        } catch {
+            setForm((prev) => ({ ...prev, image: file }));
+        }
     };
 
     const createMaterial = () => {
@@ -366,7 +372,8 @@ const Productos = () => {
         formData.append('admite_puente', form.modo_odontograma === 'puente');
         formData.append('modo_odontograma', form.modo_odontograma || 'unitario');
         if (form.image) {
-            formData.append('image', form.image);
+            const imageToSend = await optimizeImageForUpload(form.image).catch(() => form.image);
+            formData.append('image', imageToSend);
         }
 
         try {
