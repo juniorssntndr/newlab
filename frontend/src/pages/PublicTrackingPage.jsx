@@ -21,7 +21,7 @@ const STATUS_ICONS = {
 };
 
 const approvalStatusLabels = {
-    pendiente: 'Pendiente de Aprobación',
+    pendiente: 'Por Aprobar',
     aprobado: 'Diseño Aprobado',
     ajuste_solicitado: 'Ajuste Solicitado'
 };
@@ -550,10 +550,6 @@ export const PublicTrackingPage = () => {
                                         <i className="bi bi-box" style={{ fontSize: '1.25rem' }} />
                                         <span>Ver diseño 3D interactivo</span>
                                     </button>
-
-                                    <p style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted, #64748b)', textAlign: 'center' }}>
-                                        Puedes rotar, medir y explorar el diseño en 3D en tiempo real desde tu navegador.
-                                    </p>
                                 </div>
                             ) : (
                                 <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--color-text-muted, #64748b)' }}>
