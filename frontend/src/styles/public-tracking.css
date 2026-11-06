@@ -206,12 +206,12 @@
     padding: 0.65rem 0.95rem;
 }
 
-/* Two-column layout matching DetallePedido.jsx (ratio ~1.85 : 1) */
+/* Two-column layout matching DetallePedido.jsx (ratio ~1.8 : 1.15) */
 .public-track-grid-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.85fr) minmax(290px, 1fr);
+    grid-template-columns: minmax(0, 1.8fr) minmax(290px, 1.15fr);
     gap: 0.75rem;
-    align-items: start;
+    align-items: stretch;
 }
 
 /* Left Column: Datos del caso (Exact replica of DetallePedido.jsx) */
@@ -224,6 +224,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     padding: 1rem;
     overflow: hidden;
+    height: 100%;
 }
 
 .public-track-case-data .card-header {
@@ -249,13 +250,14 @@
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
+    flex: 1;
+    height: 100%;
 }
 
 /* The item box takes 100% of the body width */
 .public-track-case-data .order-wizard-confirm-item {
     display: grid;
-    grid-template-columns: minmax(140px, 34%) minmax(0, 1fr);
+    grid-template-columns: minmax(220px, 43%) minmax(0, 1fr);
     gap: 0;
     align-items: stretch;
     border: 1px solid var(--color-border-light, #e2e8f0);
@@ -264,6 +266,8 @@
     padding: 0;
     overflow: hidden;
     width: 100%;
+    flex: 1;
+    min-height: 146px;
 }
 
 .public-track-case-data .order-wizard-confirm-item-media {
@@ -283,8 +287,8 @@
     width: 100%;
     height: 100%;
     min-height: 0;
-    object-fit: cover !important;
-    object-position: center;
+    object-fit: contain !important;
+    object-position: left center !important;
     padding: 0;
     display: block;
 }
@@ -353,7 +357,9 @@
 .public-track-side-column {
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     gap: 0.65rem;
+    height: 100%;
     min-width: 0;
 }
 
@@ -363,14 +369,18 @@
     border: 1px solid var(--color-border-light, #e2e8f0);
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    padding: 1rem;
+    padding: 0.85rem 1rem;
     overflow: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .public-track-design-card .card-header,
 .public-track-notes-card .card-header {
     padding: 0;
-    margin-bottom: 0.65rem;
+    margin-bottom: 0.5rem;
     border: none;
     background: transparent;
     min-height: auto;
@@ -382,6 +392,10 @@
 .public-track-design-card .card-body,
 .public-track-notes-card .card-body {
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
 }
 
 .public-track-design-actions .btn {
