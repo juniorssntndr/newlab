@@ -500,11 +500,11 @@ const DetallePedido = () => {
     const deliveryMeta = getDeliveryMeta();
     const finalTotal = pedido.total ?? 0;
     const orderItems = pedido.items || [];
-    // Total del pie solo aporta cuando hay varios ítems o si hay descuento aplicado; con uno solo sin descuento el precio de línea ya basta.
+    // Total del pie solo aporta cuando hay varios ítems; con uno solo el precio de línea ya basta.
     // El desglose express (base + recargo) aún no está disponible: el +25% se hornea en precio_unitario.
     // Para el perfil técnico de taller, los importes monetarios se ocultan.
     const hasDiscount = !isTechnician && Number(pedido.descuento_monto || 0) > 0;
-    const showItemsTotal = !isTechnician && (orderItems.length > 1 || hasDiscount);
+    const showItemsTotal = !isTechnician && orderItems.length > 1;
     const currentApproval = (pedido.aprobaciones || [])[0];
     const approvalLink = currentApproval?.link_exocad;
     const hasDesignFile = Boolean(approvalLink && currentApproval?.archivo_disponible !== false);
@@ -966,17 +966,16 @@ const DetallePedido = () => {
                                                     <div className="pedido-detail-item-pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
                                                         {hasDiscount && (
                                                             <span style={{ textDecoration: 'line-through', opacity: 0.55, fontSize: '0.85rem' }}>
-                                                                S/. {Number(pedido.subtotal || subtotal || 0).toFixed(2)}
+                                                                S/. {(Number(finalTotal) + Number(pedido.descuento_monto || 0)).toFixed(2)}
                                                             </span>
                                                         )}
                                                         {hasDiscount && (
                                                             <span className="badge" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
-                                                                <i className="bi bi-tag-fill me-1" style={{ fontSize: '0.7rem' }} />
-                                                                -S/. {Number(pedido.descuento_monto).toFixed(2)} ({pedido.descuento_codigo})
+                                                                -S/. {Number(pedido.descuento_monto).toFixed(2)}
                                                             </span>
                                                         )}
                                                         <span className="pedido-detail-item-subtotal" style={{ fontWeight: 700 }}>
-                                                            S/. {Number(hasDiscount ? (pedido.total ?? subtotal) : (subtotal || 0)).toFixed(2)}
+                                                            S/. {Number(finalTotal).toFixed(2)}
                                                         </span>
                                                     </div>
                                                 )}
@@ -987,13 +986,8 @@ const DetallePedido = () => {
                             })}
                         </ul>
                         {showItemsTotal ? (
-                            <div className="pedido-detail-items-total" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem' }}>
-                                {hasDiscount && (
-                                    <span style={{ color: '#059669', fontSize: '0.85rem', fontWeight: 600 }}>
-                                        Descuento cupón ({pedido.descuento_codigo}): -S/. {Number(pedido.descuento_monto).toFixed(2)}
-                                    </span>
-                                )}
-                                <span>Total: S/. {parseFloat(finalTotal).toFixed(2)}</span>
+                            <div className="pedido-detail-items-total">
+                                Total: S/. {parseFloat(finalTotal).toFixed(2)}
                             </div>
                         ) : null}
                     </div>

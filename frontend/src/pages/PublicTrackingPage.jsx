@@ -426,7 +426,7 @@ export const PublicTrackingPage = () => {
                 {/* Main 2-Column Grid: Left (Datos del caso), Right (Diseño 3D) */}
                 <div className="public-track-grid-layout">
                     {/* Left Column: Datos del Caso */}
-                    <div className="card public-track-card pedido-detail-items">
+                    <div className="card public-track-card public-track-case-data">
                         <div className="card-header">
                             <h3 className="card-title">
                                 <i className="bi bi-card-checklist text-primary" style={{ marginRight: '0.5rem' }} />
@@ -453,6 +453,8 @@ export const PublicTrackingPage = () => {
                                 const itemSubtotal = parseFloat(item.subtotal) || (parseFloat(item.cantidad || 1) * parseFloat(item.precio_unitario || 0));
                                 const hasDiscount = Number(order.descuento_monto || 0) > 0;
                                 const hasPricing = order.total != null && Number(order.total) >= 0;
+                                const finalAmount = Number(order.total != null ? order.total : itemSubtotal);
+                                const originalAmount = finalAmount + Number(order.descuento_monto || 0);
 
                                 return (
                                     <li key={i} className="order-wizard-confirm-item">
@@ -504,20 +506,19 @@ export const PublicTrackingPage = () => {
                                                     )}
                                                 </div>
                                                 {hasPricing && (
-                                                    <div className="public-track-item-pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                    <div className="public-track-item-pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
                                                         {hasDiscount && (
                                                             <span style={{ textDecoration: 'line-through', opacity: 0.55, fontSize: '0.85rem' }}>
-                                                                S/. {Number(order.subtotal || itemSubtotal || 0).toFixed(2)}
+                                                                S/. {originalAmount.toFixed(2)}
                                                             </span>
                                                         )}
                                                         {hasDiscount && (
                                                             <span className="badge" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
-                                                                <i className="bi bi-tag-fill me-1" style={{ fontSize: '0.7rem' }} />
-                                                                -S/. {Number(order.descuento_monto).toFixed(2)} ({order.descuento_codigo})
+                                                                -S/. {Number(order.descuento_monto).toFixed(2)}
                                                             </span>
                                                         )}
-                                                        <span className="pedido-detail-item-subtotal" style={{ fontWeight: 700, color: 'var(--color-text, #1e293b)' }}>
-                                                            S/. {Number(order.total != null ? order.total : itemSubtotal).toFixed(2)}
+                                                        <span className="pedido-detail-item-subtotal" style={{ fontWeight: 700, color: 'var(--color-primary, #0284c7)' }}>
+                                                            S/. {finalAmount.toFixed(2)}
                                                         </span>
                                                     </div>
                                                 )}
