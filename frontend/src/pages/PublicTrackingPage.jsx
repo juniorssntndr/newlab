@@ -200,11 +200,9 @@ export const PublicTrackingPage = () => {
                         </div>
                     </div>
                 </header>
-                <main className="public-track-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-                    <div className="spinner-border text-primary" role="status" style={{ width: '2.5rem', height: '2.5rem' }}>
-                        <span className="visually-hidden">Cargando...</span>
-                    </div>
-                    <p style={{ marginTop: '1rem', color: 'var(--color-text-muted, #64748b)', fontSize: '0.95rem' }}>
+                <main className="public-track-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '55vh' }}>
+                    <div className="spinner-border text-primary" role="status" style={{ width: '2.5rem', height: '2.5rem', borderWidth: '3px' }} aria-label="Cargando" />
+                    <p style={{ marginTop: '0.85rem', color: 'var(--color-text-muted, #64748b)', fontSize: '0.92rem', fontWeight: 500 }}>
                         Consultando estado del trabajo en laboratorio...
                     </p>
                 </main>
