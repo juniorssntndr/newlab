@@ -7,10 +7,12 @@ import { makeOrderRepeatService } from './orderRepeatService.js';
 import { canManageOrderRepeats } from '../../domain/orderRepeat.js';
 import { uploadOrderApprovalHtml, checkOrderApprovalFileExists } from '../../../../services/storage.js';
 import { makeOrderViewerService } from './orderViewerService.js';
+import { makeShortLinkPgRepository } from '../../infrastructure/repositories/shortLinkPgRepository.js';
 
-export const makeOrderService = ({ orderRepository, repeatRepository, pool }) => {
+export const makeOrderService = ({ orderRepository, repeatRepository, pool, shortLinkRepository: explicitShortLinkRepo }) => {
     const statusFlow = ['pendiente', 'en_diseno', 'esperando_aprobacion', 'en_produccion', 'terminado', 'enviado'];
     const igvFactor = getIgvFactor();
+    const shortLinkRepository = explicitShortLinkRepo || makeShortLinkPgRepository({ pool });
 
     const isValidMeetUrl = (value) => {
         try {
@@ -935,6 +937,23 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             { expiresIn: '30d' }
         );
 
+        let shortTrackingCode = null;
+        if (pool?.query) {
+            try {
+                shortTrackingCode = await shortLinkRepository.getOrCreateShortLink({
+                    orderId,
+                    clinicaId: order.clinica_id,
+                    tipo: 'tracking'
+                });
+            } catch {
+                // fallback silencioso a token JWT
+            }
+        }
+
+        const trackingUrlPath = shortTrackingCode
+            ? `/t/${shortTrackingCode}`
+            : `/t/${encodeURIComponent(trackingToken)}`;
+
         return {
             ok: true,
             type: 'SUCCESS',
@@ -944,7 +963,8 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
                 clientName: clientUser.nombre,
                 urlPath: `/acceso?token=${encodeURIComponent(magicToken)}`,
                 trackingToken,
-                trackingUrlPath: `/t/${encodeURIComponent(trackingToken)}`
+                shortTrackingCode,
+                trackingUrlPath
             }
         };
     },
@@ -973,15 +993,34 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool }) =>
             { expiresIn: '30d' }
         );
 
+        let shortCode = null;
+        if (pool?.query) {
+            try {
+                shortCode = await shortLinkRepository.getOrCreateShortLink({
+                    orderId,
+                    clinicaId: order.clinica_id,
+                    tipo: 'tracking'
+                });
+            } catch {
+                // fallback silencioso a token JWT
+            }
+        }
+
+        const trackingUrlPath = shortCode
+            ? `/t/${shortCode}`
+            : `/t/${encodeURIComponent(trackingToken)}`;
+
         return {
             ok: true,
             type: 'SUCCESS',
             data: {
-                token: trackingToken,
+                token: shortCode || trackingToken,
+                shortCode,
+                trackingToken,
                 orderId,
                 clientName: order.clinica_contacto_nombre || order.clinica_nombre || 'Doctor',
-                urlPath: `/t/${encodeURIComponent(trackingToken)}`,
-                trackingUrlPath: `/t/${encodeURIComponent(trackingToken)}`
+                urlPath: trackingUrlPath,
+                trackingUrlPath
             }
         };
     },

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret, getAllowedOrigins } from '../config/env.js';
 import { isPrivateViewerKey } from '../modules/orders/application/services/orderViewerService.js';
+import { makeShortLinkPgRepository } from '../modules/orders/infrastructure/repositories/shortLinkPgRepository.js';
 
 const router = Router();
 
@@ -11,14 +12,38 @@ const isDirectWebLink = (link) =>
     !link.startsWith('legacy-viewer://') &&
     /^https?:\/\//i.test(link);
 
-const decodeTrackingToken = (token) => {
-    if (!token) return null;
+export const resolveTrackingToken = async (token, { pool } = {}) => {
+    if (!token || typeof token !== 'string') return null;
+    const cleanToken = token.trim();
+
+    // 1. Intentar resolver código corto desde la base de datos
+    if (pool?.query) {
+        try {
+            const shortLinkRepo = makeShortLinkPgRepository({ pool });
+            const resolved = await shortLinkRepo.resolveShortLink({ code: cleanToken });
+            if (resolved) {
+                return {
+                    orderId: String(resolved.pedido_id),
+                    clinicaId: resolved.clinica_id,
+                    isShortLink: true
+                };
+            }
+        } catch {
+            // Continuar con fallback
+        }
+    }
+
+    // 2. Fallback 100% retrocompatible: verificar JWT firmado previo
     try {
-        const decoded = jwt.verify(token, getJwtSecret());
+        const decoded = jwt.verify(cleanToken, getJwtSecret());
         if (decoded.typ !== 'order-tracking' && decoded.typ !== 'magic-link') {
             return null;
         }
-        return decoded;
+        return {
+            orderId: String(decoded.orderId),
+            clinicaId: decoded.clinicaId,
+            isShortLink: false
+        };
     } catch {
         return null;
     }
@@ -30,7 +55,8 @@ const decodeTrackingToken = (token) => {
  */
 router.get('/:token', async (req, res) => {
     const { token } = req.params;
-    const decoded = decodeTrackingToken(token);
+    const pool = req.app.locals?.pool;
+    const decoded = await resolveTrackingToken(token, { pool });
     if (!decoded) {
         return res.status(401).json({ ok: false, error: 'Enlace de seguimiento inválido o expirado' });
     }
@@ -129,7 +155,8 @@ router.get('/:token', async (req, res) => {
  */
 router.post('/:token/visor', async (req, res) => {
     const { token } = req.params;
-    const decoded = decodeTrackingToken(token);
+    const pool = req.app.locals?.pool;
+    const decoded = await resolveTrackingToken(token, { pool });
     if (!decoded) {
         return res.status(401).json({ ok: false, error: 'Enlace de seguimiento inválido o expirado' });
     }
@@ -186,7 +213,8 @@ router.post('/:token/visor', async (req, res) => {
  */
 router.post('/:token/aprobar', async (req, res) => {
     const { token } = req.params;
-    const decoded = decodeTrackingToken(token);
+    const pool = req.app.locals?.pool;
+    const decoded = await resolveTrackingToken(token, { pool });
     if (!decoded) {
         return res.status(401).json({ ok: false, error: 'Enlace de seguimiento inválido o expirado' });
     }
