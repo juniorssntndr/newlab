@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { API_URL } from '../config.js';
@@ -38,6 +38,9 @@ export const PublicTrackingPage = () => {
     const [viewerModalOpen, setViewerModalOpen] = useState(false);
     const [submittingAction, setSubmittingAction] = useState(false);
     const [actionSuccessMessage, setActionSuccessMessage] = useState('');
+
+    const stepperScrollRef = useRef(null);
+    const activeStepRef = useRef(null);
 
     // Fetch order data
     useEffect(() => {
@@ -181,10 +184,37 @@ export const PublicTrackingPage = () => {
         return notes;
     }, [order?.observaciones]);
 
+    // Center active step on mobile and on window resize
+    useEffect(() => {
+        const scrollToActive = () => {
+            const container = stepperScrollRef.current;
+            const activeEl = activeStepRef.current;
+            if (!container || !activeEl) return;
+            const containerWidth = container.clientWidth;
+            const activeWidth = activeEl.clientWidth;
+            const targetLeft = Math.round(activeEl.offsetLeft - (containerWidth - activeWidth) / 2);
+            container.scrollTo({
+                left: Math.max(0, targetLeft),
+                behavior: 'smooth',
+            });
+        };
+
+        if (order?.estado) {
+            const rafId = requestAnimationFrame(scrollToActive);
+            const timer1 = setTimeout(scrollToActive, 80);
+            const timer2 = setTimeout(scrollToActive, 280);
+            return () => {
+                cancelAnimationFrame(rafId);
+                clearTimeout(timer1);
+                clearTimeout(timer2);
+            };
+        }
+    }, [order?.estado]);
+
     const handleWhatsAppHelp = () => {
         const phone = '51910707060';
-        const code = order?.codigo || 'Caso';
-        const text = encodeURIComponent(`Hola AFINIX Dental Lab, tengo una consulta sobre el seguimiento de mi caso ${code}.`);
+        const patientDesc = order?.paciente_nombre ? `del paciente ${order.paciente_nombre}` : (order?.codigo ? `del caso ${order.codigo}` : '');
+        const text = encodeURIComponent(`Hola AFINIX Dental Lab, tengo una consulta sobre el caso ${patientDesc}.`.trim());
         window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
     };
 
@@ -258,27 +288,15 @@ export const PublicTrackingPage = () => {
                         <span className="public-track-brand-divider" aria-hidden="true" />
                         <span className="public-track-brand-sub">Rastreo Clínico en Tiempo Real</span>
                     </div>
-                    <button type="button" className="public-track-whatsapp-btn" onClick={handleWhatsAppHelp} title="Soporte por WhatsApp">
+                    <button type="button" className="public-track-whatsapp-btn" onClick={handleWhatsAppHelp} title="Soporte por WhatsApp" aria-label="Soporte por WhatsApp">
                         <i className="bi bi-whatsapp" style={{ color: '#25D366', fontSize: '1.1rem' }} />
-                        <span>Soporte Laboratorio</span>
+                        <span className="public-track-whatsapp-label">Soporte Laboratorio</span>
                     </button>
                 </div>
             </header>
 
             {/* Main Content Area */}
             <main className="public-track-container public-track-main">
-                {/* Order Header / Top Bar */}
-                <div className="public-track-order-topbar">
-                    <div className="public-track-order-code">
-                        <i className="bi bi-box-seam text-primary" />
-                        <span>Orden Técnica <strong>{order.codigo}</strong></span>
-                    </div>
-                    <span className={`public-track-badge ${order.estado === 'esperando_aprobacion' ? 'is-warning' : order.estado === 'terminado' || order.estado === 'enviado' ? 'is-success' : 'is-primary'}`}>
-                        <span className="public-track-badge-dot" />
-                        {getOrderStatusLabel(order.estado)}
-                    </span>
-                </div>
-
                 {/* Case Stepper Card (Exact same component styling as DetallePedido.jsx) */}
                 <div className="card pedido-stepper-card public-track-card" aria-label="Seguimiento de etapas">
                     <div className="pedido-stepper-header">
@@ -293,7 +311,7 @@ export const PublicTrackingPage = () => {
                         )}
                     </div>
 
-                    <div className="pedido-stepper-scroll-container" role="region" aria-label="Línea de etapas del trabajo">
+                    <div className="pedido-stepper-scroll-container" ref={stepperScrollRef} role="region" aria-label="Línea de etapas del trabajo">
                         <div className="pedido-stepper-track-wrap">
                             <div className="pedido-stepper-rail-bg" aria-hidden="true" />
                             <motion.div
@@ -313,6 +331,7 @@ export const PublicTrackingPage = () => {
                                     return (
                                         <li
                                             key={s}
+                                            ref={isCurrent ? activeStepRef : null}
                                             role="listitem"
                                             className={[
                                                 'pedido-stepper-step',
@@ -369,56 +388,6 @@ export const PublicTrackingPage = () => {
                     </div>
                 </div>
 
-                {/* Hero Stats (Paciente, Ingreso, Entrega) */}
-                <div className="order-wizard-confirm-hero pedido-detail-hero public-track-hero" aria-label="Resumen del pedido">
-                    {/* Paciente */}
-                    <div className="order-wizard-confirm-stat pedido-detail-stat-paciente">
-                        <div className="order-wizard-confirm-stat-copy">
-                            <span className="order-wizard-confirm-label">
-                                <i className="bi bi-person" aria-hidden="true" />
-                                Paciente
-                            </span>
-                            <div className="order-wizard-confirm-patient-row">
-                                <strong>{order.paciente_nombre}</strong>
-                            </div>
-                            {order.clinica_nombre && (
-                                <div className="order-wizard-confirm-clinic-row">
-                                    <i className="bi bi-hospital" aria-hidden="true" />
-                                    <span>{order.clinica_nombre}</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Ingreso del caso */}
-                    <div className="order-wizard-confirm-stat pedido-detail-stat-ingreso">
-                        <div className="order-wizard-confirm-stat-copy">
-                            <span className="order-wizard-confirm-label">
-                                <i className={`bi ${intakeInfo.icon}`} aria-hidden="true" />
-                                Ingreso del caso
-                            </span>
-                            <strong>{intakeInfo.label}</strong>
-                            <em className="order-wizard-confirm-meta">{intakeInfo.detail}</em>
-                        </div>
-                    </div>
-
-                    {/* Entrega */}
-                    <div className="order-wizard-confirm-stat order-wizard-confirm-entrega pedido-detail-stat-entrega">
-                        <div className="order-wizard-confirm-stat-copy">
-                            <span className="order-wizard-confirm-label">
-                                <i className="bi bi-calendar3" aria-hidden="true" />
-                                Entrega Comprometida
-                            </span>
-                            <div className="order-wizard-confirm-date-row">
-                                <strong className="order-wizard-confirm-date-value">{formattedDeliveryDate}</strong>
-                            </div>
-                            {deliveryDaysLeft && (
-                                <em className="order-wizard-confirm-meta">{deliveryDaysLeft}</em>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
                 {/* Success Alert if approval was just confirmed */}
                 {actionSuccessMessage && (
                     <div className="public-track-alert-success animate-fade-in" role="alert">
@@ -426,6 +395,69 @@ export const PublicTrackingPage = () => {
                         <span>{actionSuccessMessage}</span>
                     </div>
                 )}
+
+                {/* Main Flow (Hero Stats + Grid Layout) */}
+                <div className="public-track-main-flow">
+                    {/* Hero Stats (Paciente, Ingreso, Entrega) */}
+                    <div className="order-wizard-confirm-hero pedido-detail-hero public-track-hero" aria-label="Resumen del pedido">
+                        {/* Paciente */}
+                        <div className="order-wizard-confirm-stat pedido-detail-stat-paciente">
+                            <div className="order-wizard-confirm-stat-copy">
+                                <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-person" aria-hidden="true" />
+                                    Paciente
+                                </span>
+                                <div className="order-wizard-confirm-patient-row">
+                                    <strong>{order.paciente_nombre}</strong>
+                                    {(order.paciente_sexo || order.paciente_edad) && (
+                                        <span className="order-wizard-confirm-meta-badge" style={{ marginLeft: '0.45rem' }}>
+                                            {order.paciente_sexo && (
+                                                <i className={`bi ${order.paciente_sexo === 'femenino' ? 'bi-gender-female' : 'bi-gender-male'}`} style={{ marginRight: '0.25rem' }} aria-hidden="true" />
+                                            )}
+                                            {[
+                                                order.paciente_sexo ? (order.paciente_sexo === 'femenino' ? 'Femenino' : order.paciente_sexo === 'masculino' ? 'Masculino' : order.paciente_sexo) : null,
+                                                order.paciente_edad ? `${order.paciente_edad} años` : null
+                                            ].filter(Boolean).join(' · ')}
+                                        </span>
+                                    )}
+                                </div>
+                                {order.clinica_nombre && (
+                                    <div className="order-wizard-confirm-clinic-row">
+                                        <i className="bi bi-hospital" aria-hidden="true" />
+                                        <span>{order.clinica_nombre}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Ingreso del caso */}
+                        <div className="order-wizard-confirm-stat pedido-detail-stat-ingreso">
+                            <div className="order-wizard-confirm-stat-copy">
+                                <span className="order-wizard-confirm-label">
+                                    <i className={`bi ${intakeInfo.icon}`} aria-hidden="true" />
+                                    Ingreso del caso
+                                </span>
+                                <strong>{intakeInfo.label}</strong>
+                                <em className="order-wizard-confirm-meta">{intakeInfo.detail}</em>
+                            </div>
+                        </div>
+
+                        {/* Entrega */}
+                        <div className="order-wizard-confirm-stat order-wizard-confirm-entrega pedido-detail-stat-entrega">
+                            <div className="order-wizard-confirm-stat-copy">
+                                <span className="order-wizard-confirm-label">
+                                    <i className="bi bi-calendar3" aria-hidden="true" />
+                                    Entrega Comprometida
+                                </span>
+                                <div className="order-wizard-confirm-date-row">
+                                    <strong className="order-wizard-confirm-date-value">{formattedDeliveryDate}</strong>
+                                </div>
+                                {deliveryDaysLeft && (
+                                    <em className="order-wizard-confirm-meta">{deliveryDaysLeft}</em>
+                                )}
+                            </div>
+                        </div>
+                    </div>
 
                 {/* Main 2-Column Grid: Left (Datos del caso), Right (Diseño 3D) */}
                 <div className="public-track-grid-layout">
@@ -583,6 +615,7 @@ export const PublicTrackingPage = () => {
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
 
                 {/* Conversion Banner to AFINIX Portal */}

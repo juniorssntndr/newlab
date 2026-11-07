@@ -422,7 +422,85 @@
     border: 1px solid #f1f5f9;
 }
 
+.public-track-main-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
 @media (max-width: 860px) {
+    .public-track-main-flow {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        width: 100%;
+    }
+
+    .public-track-main-flow > .public-track-hero,
+    .public-track-main-flow > .public-track-grid-layout,
+    .public-track-grid-layout > .public-track-side-column {
+        display: contents;
+    }
+
+    /* Target mobile order:
+       1: Diseño 3D (Aprobar diseño)
+       2: Paciente
+       3: Datos del caso
+       4: Entrega
+       5: Ingreso
+       6: Nota de coordinación
+    */
+    .public-track-design-card {
+        order: 1 !important;
+    }
+
+    .pedido-detail-stat-paciente {
+        order: 2 !important;
+    }
+
+    .public-track-case-data {
+        order: 3 !important;
+    }
+
+    .pedido-detail-stat-entrega {
+        order: 4 !important;
+    }
+
+    .pedido-detail-stat-ingreso {
+        order: 5 !important;
+    }
+
+    .public-track-notes-card {
+        order: 6 !important;
+    }
+
+    /* Contenedores delgados en mobile */
+    .public-track-card,
+    .public-track-hero .order-wizard-confirm-stat,
+    .public-track-case-data,
+    .public-track-design-card,
+    .public-track-notes-card {
+        padding: 0.75rem 0.9rem !important;
+        border-radius: 14px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .public-track-card .card-header,
+    .public-track-case-data .card-header,
+    .public-track-design-card .card-header,
+    .public-track-notes-card .card-header {
+        margin-bottom: 0.45rem;
+        text-align: left;
+        justify-content: space-between;
+    }
+
+    .public-track-case-data .card-title {
+        text-align: left;
+        font-size: 0.92rem;
+    }
+
     .public-track-grid-layout {
         grid-template-columns: 1fr;
     }
@@ -431,6 +509,37 @@
     }
     .public-track-case-data .order-wizard-confirm-item {
         grid-template-columns: 1fr;
+        border-radius: 10px;
+    }
+    .public-track-case-data .order-wizard-confirm-item-media {
+        border-right: none;
+        border-bottom: 1px solid var(--color-border-light, #e2e8f0);
+        aspect-ratio: 16 / 9;
+        height: auto;
+    }
+    .public-track-case-data .order-wizard-confirm-item-main {
+        padding: 0.75rem 0.85rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .public-track-navbar-inner {
+        padding: 0.55rem 0.85rem;
+    }
+    .public-track-whatsapp-btn {
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .public-track-whatsapp-label {
+        display: none;
+    }
+    .public-track-whatsapp-btn i {
+        font-size: 1.25rem !important;
+        margin: 0 !important;
     }
 }
 
