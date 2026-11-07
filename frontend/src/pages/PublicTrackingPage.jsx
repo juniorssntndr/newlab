@@ -463,8 +463,10 @@ export const PublicTrackingPage = () => {
                 <div className="public-track-grid-layout">
                     {/* Left Column: Datos del Caso */}
                     <div className="card public-track-card public-track-case-data">
-                        <div className="card-header">
-                            <h3 className="card-title">Datos del caso</h3>
+                        <div className="card-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', width: '100%' }}>
+                            <h3 className="card-title" style={{ textAlign: 'left', margin: 0 }}>
+                                Datos del caso
+                            </h3>
                         </div>
                         <ul className="order-wizard-confirm-items pedido-detail-confirm-items">
                             {(order.items || []).map((item, i) => {
@@ -561,13 +563,16 @@ export const PublicTrackingPage = () => {
                     {/* Right Column: Stacked Diseño 3D & Nota de coordinación */}
                     <div className="public-track-side-column">
                         <div className="card public-track-card public-track-design-card">
-                            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h3 className="card-title">
-                                    <i className="bi bi-badge-3d text-primary" style={{ marginRight: '0.5rem' }} aria-hidden="true" />
+                            <div className="card-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                <h3 className="card-title" style={{ textAlign: 'left', margin: 0, display: 'inline-flex', alignItems: 'center' }}>
+                                    <i className="bi bi-badge-3d text-primary" style={{ marginRight: '0.45rem' }} aria-hidden="true" />
                                     <span>Diseño 3D</span>
                                 </h3>
                                 {hasDesignFile && (
-                                    <span className={`approval-review-status ${currentApproval?.estado === 'aprobado' ? 'status-approved' : currentApproval?.estado === 'ajuste_solicitado' ? 'status-adjusted' : 'status-pending'}`}>
+                                    <span
+                                        className={`approval-review-status ${currentApproval?.estado === 'aprobado' ? 'status-approved' : currentApproval?.estado === 'ajuste_solicitado' ? 'status-adjusted' : 'status-pending'}`}
+                                        style={{ marginLeft: 'auto', flexShrink: 0 }}
+                                    >
                                         {approvalStatusLabels[currentApproval?.estado] || 'Pendiente'}
                                     </span>
                                 )}
@@ -600,9 +605,9 @@ export const PublicTrackingPage = () => {
                         </div>
 
                         <div className="card public-track-card public-track-notes-card">
-                            <div className="card-header">
-                                <h3 className="card-title">
-                                    <i className="bi bi-chat-left-text text-primary" style={{ marginRight: '0.5rem' }} aria-hidden="true" />
+                            <div className="card-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', width: '100%' }}>
+                                <h3 className="card-title" style={{ textAlign: 'left', margin: 0, display: 'inline-flex', alignItems: 'center' }}>
+                                    <i className="bi bi-chat-left-text text-primary" style={{ marginRight: '0.45rem' }} aria-hidden="true" />
                                     <span>Nota de coordinación</span>
                                 </h3>
                             </div>

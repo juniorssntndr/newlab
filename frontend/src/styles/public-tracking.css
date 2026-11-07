@@ -179,20 +179,24 @@
 .public-track-card .card-header {
     padding: 0.45rem 0.85rem;
     min-height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
     border-bottom: 1px solid var(--color-border-light, #e2e8f0);
     background: transparent;
+    box-sizing: border-box !important;
 }
 
 .public-track-card .card-title {
-    margin: 0;
-    font-size: 0.9rem;
+    margin: 0 !important;
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--color-text, #1e293b);
-    display: flex;
-    align-items: center;
+    display: inline-flex !important;
+    align-items: center !important;
+    text-align: left !important;
 }
 
 .public-track-page .public-track-hero,
@@ -384,9 +388,32 @@
     border: none;
     background: transparent;
     min-height: auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.public-track-design-card .card-title,
+.public-track-notes-card .card-title {
+    margin: 0 !important;
+    font-size: 0.95rem;
+    font-weight: 750;
+    color: var(--color-text, #1e293b);
+    display: inline-flex !important;
+    align-items: center !important;
+    text-align: left !important;
+}
+
+.public-track-design-card .approval-review-status {
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+    grid-column: auto !important;
+    justify-self: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 .public-track-design-card .card-body,
@@ -491,14 +518,39 @@
     .public-track-case-data .card-header,
     .public-track-design-card .card-header,
     .public-track-notes-card .card-header {
-        margin-bottom: 0.45rem;
-        text-align: left;
-        justify-content: space-between;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        margin-bottom: 0.45rem !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-sizing: border-box !important;
     }
 
-    .public-track-case-data .card-title {
-        text-align: left;
-        font-size: 0.92rem;
+    .public-track-card .card-title,
+    .public-track-case-data .card-title,
+    .public-track-design-card .card-title,
+    .public-track-notes-card .card-title {
+        margin: 0 !important;
+        text-align: left !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.45rem !important;
+        font-size: 0.95rem !important;
+        font-weight: 750 !important;
+        color: var(--color-text, #1e293b) !important;
+    }
+
+    .public-track-design-card .approval-review-status {
+        margin-left: auto !important;
+        flex-shrink: 0 !important;
+        grid-column: auto !important;
+        justify-self: auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
     }
 
     .public-track-grid-layout {
