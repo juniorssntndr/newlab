@@ -1196,10 +1196,6 @@ const CajaGastos = () => {
                 return false;
             }
             if (form.sustento_tipo === 'fiscal') {
-                if (!form.sustento_emisor_doc || !form.sustento_emisor_doc.trim()) {
-                    toast.error('El RUC o documento del emisor es obligatorio para sustento fiscal.');
-                    return false;
-                }
                 if (!form.sustento_numero || !form.sustento_numero.trim()) {
                     toast.error('El número de comprobante es obligatorio para sustento fiscal.');
                     return false;
