@@ -221,6 +221,7 @@ export default function CustomSelect({
                 aria-expanded={open}
                 aria-haspopup="listbox"
                 aria-label={ariaLabel || placeholder}
+                title={selectedOption ? selectedOption.label : placeholder}
             >
                 <span className="afinix-select-label-wrap">
                     {selectedOption?.dotColor && (
@@ -233,7 +234,10 @@ export default function CustomSelect({
                     {selectedOption?.icon && (
                         <i className={`bi ${selectedOption.icon}`} aria-hidden="true" style={{ fontSize: '0.85rem' }} />
                     )}
-                    <span className={`afinix-select-label-text${!selectedOption ? ' afinix-select-label-placeholder' : ''}`}>
+                    <span
+                        className={`afinix-select-label-text${!selectedOption ? ' afinix-select-label-placeholder' : ''}`}
+                        title={selectedOption ? selectedOption.label : placeholder}
+                    >
                         {selectedOption ? selectedOption.label : placeholder}
                     </span>
                 </span>

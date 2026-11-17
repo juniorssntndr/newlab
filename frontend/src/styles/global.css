@@ -1689,6 +1689,7 @@ h4 {
 /* ============================================ */
 .form-group {
   margin-bottom: var(--space-5);
+  min-width: 0;
 }
 
 .form-label {
@@ -1703,6 +1704,7 @@ h4 {
 .form-select,
 .form-textarea {
   width: 100%;
+  min-width: 0;
   padding: 0.5rem 0.75rem;
   font-family: var(--font-sans);
   font-size: 0.875rem;
@@ -3995,6 +3997,8 @@ div.pedidos-desktop-filters.desktop-only {
   justify-content: space-between;
   gap: 0.5rem;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 0.5rem 0.75rem;
   font-family: var(--font-sans);
   font-size: 0.875rem;
@@ -4009,6 +4013,7 @@ div.pedidos-desktop-filters.desktop-only {
   transition: border-color var(--transition-fast, 0.15s), box-shadow var(--transition-fast, 0.15s), background var(--transition-fast, 0.15s);
   min-height: 2.375rem;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .afinix-select-trigger:hover:not(:disabled) {
@@ -4052,12 +4057,16 @@ div.pedidos-desktop-filters.desktop-only {
   gap: 0.5rem;
   min-width: 0;
   flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .afinix-select-label-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  display: block;
+  flex: 1 1 auto;
 }
 
 .afinix-select-label-placeholder {
