@@ -30,8 +30,8 @@ export const makeFinanceRoutes = ({ financeController }) => {
     router.post('/sesiones-caja/:sesionId/cerrar', labCashier, financeController.closeCashSession);
     // Rutas de Tesorería Multi-Banco, Transferencias y Socios
     router.get('/cuentas', labPartnerRole, financeController.listAccountsWithBalance);
-    router.post('/cuentas', requireRole('admin'), financeController.createAccount);
-    router.put('/cuentas/:id', requireRole('admin'), financeController.updateAccount);
+    router.post('/cuentas', labPartnerRole, financeController.createAccount);
+    router.put('/cuentas/:id', labPartnerRole, financeController.updateAccount);
     router.get('/transferencias', labPartnerRole, financeController.listTransfers);
     router.post('/transferencias', labPartnerRole, financeController.registerTransfer);
     router.get('/socios', labPartnerRole, financeController.listSocios);

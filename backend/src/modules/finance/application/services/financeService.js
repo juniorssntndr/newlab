@@ -718,19 +718,24 @@ export const makeFinanceService = ({ financeRepository }) => ({
         if (!id) {
             return { ok: false, status: 400, error: 'ID de cuenta inválido' };
         }
-        const account = await financeRepository.updateAccount({
-            id,
-            nombre: body?.nombre?.trim(),
-            tipo_cuenta: body?.tipo_cuenta,
-            banco: body?.banco?.trim(),
-            numero_cuenta: body?.numero_cuenta?.trim(),
-            cci: body?.cci?.trim(),
-            moneda: body?.moneda,
-            color: body?.color,
-            descripcion: body?.descripcion?.trim(),
-            activo: body?.activo,
-            saldo_inicial: body?.saldo_inicial !== undefined && body?.saldo_inicial !== null && body?.saldo_inicial !== '' ? parseFloat(body.saldo_inicial) : undefined
-        });
+        const updatePayload = { id };
+        if (body?.nombre !== undefined) updatePayload.nombre = body.nombre.trim();
+        if (body?.tipo_cuenta !== undefined) updatePayload.tipo_cuenta = body.tipo_cuenta;
+        if (body?.banco !== undefined) updatePayload.banco = body.banco.trim();
+        if (body?.numero_cuenta !== undefined) updatePayload.numero_cuenta = body.numero_cuenta ? body.numero_cuenta.trim() : '';
+        if (body?.cci !== undefined) updatePayload.cci = body.cci ? body.cci.trim() : '';
+        if (body?.moneda !== undefined) updatePayload.moneda = body.moneda;
+        if (body?.color !== undefined) updatePayload.color = body.color;
+        if (body?.descripcion !== undefined) updatePayload.descripcion = body.descripcion ? body.descripcion.trim() : '';
+        if (body?.activo !== undefined) updatePayload.activo = Boolean(body.activo);
+        if (body?.saldo_inicial !== undefined && body?.saldo_inicial !== null && body?.saldo_inicial !== '') {
+            const parsedSaldo = parseFloat(body.saldo_inicial);
+            if (!Number.isNaN(parsedSaldo)) {
+                updatePayload.saldo_inicial = parsedSaldo;
+            }
+        }
+
+        const account = await financeRepository.updateAccount(updatePayload);
         if (!account) {
             return { ok: false, status: 404, error: 'Cuenta no encontrada' };
         }

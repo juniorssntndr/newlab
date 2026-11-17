@@ -46,8 +46,8 @@ router.post('/sesiones-caja/:sesionId/reabrir', requireRole('admin'), delegateTo
 
 // Rutas de Tesorería Multi-Banco, Transferencias y Socios
 router.get('/cuentas', labPartnerRole, delegateToFinance('listAccountsWithBalance'));
-router.post('/cuentas', requireRole('admin'), delegateToFinance('createAccount'));
-router.put('/cuentas/:id', requireRole('admin'), delegateToFinance('updateAccount'));
+router.post('/cuentas', labPartnerRole, delegateToFinance('createAccount'));
+router.put('/cuentas/:id', labPartnerRole, delegateToFinance('updateAccount'));
 router.get('/transferencias', labPartnerRole, delegateToFinance('listTransfers'));
 router.post('/transferencias', labPartnerRole, delegateToFinance('registerTransfer'));
 router.put('/transferencias/:id', labPartnerRole, delegateToFinance('updateTransfer'));

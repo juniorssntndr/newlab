@@ -5,13 +5,14 @@ import { uploadProductImage } from '../services/storage.js';
 import { writeAuditEvent, computeDiff } from '../services/audit.js';
 
 
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/x-png']);
 
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+        const mime = (file.mimetype || '').toLowerCase();
+        if (!ALLOWED_MIME_TYPES.has(mime)) {
             return cb(new Error('Solo se permiten imágenes en formato JPG, PNG o WebP'));
         }
         cb(null, true);
@@ -76,7 +77,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/productos
-router.post('/', requireRole('admin'), upload.single('image'), async (req, res, next) => {
+router.post('/', requireRole('admin', 'tecnico'), upload.single('image'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, visible, admite_puente, modo_odontograma, permite_express } = req.body;
@@ -118,7 +119,7 @@ router.post('/', requireRole('admin'), upload.single('image'), async (req, res, 
 
 
 // PUT /api/productos/:id
-router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res, next) => {
+router.put('/:id', requireRole('admin', 'tecnico'), upload.single('image'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const { nombre, descripcion, categoria_id, precio_base, material_id, tiempo_estimado_dias, activo, visible, admite_puente } = req.body;
@@ -258,7 +259,7 @@ router.put('/:id', requireRole('admin'), upload.single('image'), async (req, res
 });
 
 // DELETE /api/productos/:id
-router.delete('/:id', requireRole('admin'), async (req, res, next) => {
+router.delete('/:id', requireRole('admin', 'tecnico'), async (req, res, next) => {
     try {
         const pool = req.app.locals.pool;
         const result = await pool.query(

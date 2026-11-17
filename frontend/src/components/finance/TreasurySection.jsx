@@ -140,6 +140,7 @@ export default function TreasurySection() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treasury', 'accounts'] });
+            queryClient.invalidateQueries({ queryKey: ['finance', 'accounts'] });
             toast.success(editingAccount ? 'Cuenta actualizada con éxito' : 'Cuenta financiera creada con éxito');
             setAccountModalOpen(false);
             setEditingAccount(null);
@@ -1219,19 +1220,17 @@ export default function TreasurySection() {
                             />
                         </div>
 
-                        {!editingAccount && (
-                            <div className="form-group">
-                                <label className="form-label">Saldo Inicial</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    className="form-input"
-                                    placeholder="0.00"
-                                    value={accountForm.saldo_inicial}
-                                    onChange={(e) => setAccountForm(p => ({ ...p, saldo_inicial: e.target.value }))}
-                                />
-                            </div>
-                        )}
+                        <div className="form-group">
+                            <label className="form-label">Saldo Inicial</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                className="form-input"
+                                placeholder="0.00"
+                                value={accountForm.saldo_inicial}
+                                onChange={(e) => setAccountForm(p => ({ ...p, saldo_inicial: e.target.value }))}
+                            />
+                        </div>
                     </div>
 
                     <div className="form-group">

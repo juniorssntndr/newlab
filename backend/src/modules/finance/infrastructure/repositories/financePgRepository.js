@@ -1676,22 +1676,34 @@ export const makeFinancePgRepository = ({ pool }) => ({
         );
         return result.rows[0];
     },
-    updateAccount: async ({ id, nombre, tipo_cuenta, banco, numero_cuenta, cci, moneda, color, descripcion, activo, saldo_inicial }) => {
+    updateAccount: async (input) => {
+        const { id } = input;
+        const updates = [];
+        const params = [id];
+
+        const allowedFields = [
+            'nombre', 'tipo_cuenta', 'banco', 'numero_cuenta', 'cci',
+            'moneda', 'color', 'descripcion', 'activo', 'saldo_inicial'
+        ];
+
+        for (const field of allowedFields) {
+            if (field in input && input[field] !== undefined) {
+                params.push(input[field]);
+                updates.push(`${field} = $${params.length}`);
+            }
+        }
+
+        if (updates.length === 0) {
+            const current = await pool.query('SELECT * FROM nl_fin_cuentas WHERE id = $1', [id]);
+            return current.rows[0] || null;
+        }
+
         const result = await pool.query(
             `UPDATE nl_fin_cuentas
-             SET nombre = COALESCE($2, nombre),
-                 tipo_cuenta = COALESCE($3, tipo_cuenta),
-                 banco = COALESCE($4, banco),
-                 numero_cuenta = COALESCE($5, numero_cuenta),
-                 cci = COALESCE($6, cci),
-                 moneda = COALESCE($7, moneda),
-                 color = COALESCE($8, color),
-                 descripcion = COALESCE($9, descripcion),
-                 activo = COALESCE($10, activo),
-                 saldo_inicial = COALESCE($11, saldo_inicial)
+             SET ${updates.join(', ')}
              WHERE id = $1
              RETURNING *`,
-            [id, nombre, tipo_cuenta, banco, numero_cuenta, cci, moneda, color, descripcion, activo, saldo_inicial]
+            params
         );
         return result.rows[0] || null;
     },

@@ -28,7 +28,6 @@ export const CrmClinicasPage = () => {
     const [createModalOpen, setCreateModalOpen] = useState(false);
 
     const { data, isLoading, refetch } = useCrmEstablecimientosQuery({
-        tipo: 'clinica',
         etapa: 'convertido',
         salud: saludFilter || undefined,
         search: search || undefined,

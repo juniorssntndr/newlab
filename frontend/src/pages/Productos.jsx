@@ -8,6 +8,7 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import ProductCatalogCard from '../components/orders/ProductCatalogCard.jsx';
 import CustomSelect from '../components/CustomSelect.jsx';
 import { optimizeImageForUpload } from '../utils/imageOptimizer.js';
+import toast from 'react-hot-toast';
 
 const Productos = () => {
     const { getHeaders, user } = useAuth();
@@ -21,7 +22,7 @@ const Productos = () => {
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState(null);
 
-    const canManage = user?.tipo === 'admin' || user?.rol === 'admin';
+    const canManage = user?.tipo === 'admin' || user?.tipo === 'tecnico' || user?.rol === 'admin' || user?.rol === 'tecnico';
     const canManageCategories = user?.tipo === 'admin' || user?.tipo === 'tecnico' || user?.rol === 'admin' || user?.rol === 'tecnico';
 
     // Product Modal & Form
@@ -372,8 +373,7 @@ const Productos = () => {
         formData.append('admite_puente', form.modo_odontograma === 'puente');
         formData.append('modo_odontograma', form.modo_odontograma || 'unitario');
         if (form.image) {
-            const imageToSend = await optimizeImageForUpload(form.image).catch(() => form.image);
-            formData.append('image', imageToSend);
+            formData.append('image', form.image);
         }
 
         try {
@@ -385,15 +385,20 @@ const Productos = () => {
                 body: formData
             });
             if (res.ok) {
+                toast.success(editing ? 'Producto actualizado con éxito' : 'Producto creado con éxito');
                 setModalOpen(false);
                 fetchData();
             } else {
                 const data = await res.json().catch(() => ({}));
-                setFormError(data.error || 'Error al guardar');
+                const errMsg = data.error || 'Error al guardar el producto';
+                setFormError(errMsg);
+                toast.error(errMsg);
             }
         } catch (error) {
             console.error(error);
-            setFormError('No se pudo guardar. Verifica tu conexión.');
+            const errMsg = 'No se pudo guardar. Verifica tu conexión.';
+            setFormError(errMsg);
+            toast.error(errMsg);
         } finally {
             setSaving(false);
         }
@@ -861,6 +866,7 @@ const Productos = () => {
                             type="file"
                             accept="image/*"
                             className="productos-hidden-file-input"
+                            onClick={(e) => { e.target.value = ''; }}
                             onChange={e => handleImageChange(e.target.files?.[0])}
                         />
                         <div style={{

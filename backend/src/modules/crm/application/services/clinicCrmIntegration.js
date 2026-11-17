@@ -103,7 +103,7 @@ export const syncMissingClinicEstablishments = async (pool) => {
             await ensureClinicEstablishment(pool, clinic, { tipo: 'clinica' });
         }
         await pool.query(
-            "UPDATE nl_crm_establecimientos e SET activo = TRUE, etapa = 'convertido' FROM nl_clinicas c WHERE c.establecimiento_id = e.id AND c.estado = 'activo' AND e.activo = FALSE"
+            "UPDATE nl_crm_establecimientos e SET activo = TRUE, etapa = 'convertido' FROM nl_clinicas c WHERE c.establecimiento_id = e.id AND c.estado = 'activo' AND (e.activo = FALSE OR e.etapa <> 'convertido')"
         );
         return missing.rows.length;
     } catch (error) {
