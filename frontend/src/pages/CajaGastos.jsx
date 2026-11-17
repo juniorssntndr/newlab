@@ -99,8 +99,9 @@ const formatDateShort = (value) => {
 };
 
 const formatCurrency = (value) => {
-    const number = parseFloat(value || 0);
+    let number = parseFloat(value || 0);
     if (Number.isNaN(number)) return 'S/.\u00A00.00';
+    if (Math.abs(number) < 0.001) number = 0;
     return `S/.\u00A0${number.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
@@ -1338,7 +1339,9 @@ const CajaGastos = () => {
         const egEf = isDia ? dayEgEfec : (isHist ? parseFloat(targetSession?.total_egresos_efectivo || 0) : resumenEnVivo.total_egresos_efectivo);
         const egBco = isDia ? dayEgBanco : (isHist ? parseFloat(targetSession?.total_egresos_banco || 0) : resumenEnVivo.total_egresos_banco);
         const saldoEf = isDia ? (montoAp + dayIngEfec - dayEgEfec) : (isHist ? parseFloat(targetSession?.monto_esperado_efectivo ?? (montoAp + ingEf - egEf)) : resumenEnVivo.saldo_teorico_efectivo);
-        const diferencia = arqueoRealEfectivo !== '' ? (parseFloat(arqueoRealEfectivo) - saldoEf).toFixed(2) : null;
+        const rawDif = arqueoRealEfectivo !== '' ? (parseFloat(arqueoRealEfectivo) - saldoEf) : null;
+        const diffNum = rawDif !== null ? (Math.abs(rawDif) < 0.001 ? 0 : Math.round(rawDif * 100) / 100) : null;
+        const diferencia = diffNum !== null ? diffNum.toFixed(2) : null;
 
         const text = `📊 *${isDia ? 'REPORTE DIARIO' : 'REPORTE DE CIERRE Y ARQUEO'} - AFINIX LAB*
 📅 *Fecha:* ${fechaStr} | *Turno:* ${isDia ? 'JORNADA COMPLETA' : (targetSession?.turno?.toUpperCase() || 'GENERAL')}
@@ -1353,7 +1356,7 @@ const CajaGastos = () => {
    • Bancos: ${formatCurrency(egBco)}
 
 💰 *Efectivo en Caja:* ${formatCurrency(saldoEf)}
-${!isDia && isHist && targetSession?.monto_real_efectivo !== null ? `🔎 *Conteo Real:* ${formatCurrency(targetSession.monto_real_efectivo)} (Dif: ${parseFloat(targetSession.diferencia_efectivo || 0) === 0 ? 'S/. 0.00 CUADRADO ✅' : `${formatCurrency(targetSession.diferencia_efectivo)} ⚠️`})` : (!isDia && arqueoRealEfectivo !== '' ? `🔎 *Conteo Real:* ${formatCurrency(arqueoRealEfectivo)} (Dif: ${diferencia === '0.00' ? 'S/. 0.00 CUADRADO ✅' : `S/. ${diferencia} ⚠️`})` : '')}
+${!isDia && isHist && targetSession?.monto_real_efectivo !== null ? `🔎 *Conteo Real:* ${formatCurrency(targetSession.monto_real_efectivo)} (Dif: ${Math.abs(parseFloat(targetSession.diferencia_efectivo || 0)) < 0.005 ? 'S/. 0.00 CUADRADO ✅' : `${formatCurrency(targetSession.diferencia_efectivo)} ⚠️`})` : (!isDia && arqueoRealEfectivo !== '' ? `🔎 *Conteo Real:* ${formatCurrency(arqueoRealEfectivo)} (Dif: ${diffNum === 0 ? 'S/. 0.00 CUADRADO ✅' : `S/. ${diferencia} ⚠️`})` : '')}
 
 _Generado automáticamente por AFINIX Dental Lab_`;
 
@@ -1843,7 +1846,9 @@ _Generado automáticamente por AFINIX Dental Lab_`;
 
     const liveDiferencia = useMemo(() => {
         if (!arqueoRealEfectivo || Number.isNaN(parseFloat(arqueoRealEfectivo))) return null;
-        return parseFloat(arqueoRealEfectivo) - resumenEnVivo.saldo_teorico_efectivo;
+        const diff = parseFloat(arqueoRealEfectivo) - Number(resumenEnVivo.saldo_teorico_efectivo || 0);
+        const rounded = Math.round(diff * 100) / 100;
+        return Math.abs(rounded) < 0.001 ? 0 : rounded;
     }, [arqueoRealEfectivo, resumenEnVivo.saldo_teorico_efectivo]);
 
     return (
@@ -4193,7 +4198,8 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                     </thead>
                                     <tbody>
                                         {sessionsList.map((s) => {
-                                        const dif = s.diferencia_efectivo !== null ? parseFloat(s.diferencia_efectivo) : null;
+                                        const rawDif = s.diferencia_efectivo !== null ? parseFloat(s.diferencia_efectivo) : null;
+                                        const dif = rawDif !== null ? (Math.abs(rawDif) < 0.001 ? 0 : Math.round(rawDif * 100) / 100) : null;
                                         return (
                                             <tr key={s.id}>
                                                 <td>

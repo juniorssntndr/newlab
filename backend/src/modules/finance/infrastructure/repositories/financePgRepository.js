@@ -1121,13 +1121,16 @@ export const makeFinancePgRepository = ({ pool }) => ({
             [sessionId, targetDate]
         );
 
-        const totalIngresosEfectivo = parseFloat(ingresosEfectivoRes.rows[0].total || 0) + parseFloat(movIngresosEfectivoRes.rows[0].total || 0);
-        const totalEgresosEfectivo = parseFloat(egresosEfectivoRes.rows[0].total || 0);
-        const totalIngresosBanco = parseFloat(ingresosBancoRes.rows[0].total || 0) + parseFloat(movIngresosBancoRes.rows[0].total || 0);
-        const totalEgresosBanco = parseFloat(egresosBancoRes.rows[0].total || 0);
+        const totalIngresosEfectivo = Math.round(((parseFloat(ingresosEfectivoRes.rows[0].total || 0) + parseFloat(movIngresosEfectivoRes.rows[0].total || 0))) * 100) / 100;
+        const totalEgresosEfectivo = Math.round(parseFloat(egresosEfectivoRes.rows[0].total || 0) * 100) / 100;
+        const totalIngresosBanco = Math.round(((parseFloat(ingresosBancoRes.rows[0].total || 0) + parseFloat(movIngresosBancoRes.rows[0].total || 0))) * 100) / 100;
+        const totalEgresosBanco = Math.round(parseFloat(egresosBancoRes.rows[0].total || 0) * 100) / 100;
 
-        const montoApertura = session ? parseFloat(session.monto_apertura || 0) : 0;
-        const montoEsperadoEfectivo = montoApertura + totalIngresosEfectivo - totalEgresosEfectivo;
+        const montoApertura = session ? Math.round(parseFloat(session.monto_apertura || 0) * 100) / 100 : 0;
+        const saldoTeoricoEfRaw = montoApertura + totalIngresosEfectivo - totalEgresosEfectivo;
+        const montoEsperadoEfectivo = Math.abs(saldoTeoricoEfRaw) < 0.001 ? 0 : Math.round(saldoTeoricoEfRaw * 100) / 100;
+        const balanceNetoBancoRaw = totalIngresosBanco - totalEgresosBanco;
+        const balanceNetoDiaRaw = (totalIngresosEfectivo - totalEgresosEfectivo) + balanceNetoBancoRaw;
 
         return {
             hasActiveSession: Boolean(session),
@@ -1141,8 +1144,8 @@ export const makeFinancePgRepository = ({ pool }) => ({
                 saldo_teorico_efectivo: montoEsperadoEfectivo,
                 total_ingresos_banco: totalIngresosBanco,
                 total_egresos_banco: totalEgresosBanco,
-                balance_neto_banco: totalIngresosBanco - totalEgresosBanco,
-                balance_neto_dia: (totalIngresosEfectivo - totalEgresosEfectivo) + (totalIngresosBanco - totalEgresosBanco)
+                balance_neto_banco: Math.abs(balanceNetoBancoRaw) < 0.001 ? 0 : Math.round(balanceNetoBancoRaw * 100) / 100,
+                balance_neto_dia: Math.abs(balanceNetoDiaRaw) < 0.001 ? 0 : Math.round(balanceNetoDiaRaw * 100) / 100
             }
         };
     },
@@ -1217,15 +1220,16 @@ export const makeFinancePgRepository = ({ pool }) => ({
                 [session.id, session.fecha]
             );
 
-            const totalIngresosEf = parseFloat(ingresosEfRes.rows[0].total || 0) + parseFloat(movIngresosEfRes.rows[0].total || 0);
-            const totalEgresosEf = parseFloat(egresosEfRes.rows[0].total || 0);
-            const totalIngresosBco = parseFloat(ingresosBcoRes.rows[0].total || 0) + parseFloat(movIngresosBcoRes.rows[0].total || 0);
-            const totalEgresosBco = parseFloat(egresosBcoRes.rows[0].total || 0);
+            const totalIngresosEf = Math.round(((parseFloat(ingresosEfRes.rows[0].total || 0) + parseFloat(movIngresosEfRes.rows[0].total || 0))) * 100) / 100;
+            const totalEgresosEf = Math.round(parseFloat(egresosEfRes.rows[0].total || 0) * 100) / 100;
+            const totalIngresosBco = Math.round(((parseFloat(ingresosBcoRes.rows[0].total || 0) + parseFloat(movIngresosBcoRes.rows[0].total || 0))) * 100) / 100;
+            const totalEgresosBco = Math.round(parseFloat(egresosBcoRes.rows[0].total || 0) * 100) / 100;
 
-            const montoApertura = parseFloat(session.monto_apertura || 0);
-            const montoEsperadoEf = montoApertura + totalIngresosEf - totalEgresosEf;
-            const montoRealEfNumber = parseFloat(montoRealEfectivo || 0);
-            const diferencia = montoRealEfNumber - montoEsperadoEf;
+            const montoApertura = Math.round(parseFloat(session.monto_apertura || 0) * 100) / 100;
+            const montoEsperadoEf = Math.round((montoApertura + totalIngresosEf - totalEgresosEf) * 100) / 100;
+            const montoRealEfNumber = Math.round(parseFloat(montoRealEfectivo || 0) * 100) / 100;
+            const difRaw = montoRealEfNumber - montoEsperadoEf;
+            const diferencia = Math.abs(difRaw) < 0.001 ? 0 : Math.round(difRaw * 100) / 100;
 
             const updateRes = await client.query(
                 `UPDATE nl_fin_sesiones_caja

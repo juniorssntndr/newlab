@@ -588,7 +588,7 @@ export const makeFinanceService = ({ financeRepository }) => ({
                 monto_apertura: parseFloat(r.monto_apertura || 0),
                 monto_esperado_efectivo: parseFloat(r.monto_esperado_efectivo || 0),
                 monto_real_efectivo: r.monto_real_efectivo !== null ? parseFloat(r.monto_real_efectivo) : null,
-                diferencia_efectivo: r.diferencia_efectivo !== null ? parseFloat(r.diferencia_efectivo) : null,
+                diferencia_efectivo: r.diferencia_efectivo !== null ? (Math.abs(parseFloat(r.diferencia_efectivo)) < 0.001 ? 0 : parseFloat(r.diferencia_efectivo)) : null,
                 total_ingresos_efectivo: parseFloat(r.total_ingresos_efectivo || 0),
                 total_egresos_efectivo: parseFloat(r.total_egresos_efectivo || 0),
                 total_ingresos_banco: parseFloat(r.total_ingresos_banco || 0),
