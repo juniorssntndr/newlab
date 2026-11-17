@@ -3134,21 +3134,30 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                         {prettifyLabel(mov.categoria_gasto)}
                                                                     </span>
                                                                     {mov.sustento_tipo === 'fiscal' && (
-                                                                        <span className="gasto-chip gasto-chip--fiscal">
+                                                                        <span
+                                                                            className="gasto-chip gasto-chip--fiscal"
+                                                                            title={`Factura ${mov.sustento_serie ? `${mov.sustento_serie}-` : ''}${mov.sustento_numero || ''}`}
+                                                                        >
                                                                             <i className="bi bi-file-earmark-text"></i>
-                                                                            Factura {mov.sustento_serie ? `${mov.sustento_serie}-` : ''}{mov.sustento_numero || ''}
+                                                                            <span>Factura {mov.sustento_serie ? `${mov.sustento_serie}-` : ''}{mov.sustento_numero || ''}</span>
                                                                         </span>
                                                                     )}
                                                                     {mov.sustento_tipo === 'simple' && (
-                                                                        <span className="gasto-chip gasto-chip--simple">
+                                                                        <span
+                                                                            className="gasto-chip gasto-chip--simple"
+                                                                            title={`Boleta ${mov.sustento_nota || mov.sustento_numero || ''}`}
+                                                                        >
                                                                             <i className="bi bi-receipt"></i>
-                                                                            Boleta {mov.sustento_nota || mov.sustento_numero || ''}
+                                                                            <span>Boleta {mov.sustento_nota || mov.sustento_numero || ''}</span>
                                                                         </span>
                                                                     )}
                                                                     {mov.sustento_tipo === 'ninguno' && (
-                                                                        <span className="gasto-chip gasto-chip--none">
+                                                                        <span
+                                                                            className="gasto-chip gasto-chip--none"
+                                                                            title={mov.sustento_observacion || 'Sin sustento'}
+                                                                        >
                                                                             <i className="bi bi-dash-circle"></i>
-                                                                            {mov.sustento_observacion || 'Sin sustento'}
+                                                                            <span>{mov.sustento_observacion || 'Sin sustento'}</span>
                                                                         </span>
                                                                     )}
                                                                     {timeFormatted && (
