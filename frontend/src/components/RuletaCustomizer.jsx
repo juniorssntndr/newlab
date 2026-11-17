@@ -57,6 +57,7 @@ export default function RuletaCustomizer({
         grafico_tipo: 'auto'
     });
     const [savingSector, setSavingSector] = useState(false);
+    const [restoringTemplate, setRestoringTemplate] = useState(false);
 
     // Estado del canvas de previsualización
     const previewCanvasRef = useRef(null);
@@ -409,6 +410,25 @@ export default function RuletaCustomizer({
         } catch {
             toast.error('Error al cambiar estado del sector');
             await onReloadSectores?.();
+        }
+    };
+
+    // Restaurar plantilla oficial AFINIX (12 sectores)
+    const handleRestaurarPlantillaOficial = async () => {
+        if (!window.confirm('¿Deseas restaurar la plantilla oficial de 12 sectores calibrados de AFINIX LAB? Esto configurará los 12 sectores oficiales (S/. 100, S/. 50, S/. 30 y Piñas intercaladas).')) {
+            return;
+        }
+        setRestoringTemplate(true);
+        try {
+            const res = await apiClient.post('/marketing/ruleta/premios/restaurar-oficial', {}, { headers: getHeaders?.() });
+            if (res.data?.ok) {
+                toast.success('Plantilla oficial AFINIX (12 sectores) restaurada con éxito');
+                await onReloadSectores?.();
+            }
+        } catch {
+            toast.error('Error al restaurar la plantilla oficial');
+        } finally {
+            setRestoringTemplate(false);
         }
     };
 
@@ -967,23 +987,45 @@ export default function RuletaCustomizer({
                                     </span>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-primary"
-                                    onClick={handleStartNewSector}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.35rem',
-                                        fontSize: '0.78rem',
-                                        fontWeight: 600,
-                                        padding: '0.25rem 0.65rem',
-                                        borderRadius: '8px'
-                                    }}
-                                >
-                                    <i className="bi bi-plus-lg" aria-hidden="true"></i>
-                                    Añadir sector
-                                </button>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={handleRestaurarPlantillaOficial}
+                                        disabled={restoringTemplate}
+                                        title="Restaurar plantilla oficial de 12 sectores calibrados de AFINIX LAB"
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.35rem',
+                                            fontSize: '0.78rem',
+                                            fontWeight: 600,
+                                            padding: '0.25rem 0.65rem',
+                                            borderRadius: '8px'
+                                        }}
+                                    >
+                                        <i className={`bi ${restoringTemplate ? 'bi-arrow-repeat spin' : 'bi-stars text-primary'}`} aria-hidden="true"></i>
+                                        Plantilla AFINIX (12)
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary"
+                                        onClick={handleStartNewSector}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.35rem',
+                                            fontSize: '0.78rem',
+                                            fontWeight: 600,
+                                            padding: '0.25rem 0.65rem',
+                                            borderRadius: '8px'
+                                        }}
+                                    >
+                                        <i className="bi bi-plus-lg" aria-hidden="true"></i>
+                                        Añadir sector
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Mini tarjetas horizontales de cada sector */}
