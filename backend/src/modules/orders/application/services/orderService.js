@@ -1092,6 +1092,41 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool, shor
             type: 'SUCCESS',
             data: { message: 'Solicitud de diseño enviada al diseñador y administradores' }
         };
+    },
+    deleteOrder: async ({ user, orderId }) => {
+        const isAdmin = user?.tipo === 'admin' || user?.rol === 'admin';
+        if (!isAdmin) {
+            return {
+                ok: false,
+                type: 'FORBIDDEN',
+                error: 'Solo los administradores pueden eliminar pedidos.'
+            };
+        }
+
+        const parsedId = parseInt(orderId, 10);
+        if (!parsedId || Number.isNaN(parsedId)) {
+            return {
+                ok: false,
+                type: 'BAD_REQUEST',
+                error: 'ID de pedido inválido.'
+            };
+        }
+
+        const result = await orderRepository.deleteOrder({ orderId: parsedId });
+        if (!result.ok) {
+            const typeMap = { 400: 'BAD_REQUEST', 404: 'NOT_FOUND', 403: 'FORBIDDEN' };
+            return {
+                ok: false,
+                type: typeMap[result.status] || 'INTERNAL_ERROR',
+                error: result.error || 'No se pudo eliminar el pedido.'
+            };
+        }
+
+        return {
+            ok: true,
+            type: 'SUCCESS',
+            data: result.data
+        };
     }
     };
 };

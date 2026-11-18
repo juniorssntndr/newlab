@@ -712,5 +712,113 @@ export const makeOrderPgRepository = ({ pool }) => ({
              WHERE link = $1 AND tipo = ANY($2::text[]) AND leida = false`,
             [targetLink, types]
         );
+    },
+    deleteOrder: async ({ orderId }) => {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            const orderRes = await client.query(
+                'SELECT id, codigo, clinica_id, paciente_nombre FROM nl_pedidos WHERE id = $1',
+                [orderId]
+            );
+            if (orderRes.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return { ok: false, status: 404, error: 'Pedido no encontrado' };
+            }
+            const order = orderRes.rows[0];
+
+            // 1. Fiscal protection: cannot delete order with active SUNAT electronic invoice
+            const fiscalRes = await client.query(
+                `SELECT id, serie, numero, estado, tipo_comprobante 
+                 FROM nl_comprobantes 
+                 WHERE (pedido_id = $1 OR id IN (SELECT comprobante_id FROM nl_comprobante_pedidos WHERE pedido_id = $1))
+                   AND estado IN ('emitido', 'declarado', 'enviado', 'aceptado')`,
+                [orderId]
+            );
+            if (fiscalRes.rows.length > 0) {
+                await client.query('ROLLBACK');
+                const comp = fiscalRes.rows[0];
+                return {
+                    ok: false,
+                    status: 400,
+                    error: `No se puede eliminar el pedido porque tiene un comprobante fiscal SUNAT emitido (${comp.serie}-${comp.numero}). Debe anularse primero con Nota de Crédito.`
+                };
+            }
+
+            // 2. Check if payments are tied to a closed/locked cash session
+            const closedSessionRes = await client.query(
+                `SELECT p.id, s.estado as sesion_estado, s.id as sesion_id
+                 FROM nl_pagos p
+                 JOIN nl_fin_sesiones_caja s ON s.id = p.sesion_caja_id
+                 WHERE p.pedido_id = $1 AND s.estado = 'cerrada'`,
+                [orderId]
+            );
+            if (closedSessionRes.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return {
+                    ok: false,
+                    status: 400,
+                    error: 'No se puede eliminar el pedido porque tiene pagos registrados en una sesión de caja ya cerrada y arqueada.'
+                };
+            }
+
+            // 3. Remove draft or non-emitted comprobantes and pivot associations
+            await client.query('DELETE FROM nl_comprobante_pedidos WHERE pedido_id = $1', [orderId]);
+            await client.query('DELETE FROM nl_comprobantes WHERE pedido_id = $1', [orderId]);
+
+            // 4. Clean financial movements associated with payments of this order
+            await client.query(
+                `DELETE FROM nl_fin_movimientos 
+                 WHERE id IN (SELECT movimiento_id FROM nl_pagos WHERE pedido_id = $1 AND movimiento_id IS NOT NULL)`,
+                [orderId]
+            );
+            await client.query(
+                `DELETE FROM nl_fin_movimientos 
+                 WHERE referencia = $1`,
+                [order.codigo]
+            );
+
+            // 5. Clean saldo favor applications and payments
+            await client.query('DELETE FROM nl_saldo_favor_aplicaciones WHERE pedido_destino_id = $1', [orderId]);
+            await client.query('DELETE FROM nl_pagos WHERE pedido_id = $1', [orderId]);
+
+            // 6. Clear repeat self-reference if another order was repeated from this one
+            await client.query('UPDATE nl_pedidos SET repeat_source_id = NULL WHERE repeat_source_id = $1', [orderId]);
+
+            // 7. Delete associated operational, tracking, and child records
+            await client.query('DELETE FROM nl_enlaces_cortos WHERE pedido_id = $1', [orderId]);
+            await client.query('DELETE FROM nl_descuentos_usos WHERE pedido_id = $1', [orderId]);
+            await client.query('DELETE FROM nl_pedido_repeat_photos WHERE pedido_id = $1', [orderId]);
+            await client.query('DELETE FROM nl_pedido_archivos WHERE pedido_id = $1', [orderId]);
+            await client.query('DELETE FROM nl_pedido_aprobaciones WHERE pedido_id = $1', [orderId]);
+            await client.query('DELETE FROM nl_pedido_timeline WHERE pedido_id = $1', [orderId]);
+            await client.query('DELETE FROM nl_pedido_items WHERE pedido_id = $1', [orderId]);
+
+            // 8. Clean notifications referencing this order
+            await client.query(
+                `DELETE FROM nl_notificaciones 
+                 WHERE data->>'pedido_id' = $1::text OR data->>'codigo' = $2`,
+                [String(orderId), order.codigo]
+            );
+
+            // 9. Delete the order record itself
+            await client.query('DELETE FROM nl_pedidos WHERE id = $1', [orderId]);
+
+            await client.query('COMMIT');
+            return {
+                ok: true,
+                data: {
+                    id: orderId,
+                    codigo: order.codigo,
+                    paciente_nombre: order.paciente_nombre
+                }
+            };
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
     }
 });

@@ -5,6 +5,7 @@ import { useNotifications } from '../state/NotificationContext.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import { formatDentalSelection, sortTeethByArchOrder, getToothRole } from '../utils/odontograma.js';
 import { apiClient } from '../services/http/apiClient.js';
 import { useOrderDetailQuery } from '../modules/orders/queries/useOrderDetailQuery.js';
@@ -144,6 +145,8 @@ const DetallePedido = () => {
     const [approvalFile, setApprovalFile] = useState(null);
     const [uploadMode, setUploadMode] = useState('file');
     const [isDraggingApproval, setIsDraggingApproval] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const approvalFileInputRef = useRef(null);
     const caseFileInputRef = useRef(null);
     const stepperScrollRef = useRef(null);
@@ -535,6 +538,24 @@ const DetallePedido = () => {
             });
         }
     };
+
+    const handleDeleteOrder = async () => {
+        try {
+            setDeleting(true);
+            await apiClient(`/pedidos/${id}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
+            toast.success(`Pedido ${pedido?.codigo || ''} eliminado correctamente`);
+            setDeleteModalOpen(false);
+            navigate('/pedidos');
+        } catch (err) {
+            console.error(err);
+            toast.error(err.message || 'No se pudo eliminar el pedido');
+        } finally {
+            setDeleting(false);
+        }
+    };
     const caseFiles = Array.isArray(pedido.archivos) ? pedido.archivos : [];
     const { intakeMode, notes: observationNotes } = parseIntakeFromObservaciones(pedido.observaciones);
     const intakeLabel = intakeMode ? (ORDER_INTAKE_LABELS[intakeMode] || intakeMode) : null;
@@ -689,6 +710,20 @@ const DetallePedido = () => {
                                             : `Avanzar a ${statusLabel(nextStatus)}`}
                                 </span>
                                 <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                            </button>
+                        )}
+
+                        {(user?.tipo === 'admin' || user?.rol === 'admin') && (
+                            <button
+                                type="button"
+                                className="btn btn-secondary pedido-action-icon-btn"
+                                onClick={() => setDeleteModalOpen(true)}
+                                disabled={updating || deleting}
+                                title="Eliminar pedido permanentemente"
+                                aria-label="Eliminar pedido"
+                                style={{ borderColor: 'var(--color-danger, #ef4444)' }}
+                            >
+                                <i className="bi bi-trash" aria-hidden="true" style={{ color: 'var(--color-danger, #ef4444)' }}></i>
                             </button>
                         )}
                     </div>
@@ -1752,6 +1787,20 @@ const DetallePedido = () => {
                 pedido={pedido}
                 items={pedido?.items || []}
                 approvalLink={approvalLink}
+            />
+
+            <ConfirmDialog
+                isOpen={deleteModalOpen}
+                open={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={handleDeleteOrder}
+                title={`Eliminar pedido ${pedido?.codigo || ''}`}
+                message={`¿Estás seguro de que deseas eliminar permanentemente el pedido ${pedido?.codigo || ''} del paciente "${pedido?.paciente_nombre || 'Sin paciente'}"?`}
+                description="Esta acción eliminará todos los registros asociados a este caso técnico (ítems, seguimiento, historial de estados y archivos adjuntos). Esta acción es irreversible."
+                confirmLabel="Eliminar definitivamente"
+                variant="danger"
+                isLoading={deleting}
+                icon="bi-trash"
             />
         </div>
     );

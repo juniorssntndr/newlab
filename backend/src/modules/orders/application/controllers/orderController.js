@@ -375,5 +375,30 @@ export const makeOrderController = ({ orderService }) => ({
         } catch (error) {
             next(error);
         }
+    },
+    deleteOrder: async (req, res, next) => {
+        try {
+            const result = await orderService.deleteOrder({
+                user: req.user,
+                orderId: req.params.id
+            });
+
+            if (result.ok) {
+                await writeAuditEvent(req, {
+                    entidad: 'pedido',
+                    entidadId: req.params.id,
+                    accion: 'pedido_eliminado',
+                    descripcion: `Pedido ${result.data?.codigo || req.params.id} eliminado del sistema`,
+                    metadata: {
+                        codigo: result.data?.codigo,
+                        paciente_nombre: result.data?.paciente_nombre
+                    }
+                });
+            }
+
+            return sendServiceResult(res, result);
+        } catch (error) {
+            next(error);
+        }
     }
 });

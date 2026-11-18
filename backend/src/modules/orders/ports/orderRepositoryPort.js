@@ -35,6 +35,9 @@ export const createOrderRepositoryPort = () => ({
     markOrderNotificationsRead: async () => {
         throw new Error('Not implemented');
     },
+    deleteOrder: async () => {
+        throw new Error('Not implemented');
+    },
     getDesignNotificationRecipients: async () => {
         throw new Error('Not implemented');
     }

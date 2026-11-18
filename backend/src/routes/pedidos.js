@@ -63,5 +63,6 @@ router.patch('/:id/fecha-entrega', delegateToOrders('updateOrderDeliveryDate'));
 router.patch('/:id/aprobacion/:aprobacionId', delegateToOrders('respondOrderApproval'));
 router.patch('/:id/aprobacion/:aprobacionId/meet', delegateToOrders('updateApprovalMeetLink'));
 router.post('/:id/solicitar-diseno', delegateToOrders('requestDesign'));
+router.delete('/:id', delegateToOrders('deleteOrder'));
 
 export default router;

@@ -23,6 +23,7 @@ export const makeOrderRoutes = ({ orderController }) => {
     router.patch('/:id/aprobacion/:aprobacionId', orderController.respondOrderApproval);
     router.patch('/:id/aprobacion/:aprobacionId/meet', orderController.updateApprovalMeetLink);
     router.post('/:id/solicitar-diseno', orderController.requestDesign);
+    router.delete('/:id', orderController.deleteOrder);
 
     return router;
 };
