@@ -15,22 +15,22 @@ ALTER TABLE nl_fin_cuentas
     ADD COLUMN IF NOT EXISTS descripcion TEXT,
     ADD COLUMN IF NOT EXISTS saldo_actual NUMERIC(14, 2) DEFAULT 0.00;
 
--- Actualizar cuentas predeterminadas existentes
+-- Actualizar cuentas predeterminadas existentes solo si están vacías o con los nombres iniciales legacy
 UPDATE nl_fin_cuentas
-SET nombre = 'Caja Principal (Efectivo)',
+SET nombre = COALESCE(NULLIF(nombre, ''), 'Caja Principal (Efectivo)'),
     tipo_cuenta = 'caja',
-    banco = 'Efectivo',
-    color = '#10b981',
-    descripcion = 'Efectivo físico de operaciones en mostrador'
-WHERE id = 1;
+    banco = COALESCE(NULLIF(banco, ''), 'Efectivo'),
+    color = COALESCE(NULLIF(color, ''), '#10b981'),
+    descripcion = COALESCE(NULLIF(descripcion, ''), 'Efectivo físico de operaciones en mostrador')
+WHERE id = 1 AND (nombre IS NULL OR nombre IN ('Caja', 'Caja Principal', 'Caja Principal (Efectivo)'));
 
 UPDATE nl_fin_cuentas
-SET nombre = 'BCP Operativo (Principal)',
+SET nombre = COALESCE(NULLIF(nombre, ''), 'BCP Operativo (Principal)'),
     tipo_cuenta = 'banco',
-    banco = 'BCP',
-    color = '#0284c7',
-    descripcion = 'Cuenta corriente bancaria principal'
-WHERE id = 2;
+    banco = COALESCE(NULLIF(banco, ''), 'BCP'),
+    color = COALESCE(NULLIF(color, ''), '#0284c7'),
+    descripcion = COALESCE(NULLIF(descripcion, ''), 'Cuenta corriente bancaria principal')
+WHERE id = 2 AND (nombre IS NULL OR nombre = 'Banco Principal');
 
 -- 3. Tabla de Transferencias entre Cuentas (Movimientos Neutros de Tesorería)
 CREATE TABLE IF NOT EXISTS nl_fin_transferencias (

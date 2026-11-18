@@ -230,9 +230,14 @@ async function applyToDb(connectionPool) {
   }
 }
 
-applyToDb(pool)
-  .then(() => pool.end())
-  .catch(() => {
-    pool.end();
-    process.exit(1);
-  });
+if (process.argv.includes('--force')) {
+  applyToDb(pool)
+    .then(() => pool.end())
+    .catch(() => {
+      pool.end();
+      process.exit(1);
+    });
+} else {
+  console.log('SAFETY: sync_ruleta_12_sectores_prod.mjs requires --force to run against database. Aborting.');
+  process.exit(0);
+}

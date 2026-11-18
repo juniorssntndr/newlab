@@ -11,13 +11,10 @@ ON CONFLICT (id) DO UPDATE SET
     tiempo_animacion_segundos = 4,
     updated_at = NOW();
 
--- Si no hay sectores oficiales configurados, insertar la plantilla de 12 sectores
+-- Si la tabla de premios está completamente vacía, insertar la plantilla inicial de 12 sectores
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM nl_ruleta_premios WHERE titulo = '¡PIÑA!' AND activo = TRUE) THEN
-        -- Desactivar sectores antiguos si los hubiera
-        UPDATE nl_ruleta_premios SET activo = FALSE WHERE activo = TRUE;
-
+    IF NOT EXISTS (SELECT 1 FROM nl_ruleta_premios LIMIT 1) THEN
         -- 12 sectores intercalados: 6 con premio (#0284c7) y 6 piñas (#ffffff)
         INSERT INTO nl_ruleta_premios (
             titulo, tipo_premio, valor, descripcion, color_hex, texto_color,

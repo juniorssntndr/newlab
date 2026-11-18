@@ -41,12 +41,26 @@ async function sync() {
             return a.localeCompare(b);
         });
 
+    await demo.query(`
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            name VARCHAR(255) PRIMARY KEY,
+            applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+    const appliedDemoRes = await demo.query('SELECT name FROM schema_migrations');
+    const appliedDemoSet = new Set(appliedDemoRes.rows.map((r) => r.name));
+
     for (const file of sqlFiles) {
+        if (appliedDemoSet.has(file)) continue;
         const sqlPath = path.join(migrationsDir, file);
         const sql = fs.readFileSync(sqlPath, 'utf8');
         try {
+            await demo.query('BEGIN');
             await demo.query(sql);
+            await demo.query('INSERT INTO schema_migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING', [file]);
+            await demo.query('COMMIT');
         } catch (err) {
+            await demo.query('ROLLBACK');
             // ignore idempotent migration errors
         }
     }
