@@ -730,10 +730,10 @@ export const makeOrderPgRepository = ({ pool }) => ({
 
             // 1. Fiscal protection: cannot delete order with active SUNAT electronic invoice
             const fiscalRes = await client.query(
-                `SELECT id, serie, numero, estado, tipo_comprobante 
+                `SELECT id, serie, correlativo, estado_sunat, tipo_comprobante 
                  FROM nl_comprobantes 
                  WHERE (pedido_id = $1 OR id IN (SELECT comprobante_id FROM nl_comprobante_pedidos WHERE pedido_id = $1))
-                   AND estado IN ('emitido', 'declarado', 'enviado', 'aceptado')`,
+                   AND estado_sunat IN ('emitido', 'declarado', 'enviado', 'aceptado')`,
                 [orderId]
             );
             if (fiscalRes.rows.length > 0) {
@@ -742,7 +742,7 @@ export const makeOrderPgRepository = ({ pool }) => ({
                 return {
                     ok: false,
                     status: 400,
-                    error: `No se puede eliminar el pedido porque tiene un comprobante fiscal SUNAT emitido (${comp.serie}-${comp.numero}). Debe anularse primero con Nota de Crédito.`
+                    error: `No se puede eliminar el pedido porque tiene un comprobante fiscal SUNAT emitido (${comp.serie}-${comp.correlativo}). Debe anularse primero con Nota de Crédito.`
                 };
             }
 
@@ -798,8 +798,8 @@ export const makeOrderPgRepository = ({ pool }) => ({
             // 8. Clean notifications referencing this order
             await client.query(
                 `DELETE FROM nl_notificaciones 
-                 WHERE data->>'pedido_id' = $1::text OR data->>'codigo' = $2`,
-                [String(orderId), order.codigo]
+                 WHERE link = $1 OR (data IS NOT NULL AND (data->>'pedido_id' = $2::text OR data->>'codigo' = $3))`,
+                [`/pedidos/${orderId}`, String(orderId), order.codigo]
             );
 
             // 9. Delete the order record itself
