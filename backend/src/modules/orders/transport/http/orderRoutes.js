@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, forbidRole } from '../../../../middleware/auth.js';
+import { authenticateToken, forbidRole, requireRole } from '../../../../middleware/auth.js';
 import { validateBody } from '../../../../middleware/validate.js';
 import { createPedidoSchema } from '../../../../validation/schemas.js';
 import { requireOrderRepeatStaff, uploadRepeatPhotos } from './orderRepeatUpload.js';
@@ -23,7 +23,7 @@ export const makeOrderRoutes = ({ orderController }) => {
     router.patch('/:id/aprobacion/:aprobacionId', orderController.respondOrderApproval);
     router.patch('/:id/aprobacion/:aprobacionId/meet', orderController.updateApprovalMeetLink);
     router.post('/:id/solicitar-diseno', orderController.requestDesign);
-    router.delete('/:id', orderController.deleteOrder);
+    router.delete('/:id', requireRole('admin'), orderController.deleteOrder);
 
     return router;
 };

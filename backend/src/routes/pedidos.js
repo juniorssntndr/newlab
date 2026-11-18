@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { authenticateToken, forbidRole } from '../middleware/auth.js';
+import { authenticateToken, forbidRole, requireRole } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { createPedidoSchema } from '../validation/schemas.js';
 import { requireOrderRepeatStaff, uploadRepeatPhotos } from '../modules/orders/transport/http/orderRepeatUpload.js';
@@ -63,6 +63,6 @@ router.patch('/:id/fecha-entrega', delegateToOrders('updateOrderDeliveryDate'));
 router.patch('/:id/aprobacion/:aprobacionId', delegateToOrders('respondOrderApproval'));
 router.patch('/:id/aprobacion/:aprobacionId/meet', delegateToOrders('updateApprovalMeetLink'));
 router.post('/:id/solicitar-diseno', delegateToOrders('requestDesign'));
-router.delete('/:id', delegateToOrders('deleteOrder'));
+router.delete('/:id', requireRole('admin'), delegateToOrders('deleteOrder'));
 
 export default router;
