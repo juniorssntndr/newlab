@@ -52,8 +52,8 @@ const AfinixLanding = () => {
         window.navigator.standalone === true
     ));
 
-    // Si el usuario ya está autenticado o abrió la app instalada, evitamos mostrar la landing mientras redirige
-    if (!forceLanding && (user || (isStandalone && !authLoading))) {
+    // Si el usuario ya está autenticado o abrió la app instalada (standalone), evitamos mostrar la landing
+    if (!forceLanding && (user || isStandalone)) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg, #0f172a)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
