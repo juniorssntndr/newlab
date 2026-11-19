@@ -400,14 +400,13 @@ export const makeDashboardPgRepository = ({ pool }) => ({
     getFinanceBalances: async () => {
         const result = await pool.query(
             `WITH base AS (
-                SELECT tipo_cuenta as tipo_fondo, COALESCE(SUM(saldo_inicial), 0) as saldo_inicial
+                SELECT id, tipo_cuenta, COALESCE(saldo_inicial, 0) as saldo_inicial
                 FROM nl_fin_cuentas
                 WHERE activo = TRUE
-                GROUP BY tipo_cuenta
             ),
             pagos AS (
                 SELECT
-                    COALESCE(tipo_fondo, CASE WHEN LOWER(COALESCE(metodo, '')) = 'efectivo' THEN 'caja' ELSE 'banco' END) as tipo_fondo,
+                    cuenta_id,
                     COALESCE(SUM(monto), 0) as ingresos
                 FROM nl_pagos
                 WHERE movimiento_id IS NULL
@@ -415,18 +414,42 @@ export const makeDashboardPgRepository = ({ pool }) => ({
             ),
             movimientos AS (
                 SELECT
-                    COALESCE(tipo_fondo, 'banco') as tipo_fondo,
+                    cuenta_id,
                     COALESCE(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END), 0) as ingresos,
-                    COALESCE(SUM(CASE WHEN tipo = 'egreso' THEN monto ELSE 0 END), 0) as egresos
+                    COALESCE(SUM(CASE WHEN tipo IN ('egreso', 'retiro_socio') THEN monto ELSE 0 END), 0) as egresos
                 FROM nl_fin_movimientos
                 GROUP BY 1
+            ),
+            transfers_in AS (
+                SELECT cuenta_destino_id, COALESCE(SUM(monto), 0) as total_in
+                FROM nl_fin_transferencias
+                GROUP BY 1
+            ),
+            transfers_out AS (
+                SELECT cuenta_origen_id, COALESCE(SUM(monto), 0) as total_out
+                FROM nl_fin_transferencias
+                GROUP BY 1
+            ),
+            cuenta_saldos AS (
+                SELECT
+                    b.tipo_cuenta,
+                    (
+                        b.saldo_inicial
+                        + COALESCE(p.ingresos, 0)
+                        + COALESCE(mv.ingresos, 0)
+                        + COALESCE(tin.total_in, 0)
+                        - COALESCE(mv.egresos, 0)
+                        - COALESCE(tout.total_out, 0)
+                    ) as saldo
+                FROM base b
+                LEFT JOIN pagos p ON p.cuenta_id = b.id
+                LEFT JOIN movimientos mv ON mv.cuenta_id = b.id
+                LEFT JOIN transfers_in tin ON tin.cuenta_destino_id = b.id
+                LEFT JOIN transfers_out tout ON tout.cuenta_origen_id = b.id
             )
-            SELECT
-                b.tipo_fondo as tipo_cuenta,
-                b.saldo_inicial + COALESCE(p.ingresos, 0) + COALESCE(mv.ingresos, 0) - COALESCE(mv.egresos, 0) as saldo
-            FROM base b
-            LEFT JOIN pagos p ON p.tipo_fondo = b.tipo_fondo
-            LEFT JOIN movimientos mv ON mv.tipo_fondo = b.tipo_fondo`
+            SELECT tipo_cuenta, SUM(saldo) as saldo
+            FROM cuenta_saldos
+            GROUP BY tipo_cuenta`
         );
 
         return result.rows;
