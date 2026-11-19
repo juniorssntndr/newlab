@@ -15,6 +15,8 @@ import {
 } from './afinixLandingContent.js';
 import { whatsappHref } from '../../config/siteSeo.js';
 import AfinixLogo from '../../components/AfinixLogo';
+import { useAuth } from '../../state/AuthContext.jsx';
+import { getDefaultRouteForUser } from '../../utils/accessControl.js';
 
 const CLINIC_LOGIN_PATH = '/login?perfil=clinicas';
 const WHATSAPP_CHANNEL = contactChannels.find((channel) => channel.label === 'WhatsApp') ?? contactChannels[0];
@@ -118,7 +120,11 @@ function useMatchMedia(query) {
 }
 
 export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'light' }) {
+    const { user } = useAuth() || {};
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const portalTarget = user ? getDefaultRouteForUser(user) : CLINIC_LOGIN_PATH;
+    const portalLabel = user ? 'Ir a mi panel' : 'Entrar al portal';
+    const portalIcon = user ? 'bi-grid-fill' : 'bi-box-arrow-in-right';
 
     useEffect(() => {
         const closeMenuOnDesktop = () => {
@@ -256,9 +262,9 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'light
                         <i className={`bi ${isMobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`} aria-hidden="true"></i>
                     </button>
                     {themeToggle}
-                    <Link className="afinix-login-link" to={CLINIC_LOGIN_PATH} aria-label="Entrar al portal">
-                        <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                        <span className="afinix-login-link__label">Entrar al portal</span>
+                    <Link className="afinix-login-link" to={portalTarget} aria-label={portalLabel}>
+                        <i className={`bi ${portalIcon}`} aria-hidden="true"></i>
+                        <span className="afinix-login-link__label">{portalLabel}</span>
                     </Link>
                 </div>
                 <nav className="afinix-mobile-quicknav" aria-label="Accesos rápidos">
@@ -297,9 +303,9 @@ export function LandingNavbar({ reduceMotion, themeToggle = null, theme = 'light
                         </div>
                         {themeToggle ? <div className="afinix-mobile-menu-theme">{React.cloneElement(themeToggle, { showSuggestion: false })}</div> : null}
                     </div>
-                    <Link className="afinix-mobile-menu-login" to={CLINIC_LOGIN_PATH} onClick={closeMobileMenu}>
-                        <i className="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                        Entrar al portal
+                    <Link className="afinix-mobile-menu-login" to={portalTarget} onClick={closeMobileMenu}>
+                        <i className={`bi ${portalIcon}`} aria-hidden="true"></i>
+                        {portalLabel}
                     </Link>
                 </div>
             </motion.header>

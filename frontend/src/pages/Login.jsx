@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext.jsx';
 import AfinixLogo from '../components/AfinixLogo.jsx';
@@ -23,7 +23,7 @@ const LOGIN_STORY_PROOFS = [
 ];
 
 const Login = () => {
-    const { login } = useAuth();
+    const { login, user, loading: authLoading } = useAuth();
     const {
         theme,
         toggle,
@@ -38,6 +38,12 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const showDemoCredentials = import.meta.env.DEV;
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            navigate(getDefaultRouteForUser(user), { replace: true });
+        }
+    }, [user, authLoading, navigate]);
 
     const perfilHint = useMemo(() => {
         const p = (searchParams.get('perfil') || '').toLowerCase();
@@ -69,6 +75,17 @@ const Login = () => {
         setPassword(demoPass);
         setError('');
     };
+
+    if (authLoading || user) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg, #0f172a)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div className="spinner-border text-primary" role="status" style={{ width: '2.5rem', height: '2.5rem' }}></div>
+                    <p style={{ color: 'var(--color-text-secondary, #94a3b8)', fontSize: '0.875rem' }}>Ingresando a tu panel...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

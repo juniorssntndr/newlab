@@ -100,6 +100,7 @@ const App = () => {
             <Toaster position="top-right" />
             <Routes>
                 <Route path="/" element={<AfinixLanding />} />
+                <Route path="/landing" element={<AfinixLanding />} />
                 <Route path="/landing-2" element={<AfinixLandingV2 />} />
                 {SEO_ARTICLE_PATHS.map((seoPath) => (
                     <Route key={seoPath} path={seoPath} element={<AfinixSeoArticlePage path={seoPath} />} />
