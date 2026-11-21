@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { optimizeImageForUpload } from '../../utils/imageOptimizer.js';
 import { uploadSustentoReceipt } from '../../modules/finance/api/financeApi.js';
+import { resolveImageUrl } from '../../utils/resolveImageUrl.js';
 
 export default function ReceiptAttachmentField({
     value,
@@ -50,6 +51,7 @@ export default function ReceiptAttachmentField({
     };
 
     const isPdf = value && (value.toLowerCase().endsWith('.pdf') || value.includes('application/pdf'));
+    const fullUrl = resolveImageUrl(value);
 
     return (
         <div className="receipt-attachment-field form-group" style={{ marginBottom: 0 }}>
@@ -104,7 +106,7 @@ export default function ReceiptAttachmentField({
                         </div>
                     ) : (
                         <div
-                            onClick={() => onView ? onView(value) : window.open(value, '_blank')}
+                            onClick={() => onView ? onView(value) : window.open(fullUrl, '_blank')}
                             style={{
                                 width: '42px',
                                 height: '42px',
@@ -121,7 +123,7 @@ export default function ReceiptAttachmentField({
                             title="Haz clic para ver en tamaño completo"
                         >
                             <img
-                                src={value}
+                                src={fullUrl}
                                 alt="Comprobante"
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 onError={(e) => {

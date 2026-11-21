@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from '../Modal.jsx';
+import { resolveImageUrl } from '../../utils/resolveImageUrl.js';
 
 export default function ReceiptPreviewModal({
     open,
@@ -12,6 +13,7 @@ export default function ReceiptPreviewModal({
 
     if (!open || !receiptUrl) return null;
 
+    const fullUrl = resolveImageUrl(receiptUrl);
     const isPdf = receiptUrl.toLowerCase().endsWith('.pdf') || receiptUrl.includes('application/pdf');
 
     const handleReset = () => {
@@ -76,7 +78,7 @@ export default function ReceiptPreviewModal({
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <a
-                            href={receiptUrl}
+                            href={fullUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn btn-secondary btn-sm"
@@ -143,13 +145,13 @@ export default function ReceiptPreviewModal({
                 }}>
                     {isPdf ? (
                         <iframe
-                            src={receiptUrl}
+                            src={fullUrl}
                             title="Documento PDF"
                             style={{ width: '100%', height: '500px', border: 'none', borderRadius: '6px' }}
                         />
                     ) : (
                         <img
-                            src={receiptUrl}
+                            src={fullUrl}
                             alt="Comprobante de sustento"
                             style={{
                                 maxWidth: '100%',
