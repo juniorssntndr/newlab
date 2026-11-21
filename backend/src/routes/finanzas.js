@@ -1,7 +1,20 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { createMovimientoFinancieroSchema, createPagoSchema, updateMovimientoFinancieroSchema } from '../validation/schemas.js';
+
+const receiptUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const mime = (file.mimetype || '').toLowerCase();
+        if (!mime.startsWith('image/') && mime !== 'application/pdf') {
+            return cb(new Error('Solo se permiten imágenes (JPG, PNG, WebP) o documentos PDF'));
+        }
+        cb(null, true);
+    }
+});
 
 const router = Router();
 router.use(authenticateToken);
@@ -23,6 +36,7 @@ const delegateToFinance = (controllerMethod) => async (req, res, next) => {
 router.get('/', labFinanceRole, delegateToFinance('listFinanceOrders'));
 router.get('/catalogos', labFinanceRole, delegateToFinance('getCatalogos'));
 router.get('/movimientos', labFinanceRole, delegateToFinance('listMovimientos'));
+router.post('/upload-sustento', labFinanceRole, receiptUpload.single('archivo'), delegateToFinance('uploadSustento'));
 router.post('/movimientos', labFinanceRole, validateBody(createMovimientoFinancieroSchema), delegateToFinance('createMovimiento'));
 router.put('/movimientos/:movimientoId', labFinanceRole, validateBody(updateMovimientoFinancieroSchema), delegateToFinance('updateMovimiento'));
 router.delete('/movimientos/:movimientoId', labFinanceRole, delegateToFinance('deleteMovimiento'));

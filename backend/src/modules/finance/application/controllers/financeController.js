@@ -1,4 +1,5 @@
 import { writeAuditEvent } from '../../../../services/audit.js';
+import { uploadFinanceReceipt } from '../../../../services/storage.js';
 
 const sendServiceResult = (res, result) => {
     if (!result.ok) {
@@ -57,6 +58,17 @@ export const makeFinanceController = ({ financeService }) => ({
             });
 
             return res.json(rows);
+        } catch (error) {
+            next(error);
+        }
+    },
+    uploadSustento: async (req, res, next) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: 'Debes seleccionar una imagen de comprobante' });
+            }
+            const url = await uploadFinanceReceipt(req.file);
+            return res.status(201).json({ ok: true, url });
         } catch (error) {
             next(error);
         }

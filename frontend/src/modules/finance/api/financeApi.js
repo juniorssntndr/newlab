@@ -304,3 +304,13 @@ export const registerRetiroSocio = ({ payload, headers }) => apiClient('/finanza
     headers,
     body: payload
 });
+
+export const uploadSustentoReceipt = async ({ file, headers } = {}) => {
+    const formData = new FormData();
+    formData.append('archivo', file);
+    return apiClient('/finanzas/upload-sustento', {
+        method: 'POST',
+        headers,
+        body: formData
+    });
+};

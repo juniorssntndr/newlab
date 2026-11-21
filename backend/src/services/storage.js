@@ -75,6 +75,13 @@ export const uploadProductImage = async (file) => {
     return uploadToLocalDisk(file, 'product');
 };
 
+export const uploadFinanceReceipt = async (file) => {
+    if (!file) return null;
+    const uploaded = await uploadToSupabase(file, 'sustentos', 'sustento');
+    if (uploaded) return uploaded;
+    return uploadToLocalDisk(file, 'sustento');
+};
+
 export const uploadOrderCaseImage = async ({ file, orderId }) => {
     if (!file) return null;
     const safeOrderId = String(orderId || 'unknown').replace(/[^a-zA-Z0-9-_]/g, '-');

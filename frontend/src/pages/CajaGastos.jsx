@@ -30,6 +30,8 @@ import AfinixLogo from '../components/AfinixLogo.jsx';
 import ComprobantePrintSheet from '../components/billing/ComprobantePrintSheet.jsx';
 import ComprobantePrintModal from '../components/billing/ComprobantePrintModal.jsx';
 import CajaCierrePrintSheet from '../components/billing/CajaCierrePrintSheet.jsx';
+import ReceiptAttachmentField from '../components/finance/ReceiptAttachmentField.jsx';
+import ReceiptPreviewModal from '../components/finance/ReceiptPreviewModal.jsx';
 import { generateReceiptHash } from '../utils/sunatReceipt.js';
 import { CATEGORIA_GASTO_LABELS, formatCategoriaGasto } from '../constants/financeCategories.js';
 import '../styles/caja-gastos.css';
@@ -202,7 +204,7 @@ const GASTO_SIN_SUSTENTO_OPCIONES = [
     { id: 'otro', label: 'Otro gasto menor', icon: 'bi-pencil-square', hint: 'Especificar motivo del gasto' }
 ];
 
-const MovementFormFields = ({ form, setForm, categoryOptions, defaultCategory, mode = 'create', hideTipoToggle = false, hideFondoToggle = false }) => {
+const MovementFormFields = ({ form, setForm, categoryOptions, defaultCategory, mode = 'create', hideTipoToggle = false, hideFondoToggle = false, onViewReceipt }) => {
     const isIngreso = form.tipo === 'ingreso';
     const amountInputId = `${mode}-movement-amount`;
     const dateInputId = `${mode}-movement-date`;
@@ -411,6 +413,15 @@ const MovementFormFields = ({ form, setForm, categoryOptions, defaultCategory, m
                                 )}
                             </div>
                         )}
+
+                        {/* Adjuntar Comprobante de Sustento */}
+                        <div style={{ marginTop: '10px' }}>
+                            <ReceiptAttachmentField
+                                value={form.sustento_archivo_url}
+                                onChange={(url) => setForm((prev) => ({ ...prev, sustento_archivo_url: url }))}
+                                onView={onViewReceipt}
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -480,6 +491,19 @@ const MovementFormFields = ({ form, setForm, categoryOptions, defaultCategory, m
                             placeholder="Ej. Op. BCP 893412, Yape 987654321..."
                             value={form.sustento_nota || ''}
                             onChange={(e) => setForm((prev) => ({ ...prev, sustento_nota: e.target.value }))}
+                        />
+                    </div>
+                )}
+
+                {/* Comprobante / Voucher opcional para Ingresos */}
+                {isIngreso && (
+                    <div className="form-group expense-form-grid-span">
+                        <ReceiptAttachmentField
+                            value={form.sustento_archivo_url}
+                            onChange={(url) => setForm((prev) => ({ ...prev, sustento_archivo_url: url }))}
+                            label="Voucher / Comprobante de Pago (Opcional)"
+                            helpText="Adjunta la captura del Yape, transferencia o recibo firmado"
+                            onView={onViewReceipt}
                         />
                     </div>
                 )}
@@ -784,6 +808,16 @@ const CajaGastos = () => {
     const [bitacoraScope, setBitacoraScope] = useState('turno'); // 'turno' | 'dia' | 'todos'
     const [modalOpen, setModalOpen] = useState(false);
     const [editingMovement, setEditingMovement] = useState(null);
+
+    // Visor digital de comprobantes y fotos de sustento
+    const [receiptModalState, setReceiptModalState] = useState({ open: false, url: '', movement: null });
+    const openReceiptModal = (url, movement = null) => {
+        if (!url) return;
+        setReceiptModalState({ open: true, url, movement });
+    };
+    const closeReceiptModal = () => {
+        setReceiptModalState({ open: false, url: '', movement: null });
+    };
     const [movementToDelete, setMovementToDelete] = useState(null);
     const [gastoSearch, setGastoSearch] = useState('');
     const [gastoFilterFondo, setGastoFilterFondo] = useState('todos'); // 'todos' | 'caja' | 'banco'
@@ -1714,7 +1748,11 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                     referencia: createForm.sustento_nota?.trim() || null,
                     beneficiario: clientName,
                     descripcion: descripcionConsolidada,
-                    comprobante: comprobanteInfo
+                    sustento_archivo_url: createForm.sustento_archivo_url?.trim() || null,
+                    comprobante: {
+                        ...comprobanteInfo,
+                        pdfUrl: comprobanteInfo.pdfUrl || createForm.sustento_archivo_url?.trim() || null
+                    }
                 }
             });
 
@@ -2285,6 +2323,17 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Adjuntar Voucher o Comprobante de Cobro */}
+                                        <div style={{ marginTop: '10px' }}>
+                                            <ReceiptAttachmentField
+                                                value={createForm.sustento_archivo_url}
+                                                onChange={(url) => setCreateForm(prev => ({ ...prev, sustento_archivo_url: url }))}
+                                                label="Voucher o Foto de Comprobante (Opcional)"
+                                                helpText="Adjunta captura de Yape, transferencia o recibo"
+                                                onView={(url) => openReceiptModal(url, { beneficiario: ticketRazonSocial || 'Cliente', monto: totalCobrar, tipo: 'ingreso' })}
+                                            />
+                                        </div>
                                     </div>
 
                                     {/* PASO 3: DETALLE DE TRABAJOS A COBRAR */}
@@ -2863,6 +2912,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                 mode="create"
                                 hideTipoToggle
                                 hideFondoToggle
+                                onViewReceipt={openReceiptModal}
                             />
 
                             <div className="expenses-form-footer" style={{ marginTop: 'var(--space-4)' }}>
@@ -3166,6 +3216,52 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                             {timeFormatted}
                                                                         </span>
                                                                     )}
+                                                                    {mov.sustento_archivo_url ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="gasto-chip"
+                                                                            style={{
+                                                                                cursor: 'pointer',
+                                                                                background: 'rgba(2, 132, 199, 0.12)',
+                                                                                color: 'var(--color-primary, #0284c7)',
+                                                                                border: '1px solid rgba(2, 132, 199, 0.3)',
+                                                                                fontWeight: 600,
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '4px'
+                                                                            }}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                openReceiptModal(mov.sustento_archivo_url, mov);
+                                                                            }}
+                                                                            title="Ver foto del comprobante adjunto"
+                                                                        >
+                                                                            <i className="bi bi-paperclip"></i>
+                                                                            <span>Foto</span>
+                                                                        </button>
+                                                                    ) : (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="gasto-chip"
+                                                                            style={{
+                                                                                cursor: 'pointer',
+                                                                                background: 'var(--color-bg-alt, #f8fafc)',
+                                                                                color: 'var(--color-text-secondary, #64748b)',
+                                                                                border: '1px dashed var(--color-border, #cbd5e1)',
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '4px'
+                                                                            }}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                openEditModal(mov);
+                                                                            }}
+                                                                            title="Haz clic para subir foto del comprobante"
+                                                                        >
+                                                                            <i className="bi bi-camera"></i>
+                                                                            <span>+ Foto</span>
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -3175,6 +3271,17 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                 -{formatCurrency(mov.monto)}
                                                             </div>
                                                             <div className="gasto-card-actions">
+                                                                {mov.sustento_archivo_url && (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="gasto-action-btn"
+                                                                        onClick={() => openReceiptModal(mov.sustento_archivo_url, mov)}
+                                                                        title="Ver foto del comprobante"
+                                                                        style={{ color: 'var(--color-primary, #0284c7)' }}
+                                                                    >
+                                                                        <i className="bi bi-file-earmark-image"></i>
+                                                                    </button>
+                                                                )}
                                                                 <button
                                                                     type="button"
                                                                     className="gasto-action-btn"
@@ -4319,6 +4426,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                         categoryOptions={categoryOptions}
                         defaultCategory={defaultCategory}
                         mode="edit"
+                        onViewReceipt={openReceiptModal}
                     />
                 </form>
             </Modal>
@@ -5178,6 +5286,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                 <th>Comprobante</th>
                                                                 <th>Medio / Fondo</th>
                                                                 <th style={{ textAlign: 'right', width: '95px' }}>Monto</th>
+                                                                <th style={{ width: '40px', textAlign: 'center' }}></th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -5202,9 +5311,31 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                         <td>{m.producto_nombre || m.descripcion || 'Trabajo Dental'}</td>
                                                                         <td style={{ textAlign: 'center', fontWeight: 700 }}>{formattedCant}</td>
                                                                         <td>
-                                                                            <span className="caja-badge-voucher">
-                                                                                {compLabel}
-                                                                            </span>
+                                                                            {m.sustento_archivo_url ? (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="caja-badge-voucher"
+                                                                                    style={{
+                                                                                        cursor: 'pointer',
+                                                                                        display: 'inline-flex',
+                                                                                        alignItems: 'center',
+                                                                                        gap: '4px',
+                                                                                        border: '1px solid var(--color-primary, #0284c7)',
+                                                                                        background: 'rgba(2, 132, 199, 0.08)',
+                                                                                        color: 'var(--color-primary, #0284c7)',
+                                                                                        fontWeight: 600
+                                                                                    }}
+                                                                                    onClick={() => openReceiptModal(m.sustento_archivo_url, m)}
+                                                                                    title="Ver voucher o comprobante digital"
+                                                                                >
+                                                                                    <i className="bi bi-image"></i>
+                                                                                    {compLabel}
+                                                                                </button>
+                                                                            ) : (
+                                                                                <span className="caja-badge-voucher">
+                                                                                    {compLabel}
+                                                                                </span>
+                                                                            )}
                                                                         </td>
                                                                         <td>
                                                                             <span className={`caja-badge-fund ${isCash ? 'is-cash' : 'is-bank'}`}>
@@ -5214,6 +5345,19 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                         </td>
                                                                         <td className="caja-cell-amount" style={{ color: 'var(--color-success)' }}>
                                                                             +{formatCurrency(m.monto)}
+                                                                        </td>
+                                                                        <td style={{ textAlign: 'center' }}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-ghost btn-xs btn-icon"
+                                                                                onClick={() => {
+                                                                                    setReporteModalOpen(false);
+                                                                                    openEditModal(m);
+                                                                                }}
+                                                                                title="Editar o adjuntar comprobante"
+                                                                            >
+                                                                                <i className="bi bi-pencil"></i>
+                                                                            </button>
                                                                         </td>
                                                                     </tr>
                                                                 );
@@ -5253,6 +5397,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                 <th>Comprobante / Sustento</th>
                                                                 <th>Fondo</th>
                                                                 <th style={{ textAlign: 'right', width: '95px' }}>Monto</th>
+                                                                <th style={{ width: '40px', textAlign: 'center' }}></th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -5272,7 +5417,45 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                             </span>
                                                                         </td>
                                                                         <td>{m.descripcion || '—'}</td>
-                                                                        <td style={{ color: 'var(--color-text-secondary)' }}>{compLabel}</td>
+                                                                        <td style={{ color: 'var(--color-text-secondary)' }}>
+                                                                            {m.sustento_archivo_url ? (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="caja-badge-voucher"
+                                                                                    style={{
+                                                                                        cursor: 'pointer',
+                                                                                        display: 'inline-flex',
+                                                                                        alignItems: 'center',
+                                                                                        gap: '4px',
+                                                                                        border: '1px solid var(--color-primary, #0284c7)',
+                                                                                        background: 'rgba(2, 132, 199, 0.08)',
+                                                                                        color: 'var(--color-primary, #0284c7)',
+                                                                                        fontWeight: 600
+                                                                                    }}
+                                                                                    onClick={() => openReceiptModal(m.sustento_archivo_url, m)}
+                                                                                    title="Ver foto del comprobante adjunto"
+                                                                                >
+                                                                                    <i className="bi bi-image"></i>
+                                                                                    {compLabel}
+                                                                                </button>
+                                                                            ) : (
+                                                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                                                    <span>{compLabel}</span>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        className="btn btn-ghost btn-xs"
+                                                                                        style={{ fontSize: '0.7rem', padding: '1px 5px', color: 'var(--color-primary, #0284c7)' }}
+                                                                                        onClick={() => {
+                                                                                            setReporteModalOpen(false);
+                                                                                            openEditModal(m);
+                                                                                        }}
+                                                                                        title="Adjuntar foto de comprobante"
+                                                                                    >
+                                                                                        <i className="bi bi-paperclip"></i>
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
                                                                         <td>
                                                                             <span className={`caja-badge-fund ${isCash ? 'is-cash' : 'is-bank'}`}>
                                                                                 <i className={`bi ${isCash ? 'bi-cash-coin' : 'bi-bank'}`}></i>
@@ -5281,6 +5464,19 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                         </td>
                                                                         <td className="caja-cell-amount" style={{ color: 'var(--color-danger)' }}>
                                                                             -{formatCurrency(m.monto)}
+                                                                        </td>
+                                                                        <td style={{ textAlign: 'center' }}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-ghost btn-xs btn-icon"
+                                                                                onClick={() => {
+                                                                                    setReporteModalOpen(false);
+                                                                                    openEditModal(m);
+                                                                                }}
+                                                                                title="Editar gasto o cambiar foto"
+                                                                            >
+                                                                                <i className="bi bi-pencil"></i>
+                                                                            </button>
                                                                         </td>
                                                                     </tr>
                                                                 );
@@ -5423,6 +5619,14 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                 </div>,
                 document.body
             )}
+
+            {/* Modal Visor de Comprobantes y Fotos de Sustento */}
+            <ReceiptPreviewModal
+                open={receiptModalState.open}
+                onClose={closeReceiptModal}
+                receiptUrl={receiptModalState.url}
+                movement={receiptModalState.movement}
+            />
         </div>
     );
 };

@@ -74,3 +74,24 @@ test('Gastos y Sustentos: Permite gasto sin sustento SOLO si incluye observació
     assert.equal(parsedInvalid.success, false);
     assert.match(parsedInvalid.error.issues[0].message, /observación explicativa es obligatoria/i);
 });
+
+test('Gastos y Sustentos: Permite adjuntar y actualizar sustento_archivo_url en movimientos pasados', () => {
+    const pastMovementPayload = {
+        tipo: 'egreso',
+        tipo_fondo: 'caja',
+        fecha_movimiento: '2026-11-15',
+        monto: 120.00,
+        categoria_gasto: 'materiales',
+        grupo_gasto: 'costo_directo',
+        beneficiario: 'Distribuidora Dental',
+        sustento_tipo: 'simple',
+        sustento_numero: 'B001-000492',
+        sustento_archivo_url: '/uploads/sustentos/sustento-1732190000-factura.webp',
+        descripcion: 'Compra de fresas de zirconio del 15 de noviembre'
+    };
+
+    const parsed = createMovimientoFinancieroSchema.safeParse(pastMovementPayload);
+    assert.equal(parsed.success, true);
+    assert.equal(parsed.data.sustento_archivo_url, '/uploads/sustentos/sustento-1732190000-factura.webp');
+    assert.equal(parsed.data.fecha_movimiento, '2026-11-15');
+});
