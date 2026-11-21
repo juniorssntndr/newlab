@@ -32,6 +32,7 @@ import ComprobantePrintModal from '../components/billing/ComprobantePrintModal.j
 import CajaCierrePrintSheet from '../components/billing/CajaCierrePrintSheet.jsx';
 import ReceiptAttachmentField from '../components/finance/ReceiptAttachmentField.jsx';
 import ReceiptPreviewModal from '../components/finance/ReceiptPreviewModal.jsx';
+import { downloadFinancialHtmlReport } from '../utils/financialHtmlReportGenerator.js';
 import { generateReceiptHash } from '../utils/sunatReceipt.js';
 import { CATEGORIA_GASTO_LABELS, formatCategoriaGasto } from '../constants/financeCategories.js';
 import '../styles/caja-gastos.css';
@@ -829,7 +830,16 @@ const CajaGastos = () => {
     const [reporteModalOpen, setReporteModalOpen] = useState(false);
     const [cierreReportPrintData, setCierreReportPrintData] = useState(null);
     const [selectedHistorySessionForReport, setSelectedHistorySessionForReport] = useState(null);
-    const [reportScope, setReportScope] = useState('turno'); // 'turno' | 'dia'
+    const [reportScope, setReportScope] = useState('turno'); // 'turno' | 'dia' | 'rango'
+    const [reportFechaDesde, setReportFechaDesde] = useState(() => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        return `${y}-${m}-15`;
+    });
+    const [reportFechaHasta, setReportFechaHasta] = useState(() => localDateInputValue());
+    const [reportFilterTipo, setReportFilterTipo] = useState('all'); // 'all' | 'ingreso' | 'egreso'
+    const [reportFilterFondo, setReportFilterFondo] = useState('all'); // 'all' | 'caja' | 'banco'
     const [aperturaMonto, setAperturaMonto] = useState('');
     const [aperturaTurno, setAperturaTurno] = useState('general');
     const [arqueoRealEfectivo, setArqueoRealEfectivo] = useState('');
@@ -903,7 +913,7 @@ const CajaGastos = () => {
 
     const catalogosQuery = useFinanceCatalogsQuery();
     const movementsFilters = useMemo(() => ({
-        limit: '150',
+        limit: '500',
         search: movSearch
     }), [movSearch]);
     const movimientosQuery = useFinanceMovementsQuery({ filters: movementsFilters });
@@ -1130,6 +1140,23 @@ const CajaGastos = () => {
             return movDate === targetDate;
         });
     }, [selectedHistorySessionForReport, activeSession, movimientos, todayDateStr]);
+
+    // Movimientos del rango de fechas personalizado (para reporte financiero interactivo)
+    const rangeMovimientosForReport = useMemo(() => {
+        return movimientos.filter((m) => {
+            if (m.tipo === 'retiro_socio' || m.grupo_gasto === 'patrimonio_socio') return false;
+            const movDate = m.fecha_movimiento
+                ? (String(m.fecha_movimiento).includes('T') ? String(m.fecha_movimiento).split('T')[0] : String(m.fecha_movimiento))
+                : (m.created_at ? String(m.created_at).split('T')[0] : null);
+
+            if (!movDate) return false;
+            if (reportFechaDesde && movDate < reportFechaDesde) return false;
+            if (reportFechaHasta && movDate > reportFechaHasta) return false;
+            if (reportFilterTipo !== 'all' && m.tipo !== reportFilterTipo) return false;
+            if (reportFilterFondo !== 'all' && m.tipo_fondo !== reportFilterFondo) return false;
+            return true;
+        });
+    }, [movimientos, reportFechaDesde, reportFechaHasta, reportFilterTipo, reportFilterFondo]);
 
     const loadingMovimientos = (catalogosQuery.isLoading || movimientosQuery.isLoading) && movimientos.length === 0;
     const creatingMovimiento = createMovementMutation.isPending;
@@ -1358,26 +1385,47 @@ const CajaGastos = () => {
 
     const handleCopyWhatsAppReport = () => {
         const isDia = reportScope === 'dia';
+        const isRango = reportScope === 'rango';
         const targetSession = selectedHistorySessionForReport || activeSession;
-        const fechaStr = targetSession ? new Date(targetSession.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('es-PE');
+        const fechaStr = isRango 
+            ? `${reportFechaDesde} al ${reportFechaHasta}` 
+            : (targetSession ? new Date(targetSession.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('es-PE'));
 
         const dayIngEfec = todayMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
         const dayEgEfec = todayMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
         const dayIngBanco = todayMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
         const dayEgBanco = todayMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
 
+        const rangeIngEfec = rangeMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+        const rangeEgEfec = rangeMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+        const rangeIngBanco = rangeMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+        const rangeEgBanco = rangeMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+
         const isHist = Boolean(selectedHistorySessionForReport);
-        const montoAp = isDia ? parseFloat(activeSession?.monto_apertura || 0) : (isHist ? parseFloat(targetSession?.monto_apertura || 0) : resumenEnVivo.monto_apertura);
-        const ingEf = isDia ? dayIngEfec : (isHist ? parseFloat(targetSession?.total_ingresos_efectivo || 0) : resumenEnVivo.total_ingresos_efectivo);
-        const ingBco = isDia ? dayIngBanco : (isHist ? parseFloat(targetSession?.total_ingresos_banco || 0) : resumenEnVivo.total_ingresos_banco);
-        const egEf = isDia ? dayEgEfec : (isHist ? parseFloat(targetSession?.total_egresos_efectivo || 0) : resumenEnVivo.total_egresos_efectivo);
-        const egBco = isDia ? dayEgBanco : (isHist ? parseFloat(targetSession?.total_egresos_banco || 0) : resumenEnVivo.total_egresos_banco);
-        const saldoEf = isDia ? (montoAp + dayIngEfec - dayEgEfec) : (isHist ? parseFloat(targetSession?.monto_esperado_efectivo ?? (montoAp + ingEf - egEf)) : resumenEnVivo.saldo_teorico_efectivo);
-        const rawDif = arqueoRealEfectivo !== '' ? (parseFloat(arqueoRealEfectivo) - saldoEf) : null;
+        const montoAp = isRango ? 0 : (isDia ? parseFloat(activeSession?.monto_apertura || 0) : (isHist ? parseFloat(targetSession?.monto_apertura || 0) : resumenEnVivo.monto_apertura));
+        const ingEf = isRango ? rangeIngEfec : (isDia ? dayIngEfec : (isHist ? parseFloat(targetSession?.total_ingresos_efectivo || 0) : resumenEnVivo.total_ingresos_efectivo));
+        const ingBco = isRango ? rangeIngBanco : (isDia ? dayIngBanco : (isHist ? parseFloat(targetSession?.total_ingresos_banco || 0) : resumenEnVivo.total_ingresos_banco));
+        const egEf = isRango ? rangeEgEfec : (isDia ? dayEgEfec : (isHist ? parseFloat(targetSession?.total_egresos_efectivo || 0) : resumenEnVivo.total_egresos_efectivo));
+        const egBco = isRango ? rangeEgBanco : (isDia ? dayEgBanco : (isHist ? parseFloat(targetSession?.total_egresos_banco || 0) : resumenEnVivo.total_egresos_banco));
+        const saldoEf = isRango ? (ingEf - egEf) : (isDia ? (montoAp + dayIngEfec - dayEgEfec) : (isHist ? parseFloat(targetSession?.monto_esperado_efectivo ?? (montoAp + ingEf - egEf)) : resumenEnVivo.saldo_teorico_efectivo));
+        const rawDif = (!isRango && arqueoRealEfectivo !== '') ? (parseFloat(arqueoRealEfectivo) - saldoEf) : null;
         const diffNum = rawDif !== null ? (Math.abs(rawDif) < 0.001 ? 0 : Math.round(rawDif * 100) / 100) : null;
         const diferencia = diffNum !== null ? diffNum.toFixed(2) : null;
 
-        const text = `📊 *${isDia ? 'REPORTE DIARIO' : 'REPORTE DE CIERRE Y ARQUEO'} - AFINIX LAB*
+        const text = isRango ? `📊 *REPORTE FINANCIERO CONSOLIDADO - AFINIX LAB*
+📅 *Período:* ${fechaStr}
+👤 *Generado por:* ${user?.nombre || 'Administración'}
+
+🟢 *Total Ingresos:* ${formatCurrency(ingEf + ingBco)}
+   • Efectivo: ${formatCurrency(ingEf)}
+   • Bancos / Digital: ${formatCurrency(ingBco)}
+🔴 *Total Egresos:* ${formatCurrency(egEf + egBco)}
+   • Efectivo: ${formatCurrency(egEf)}
+   • Bancos / Digital: ${formatCurrency(egBco)}
+
+📈 *Balance Neto del Período:* ${formatCurrency((ingEf + ingBco) - (egEf + egBco))}
+
+_Generado automáticamente por AFINIX Dental Lab_` : `📊 *${isDia ? 'REPORTE DIARIO' : 'REPORTE DE CIERRE Y ARQUEO'} - AFINIX LAB*
 📅 *Fecha:* ${fechaStr} | *Turno:* ${isDia ? 'JORNADA COMPLETA' : (targetSession?.turno?.toUpperCase() || 'GENERAL')}
 👤 *Responsable:* ${targetSession?.cerrado_por_nombre || targetSession?.abierto_por_nombre || user?.nombre || 'Administración'}
 
@@ -1428,6 +1476,41 @@ _Generado automáticamente por AFINIX Dental Lab_`;
         link.click();
         document.body.removeChild(link);
         toast.success('Archivo CSV descargado correctamente.');
+    };
+
+    const handleDownloadHtmlReport = () => {
+        let targetMovs = [];
+        let startStr = '';
+        let endStr = '';
+
+        if (reportScope === 'rango') {
+            targetMovs = rangeMovimientosForReport;
+            startStr = reportFechaDesde;
+            endStr = reportFechaHasta;
+        } else if (reportScope === 'dia') {
+            targetMovs = todayMovimientosForReport;
+            startStr = todayDateStr;
+            endStr = todayDateStr;
+        } else {
+            targetMovs = sessionMovimientosForReport;
+            const s = selectedHistorySessionForReport || activeSession;
+            startStr = s?.fecha ? String(s.fecha).slice(0, 10) : todayDateStr;
+            endStr = startStr;
+        }
+
+        if (!targetMovs || targetMovs.length === 0) {
+            toast.error('No hay transacciones registradas en el período seleccionado.');
+            return;
+        }
+
+        downloadFinancialHtmlReport({
+            movimientos: targetMovs,
+            startDate: startStr,
+            endDate: endStr,
+            empresaFiscal,
+            generatedBy: user?.nombre || 'Administración'
+        });
+        toast.success('Reporte HTML interactivo descargado con éxito.');
     };
 
     const handlePrintReport = (targetSession = null, targetMovimientos = null) => {
@@ -3348,6 +3431,19 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                 >
                                     <i className="bi bi-file-earmark-text"></i> Reporte del Día
                                 </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => {
+                                        setSelectedHistorySessionForReport(null);
+                                        setReportScope('rango');
+                                        setReporteModalOpen(true);
+                                    }}
+                                    title="Generar reporte interactivo por rango de fechas (ingresos, egresos y comprobantes)"
+                                    style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
+                                >
+                                    <i className="bi bi-file-earmark-code-fill"></i> Reporte Financiero (HTML)
+                                </button>
                                 {activeSession ? (
                                     <button
                                         type="button"
@@ -3809,6 +3905,51 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                                                     <i className="bi bi-hash"></i> Ref: {movimiento.referencia}
                                                                 </span>
                                                             )}
+                                                            {movimiento.sustento_archivo_url ? (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-xs"
+                                                                    style={{
+                                                                        fontSize: '0.7rem',
+                                                                        padding: '2px 7px',
+                                                                        borderRadius: '4px',
+                                                                        border: '1px solid var(--color-primary, #0284c7)',
+                                                                        background: 'rgba(2, 132, 199, 0.08)',
+                                                                        color: 'var(--color-primary, #0284c7)',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '4px',
+                                                                        cursor: 'pointer',
+                                                                        fontWeight: 600,
+                                                                        marginTop: '2px'
+                                                                    }}
+                                                                    onClick={() => openReceiptModal(movimiento.sustento_archivo_url, movimiento)}
+                                                                    title="Ver comprobante o voucher adjunto"
+                                                                >
+                                                                    <i className="bi bi-image"></i> Ver Sustento
+                                                                </button>
+                                                            ) : (!isIngreso && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-ghost btn-xs"
+                                                                    style={{
+                                                                        fontSize: '0.6875rem',
+                                                                        padding: '1px 6px',
+                                                                        borderRadius: '4px',
+                                                                        border: '1px dashed var(--color-border)',
+                                                                        color: 'var(--color-text-secondary)',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '3px',
+                                                                        cursor: 'pointer',
+                                                                        marginTop: '2px'
+                                                                    }}
+                                                                    onClick={() => openEditModal(movimiento)}
+                                                                    title="Adjuntar foto o comprobante a este gasto"
+                                                                >
+                                                                    <i className="bi bi-camera"></i> + Foto
+                                                                </button>
+                                                            ))}
                                                         </div>
                                                     </td>
                                                     <td style={{ textAlign: 'right' }}>
@@ -4974,7 +5115,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                 }}
                 title={selectedHistorySessionForReport 
                     ? `Reporte de Turno ${selectedHistorySessionForReport.turno?.toUpperCase() || ''}` 
-                    : (reportScope === 'dia' ? "Reporte Diario - AFINIX LAB" : "Reporte de Turno - AFINIX LAB")}
+                    : (reportScope === 'rango' ? "Reporte Financiero Interactivo - AFINIX LAB" : (reportScope === 'dia' ? "Reporte Diario - AFINIX LAB" : "Reporte de Turno - AFINIX LAB"))}
                 kicker="Caja & Finanzas • Balance"
                 subtitle="Consolidado de ingresos, egresos y arqueo de sesión"
                 icon="bi-file-earmark-bar-graph"
@@ -4992,14 +5133,23 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                 <i className="bi bi-whatsapp" style={{ color: '#25D366' }}></i> Copiar para WhatsApp
                             </button>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             <button
                                 type="button"
                                 className="btn btn-primary btn-sm"
+                                onClick={handleDownloadHtmlReport}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                                title="Descargar archivo HTML interactivo para enviar a los socios"
+                            >
+                                <i className="bi bi-file-earmark-code-fill"></i> Descargar Reporte HTML
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
                                 onClick={() => handlePrintReport(selectedHistorySessionForReport)}
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                             >
-                                <i className="bi bi-printer"></i> Imprimir / Guardar PDF
+                                <i className="bi bi-printer"></i> Imprimir / PDF
                             </button>
                             <button
                                 type="button"
@@ -5021,6 +5171,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                         const s = selectedHistorySessionForReport || activeSession;
                         const isHist = Boolean(selectedHistorySessionForReport);
                         const isDiaScope = reportScope === 'dia';
+                        const isRangoScope = reportScope === 'rango';
 
                         const fondoAp = isHist ? parseFloat(s?.monto_apertura || 0) : resumenEnVivo.monto_apertura;
                         const ingEfecHist = isHist ? parseFloat(s?.total_ingresos_efectivo || 0) : resumenEnVivo.total_ingresos_efectivo;
@@ -5035,13 +5186,19 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                         const dayIngBanco = todayMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
                         const dayEgBanco = todayMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
 
-                        const activeIngEfec = isDiaScope ? dayIngEfec : ingEfecHist;
-                        const activeEgEfec = isDiaScope ? dayEgEfec : egEfecHist;
-                        const activeIngBanco = isDiaScope ? dayIngBanco : ingBancoHist;
-                        const activeEgBanco = isDiaScope ? dayEgBanco : egBancoHist;
-                        const activeSaldoCaja = isDiaScope ? (fondoAp + dayIngEfec - dayEgEfec) : saldoCajaHist;
+                        // Totales calculados para rango de fechas personalizado
+                        const rangeIngEfec = rangeMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+                        const rangeEgEfec = rangeMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+                        const rangeIngBanco = rangeMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+                        const rangeEgBanco = rangeMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
 
-                        const displayedMovs = isDiaScope ? todayMovimientosForReport : sessionMovimientosForReport;
+                        const activeIngEfec = isRangoScope ? rangeIngEfec : (isDiaScope ? dayIngEfec : ingEfecHist);
+                        const activeEgEfec = isRangoScope ? rangeEgEfec : (isDiaScope ? dayEgEfec : egEfecHist);
+                        const activeIngBanco = isRangoScope ? rangeIngBanco : (isDiaScope ? dayIngBanco : ingBancoHist);
+                        const activeEgBanco = isRangoScope ? rangeEgBanco : (isDiaScope ? dayEgBanco : egBancoHist);
+                        const activeSaldoCaja = isRangoScope ? (rangeIngEfec - rangeEgEfec) : (isDiaScope ? (fondoAp + dayIngEfec - dayEgEfec) : saldoCajaHist);
+
+                        const displayedMovs = isRangoScope ? rangeMovimientosForReport : (isDiaScope ? todayMovimientosForReport : sessionMovimientosForReport);
                         const displayedIngresos = displayedMovs.filter((m) => m.tipo === 'ingreso');
                         const displayedEgresos = displayedMovs.filter((m) => m.tipo === 'egreso');
 
@@ -5067,12 +5224,14 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                     <div className="caja-reporte-meta-strip">
                                         <div className="caja-reporte-meta-pill">
                                             <i className="bi bi-calendar3" style={{ color: 'var(--color-primary)' }}></i>
-                                            <span>{s?.fecha ? formatDateShort(s.fecha) : formatDateShort(new Date())}</span>
+                                            <span>{isRangoScope ? `${reportFechaDesde || 'Inicio'} → ${reportFechaHasta || 'Hoy'}` : (s?.fecha ? formatDateShort(s.fecha) : formatDateShort(new Date()))}</span>
                                         </div>
                                         <div className="caja-reporte-meta-pill">
                                             <i className="bi bi-clock" style={{ color: 'var(--color-primary)' }}></i>
-                                            <span style={{ color: isDiaScope ? 'var(--color-primary)' : 'inherit', fontWeight: 700 }}>
-                                                {isDiaScope ? 'TODO EL DÍA (CONSOLIDADO)' : (s?.turno ? `TURNO ${s.turno.toUpperCase()}` : 'GENERAL')}
+                                            <span style={{ color: (isDiaScope || isRangoScope) ? 'var(--color-primary)' : 'inherit', fontWeight: 700 }}>
+                                                {isRangoScope 
+                                                    ? 'RANGO PERSONALIZADO (CONSOLIDADO)' 
+                                                    : (isDiaScope ? 'TODO EL DÍA (CONSOLIDADO)' : (s?.turno ? `TURNO ${s.turno.toUpperCase()}` : 'GENERAL'))}
                                             </span>
                                         </div>
                                         <div className="caja-reporte-meta-pill">
@@ -5186,7 +5345,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <i className="bi bi-journal-text" style={{ fontSize: '1.1rem', color: 'var(--color-primary)' }}></i>
                                         <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>
-                                            Auditoría Detallada · {isDiaScope ? 'Día Completo' : (s?.turno ? `Turno ${s.turno.toUpperCase()}` : 'Turno Actual')}
+                                            Auditoría Detallada · {isRangoScope ? 'Rango Personalizado' : (isDiaScope ? 'Día Completo' : (s?.turno ? `Turno ${s.turno.toUpperCase()}` : 'Turno Actual'))}
                                         </h3>
                                         <span className="badge badge-secondary" style={{ fontSize: '0.72rem' }}>
                                             {displayedMovs.length} movimientos
@@ -5207,8 +5366,170 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                         >
                                             <i className="bi bi-calendar-check"></i> Todo el Día ({todayMovimientosForReport.length})
                                         </button>
+                                        <button
+                                            type="button"
+                                            className={`caja-reporte-scope-btn ${reportScope === 'rango' ? 'active' : ''}`}
+                                            onClick={() => setReportScope('rango')}
+                                        >
+                                            <i className="bi bi-calendar-range"></i> Rango / Días ({rangeMovimientosForReport.length})
+                                        </button>
                                     </div>
                                 </div>
+
+                                {isRangoScope && (
+                                    <div style={{
+                                        background: 'var(--color-bg-alt, #f8fafc)',
+                                        border: '1px solid var(--color-border, #e2e8f0)',
+                                        borderRadius: '10px',
+                                        padding: '12px 16px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '10px'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                                    <i className="bi bi-calendar-range" style={{ color: 'var(--color-primary)', marginRight: '4px' }}></i>
+                                                    Desde:
+                                                </span>
+                                                <input
+                                                    type="date"
+                                                    className="form-input"
+                                                    style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8125rem', height: '32px' }}
+                                                    value={reportFechaDesde}
+                                                    onChange={(e) => setReportFechaDesde(e.target.value)}
+                                                />
+                                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                                    Hasta:
+                                                </span>
+                                                <input
+                                                    type="date"
+                                                    className="form-input"
+                                                    style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8125rem', height: '32px' }}
+                                                    value={reportFechaHasta}
+                                                    onChange={(e) => setReportFechaHasta(e.target.value)}
+                                                />
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-xs"
+                                                    style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                                                    onClick={() => {
+                                                        const now = new Date();
+                                                        const y = now.getFullYear();
+                                                        const m = String(now.getMonth() + 1).padStart(2, '0');
+                                                        setReportFechaDesde(`${y}-${m}-15`);
+                                                        setReportFechaHasta(localDateInputValue());
+                                                    }}
+                                                >
+                                                    Desde el 15
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-xs"
+                                                    style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                                                    onClick={() => {
+                                                        const d = new Date();
+                                                        d.setDate(d.getDate() - 7);
+                                                        setReportFechaDesde(d.toISOString().split('T')[0]);
+                                                        setReportFechaHasta(localDateInputValue());
+                                                    }}
+                                                >
+                                                    Últimos 7 días
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-xs"
+                                                    style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                                                    onClick={() => {
+                                                        const now = new Date();
+                                                        const y = now.getFullYear();
+                                                        const m = String(now.getMonth() + 1).padStart(2, '0');
+                                                        setReportFechaDesde(`${y}-${m}-01`);
+                                                        setReportFechaHasta(localDateInputValue());
+                                                    }}
+                                                >
+                                                    Este Mes
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-xs"
+                                                    style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                                                    onClick={() => {
+                                                        setReportFechaDesde(localDateInputValue());
+                                                        setReportFechaHasta(localDateInputValue());
+                                                    }}
+                                                >
+                                                    Hoy
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px dashed var(--color-border, #e2e8f0)', paddingTop: '8px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Flujo:</span>
+                                                <div className="segmented-control" style={{ fontSize: '0.75rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-control__btn${reportFilterTipo === 'all' ? ' is-active' : ''}`}
+                                                        onClick={() => setReportFilterTipo('all')}
+                                                        style={{ padding: '2px 8px' }}
+                                                    >
+                                                        Todos
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-control__btn${reportFilterTipo === 'ingreso' ? ' is-active' : ''}`}
+                                                        onClick={() => setReportFilterTipo('ingreso')}
+                                                        style={{ padding: '2px 8px' }}
+                                                    >
+                                                        Ingresos
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-control__btn${reportFilterTipo === 'egreso' ? ' is-active' : ''}`}
+                                                        onClick={() => setReportFilterTipo('egreso')}
+                                                        style={{ padding: '2px 8px' }}
+                                                    >
+                                                        Egresos
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Fondo:</span>
+                                                <div className="segmented-control" style={{ fontSize: '0.75rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-control__btn${reportFilterFondo === 'all' ? ' is-active' : ''}`}
+                                                        onClick={() => setReportFilterFondo('all')}
+                                                        style={{ padding: '2px 8px' }}
+                                                    >
+                                                        Todos
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-control__btn${reportFilterFondo === 'caja' ? ' is-active' : ''}`}
+                                                        onClick={() => setReportFilterFondo('caja')}
+                                                        style={{ padding: '2px 8px' }}
+                                                    >
+                                                        Efectivo
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-control__btn${reportFilterFondo === 'banco' ? ' is-active' : ''}`}
+                                                        onClick={() => setReportFilterFondo('banco')}
+                                                        style={{ padding: '2px 8px' }}
+                                                    >
+                                                        Bancos
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {displayedMovs.length === 0 ? (
                                     <div style={{

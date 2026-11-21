@@ -170,7 +170,7 @@ export const makeFinancePgRepository = ({ pool }) => ({
             where += ` AND m.clinica_id = $${params.length}`;
         }
 
-        const queryLimit = Math.min(Math.max(parseInt(limit || 80, 10), 1), 300);
+        const queryLimit = Math.min(Math.max(parseInt(limit || 80, 10), 1), 1000);
         params.push(queryLimit);
 
         const result = await pool.query(
