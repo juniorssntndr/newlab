@@ -96,8 +96,18 @@ const prettifyLabel = (value = '') => {
 
 const formatDateShort = (value) => {
     if (!value) return '—';
+    if (value instanceof Date) {
+        if (Number.isNaN(value.getTime())) return '—';
+        return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).format(value);
+    }
+    const str = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [y, m, d] = str.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+    }
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
+    if (Number.isNaN(date.getTime())) return str;
     return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
 };
 
@@ -806,6 +816,14 @@ const CajaGastos = () => {
     const [tipoFilter, setTipoFilter] = useState('all'); // 'all' | 'ingreso' | 'egreso'
     const [originFilter, setOriginFilter] = useState('all'); // 'all' | 'caja' | 'banco'
     const [sustentoFilter, setSustentoFilter] = useState('all');
+    const [periodoScope, setPeriodoScope] = useState('hoy'); // 'turno' | 'hoy' | 'semana' | 'desde15' | 'mes' | 'rango'
+    const [customFechaDesde, setCustomFechaDesde] = useState(() => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        return `${y}-${m}-15`;
+    });
+    const [customFechaHasta, setCustomFechaHasta] = useState(() => localDateInputValue());
     const [bitacoraScope, setBitacoraScope] = useState('turno'); // 'turno' | 'dia' | 'todos'
     const [modalOpen, setModalOpen] = useState(false);
     const [editingMovement, setEditingMovement] = useState(null);
@@ -1053,8 +1071,160 @@ const CajaGastos = () => {
 
     const movimientos = movimientosQuery.data || [];
     const todayDateStr = localDateInputValue();
-    const activeBitacoraScope = (!activeSession && bitacoraScope === 'turno') ? 'dia' : bitacoraScope;
     const activeGastosScope = (!activeSession && gastosScope === 'turno') ? 'dia' : gastosScope;
+    const activePeriodoScope = (!activeSession && periodoScope === 'turno') ? 'hoy' : periodoScope;
+    const activeBitacoraScope = activePeriodoScope;
+
+    const periodDateRange = useMemo(() => {
+        const todayStr = localDateInputValue();
+        const now = new Date();
+
+        if (activePeriodoScope === 'turno') {
+            const s = activeSession;
+            const sDate = s?.fecha
+                ? (s.fecha instanceof Date ? s.fecha.toISOString().split('T')[0] : String(s.fecha).slice(0, 10))
+                : todayStr;
+            return {
+                from: sDate,
+                to: sDate,
+                label: s ? `Turno ${s.turno}` : 'Turno Actual',
+                sublabel: formatDateShort(sDate),
+                isTurno: true
+            };
+        }
+
+        if (activePeriodoScope === 'hoy') {
+            return {
+                from: todayStr,
+                to: todayStr,
+                label: 'Hoy',
+                sublabel: formatDateShort(todayStr),
+                isTurno: false
+            };
+        }
+
+        if (activePeriodoScope === 'semana') {
+            const day = now.getDay();
+            const diffToMonday = (day === 0 ? -6 : 1) - day;
+            const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+            const y = monday.getFullYear();
+            const m = String(monday.getMonth() + 1).padStart(2, '0');
+            const d = String(monday.getDate()).padStart(2, '0');
+            const mondayStr = `${y}-${m}-${d}`;
+            return {
+                from: mondayStr,
+                to: todayStr,
+                label: 'Esta Semana',
+                sublabel: `${formatDateShort(mondayStr)} al ${formatDateShort(todayStr)}`,
+                isTurno: false
+            };
+        }
+
+        if (activePeriodoScope === 'desde15') {
+            let year = now.getFullYear();
+            let month = now.getMonth();
+            if (now.getDate() < 15) {
+                month -= 1;
+                if (month < 0) {
+                    month = 11;
+                    year -= 1;
+                }
+            }
+            const fromStr = `${year}-${String(month + 1).padStart(2, '0')}-15`;
+            return {
+                from: fromStr,
+                to: todayStr,
+                label: 'Desde el 15',
+                sublabel: `${formatDateShort(fromStr)} al ${formatDateShort(todayStr)}`,
+                isTurno: false
+            };
+        }
+
+        if (activePeriodoScope === 'mes') {
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const fromStr = `${y}-${m}-01`;
+            return {
+                from: fromStr,
+                to: todayStr,
+                label: 'Este Mes',
+                sublabel: `${formatDateShort(fromStr)} al ${formatDateShort(todayStr)}`,
+                isTurno: false
+            };
+        }
+
+        // 'rango'
+        return {
+            from: customFechaDesde || todayStr,
+            to: customFechaHasta || todayStr,
+            label: 'Personalizado',
+            sublabel: `${formatDateShort(customFechaDesde)} al ${formatDateShort(customFechaHasta)}`,
+            isTurno: false
+        };
+    }, [activePeriodoScope, customFechaDesde, customFechaHasta, activeSession]);
+
+    const periodMovimientos = useMemo(() => {
+        return movimientos.filter((m) => {
+            if (m.tipo === 'retiro_socio' || m.grupo_gasto === 'patrimonio_socio') return false;
+
+            if (periodDateRange.isTurno && activeSession) {
+                if (m.sesion_caja_id && activeSession.id) {
+                    return Number(m.sesion_caja_id) === Number(activeSession.id);
+                }
+            }
+
+            const movDate = m.fecha_movimiento
+                ? (String(m.fecha_movimiento).includes('T') ? String(m.fecha_movimiento).split('T')[0] : String(m.fecha_movimiento).slice(0, 10))
+                : (m.created_at ? String(m.created_at).split('T')[0] : null);
+
+            if (!movDate) return false;
+            if (periodDateRange.from && movDate < periodDateRange.from) return false;
+            if (periodDateRange.to && movDate > periodDateRange.to) return false;
+            return true;
+        });
+    }, [movimientos, periodDateRange, activeSession]);
+
+    const periodKpis = useMemo(() => {
+        const ingEfec = periodMovimientos
+            .filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'caja')
+            .reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+        const ingBanco = periodMovimientos
+            .filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'banco')
+            .reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+        const egEfec = periodMovimientos
+            .filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'caja')
+            .reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+        const egBanco = periodMovimientos
+            .filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'banco')
+            .reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+
+        const totalIng = ingEfec + ingBanco;
+        const totalEg = egEfec + egBanco;
+        const balanceNeto = totalIng - totalEg;
+        const balanceBanco = ingBanco - egBanco;
+        const efectivoNetoPeriodo = ingEfec - egEfec;
+
+        return {
+            ingEfec,
+            ingBanco,
+            egEfec,
+            egBanco,
+            totalIng,
+            totalEg,
+            balanceNeto,
+            balanceBanco,
+            efectivoNetoPeriodo
+        };
+    }, [periodMovimientos]);
+
+    const filteredMovimientos = useMemo(() => {
+        return periodMovimientos.filter((movement) => {
+            if (tipoFilter !== 'all' && (movement.tipo || 'egreso') !== tipoFilter) return false;
+            if (originFilter !== 'all' && movement.tipo_fondo !== originFilter) return false;
+            if (sustentoFilter !== 'all' && (movement.sustento_tipo || 'ninguno') !== sustentoFilter) return false;
+            return true;
+        });
+    }, [periodMovimientos, tipoFilter, originFilter, sustentoFilter]);
 
     const scopedEgresos = useMemo(() => {
         return movimientos.filter((m) => {
@@ -1076,30 +1246,6 @@ const CajaGastos = () => {
             return true;
         });
     }, [movimientos, activeGastosScope, activeSession, todayDateStr]);
-
-    const filteredMovimientos = useMemo(() => {
-        return movimientos.filter((movement) => {
-            if (movement.tipo === 'retiro_socio' || movement.grupo_gasto === 'patrimonio_socio') return false;
-            const movDate = movement.fecha_movimiento
-                ? String(movement.fecha_movimiento).slice(0, 10)
-                : (movement.created_at ? String(movement.created_at).slice(0, 10) : null);
-
-            if (activeBitacoraScope === 'turno' && activeSession) {
-                if (movement.sesion_caja_id && activeSession.id) {
-                    if (Number(movement.sesion_caja_id) !== Number(activeSession.id)) return false;
-                } else if (movDate !== todayDateStr) {
-                    return false;
-                }
-            } else if (activeBitacoraScope === 'dia') {
-                if (movDate !== todayDateStr) return false;
-            }
-
-            if (tipoFilter !== 'all' && (movement.tipo || 'egreso') !== tipoFilter) return false;
-            if (originFilter !== 'all' && movement.tipo_fondo !== originFilter) return false;
-            if (sustentoFilter !== 'all' && (movement.sustento_tipo || 'ninguno') !== sustentoFilter) return false;
-            return true;
-        });
-    }, [movimientos, activeBitacoraScope, activeSession, todayDateStr, tipoFilter, originFilter, sustentoFilter]);
 
     // Movimientos que pertenecen estrictamente al turno/sesión en consulta
     const sessionMovimientosForReport = useMemo(() => {
@@ -1384,67 +1530,72 @@ const CajaGastos = () => {
     };
 
     const handleCopyWhatsAppReport = () => {
-        const isDia = reportScope === 'dia';
-        const isRango = reportScope === 'rango';
-        const targetSession = selectedHistorySessionForReport || activeSession;
-        const fechaStr = isRango 
-            ? `${reportFechaDesde} al ${reportFechaHasta}` 
-            : (targetSession ? new Date(targetSession.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('es-PE'));
+        if (selectedHistorySessionForReport) {
+            const s = selectedHistorySessionForReport;
+            const fechaStr = formatDateShort(s.fecha);
+            const fondoAp = parseFloat(s.monto_apertura || 0);
+            const ingEf = parseFloat(s.total_ingresos_efectivo || 0);
+            const ingBco = parseFloat(s.total_ingresos_banco || 0);
+            const egEf = parseFloat(s.total_egresos_efectivo || 0);
+            const egBco = parseFloat(s.total_egresos_banco || 0);
+            const saldoEf = parseFloat(s.monto_esperado_efectivo ?? (fondoAp + ingEf - egEf));
 
-        const dayIngEfec = todayMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
-        const dayEgEfec = todayMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
-        const dayIngBanco = todayMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
-        const dayEgBanco = todayMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+            const text = `📊 *REPORTE DE CIERRE Y ARQUEO - AFINIX LAB*\n` +
+                `📅 *Fecha:* ${fechaStr} | *Turno:* ${s.turno?.toUpperCase() || 'GENERAL'}\n` +
+                `👤 *Responsable:* ${s.cerrado_por_nombre || s.abierto_por_nombre || user?.nombre || 'Administración'}\n\n` +
+                `💵 *Fondo Inicial:* ${formatCurrency(fondoAp)}\n` +
+                `🟢 *Total Ingresos:* ${formatCurrency(ingEf + ingBco)}\n` +
+                `   • Efectivo: ${formatCurrency(ingEf)}\n` +
+                `   • Bancos (Yape/BCP): ${formatCurrency(ingBco)}\n` +
+                `🔴 *Total Egresos:* ${formatCurrency(egEf + egBco)}\n` +
+                `   • Efectivo: ${formatCurrency(egEf)}\n` +
+                `   • Bancos: ${formatCurrency(egBco)}\n\n` +
+                `💰 *Efectivo en Caja:* ${formatCurrency(saldoEf)}\n` +
+                (s.monto_real_efectivo !== null ? `🔎 *Conteo Real:* ${formatCurrency(s.monto_real_efectivo)} (Dif: ${Math.abs(parseFloat(s.diferencia_efectivo || 0)) < 0.005 ? 'S/. 0.00 CUADRADO ✅' : `${formatCurrency(s.diferencia_efectivo)} ⚠️`})\n\n` : '\n') +
+                `_Generado automáticamente por AFINIX Dental Lab_`;
 
-        const rangeIngEfec = rangeMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
-        const rangeEgEfec = rangeMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'caja').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
-        const rangeIngBanco = rangeMovimientosForReport.filter(m => m.tipo === 'ingreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
-        const rangeEgBanco = rangeMovimientosForReport.filter(m => m.tipo === 'egreso' && m.tipo_fondo === 'banco').reduce((acc, m) => acc + parseFloat(m.monto || 0), 0);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text);
+                toast.success('¡Reporte copiado al portapapeles para WhatsApp!');
+            }
+            return;
+        }
 
-        const isHist = Boolean(selectedHistorySessionForReport);
-        const montoAp = isRango ? 0 : (isDia ? parseFloat(activeSession?.monto_apertura || 0) : (isHist ? parseFloat(targetSession?.monto_apertura || 0) : resumenEnVivo.monto_apertura));
-        const ingEf = isRango ? rangeIngEfec : (isDia ? dayIngEfec : (isHist ? parseFloat(targetSession?.total_ingresos_efectivo || 0) : resumenEnVivo.total_ingresos_efectivo));
-        const ingBco = isRango ? rangeIngBanco : (isDia ? dayIngBanco : (isHist ? parseFloat(targetSession?.total_ingresos_banco || 0) : resumenEnVivo.total_ingresos_banco));
-        const egEf = isRango ? rangeEgEfec : (isDia ? dayEgEfec : (isHist ? parseFloat(targetSession?.total_egresos_efectivo || 0) : resumenEnVivo.total_egresos_efectivo));
-        const egBco = isRango ? rangeEgBanco : (isDia ? dayEgBanco : (isHist ? parseFloat(targetSession?.total_egresos_banco || 0) : resumenEnVivo.total_egresos_banco));
-        const saldoEf = isRango ? (ingEf - egEf) : (isDia ? (montoAp + dayIngEfec - dayEgEfec) : (isHist ? parseFloat(targetSession?.monto_esperado_efectivo ?? (montoAp + ingEf - egEf)) : resumenEnVivo.saldo_teorico_efectivo));
-        const rawDif = (!isRango && arqueoRealEfectivo !== '') ? (parseFloat(arqueoRealEfectivo) - saldoEf) : null;
-        const diffNum = rawDif !== null ? (Math.abs(rawDif) < 0.001 ? 0 : Math.round(rawDif * 100) / 100) : null;
-        const diferencia = diffNum !== null ? diffNum.toFixed(2) : null;
+        const { from, to, label, isTurno } = periodDateRange;
+        const isSingleDay = from === to;
+        const fechaStr = isSingleDay
+            ? formatDateShort(from)
+            : `${formatDateShort(from)} al ${formatDateShort(to)}`;
 
-        const text = isRango ? `📊 *REPORTE FINANCIERO CONSOLIDADO - AFINIX LAB*
-📅 *Período:* ${fechaStr}
-👤 *Generado por:* ${user?.nombre || 'Administración'}
+        const { ingEfec, ingBanco, egEfec, egBanco, totalIng, totalEg, balanceNeto } = periodKpis;
 
-🟢 *Total Ingresos:* ${formatCurrency(ingEf + ingBco)}
-   • Efectivo: ${formatCurrency(ingEf)}
-   • Bancos / Digital: ${formatCurrency(ingBco)}
-🔴 *Total Egresos:* ${formatCurrency(egEf + egBco)}
-   • Efectivo: ${formatCurrency(egEf)}
-   • Bancos / Digital: ${formatCurrency(egBco)}
+        let text = `📊 *REPORTE FINANCIERO - AFINIX LAB*\n` +
+            `📅 *Período:* ${label} (${fechaStr})\n` +
+            `👤 *Generado por:* ${user?.nombre || 'Administración'}\n\n`;
 
-📈 *Balance Neto del Período:* ${formatCurrency((ingEf + ingBco) - (egEf + egBco))}
+        if (isTurno && activeSession) {
+            text += `💵 *Fondo Inicial:* ${formatCurrency(resumenEnVivo.monto_apertura)}\n`;
+        }
 
-_Generado automáticamente por AFINIX Dental Lab_` : `📊 *${isDia ? 'REPORTE DIARIO' : 'REPORTE DE CIERRE Y ARQUEO'} - AFINIX LAB*
-📅 *Fecha:* ${fechaStr} | *Turno:* ${isDia ? 'JORNADA COMPLETA' : (targetSession?.turno?.toUpperCase() || 'GENERAL')}
-👤 *Responsable:* ${targetSession?.cerrado_por_nombre || targetSession?.abierto_por_nombre || user?.nombre || 'Administración'}
+        text += `🟢 *Total Ingresos:* ${formatCurrency(totalIng)}\n` +
+            `   • Efectivo: ${formatCurrency(ingEfec)}\n` +
+            `   • Bancos (Yape/BCP): ${formatCurrency(ingBanco)}\n` +
+            `🔴 *Total Egresos:* ${formatCurrency(totalEg)}\n` +
+            `   • Efectivo: ${formatCurrency(egEfec)}\n` +
+            `   • Bancos: ${formatCurrency(egBanco)}\n\n`;
 
-💵 *Fondo Inicial:* ${formatCurrency(montoAp)}
-🟢 *Total Ingresos:* ${formatCurrency(ingEf + ingBco)}
-   • Efectivo: ${formatCurrency(ingEf)}
-   • Bancos (Yape/BCP): ${formatCurrency(ingBco)}
-🔴 *Total Egresos:* ${formatCurrency(egEf + egBco)}
-   • Efectivo: ${formatCurrency(egEf)}
-   • Bancos: ${formatCurrency(egBco)}
+        if (isTurno || (activePeriodoScope === 'hoy' && activeSession)) {
+            text += `💰 *Efectivo en Caja:* ${formatCurrency(resumenEnVivo.saldo_teorico_efectivo)}\n`;
+        } else {
+            text += `💰 *Efectivo Neto del Período:* ${formatCurrency(ingEfec - egEfec)}\n`;
+        }
 
-💰 *Efectivo en Caja:* ${formatCurrency(saldoEf)}
-${!isDia && isHist && targetSession?.monto_real_efectivo !== null ? `🔎 *Conteo Real:* ${formatCurrency(targetSession.monto_real_efectivo)} (Dif: ${Math.abs(parseFloat(targetSession.diferencia_efectivo || 0)) < 0.005 ? 'S/. 0.00 CUADRADO ✅' : `${formatCurrency(targetSession.diferencia_efectivo)} ⚠️`})` : (!isDia && arqueoRealEfectivo !== '' ? `🔎 *Conteo Real:* ${formatCurrency(arqueoRealEfectivo)} (Dif: ${diffNum === 0 ? 'S/. 0.00 CUADRADO ✅' : `S/. ${diferencia} ⚠️`})` : '')}
-
-_Generado automáticamente por AFINIX Dental Lab_`;
+        text += `📈 *Balance Neto:* ${balanceNeto >= 0 ? '+' : ''}${formatCurrency(balanceNeto)}\n\n` +
+            `_Generado automáticamente por AFINIX Dental Lab_`;
 
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text);
-            toast.success('¡Reporte copiado al portapapeles para WhatsApp!');
+            toast.success(`¡Reporte de ${label} copiado para WhatsApp!`);
         } else {
             toast.info('Copia el texto del reporte en pantalla.');
         }
@@ -1483,19 +1634,15 @@ _Generado automáticamente por AFINIX Dental Lab_`;
         let startStr = '';
         let endStr = '';
 
-        if (reportScope === 'rango') {
-            targetMovs = rangeMovimientosForReport;
-            startStr = reportFechaDesde;
-            endStr = reportFechaHasta;
-        } else if (reportScope === 'dia') {
-            targetMovs = todayMovimientosForReport;
-            startStr = todayDateStr;
-            endStr = todayDateStr;
-        } else {
+        if (selectedHistorySessionForReport) {
             targetMovs = sessionMovimientosForReport;
-            const s = selectedHistorySessionForReport || activeSession;
+            const s = selectedHistorySessionForReport;
             startStr = s?.fecha ? String(s.fecha).slice(0, 10) : todayDateStr;
             endStr = startStr;
+        } else {
+            targetMovs = periodMovimientos;
+            startStr = periodDateRange.from;
+            endStr = periodDateRange.to;
         }
 
         if (!targetMovs || targetMovs.length === 0) {
@@ -1510,7 +1657,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
             empresaFiscal,
             generatedBy: user?.nombre || 'Administración'
         });
-        toast.success('Reporte HTML interactivo descargado con éxito.');
+        toast.success(`Reporte HTML (${periodDateRange.label}) descargado con éxito.`);
     };
 
     const handlePrintReport = (targetSession = null, targetMovimientos = null) => {
@@ -3403,7 +3550,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                         <div className="card-header dashboard-card-header dashboard-card-header--split caja-resumen-header">
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <h3 className="card-title">Resumen Financiero y Liquidez</h3>
+                                    <h3 className="card-title">Resumen Financiero y Caja</h3>
                                     {activeSession ? (
                                         <span className="badge badge-success" style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
@@ -3415,34 +3562,26 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                         </span>
                                     )}
                                 </div>
-                                <p className="card-subtitle">Balance consolidado en caja física y cuentas bancarias.</p>
+                                <p className="card-subtitle">Balance operativo y control financiero del período seleccionado.</p>
                             </div>
                             <div className="caja-resumen-header-actions" style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <button
                                     type="button"
                                     className="btn btn-secondary btn-sm"
-                                    onClick={() => {
-                                        setSelectedHistorySessionForReport(null);
-                                        setReportScope('dia');
-                                        setReporteModalOpen(true);
-                                    }}
-                                    title="Ver balance y generar reporte diario de caja"
+                                    onClick={handleCopyWhatsAppReport}
+                                    title="Copiar resumen del período al portapapeles para enviar a los socios"
                                     style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}
                                 >
-                                    <i className="bi bi-file-earmark-text"></i> Reporte del Día
+                                    <i className="bi bi-whatsapp" style={{ color: '#25D366' }}></i> WhatsApp
                                 </button>
                                 <button
                                     type="button"
                                     className="btn btn-secondary btn-sm"
-                                    onClick={() => {
-                                        setSelectedHistorySessionForReport(null);
-                                        setReportScope('rango');
-                                        setReporteModalOpen(true);
-                                    }}
-                                    title="Generar reporte interactivo por rango de fechas (ingresos, egresos y comprobantes)"
+                                    onClick={handleDownloadHtmlReport}
+                                    title="Descargar reporte interactivo standalone en HTML"
                                     style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
                                 >
-                                    <i className="bi bi-file-earmark-code-fill"></i> Reporte Financiero (HTML)
+                                    <i className="bi bi-file-earmark-code-fill"></i> Reporte HTML
                                 </button>
                                 {activeSession ? (
                                     <button
@@ -3466,6 +3605,101 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                             </div>
                         </div>
 
+                        {/* Barra unificada de período y balance neto reactivo */}
+                        <div className="caja-periodo-bar" style={{ margin: '0 var(--space-4) var(--space-4) var(--space-4)' }}>
+                            <div className="caja-periodo-presets">
+                                <div className="segmented-control" role="group" aria-label="Período de análisis" style={{ fontSize: '0.8125rem' }}>
+                                    {activeSession && (
+                                        <button
+                                            type="button"
+                                            className={`segmented-control__btn${activePeriodoScope === 'turno' ? ' is-active' : ''}`}
+                                            onClick={() => setPeriodoScope('turno')}
+                                            title="Ver solo las transacciones del turno activo"
+                                        >
+                                            Turno Actual
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${activePeriodoScope === 'hoy' ? ' is-active' : ''}`}
+                                        onClick={() => setPeriodoScope('hoy')}
+                                        title="Ver transacciones del día de hoy"
+                                    >
+                                        Hoy
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${activePeriodoScope === 'semana' ? ' is-active' : ''}`}
+                                        onClick={() => setPeriodoScope('semana')}
+                                        title="Ver operaciones de esta semana (lunes a hoy)"
+                                    >
+                                        Esta Semana
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${activePeriodoScope === 'desde15' ? ' is-active' : ''}`}
+                                        onClick={() => setPeriodoScope('desde15')}
+                                        title="Ver operaciones desde el día 15 a la fecha"
+                                    >
+                                        Desde el 15
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${activePeriodoScope === 'mes' ? ' is-active' : ''}`}
+                                        onClick={() => setPeriodoScope('mes')}
+                                        title="Ver operaciones del mes en curso"
+                                    >
+                                        Este Mes
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`segmented-control__btn${activePeriodoScope === 'rango' ? ' is-active' : ''}`}
+                                        onClick={() => setPeriodoScope('rango')}
+                                        title="Definir rango de fechas personalizado"
+                                    >
+                                        Personalizado
+                                    </button>
+                                </div>
+
+                                {activePeriodoScope === 'rango' && (
+                                    <div className="caja-periodo-custom-dates">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Desde:</span>
+                                            <input
+                                                type="date"
+                                                className="form-input"
+                                                style={{ padding: '4px 8px', fontSize: '0.8125rem', height: '32px' }}
+                                                value={customFechaDesde}
+                                                onChange={(e) => setCustomFechaDesde(e.target.value)}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Hasta:</span>
+                                            <input
+                                                type="date"
+                                                className="form-input"
+                                                style={{ padding: '4px 8px', fontSize: '0.8125rem', height: '32px' }}
+                                                value={customFechaHasta}
+                                                onChange={(e) => setCustomFechaHasta(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="caja-periodo-balance-pill">
+                                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Balance Neto ({periodDateRange.label}):
+                                </span>
+                                <span
+                                    className={`badge ${periodKpis.balanceNeto >= 0 ? 'badge-success' : 'badge-danger'}`}
+                                    style={{ fontSize: '0.875rem', padding: '3px 10px', fontWeight: 700 }}
+                                >
+                                    {periodKpis.balanceNeto >= 0 ? '+' : ''}{formatCurrency(periodKpis.balanceNeto)}
+                                </span>
+                            </div>
+                        </div>
+
                         <div className="grid dashboard-kpi-grid-liquid dashboard-staggered-grid">
                             <div className="card kpi-card dashboard-kpi-card dashboard-kpi-card--success animate-slide-up">
                                 <div className="dashboard-kpi-shell">
@@ -3476,12 +3710,12 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                         <div className="dashboard-kpi-heading-group">
                                             <div className="dashboard-kpi-heading">Total Ingresos</div>
                                             <div className="dashboard-kpi-main-value dashboard-kpi-currency">
-                                                {formatCurrency(resumenEnVivo.total_ingresos_efectivo + resumenEnVivo.total_ingresos_banco)}
+                                                {formatCurrency(periodKpis.totalIng)}
                                             </div>
                                             <div className="dashboard-kpi-note" style={{ fontSize: '0.75rem', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                                <span><i className="bi bi-cash-coin" style={{ marginRight: '3px', color: 'var(--color-success)' }}></i> {formatCurrency(resumenEnVivo.total_ingresos_efectivo)}</span>
+                                                <span><i className="bi bi-cash-coin" style={{ marginRight: '3px', color: 'var(--color-success)' }}></i> {formatCurrency(periodKpis.ingEfec)}</span>
                                                 <span>&bull;</span>
-                                                <span><i className="bi bi-arrow-left-right" style={{ marginRight: '3px', color: 'var(--color-primary)' }}></i> {formatCurrency(resumenEnVivo.total_ingresos_banco)}</span>
+                                                <span><i className="bi bi-arrow-left-right" style={{ marginRight: '3px', color: 'var(--color-primary)' }}></i> {formatCurrency(periodKpis.ingBanco)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -3497,12 +3731,12 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                         <div className="dashboard-kpi-heading-group">
                                             <div className="dashboard-kpi-heading">Total Egresos</div>
                                             <div className="dashboard-kpi-main-value dashboard-kpi-currency">
-                                                {formatCurrency(resumenEnVivo.total_egresos_efectivo + resumenEnVivo.total_egresos_banco)}
+                                                {formatCurrency(periodKpis.totalEg)}
                                             </div>
                                             <div className="dashboard-kpi-note" style={{ fontSize: '0.75rem', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                                <span><i className="bi bi-cash-coin" style={{ marginRight: '3px', color: 'var(--color-danger)' }}></i> {formatCurrency(resumenEnVivo.total_egresos_efectivo)}</span>
+                                                <span><i className="bi bi-cash-coin" style={{ marginRight: '3px', color: 'var(--color-danger)' }}></i> {formatCurrency(periodKpis.egEfec)}</span>
                                                 <span>&bull;</span>
-                                                <span><i className="bi bi-arrow-left-right" style={{ marginRight: '3px', color: 'var(--color-primary)' }}></i> {formatCurrency(resumenEnVivo.total_egresos_banco)}</span>
+                                                <span><i className="bi bi-arrow-left-right" style={{ marginRight: '3px', color: 'var(--color-primary)' }}></i> {formatCurrency(periodKpis.egBanco)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -3516,12 +3750,16 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                             <i className="bi bi-safe-fill"></i>
                                         </div>
                                         <div className="dashboard-kpi-heading-group">
-                                            <div className="dashboard-kpi-heading">Efectivo en Caja</div>
+                                            <div className="dashboard-kpi-heading">
+                                                {(activePeriodoScope === 'turno' || (activePeriodoScope === 'hoy' && activeSession)) ? 'Efectivo en Caja' : 'Efectivo del Período'}
+                                            </div>
                                             <div className="dashboard-kpi-main-value dashboard-kpi-currency" style={{ fontWeight: 800 }}>
-                                                {formatCurrency(resumenEnVivo.saldo_teorico_efectivo)}
+                                                {formatCurrency((activePeriodoScope === 'turno' || (activePeriodoScope === 'hoy' && activeSession)) ? resumenEnVivo.saldo_teorico_efectivo : periodKpis.efectivoNetoPeriodo)}
                                             </div>
                                             <div className="dashboard-kpi-note" style={{ fontSize: '0.75rem' }}>
-                                                Fondo inicial: {formatCurrency(resumenEnVivo.monto_apertura)}
+                                                {(activePeriodoScope === 'turno' || (activePeriodoScope === 'hoy' && activeSession))
+                                                    ? `Fondo inicial: ${formatCurrency(resumenEnVivo.monto_apertura)}`
+                                                    : `Ingresos: ${formatCurrency(periodKpis.ingEfec)} • Egresos: ${formatCurrency(periodKpis.egEfec)}`}
                                             </div>
                                         </div>
                                     </div>
@@ -3536,13 +3774,13 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                         </div>
                                         <div className="dashboard-kpi-heading-group">
                                             <div className="dashboard-kpi-heading">Bancos y Digital</div>
-                                            <div className="dashboard-kpi-main-value dashboard-kpi-currency" style={{ color: resumenEnVivo.balance_neto_banco >= 0 ? 'var(--color-primary)' : 'var(--color-danger)' }}>
-                                                {formatCurrency(resumenEnVivo.balance_neto_banco)}
+                                            <div className="dashboard-kpi-main-value dashboard-kpi-currency" style={{ color: periodKpis.balanceBanco >= 0 ? 'var(--color-primary)' : 'var(--color-danger)' }}>
+                                                {formatCurrency(periodKpis.balanceBanco)}
                                             </div>
                                             <div className="dashboard-kpi-note" style={{ fontSize: '0.75rem', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                <span style={{ color: 'var(--color-success)' }}>+{formatCurrency(resumenEnVivo.total_ingresos_banco)}</span>
+                                                <span style={{ color: 'var(--color-success)' }}>+{formatCurrency(periodKpis.ingBanco)}</span>
                                                 <span>&bull;</span>
-                                                <span style={{ color: 'var(--color-danger)' }}>-{formatCurrency(resumenEnVivo.total_egresos_banco)}</span>
+                                                <span style={{ color: 'var(--color-danger)' }}>-{formatCurrency(periodKpis.egBanco)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -3558,54 +3796,26 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <h2 className="card-title">
-                                            {activeBitacoraScope === 'turno'
-                                                ? 'Bitácora de Movimientos del Turno'
-                                                : activeBitacoraScope === 'dia'
-                                                    ? 'Bitácora de Movimientos del Día'
-                                                    : 'Histórico de Movimientos'}
+                                            Movimientos: {periodDateRange.label}
                                         </h2>
                                         <span className="badge badge-secondary" style={{ fontSize: '0.75rem', padding: '2px 8px', fontWeight: 600 }}>
-                                            {filteredMovimientos.length} movimiento(s) {activeBitacoraScope === 'turno' ? 'en turno' : (activeBitacoraScope === 'dia' ? 'hoy' : '')}
+                                            {filteredMovimientos.length} movimiento(s)
                                         </span>
                                     </div>
                                     <p className="expenses-panel-sub">
-                                        {activeBitacoraScope === 'turno'
-                                            ? `Transacciones registradas en el turno activo (${activeSession?.turno ? `Turno ${activeSession.turno}` : 'Sesión actual'}).`
-                                            : activeBitacoraScope === 'dia'
-                                                ? `Consolidado de cobros y egresos registrados durante el día de hoy (${formatDateShort(new Date())}).`
-                                                : 'Auditoría cronológica de transacciones históricas.'}
+                                        Transacciones registradas del {periodDateRange.sublabel}.
                                     </p>
                                 </div>
 
-                                {/* Selector de Alcance Temporal (Turno / Todo el Día / Histórico) - Ahora en la cabecera */}
-                                <div className="segmented-control caja-bitacora-scope-control" role="group" aria-label="Alcance temporal" style={{ fontSize: '0.8125rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <button
                                         type="button"
-                                        className={`segmented-control__btn${activeBitacoraScope === 'turno' ? ' is-active' : ''}`}
-                                        onClick={() => setBitacoraScope('turno')}
-                                        disabled={!activeSession}
-                                        title={activeSession ? "Ver transacciones del turno actual" : "Caja cerrada (sin turno activo)"}
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={handleExportCSV}
+                                        title="Exportar movimientos listados a formato CSV"
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}
                                     >
-                                        <i className="bi bi-clock-history" style={{ marginRight: '4px' }}></i>
-                                        Turno Actual
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segmented-control__btn${activeBitacoraScope === 'dia' ? ' is-active' : ''}`}
-                                        onClick={() => setBitacoraScope('dia')}
-                                        title="Ver todas las transacciones del día de hoy"
-                                    >
-                                        <i className="bi bi-calendar-event" style={{ marginRight: '4px' }}></i>
-                                        Todo el Día
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segmented-control__btn${activeBitacoraScope === 'todos' ? ' is-active' : ''}`}
-                                        onClick={() => setBitacoraScope('todos')}
-                                        title="Ver historial completo de movimientos"
-                                    >
-                                        <i className="bi bi-collection" style={{ marginRight: '4px' }}></i>
-                                        Histórico
+                                        <i className="bi bi-file-earmark-spreadsheet"></i> Exportar CSV
                                     </button>
                                 </div>
                             </div>
