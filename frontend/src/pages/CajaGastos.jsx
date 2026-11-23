@@ -3592,23 +3592,24 @@ const CajaGastos = () => {
                                 </div>
                                 {activePeriodoScope === 'rango' && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <input
-                                            type="date"
-                                            className="form-input"
-                                            style={{ padding: '4px 8px', fontSize: '0.8125rem', height: '36px' }}
-                                            value={customFechaDesde}
-                                            onChange={(e) => setCustomFechaDesde(e.target.value)}
-                                            aria-label="Fecha desde"
-                                        />
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>a</span>
-                                        <input
-                                            type="date"
-                                            className="form-input"
-                                            style={{ padding: '4px 8px', fontSize: '0.8125rem', height: '36px' }}
-                                            value={customFechaHasta}
-                                            onChange={(e) => setCustomFechaHasta(e.target.value)}
-                                            aria-label="Fecha hasta"
-                                        />
+                                        <div style={{ width: '145px' }}>
+                                            <FormDatePicker
+                                                id="caja-filtro-fecha-desde"
+                                                value={customFechaDesde}
+                                                onChange={(val) => setCustomFechaDesde(val)}
+                                                aria-label="Fecha desde"
+                                            />
+                                        </div>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>a</span>
+                                        <div style={{ width: '145px' }}>
+                                            <FormDatePicker
+                                                id="caja-filtro-fecha-hasta"
+                                                value={customFechaHasta}
+                                                onChange={(val) => setCustomFechaHasta(val)}
+                                                min={customFechaDesde}
+                                                aria-label="Fecha hasta"
+                                            />
+                                        </div>
                                     </div>
                                 )}
                                 <button
@@ -5551,23 +5552,26 @@ const CajaGastos = () => {
                                                     <i className="bi bi-calendar-range" style={{ color: 'var(--color-primary)', marginRight: '4px' }}></i>
                                                     Desde:
                                                 </span>
-                                                <input
-                                                    type="date"
-                                                    className="form-input"
-                                                    style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8125rem', height: '32px' }}
-                                                    value={reportFechaDesde}
-                                                    onChange={(e) => setReportFechaDesde(e.target.value)}
-                                                />
+                                                <div style={{ width: '140px' }}>
+                                                    <FormDatePicker
+                                                        id="modal-reporte-fecha-desde"
+                                                        value={reportFechaDesde}
+                                                        onChange={(val) => setReportFechaDesde(val)}
+                                                        aria-label="Fecha desde"
+                                                    />
+                                                </div>
                                                 <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                                                     Hasta:
                                                 </span>
-                                                <input
-                                                    type="date"
-                                                    className="form-input"
-                                                    style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8125rem', height: '32px' }}
-                                                    value={reportFechaHasta}
-                                                    onChange={(e) => setReportFechaHasta(e.target.value)}
-                                                />
+                                                <div style={{ width: '140px' }}>
+                                                    <FormDatePicker
+                                                        id="modal-reporte-fecha-hasta"
+                                                        value={reportFechaHasta}
+                                                        onChange={(val) => setReportFechaHasta(val)}
+                                                        min={reportFechaDesde}
+                                                        aria-label="Fecha hasta"
+                                                    />
+                                                </div>
                                             </div>
 
                                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
