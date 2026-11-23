@@ -1075,6 +1075,21 @@ const CajaGastos = () => {
     const activePeriodoScope = (!activeSession && periodoScope === 'turno') ? 'hoy' : periodoScope;
     const activeBitacoraScope = activePeriodoScope;
 
+    const PERIODO_OPTIONS = useMemo(() => {
+        const list = [];
+        if (activeSession) {
+            list.push({ value: 'turno', label: `Turno Actual (${activeSession.turno})`, icon: 'bi-clock-history' });
+        }
+        list.push(
+            { value: 'hoy', label: 'Hoy', icon: 'bi-calendar-event' },
+            { value: 'semana', label: 'Esta Semana', icon: 'bi-calendar-week' },
+            { value: 'desde15', label: 'Desde el 15', icon: 'bi-calendar-check' },
+            { value: 'mes', label: 'Este Mes', icon: 'bi-calendar-month' },
+            { value: 'rango', label: 'Personalizado...', icon: 'bi-calendar-range' }
+        );
+        return list;
+    }, [activeSession]);
+
     const periodDateRange = useMemo(() => {
         const todayStr = localDateInputValue();
         const now = new Date();
@@ -3562,9 +3577,40 @@ const CajaGastos = () => {
                                         </span>
                                     )}
                                 </div>
-                                <p className="card-subtitle">Balance operativo y control financiero del período seleccionado.</p>
+                                <p className="card-subtitle">
+                                    Período: <strong>{periodDateRange.label}</strong> ({periodDateRange.sublabel})
+                                </p>
                             </div>
                             <div className="caja-resumen-header-actions" style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div style={{ minWidth: '190px' }}>
+                                    <CustomSelect
+                                        value={activePeriodoScope}
+                                        onChange={(_e, val) => setPeriodoScope(val)}
+                                        options={PERIODO_OPTIONS}
+                                        aria-label="Seleccionar período de análisis"
+                                    />
+                                </div>
+                                {activePeriodoScope === 'rango' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <input
+                                            type="date"
+                                            className="form-input"
+                                            style={{ padding: '4px 8px', fontSize: '0.8125rem', height: '36px' }}
+                                            value={customFechaDesde}
+                                            onChange={(e) => setCustomFechaDesde(e.target.value)}
+                                            aria-label="Fecha desde"
+                                        />
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>a</span>
+                                        <input
+                                            type="date"
+                                            className="form-input"
+                                            style={{ padding: '4px 8px', fontSize: '0.8125rem', height: '36px' }}
+                                            value={customFechaHasta}
+                                            onChange={(e) => setCustomFechaHasta(e.target.value)}
+                                            aria-label="Fecha hasta"
+                                        />
+                                    </div>
+                                )}
                                 <button
                                     type="button"
                                     className="btn btn-secondary btn-sm"
@@ -3583,120 +3629,6 @@ const CajaGastos = () => {
                                 >
                                     <i className="bi bi-file-earmark-code-fill"></i> Reporte HTML
                                 </button>
-                                {activeSession ? (
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary btn-sm"
-                                        onClick={() => setCierreModalOpen(true)}
-                                        style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}
-                                    >
-                                        <i className="bi bi-calculator"></i> Arqueo y Cierre
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary btn-sm"
-                                        onClick={() => setAperturaModalOpen(true)}
-                                        style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}
-                                    >
-                                        <i className="bi bi-unlock-fill"></i> Abrir Caja / Turno
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Barra unificada de período y balance neto reactivo */}
-                        <div className="caja-periodo-bar" style={{ margin: '0 var(--space-4) var(--space-4) var(--space-4)' }}>
-                            <div className="caja-periodo-presets">
-                                <div className="segmented-control" role="group" aria-label="Período de análisis" style={{ fontSize: '0.8125rem' }}>
-                                    {activeSession && (
-                                        <button
-                                            type="button"
-                                            className={`segmented-control__btn${activePeriodoScope === 'turno' ? ' is-active' : ''}`}
-                                            onClick={() => setPeriodoScope('turno')}
-                                            title="Ver solo las transacciones del turno activo"
-                                        >
-                                            Turno Actual
-                                        </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        className={`segmented-control__btn${activePeriodoScope === 'hoy' ? ' is-active' : ''}`}
-                                        onClick={() => setPeriodoScope('hoy')}
-                                        title="Ver transacciones del día de hoy"
-                                    >
-                                        Hoy
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segmented-control__btn${activePeriodoScope === 'semana' ? ' is-active' : ''}`}
-                                        onClick={() => setPeriodoScope('semana')}
-                                        title="Ver operaciones de esta semana (lunes a hoy)"
-                                    >
-                                        Esta Semana
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segmented-control__btn${activePeriodoScope === 'desde15' ? ' is-active' : ''}`}
-                                        onClick={() => setPeriodoScope('desde15')}
-                                        title="Ver operaciones desde el día 15 a la fecha"
-                                    >
-                                        Desde el 15
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segmented-control__btn${activePeriodoScope === 'mes' ? ' is-active' : ''}`}
-                                        onClick={() => setPeriodoScope('mes')}
-                                        title="Ver operaciones del mes en curso"
-                                    >
-                                        Este Mes
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segmented-control__btn${activePeriodoScope === 'rango' ? ' is-active' : ''}`}
-                                        onClick={() => setPeriodoScope('rango')}
-                                        title="Definir rango de fechas personalizado"
-                                    >
-                                        Personalizado
-                                    </button>
-                                </div>
-
-                                {activePeriodoScope === 'rango' && (
-                                    <div className="caja-periodo-custom-dates">
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Desde:</span>
-                                            <input
-                                                type="date"
-                                                className="form-input"
-                                                style={{ padding: '4px 8px', fontSize: '0.8125rem', height: '32px' }}
-                                                value={customFechaDesde}
-                                                onChange={(e) => setCustomFechaDesde(e.target.value)}
-                                            />
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Hasta:</span>
-                                            <input
-                                                type="date"
-                                                className="form-input"
-                                                style={{ padding: '4px 8px', fontSize: '0.8125rem', height: '32px' }}
-                                                value={customFechaHasta}
-                                                onChange={(e) => setCustomFechaHasta(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="caja-periodo-balance-pill">
-                                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                    Balance Neto ({periodDateRange.label}):
-                                </span>
-                                <span
-                                    className={`badge ${periodKpis.balanceNeto >= 0 ? 'badge-success' : 'badge-danger'}`}
-                                    style={{ fontSize: '0.875rem', padding: '3px 10px', fontWeight: 700 }}
-                                >
-                                    {periodKpis.balanceNeto >= 0 ? '+' : ''}{formatCurrency(periodKpis.balanceNeto)}
-                                </span>
                             </div>
                         </div>
 
@@ -3766,21 +3698,21 @@ const CajaGastos = () => {
                                 </div>
                             </div>
 
-                            <div className="card kpi-card dashboard-kpi-card dashboard-kpi-card--bank animate-slide-up">
+                            <div className={`card kpi-card dashboard-kpi-card ${periodKpis.balanceNeto >= 0 ? 'dashboard-kpi-card--bank' : 'dashboard-kpi-card--danger'} animate-slide-up`}>
                                 <div className="dashboard-kpi-shell">
                                     <div className="dashboard-kpi-row">
                                         <div className="kpi-icon" aria-hidden="true">
-                                            <i className="bi bi-bank2"></i>
+                                            <i className={`bi ${periodKpis.balanceNeto >= 0 ? 'bi-graph-up-arrow' : 'bi-graph-down-arrow'}`}></i>
                                         </div>
                                         <div className="dashboard-kpi-heading-group">
-                                            <div className="dashboard-kpi-heading">Bancos y Digital</div>
-                                            <div className="dashboard-kpi-main-value dashboard-kpi-currency" style={{ color: periodKpis.balanceBanco >= 0 ? 'var(--color-primary)' : 'var(--color-danger)' }}>
-                                                {formatCurrency(periodKpis.balanceBanco)}
+                                            <div className="dashboard-kpi-heading">Balance Neto</div>
+                                            <div className="dashboard-kpi-main-value dashboard-kpi-currency" style={{ fontWeight: 800, color: periodKpis.balanceNeto >= 0 ? 'var(--color-primary)' : 'var(--color-danger)' }}>
+                                                {periodKpis.balanceNeto >= 0 ? '+' : ''}{formatCurrency(periodKpis.balanceNeto)}
                                             </div>
-                                            <div className="dashboard-kpi-note" style={{ fontSize: '0.75rem', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                <span style={{ color: 'var(--color-success)' }}>+{formatCurrency(periodKpis.ingBanco)}</span>
+                                            <div className="dashboard-kpi-note" style={{ fontSize: '0.75rem', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <span>Bancos: {periodKpis.balanceBanco >= 0 ? '+' : ''}{formatCurrency(periodKpis.balanceBanco)}</span>
                                                 <span>&bull;</span>
-                                                <span style={{ color: 'var(--color-danger)' }}>-{formatCurrency(periodKpis.egBanco)}</span>
+                                                <span>Efectivo: {periodKpis.efectivoNetoPeriodo >= 0 ? '+' : ''}{formatCurrency(periodKpis.efectivoNetoPeriodo)}</span>
                                             </div>
                                         </div>
                                     </div>
