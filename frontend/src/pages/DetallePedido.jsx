@@ -34,6 +34,7 @@ import AnimatedCheck from '../components/icons/animated/AnimatedCheck.jsx';
 import { AFINIX_LAB_ADDRESS } from '../constants/labInfo.js';
 import OrderRepeatModal from '../components/orders/OrderRepeatModal.jsx';
 import OrderRepeatLinks from '../components/orders/OrderRepeatLinks.jsx';
+import FormDatePicker from '../components/FormDatePicker.jsx';
 import { canRepeatOrder } from '../modules/orders/orderRepeat.js';
 import '../styles/order-repeats.css';
 import OrderDesignViewerModal from '../components/orders/OrderDesignViewerModal.jsx';
@@ -81,6 +82,36 @@ const getFileVisual = (file) => {
     const isPdf = ['pdf'].includes(ext) || file?.tipo === 'doc';
     const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) || ['color', 'caso', 'final'].includes(file?.tipo);
     return { is3D, isPdf, isImage, ext };
+};
+
+/** Normalize PG DATE / ISO string → `YYYY-MM-DD` for FormDatePicker and local comparison without timezone shifts */
+const toIsoDateOnly = (val) => {
+    if (!val) return '';
+    if (typeof val === 'string') {
+        const match = val.match(/^(\d{4}-\d{2}-\d{2})/);
+        return match ? match[1] : '';
+    }
+    if (val instanceof Date && !Number.isNaN(val.getTime())) {
+        const y = val.getFullYear();
+        const m = String(val.getMonth() + 1).padStart(2, '0');
+        const d = String(val.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    return '';
+};
+
+/** Parse `YYYY-MM-DD` into a local Date at 00:00:00 without UTC timezone rollback */
+const parseDateOnly = (val) => {
+    if (!val) return null;
+    if (typeof val === 'string') {
+        const match = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            const [, y, m, d] = match;
+            return new Date(Number(y), Number(m) - 1, Number(d));
+        }
+    }
+    const d = new Date(val);
+    return Number.isNaN(d.getTime()) ? null : d;
 };
 
 const formatFileSize = (bytes) => {
@@ -187,13 +218,7 @@ const DetallePedido = () => {
 
     useEffect(() => {
         if (pedido?.fecha_entrega) {
-            const date = new Date(pedido.fecha_entrega);
-            if (!Number.isNaN(date.getTime())) {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                setDeliveryDate(`${year}-${month}-${day}`);
-            }
+            setDeliveryDate(toIsoDateOnly(pedido.fecha_entrega));
         } else {
             setDeliveryDate('');
         }
@@ -257,10 +282,14 @@ const DetallePedido = () => {
 
     const formatDate = (value, withTime = false) => {
         if (!value) return 'Sin definir';
+        if (!withTime) {
+            const dateObj = parseDateOnly(value);
+            if (!dateObj) return value;
+            return new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium' }).format(dateObj);
+        }
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return value;
-        const options = withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' };
-        return new Intl.DateTimeFormat('es-PE', options).format(date);
+        return new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
     };
 
     const getDeliveryMeta = () => {
@@ -268,17 +297,17 @@ const DetallePedido = () => {
         if (['terminado', 'enviado'].includes(pedido.estado)) {
             return { label: 'Completado', tone: 'success' };
         }
-        const delivery = new Date(pedido.fecha_entrega);
+        const delivery = parseDateOnly(pedido.fecha_entrega);
+        if (!delivery) return null;
         const today = new Date();
-        if (Number.isNaN(delivery.getTime())) return null;
         const startDelivery = new Date(delivery.getFullYear(), delivery.getMonth(), delivery.getDate());
         const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const diffMs = startDelivery - startToday;
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-        if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)} dias`, tone: 'danger' };
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)} días`, tone: 'danger' };
         if (diffDays === 0) return { label: 'Entrega hoy', tone: 'warning' };
-        if (diffDays <= 2) return { label: `En ${diffDays} dias`, tone: 'warning' };
-        return { label: `En ${diffDays} dias`, tone: 'info' };
+        if (diffDays === 1) return { label: 'Entrega mañana', tone: 'warning' };
+        return { label: `En ${diffDays} días`, tone: 'info' };
     };
 
     const submitApprovalDesign = async () => {
@@ -462,14 +491,19 @@ const DetallePedido = () => {
     };
 
     const saveDeliveryDate = async () => {
+        if (!deliveryDate) {
+            toast.error('Selecciona una fecha de entrega');
+            return;
+        }
         try {
             await updateOrderDeliveryDateMutation.mutateAsync({
                 orderId: id,
                 payload: { fecha_entrega: deliveryDate }
             });
+            toast.success('Fecha de entrega actualizada');
             setEditingDelivery(false);
         } catch (err) {
-            alert(err.message);
+            toast.error(err.message || 'Error al actualizar fecha de entrega');
         }
     };
 
@@ -886,21 +920,28 @@ const DetallePedido = () => {
                             </span>
                         {isLab && editingDelivery ? (
                             <div className="pedido-detail-field-actions">
-                                <input
-                                    className="form-input form-input-sm"
-                                    type="date"
+                                <FormDatePicker
+                                    id="pedido-entrega-datepicker"
                                     value={deliveryDate}
-                                    onChange={e => setDeliveryDate(e.target.value)}
+                                    onChange={(val) => setDeliveryDate(val)}
                                     aria-label="Fecha de entrega"
                                 />
-                                <button type="button" className="btn btn-primary btn-sm btn-commit" onClick={saveDeliveryDate} disabled={savingDelivery || !deliveryDate}>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm btn-commit"
+                                    onClick={saveDeliveryDate}
+                                    disabled={savingDelivery || !deliveryDate}
+                                >
                                     <i className="bi bi-check2"></i>
                                     {savingDelivery ? 'Guardando...' : 'Guardar'}
                                 </button>
                                 <button
                                     type="button"
                                     className="btn btn-ghost btn-sm"
-                                    onClick={() => setEditingDelivery(false)}
+                                    onClick={() => {
+                                        setDeliveryDate(toIsoDateOnly(pedido?.fecha_entrega));
+                                        setEditingDelivery(false);
+                                    }}
                                     disabled={savingDelivery}
                                 >
                                     Cancelar

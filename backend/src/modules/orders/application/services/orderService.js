@@ -649,11 +649,15 @@ export const makeOrderService = ({ orderRepository, repeatRepository, pool, shor
             };
         }
 
-        const fechaFormateada = new Date(fecha_entrega).toLocaleDateString('es-PE', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        });
+        const matchFecha = String(fecha_entrega).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        const dateForFormat = matchFecha ? new Date(Number(matchFecha[1]), Number(matchFecha[2]) - 1, Number(matchFecha[3])) : new Date(fecha_entrega);
+        const fechaFormateada = Number.isNaN(dateForFormat.getTime())
+            ? fecha_entrega
+            : dateForFormat.toLocaleDateString('es-PE', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
 
         await notifyClinicUsers(
             result.pedido.clinica_id,
