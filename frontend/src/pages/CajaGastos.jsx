@@ -1653,7 +1653,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
         }
         if (isCajaTrasnochada) {
             toast.error('Tienes una caja abierta del día anterior sin cerrar. Realiza el arqueo y ciérrala antes de registrar cobros de hoy.');
-            setArqueoRealEfectivo(String(resumenEnVivo.saldo_teorico_efectivo || 0));
+            setArqueoRealEfectivo(String(Math.max(0, Number(resumenEnVivo.saldo_teorico_efectivo || 0))));
             setCierreModalOpen(true);
             return;
         }
@@ -1950,7 +1950,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
         }
         if (isCajaTrasnochada) {
             toast.error('Tienes una caja abierta del día anterior sin cerrar. Realiza el arqueo y ciérrala antes de registrar gastos de hoy.');
-            setArqueoRealEfectivo(String(resumenEnVivo.saldo_teorico_efectivo || 0));
+            setArqueoRealEfectivo(String(Math.max(0, Number(resumenEnVivo.saldo_teorico_efectivo || 0))));
             setCierreModalOpen(true);
             return;
         }
@@ -1991,7 +1991,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                     className="btn btn-warning"
                                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
                                     onClick={() => {
-                                        setArqueoRealEfectivo(String(resumenEnVivo.saldo_teorico_efectivo || 0));
+                                        setArqueoRealEfectivo(String(Math.max(0, Number(resumenEnVivo.saldo_teorico_efectivo || 0))));
                                         setCierreModalOpen(true);
                                     }}
                                 >
@@ -2057,7 +2057,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                         className="btn btn-warning btn-sm"
                         style={{ whiteSpace: 'nowrap', fontWeight: 600 }}
                         onClick={() => {
-                            setArqueoRealEfectivo(String(resumenEnVivo.saldo_teorico_efectivo || 0));
+                            setArqueoRealEfectivo(String(Math.max(0, Number(resumenEnVivo.saldo_teorico_efectivo || 0))));
                             setCierreModalOpen(true);
                         }}
                     >
@@ -2183,7 +2183,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                         className="btn btn-warning btn-sm"
                                         style={{ fontSize: '0.8rem', padding: '6px 12px', width: '100%', justifyContent: 'center', fontWeight: 600 }}
                                         onClick={() => {
-                                            setArqueoRealEfectivo(String(resumenEnVivo.saldo_teorico_efectivo || 0));
+                                            setArqueoRealEfectivo(String(Math.max(0, Number(resumenEnVivo.saldo_teorico_efectivo || 0))));
                                             setCierreModalOpen(true);
                                         }}
                                     >
@@ -2906,7 +2906,7 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                         className="btn btn-warning btn-sm"
                                         style={{ fontSize: '0.8rem', padding: '6px 12px', width: '100%', justifyContent: 'center', fontWeight: 600 }}
                                         onClick={() => {
-                                            setArqueoRealEfectivo(String(resumenEnVivo.saldo_teorico_efectivo || 0));
+                                            setArqueoRealEfectivo(String(Math.max(0, Number(resumenEnVivo.saldo_teorico_efectivo || 0))));
                                             setCierreModalOpen(true);
                                         }}
                                     >
@@ -4967,6 +4967,23 @@ _Generado automáticamente por AFINIX Dental Lab_`;
                                 autoFocus
                             />
                         </div>
+                        {Number(resumenEnVivo.saldo_teorico_efectivo || 0) < 0 && (
+                            <div style={{
+                                marginTop: '8px',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                background: 'rgba(245, 158, 11, 0.1)',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                color: '#b45309',
+                                fontSize: '0.78rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                                <i className="bi bi-info-circle-fill"></i>
+                                <span>El saldo teórico es negativo porque se registraron egresos en efectivo sin fondo inicial previo. El conteo físico en caja debe ser 0 o superior.</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Calculadora colapsable de Billetes y Monedas */}
